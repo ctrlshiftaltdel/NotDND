@@ -4,9 +4,12 @@
 把「铁律 1」点名的第三方数据路径从「记录在 AGENTS.md 里」升级为「CI 真会拦」：
 
   1. 命中：临时放入已知第三方派生数据路径的探针 → 防火墙**非零退出**并逐个点名；
-  2. 不误伤：NotDND 自己合法的 `data/` 文件（含 `data/schema/monsters.schema.json`
-     这类「名字像但合法」的命名）必须放行；
-  3. 恢复：探针撤销后防火墙恢复绿灯，且探针路径在索引与工作区中都不留痕。
+  2. 非 ASCII 文件名同样在覆盖范围内（中文名 + 假密钥、中文名含「译文」两条探针）——
+     git 默认 `core.quotepath` 会转义中文路径，转义串当 pathspec 回传 `git grep`
+     会匹配不到，导致这类文件被静默跳过（fail-open）；
+  3. 不误伤：NotDND 自己合法的 `data/` 文件（含 `data/schema/monsters.schema.json`
+     这类「名字像但合法」的命名、以及中文名的 `data/worlds/灰烬.json`）必须放行；
+  4. 恢复：探针撤销后防火墙恢复绿灯，且探针路径在索引与工作区中都不留痕。
 
 探针用 `git add -N -f`（intent-to-add）登记进索引——防火墙扫的是 `git ls-files`，
 无需 commit 即可被看见；`-f` 是因为 `corpus/` 已被 `.gitignore` 忽略。
@@ -31,6 +34,10 @@ HIT_PROBES = (
     "data/backgrounds.json",
     "data/campaigns/lost-mine.json",
     "data/corpus/srd.json",
+    # 非 ASCII 文件名：git 默认 core.quotepath 会转义中文路径，若直接拿转义串当
+    # pathspec 回传 git grep，这类文件会被静默跳过（fail-open，本仓库 docs/ 全中文名）。
+    "data/中文文件.txt",   # 正文带假密钥 → 证明中文名文件**内容**真的被扫了
+    "data/泄密译文.json",  # 文件名带「译文」→ 证明中文名的文件名规则也生效
 )
 
 # 应当被放行的路径（NotDND 自己的合法数据，含「名字像但合法」的 schema 文件）。
@@ -38,9 +45,15 @@ SAFE_PROBES = (
     "data/system/attributes.json",
     "data/worlds/ember.json",
     "data/schema/monsters.schema.json",
+    "data/worlds/灰烬.json",  # 中文名但合法 → 不得因路径含非 ASCII 而被误判
 )
 
 PROBE_CONTENT = "{}\n"
+
+# 假密钥用拼接构造：测试文件自身也在防火墙扫描范围内，写成整串会把自己扫成命中。
+FAKE_SECRET = "sk-" + "TESTNOTAREALKEY0123456789"
+PROBE_CONTENTS = {"data/中文文件.txt": '{"key": "%s"}\n' % FAKE_SECRET}
+
 FIREWALL_TIMEOUT = 300  # 秒；本地 Windows 上 git grep 较慢，CI 上远快于此
 
 
@@ -82,7 +95,7 @@ def stage_probes(paths):
         full = os.path.join(ROOT, path)
         os.makedirs(os.path.dirname(full), exist_ok=True)
         with open(full, "w", encoding="utf-8") as handle:
-            handle.write(PROBE_CONTENT)
+            handle.write(PROBE_CONTENTS.get(path, PROBE_CONTENT))
         git("add", "-N", "-f", "--", path)
         created.append(path)
     return created
