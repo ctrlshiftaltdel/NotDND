@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.action_economy）",
+  "description": "行动经济：回合结构、动作价格表 10 行、反应表 5 行、过载等级 3 级、时间单位 5 种；源自 docs/system/01-内核CORE.md 第六节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "round", "actions", "reactions", "reaction_note", "overload", "time_units"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.action_economy"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "round": {
+      "type": "object",
+      "required": ["ap_per_turn", "carry_over_to_reaction", "steps", "source"],
+      "properties": {
+        "ap_per_turn": {"type": "integer", "minimum": 0},
+        "carry_over_to_reaction": {"type": "integer", "minimum": 0},
+        "steps": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "ap", "note", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "ap": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+          "ap_note": {"type": "string", "minLength": 1},
+          "note": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "reactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "cost", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "cost": {"type": "integer", "minimum": 0},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "reaction_note": {"type": "string", "minLength": 1},
+    "overload": {
+      "type": "object",
+      "required": ["note", "levels", "cost", "cost_source"],
+      "properties": {
+        "note": {"type": "string", "minLength": 1},
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["level", "extra_ap", "next_ap", "source"],
+            "properties": {
+              "level": {"type": "integer", "minimum": 1, "maximum": 3},
+              "extra_ap": {"type": "integer", "minimum": 1},
+              "next_ap": {"type": "integer", "minimum": 0},
+              "note": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "cost": {"type": "string", "minLength": 1},
+        "cost_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "time_units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "duration", "use", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "duration": {"type": "string", "minLength": 1},
+          "use": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

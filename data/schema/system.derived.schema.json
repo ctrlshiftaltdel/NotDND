@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.derived）",
+  "description": "派生值公式（活力上限 / 防护 / 移动 / 负重 / 先攻）与负载标签；源自 docs/system/01-内核CORE.md 第二节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "formulas", "load_labels", "load_rules"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.derived"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "formulas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "formula", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "formula": {"type": "string", "minLength": 1},
+          "note": {"type": "string"},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "load_labels": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "load_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "condition", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "label": {"type": "string", "minLength": 1},
+          "min_count": {"type": "integer", "minimum": 1},
+          "condition": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "note": {"type": "string"}
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.resources）",
+  "description": "四大资源池（专注 / 气势 / 负担 / 决意）、休息与恢复、医疗与急救；源自 docs/system/01-内核CORE.md 第十二、十三节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "pools", "rest", "medical"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.resources"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "pools": {
+      "type": "object",
+      "required": ["focus", "tempo", "strain", "resolve"],
+      "properties": {
+        "focus": {
+          "type": "object",
+          "required": ["name", "en", "role", "capacity", "notes", "source"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "en": {"type": "string", "minLength": 1},
+            "role": {"type": "string", "minLength": 1},
+            "capacity": {"type": "string", "minLength": 1},
+            "notes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["order", "rule", "source"],
+                "properties": {
+                  "order": {"type": "integer", "minimum": 1},
+                  "rule": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        },
+        "tempo": {
+          "type": "object",
+          "required": ["name", "en", "role", "capacity", "note", "note_source", "spends", "zero_rule", "zero_rule_source", "source"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "en": {"type": "string", "minLength": 1},
+            "role": {"type": "string", "minLength": 1},
+            "capacity": {"type": "string", "minLength": 1},
+            "note": {"type": "string", "minLength": 1},
+            "note_source": {"$ref": "common.schema.json#/$defs/source"},
+            "spends": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["cost", "name", "effect", "source"],
+                "properties": {
+                  "cost": {"type": "integer", "minimum": 0},
+                  "name": {"type": "string", "minLength": 1},
+                  "effect": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "zero_rule": {"type": "string", "minLength": 1},
+            "zero_rule_source": {"$ref": "common.schema.json#/$defs/source"},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        },
+        "strain": {
+          "type": "object",
+          "required": ["name", "en", "role", "range", "levels", "sources", "sources_source", "recovery", "recovery_source", "source"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "en": {"type": "string", "minLength": 1},
+            "role": {"type": "string", "minLength": 1},
+            "range": {"type": "string", "minLength": 1},
+            "levels": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["range", "effect", "source"],
+                "properties": {
+                  "range": {"type": "string", "minLength": 1},
+                  "effect": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "sources": {"type": "string", "minLength": 1},
+            "sources_source": {"$ref": "common.schema.json#/$defs/source"},
+            "recovery": {"type": "string", "minLength": 1},
+            "recovery_source": {"$ref": "common.schema.json#/$defs/source"},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        },
+        "resolve": {
+          "type": "object",
+          "required": ["name", "en", "role", "capacity", "spends", "recovery", "source"],
+          "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "en": {"type": "string", "minLength": 1},
+            "role": {"type": "string", "minLength": 1},
+            "capacity": {"type": "string", "minLength": 1},
+            "spends": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["cost", "name", "effect", "source"],
+                "properties": {
+                  "cost": {"type": "integer", "minimum": 0},
+                  "name": {"type": "string", "minLength": 1},
+                  "effect": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "recovery": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["order", "rule", "source"],
+                "properties": {
+                  "order": {"type": "integer", "minimum": 1},
+                  "rule": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "rest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "duration", "condition", "recovery", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "duration": {"type": "string", "minLength": 1},
+          "condition": {"type": "string", "minLength": 1},
+          "recovery": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "medical": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "rule", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
