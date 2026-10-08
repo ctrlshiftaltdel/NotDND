@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+
+# 密钥与本地配置
+.env
+
+# 本地存档 / 生成物
+save/
+web-saves/
+screenshots/
+tests/shots/
+
+# 隔离工作区
+.worktrees/
+
+# 本地索引 / 工具目录
+.codegraph/
+.opencode/
+
+# 第三方参考产物（若本地存在，永不入库）
+reference/
+corpus/
+
+# 内部启动指令（含本机路径与参考项目信息，仅本地保留）
+启动提示词.md
