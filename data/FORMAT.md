@@ -82,7 +82,9 @@ data/
 
 > 基线口径：`system` 族已由试点数据落定，schema 用 `additionalProperties: false` 严格约束；
 > `world` 族的**实体项**已随 M1.2a（`docs/scenario/05` 阈界都市）落数据收紧为
-> `additionalProperties: false`；`random_tables` / `scenario` 两族的实体项当前仍为
+> `additionalProperties: false`；M1.2b（`docs/scenario/06` 余烬纪元）沿用该字段集，
+> 只补了三个可选字段（`ability.ap_note`、`faction.note`、`history.note`）。
+> `random_tables` / `scenario` 两族的实体项当前仍为
 > `additionalProperties: true` 基线，待 M1.2–M1.4 落数据时在各自 PR 内逐项收紧。
 
 ### 4.1 system 族
@@ -635,15 +637,19 @@ data/
 
 - `world`：`{key, name, engine, source?}`；`engine` 枚举 `tactics | build`。
 - `glossary[]`：术语表，`{term, meaning, source}`。
-- `factions[]`：`{id, name, alignment?, summary, source}`；`alignment` 为阵营分组
-  （`官方 | 半民间 | 反体制 | 资本 | 其他`）。
+- `factions[]`：`{id, name, alignment?, summary, note?, source}`；`alignment` 为开放字符串——
+  05 记阵营分组（`官方 | 半民间 | 反体制 | 资本 | 其他`），06 记原文「性质」列并另以
+  `神祇` 标记沉默的诸神；`note?` 用于标注原文瑕疵（重复行等）。
 - `regions[]`：地理区域，`{id, name, summary?, atmosphere?, key_places[]?, powers[]?, events[]?, source}`。
-- `history[]`：历史事件，`{id, year?, name, detail, source}`。
+- `history[]`：历史事件，`{id, year?, name, detail, note?, source}`；`note?` 用于标注
+  原文瑕疵（重复行、乱码、表格缺行而取自正文的条目）。
 - `tracks[]`（世界专属资源轨，见 4.4 的 `world_rules.tracks`；如 05 的「阈丝度」）。
 - `careers[]`：职途，`{id, name, role, focus[], vitality_bonus, skills[], gear[],
   abilities[{name, cost?, effect}], specializations[], note?, source}`。
 - `abilities[]`：能力（共鸣式 / 秘仪 / 协议），`{id, name, category, tier, ap, costs[], effect, source}`；
-  `tier` 枚举 `轻 | 中 | 重`；`ap` 为非负整数；`costs[]` 用通用**能力代价**结构（见 4.4）
+  `tier` 枚举 `轻 | 中 | 重`；`ap` 为非负整数，反应动作为 `null` 并以 `ap_note` 记
+  「反应：消耗 N 点保留 AP」（口径同 4.1 `system.action_economy`）；
+  `costs[]` 用通用**能力代价**结构（见 4.4）
   表达各世界不同的施法资源（05 专注 / 阈丝、06 烬、07 同步）。
 - `equipment[]`：`{id, name, kind, damage?, ap?, range?, tags[]?, guard?, load?, restriction?, effect?, price_tier, source}`；
   `kind` 枚举 `weapon | armor | gear`；`price_tier` 为**开放字符串**——基础档 `碎银 | 标准 | 贵重`，
@@ -655,7 +661,15 @@ data/
   06 烬值 / 燃痕 / 月相 / 根系 / 奉献；07 同步率 / 纯度 / 义体 / 网潜），**允许各世界自定义键**。
 - `random_tables[]`（见 4.3 的 `random_table`）。
 
-> 实体项的 `id` 用稳定 slug（如 `career-01`、`resonance-001`、`enemy-a01`）；同一顶层数组内
+> **计数核对**（M1.2b 逐条比对 `docs/scenario/06` 余烬纪元）：职途 **17**（16 + 旅人）；
+> 秘仪 **100**（9 类：火焰与余烬 16 / 生命与治疗 12 / 心智与幻觉 12 / 移动与空间 10 /
+> 防护与反制 12 / 亡灵与骨骼 12 / 自然与根系 12 / 神术 8 / 禁忌 6）；装备 **28**
+> （近战 9 / 远程 5 / 护甲 6 / 施法器材与消耗 8）；敌体 **80**（A 灰潮生物 22 / B 人类与类人 18 /
+> C 亡灵与骨骼 14 / D 巨兽与野兽 14 / E 要角与首领 12）；区域 **9**；术语 **7**；
+> 势力 **10**（诸神表 5 行——含 1 行重复——＋ 主要势力 5）；历史 **8**（七纪表 7 行——
+> 含第三纪、第五纪各 1 行重复——＋取自正文「树倒（第四纪末）」的第四纪 1 条）；随机表 **7**。
+
+> 实体项的 `id` 用稳定 slug（如 `career-01`、`resonance-001`、`arcana-001`、`enemy-a01`）；同一顶层数组内
 > `id` 不得重复。长文（世界观描述、十条信条、朗读段）留在 `docs/`，JSON 只留机制与短文本（见第 5 节）。
 
 ### 4.3 random_tables 族

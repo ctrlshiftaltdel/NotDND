@@ -1,0 +1,4721 @@
+{
+  "schema_version": 1,
+  "kind": "world.module",
+  "source": "docs/scenario/06-世界模组II-余烬纪元.md:3",
+  "world": {
+    "key": "emberfall",
+    "name": "余烬纪元",
+    "engine": "tactics",
+    "source": "docs/scenario/06-世界模组II-余烬纪元.md:3"
+  },
+  "glossary": [
+    {
+      "term": "余烬",
+      "meaning": "世界树死后残留的能量，一切魔法的来源",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:74"
+    },
+    {
+      "term": "烬值",
+      "meaning": "一个人体内可承受的余烬荷载（见第 5 节）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:75"
+    },
+    {
+      "term": "根系网络",
+      "meaning": "树根构成的通路与传送节点系统",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:76"
+    },
+    {
+      "term": "灰潮",
+      "meaning": "一次区域性的余烬爆发，会改变活物",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:77"
+    },
+    {
+      "term": "哑火的神迹",
+      "meaning": "有效但无法解释来源的神术",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:78"
+    },
+    {
+      "term": "守烬人",
+      "meaning": "专门管理与分配余烬的职业群体",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:79"
+    },
+    {
+      "term": "燃症",
+      "meaning": "过度使用余烬造成的疾病",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:80"
+    }
+  ],
+  "history": [
+    {
+      "id": "hist-e02",
+      "year": "第二纪",
+      "name": "枯萎之纪",
+      "detail": "结束事件：「大沉默」：诸神停止回应所有祈祷 ｜ 持续约 900 年",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:90"
+    },
+    {
+      "id": "hist-e03",
+      "year": "第三纪",
+      "name": "城邦之纪",
+      "detail": "结束事件：城邦战争耗尽了第一批可被开采的余烬脉 ｜ 持续约 340 年",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:91"
+    },
+    {
+      "id": "hist-e03-dup",
+      "year": "第三纪",
+      "name": "siege 城市 país — 城邦之纪",
+      "detail": "结束事件：城邦战争耗尽了第一批可被开采的余烬脉 ｜ 持续约 340 年",
+      "note": "原文第 92 行重复行且名称含乱码「siege 城市 país」，忠实转录（应另开内容 Issue 修 docs/）。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:92"
+    },
+    {
+      "id": "hist-e05",
+      "year": "第五纪",
+      "name": "拓根之纪",
+      "detail": "结束事件：人类发现根系网络并学会穿行 ｜ 持续约 180 年",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:93"
+    },
+    {
+      "id": "hist-e05-dup",
+      "year": "第五纪",
+      "name": "Establish 拓根之纪",
+      "detail": "结束事件：人类发现根系网络并学会穿行 ｜ 持续约 180 年",
+      "note": "原文第 94 行重复行且名称含乱码「Establish」，忠实转录（应另开内容 Issue 修 docs/）。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:94"
+    },
+    {
+      "id": "hist-e06",
+      "year": "第六纪",
+      "name": "燃症之纪",
+      "detail": "结束事件：第一次大规模余烬滥用引发瘟疫，三分之一的人口死于「燃而死」 ｜ 持续约 95 年",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:95"
+    },
+    {
+      "id": "hist-e07",
+      "year": "第七纪",
+      "name": "当下之纪",
+      "detail": "结束事件：尚未结束。已经持续 128 年，比上一纪长 ｜ 持续进行中",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:96"
+    },
+    {
+      "id": "hist-e04-treefall",
+      "year": "第四纪",
+      "name": "树倒（第四纪末）",
+      "detail": "主干的倒塌持续了十一天，从顶端开始碎裂，缓慢地、垂直地落下。此后所有文件采用书面形式；那段时期出生的人被称为「静裔」。",
+      "note": "原文第二节历史表缺第四纪行；本条取自第 104–108 行「树倒（第四纪末）」小节，非表格内容。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:104"
+    }
+  ],
+  "regions": [
+    {
+      "id": "region-01",
+      "name": "巨干｜The Bole",
+      "summary": "世界树倒塌后，剩下的根部主干是一个直径两公里、高约八百米的巨大结构。它不腐烂，不长草，摸上去温热。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:131",
+      "atmosphere": "巨大的垂直结构，中心是安静的，周围的一切都被它压缩变形。",
+      "key_places": [
+        "北壁回音廊（说出的话会走很长一段路才回来）",
+        "第七层环道（所有向下的路最终都通向底部）",
+        "内部空腔（没有人到过底）"
+      ],
+      "events": [
+        "探险队归来时不完整",
+        "有人在里面生活了一辈子",
+        "某个东西从底下上来了"
+      ]
+    },
+    {
+      "id": "region-02",
+      "name": "灰原｜Ashfield",
+      "summary": "围绕巨干的一圈平原，是树倒时落下的灰形成的。土壤极其肥沃但带着余烬。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:138",
+      "atmosphere": "灰色的土地，黑色的谷物。所有东西都能长，所有东西尝起来都不太对。",
+      "key_places": [
+        "三十三个农业公社",
+        "灰市集（整个大陆最大的粮食交易地）",
+        "静裔最后一人的墓"
+      ],
+      "events": [
+        "农作物变异",
+        "公社之间的水权争端",
+        "有人在灰里种出了不该出现的东西"
+      ]
+    },
+    {
+      "id": "region-03",
+      "name": "铁墙王国｜Ironmarch",
+      "summary": "大陆西北的军事王国。他们最擅长的事是在没有余烬的情况下作战——从不使用魔法，也因此不受灰潮影响。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:147",
+      "atmosphere": "纪律，压迫感，整齐，一切都上了漆。",
+      "key_places": [
+        "铁歌要塞（整座城是一个军事设施）",
+        "无声厅（他们的审讯从不发出声响，这是第四纪的传统）"
+      ],
+      "powers": [
+        "军政府",
+        "旧王室的四个争位继承人",
+        "禁魔法庭"
+      ],
+      "events": [
+        "禁魔搜查",
+        "边境冲突",
+        "有人走私余烬"
+      ]
+    },
+    {
+      "id": "region-04",
+      "name": "刻水联邦｜Federated Glyph",
+      "summary": "南方群岛的水上贸易联邦。他们的特征：极度依赖书写（静裔传统的直接遗产）。整个联邦的法律文本比人还多。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:154",
+      "atmosphere": "水，桥，争执，以及极多的手写告示。",
+      "key_places": [
+        "万桥都（由 4,000 座桥连接的城市）",
+        "文字库（保存着第四纪之后所有文书）",
+        "纸坊（整个大陆的纸都来源于此）"
+      ],
+      "powers": [
+        "三十七个行会",
+        "书记官阶层（实际统治阶级）"
+      ],
+      "events": [
+        "诉讼",
+        "伪造文书",
+        "某条法律被人钻了空子"
+      ]
+    },
+    {
+      "id": "region-05",
+      "name": "静林｜Stillwood",
+      "summary": "矮人的地下林城。他们种蘑菇与发光的苔，从不过问上面的事，而且是唯一保留了大沉默之前完整记录的种族。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:163",
+      "atmosphere": "太高了，太安静了，光是从上面漏下来的，而且你从来看不到光是从哪里进来。",
+      "key_places": [
+        "苔灯长廊（地下林城唯一的主道，灯火彻夜不熄）",
+        "菌仓（全大陆最大的地下粮储）",
+        "地脉档案馆（矮人保存大沉默之前完整记录的地方）"
+      ],
+      "powers": [
+        "九个采矿氏族",
+        "苔灯行会（管理照明与通行）"
+      ],
+      "events": [
+        "某段隧道在一夜之间改道",
+        "地表来客带来上面的消息",
+        "某份地下档案被查出是后世补写的"
+      ]
+    },
+    {
+      "id": "region-06",
+      "name": "白骨荒野｜Marrowfield",
+      "summary": "第五纪与第六纪之间燃症瘟疫的集体埋葬地，面积相当于一个小国。骨骼贸易的中心。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:173",
+      "atmosphere": "白，干燥，所有的骨骼都被清扫得很整齐。",
+      "key_places": [
+        "无名冢（相当于一个小国的集体埋葬地）",
+        "骨市（全大陆骨骼贸易的中心）",
+        "会应答的遗骸堆"
+      ],
+      "powers": [
+        "骨骼行会",
+        "安魂修会（自称管理者）"
+      ],
+      "events": [
+        "盗墓（几乎无人视为犯罪）",
+        "死者在夜里发出声响",
+        "某具遗骸被查出不该在这里"
+      ]
+    },
+    {
+      "id": "region-07",
+      "name": "半影公国｜Penumbra",
+      "summary": "精灵的领地。他们对大沉默的反应是：既然神不再回答，那就把问题留着。他们的艺术、建筑与礼仪几乎全部围绕\"未完成\"展开。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:183",
+      "atmosphere": "影子拉得很长，永远偏向寒冷的一侧，人人都把话说得含蓄。",
+      "key_places": [
+        "未完成的塔（已经建了六百年，且没有停工的打算）",
+        "回声湖（对着湖说话，明天会得到回答，但回答的是别人的话）"
+      ],
+      "powers": [
+        "十二个风格各异的半影家族"
+      ],
+      "events": [
+        "长达几十年的争执",
+        "有人为了完成一件事而毁掉一切"
+      ]
+    },
+    {
+      "id": "region-08",
+      "name": "齿山山脉｜Teeth",
+      "summary": "兽人、巨人与少数巨兽的家园。这里是整个大陆的气候屏障，也是灰潮最难以覆盖的区域。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:191",
+      "atmosphere": "垂直的，寒冷的，而且兽人认为这里是最美的。",
+      "key_places": [
+        "悬空的故乡（兽人城市建在崖壁上）",
+        "第四纪前的天文台（他们保存着最好的望远镜）"
+      ],
+      "powers": [
+        "九个兽人氏族",
+        "北方的巨人们"
+      ],
+      "events": [
+        "氏族间的决斗",
+        "有人要南下",
+        "冬天提前来了"
+      ]
+    },
+    {
+      "id": "region-09",
+      "name": "边界：无火之地｜Coldreach",
+      "summary": "北方的极地。这里的余烬最为稀薄，魔法几乎失效。这里是唯一能听到神的声音假说被质疑的地方——因为这里连神术都很难成功。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:198",
+      "atmosphere": "所有的火在这里勉勉强强地烧着，而且总是冒黑烟。",
+      "key_places": [
+        "最后一座仍然点燃的灯塔",
+        "无用者村（住着所有使用了魔法却失去能力的人）"
+      ],
+      "powers": [
+        "冬猎队（维持北部生存的唯一组织）"
+      ],
+      "events": [
+        "补给断绝",
+        "有人在寻找无火之地最后的某样东西"
+      ]
+    }
+  ],
+  "factions": [
+    {
+      "id": "god-cindra",
+      "name": "灰母 Cindra",
+      "alignment": "神祇",
+      "summary": "领域：灰、生育、忍耐 ｜ 大沉默前的性格：话不多，但会回答 ｜ 信徒现在做什么：她的教会在分配救济。\"她没有停，她只是不再解释。\"",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:217"
+    },
+    {
+      "id": "god-luxten",
+      "name": "持灯者 Luxten",
+      "alignment": "神祇",
+      "summary": "领域：光、记忆、正义 ｜ 大沉默前的性格：严格、要求详细 ｜ 信徒现在做什么：记录所有事情，因为\"记录即正义\"。他们是大陆最大的档案主持者",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:218"
+    },
+    {
+      "id": "god-ustulo",
+      "name": "焚行者 Ustulo",
+      "alignment": "神祇",
+      "summary": "领域：燃烧、转化、勇气 ｜ 大沉默前的性格：激烈、要求牺牲 ｜ 信徒现在做什么：最受争议的团体，因为他们主张“用尽我们可以取用的所有余烬”",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:219"
+    },
+    {
+      "id": "god-ustulo-dup",
+      "name": "焚行者 Ustulo",
+      "alignment": "神祇",
+      "summary": "领域：燃烧、转化、勇气 ｜ 大沉默前的性格：激烈、要求牺牲 ｜ 信徒现在做什么：最受争议的团体，因为他们主张\"用尽我们可以取用的所有余烬\"",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:220",
+      "note": "原文第 220 行为第 219 行的重复行（两者仅引号写法不同：219 用弯引号，220 用直引号），忠实转录；另：正文称「五个主要的神」，本表去重后仅 4 位，第五位「第三声 Vox Tertia」只出现在第 332 行的戒律表中。"
+    },
+    {
+      "id": "god-umbra",
+      "name": "拂晓 Umbra",
+      "alignment": "神祇",
+      "summary": "领域：暗、睡眠、终结 ｜ 大沉默前的性格：温柔、悲伤 ｜ 信徒现在做什么：主持所有葬礼",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:221"
+    },
+    {
+      "id": "emberkeepers",
+      "name": "守烬人会",
+      "alignment": "国际性的技术与管理组织",
+      "summary": "目标：公平分配余烬，维持现状 ｜ 可被利用之处：内部有改革派与保守派的分裂",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:229"
+    },
+    {
+      "id": "ironmarch-junta",
+      "name": "铁墙王国军政府",
+      "alignment": "军事国家",
+      "summary": "目标：彻底清除境内的魔法使用 ｜ 可被利用之处：他们的士兵在境外毫无经验",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:230"
+    },
+    {
+      "id": "requiem-order",
+      "name": "安魂修会",
+      "alignment": "宗教兼医疗机构",
+      "summary": "目标：管理死者与燃症患者 ｜ 可被利用之处：他们隐瞒了燃症的真实数字",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:231"
+    },
+    {
+      "id": "ashflame-society",
+      "name": "灰焰结社",
+      "alignment": "秘密组织",
+      "summary": "目标：让第七纪值得一过 ｜ 可被利用之处：他们的部分主张其实是对的",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:232"
+    },
+    {
+      "id": "stillborn-heirs",
+      "name": "静裔遗族会",
+      "alignment": "文化遗产组织",
+      "summary": "目标：保护第四纪的记忆 ｜ 可被利用之处：他们很穷，且急需人手",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:233"
+    }
+  ],
+  "tracks": [
+    {
+      "key": "ember_load",
+      "name": "烬值 Ember Load",
+      "range": "0–（体魄 + 心智 + 4）",
+      "effects": [
+        "0–59%：正常",
+        "60–79%：手心发热，睡眠变浅。所有试图忍耐或镇定的判定 DF +2",
+        "80–99%：明显的燃症初期：体温高、记忆出现空洞。每施放一次秘仪，燃痕 +1",
+        "100%：过载：这一次施法必定成功且效果 +50%，但你的燃痕 +2，且立即进入燃症危象"
+      ],
+      "recovery": [
+        "长歇（普通环境）：−2",
+        "长歇（新月之夜）：−4",
+        "在有炉的节点附近静修一个时段：−1",
+        "守烬人会的「降烬」服务：−3，费用「标准」，且会被记录"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:241"
+    }
+  ],
+  "world_rules": {
+    "ember_load": {
+      "note": "烬值是你体内当前承着的余烬量。它既是你的资源，也是你的负债。",
+      "formula": "烬值上限 = 体魄 + 心智 + 4",
+      "formula_source": "docs/scenario/06-世界模组II-余烬纪元.md:244",
+      "start": "烬值当前 = 0 起步，随施法上升",
+      "start_source": "docs/scenario/06-世界模组II-余烬纪元.md:245",
+      "gain": [
+        {
+          "action": "施放一项轻术",
+          "delta": "+1",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:252"
+        },
+        {
+          "action": "施放一项中术",
+          "delta": "+2 ~ +3",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:253"
+        },
+        {
+          "action": "施放一项重术",
+          "delta": "+4 ~ +5",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:254"
+        }
+      ],
+      "recovery": [
+        {
+          "action": "长歇（普通环境）",
+          "delta": "−2",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:255"
+        },
+        {
+          "action": "长歇（新月之夜）",
+          "delta": "−4",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:256"
+        },
+        {
+          "action": "在有炉的节点附近静修一个时段",
+          "delta": "−1",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:257"
+        },
+        {
+          "action": "守烬人会的「降烬」服务",
+          "delta": "−3，费用「标准」，且会被记录",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:258"
+        }
+      ],
+      "overload": [
+        {
+          "band": "0–59%",
+          "effect": "正常",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:264"
+        },
+        {
+          "band": "60–79%",
+          "effect": "手心发热，睡眠变浅。所有试图忍耐或镇定的判定 DF +2",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:265"
+        },
+        {
+          "band": "80–99%",
+          "effect": "明显的燃症初期：体温高、记忆出现空洞。每施放一次秘仪，燃痕 +1",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:266"
+        },
+        {
+          "band": "100%",
+          "effect": "过载：这一次施法必定成功且效果 +50%，但你的燃痕 +2，且立即进入燃症危象",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:267"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:239"
+    },
+    "scorch": {
+      "note": "燃痕是不可逆的。它代表着你已经烧掉了一部分自己。",
+      "bands": [
+        {
+          "range": "0–2",
+          "manifestation": "无",
+          "effect": "无",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:275"
+        },
+        {
+          "range": "3–4",
+          "manifestation": "身上总有一处是热的",
+          "effect": "在寒冷环境中获得 +1 骰，在炎热环境中 −1 骰",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:276"
+        },
+        {
+          "range": "5–6",
+          "manifestation": "你已经忘记了一些人的名字",
+          "effect": "每次会话开始时，指定一项你已经忘记的技能（永久失去其熟练，直到你重新学会）",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:277"
+        },
+        {
+          "range": "7–8",
+          "manifestation": "别人靠近你会感到温暖，也会感到不安",
+          "effect": "交涉 DF +2；但对涉及火焰的判定 +2 骰",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:278"
+        },
+        {
+          "range": "9–10",
+          "manifestation": "燃而死：你会在某次施法时从内部点亮",
+          "effect": "角色进入终局，由玩家决定这一幕如何演出",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:279"
+        }
+      ],
+      "reduction": "降低燃痕的唯一方式极为昂贵：一份「静灰」（贵重 ×3）可以降低 1 点燃痕，而它的制取过程总要有人付出代价。",
+      "reduction_source": "docs/scenario/06-世界模组II-余烬纪元.md:281",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:269"
+    },
+    "moon_phase": {
+      "cycle": "周期七天",
+      "cycle_source": "docs/scenario/06-世界模组II-余烬纪元.md:285",
+      "phases": [
+        {
+          "phase": "新月",
+          "days": "1–2 天",
+          "effect": "所有秘仪 DF +2；烬值恢复速度翻倍；与死者、遗忘相关的秘仪 DF −1",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:289"
+        },
+        {
+          "phase": "上弦",
+          "days": "2–3 天",
+          "effect": "无调整（标准日）",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:290"
+        },
+        {
+          "phase": "满月",
+          "days": "1 天",
+          "effect": "秘仪 DF −1 且伤害 +2；所有夜行性敌体攻击 +1 骰；野兽躁动",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:291"
+        },
+        {
+          "phase": "下弦",
+          "days": "2–3 天",
+          "effect": "秘仪 DF +1；幻觉、隐匿、遗忘类秘仪 DF −1",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:292"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:283"
+    },
+    "rootway": {
+      "note": "这是本世界的「高速公路」、「通讯网」与「最大的战场」。",
+      "network": "世界树虽然倒下，根系依然深埋于大陆之下，形成纵横的通道。",
+      "network_source": "docs/scenario/06-世界模组II-余烬纪元.md:300",
+      "nodes": "通道间的节点被称为「炉 Hearth」。两个相邻的炉之间穿行约需 1 个时段（而不是数天的路程）。",
+      "nodes_source": "docs/scenario/06-世界模组II-余烬纪元.md:301",
+      "registry": "环形行会登记并管理着 212 个官炉，通行需要缴费（通常碎银 ×5）。",
+      "registry_source": "docs/scenario/06-世界模组II-余烬纪元.md:302",
+      "wild": "未被登记的炉（「野炉」）存在数量不明。它们是冒险、走私与失踪事件的主要入口。",
+      "wild_source": "docs/scenario/06-世界模组II-余烬纪元.md:303",
+      "events": [
+        {
+          "roll": 1,
+          "event": "一段通路已经闭合，必须绕行一个额外的时段",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:308"
+        },
+        {
+          "roll": 2,
+          "event": "遇到另一队人，双方都得侧身让路——或者不让",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:309"
+        },
+        {
+          "roll": 3,
+          "event": "根系在生长：地形已经与上次不同",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:310"
+        },
+        {
+          "roll": 4,
+          "event": "出现了新的分支，通向一个没有编号的地方",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:311"
+        },
+        {
+          "roll": 5,
+          "event": "路过的某处有人在低声念某种东西",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:312"
+        },
+        {
+          "roll": 6,
+          "event": "一个炉已经熄灭了，不再是节点，只是一个洞",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:313"
+        },
+        {
+          "roll": 7,
+          "event": "有东西跟着你们走了两个时段的路",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:314"
+        },
+        {
+          "roll": 8,
+          "event": "一切正常（是的，偶尔会这样）",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:315"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:296"
+    },
+    "devotion": {
+      "boon": "向一位神起誓的人会获得「哑火的恩宠」：每天一次，可以免费把一项神术的效果提升一档，或免去其烬值消耗。",
+      "boon_source": "docs/scenario/06-世界模组II-余烬纪元.md:321",
+      "precept_note": "必须遵守该神的戒律（每个神至少一条明确的行为约束）。",
+      "precept_note_source": "docs/scenario/06-世界模组II-余烬纪元.md:322",
+      "violation": "违反者：失去当天的恩宠，梦见一张始终没有说话的脸，并在所属社群中失去地位。",
+      "violation_source": "docs/scenario/06-世界模组II-余烬纪元.md:323",
+      "expulsion": "连续违反三次者：被逐出——这是这个世界最严重的惩罚之一，因为被逐意味着你自己承担全部余烬。",
+      "expulsion_source": "docs/scenario/06-世界模组II-余烬纪元.md:324",
+      "precepts": [
+        {
+          "god": "灰母 Cindra",
+          "precept": "不得浪费食物；必须回应求助",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:330"
+        },
+        {
+          "god": "持灯者 Luxten",
+          "precept": "必须记录真相，即使真相不利于自己",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:331"
+        },
+        {
+          "god": "第三声 Vox Tertia",
+          "precept": "不得在听完第二句话之前回应",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:332"
+        },
+        {
+          "god": "焚行者 Ustulo",
+          "precept": "不可拒绝一次合理的挑战",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:333"
+        },
+        {
+          "god": "拂晓 Umbra",
+          "precept": "必须为死者留下一个位置",
+          "source": "docs/scenario/06-世界模组II-余烬纪元.md:334"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:317"
+    }
+  },
+  "careers": [
+    {
+      "id": "career-01",
+      "name": "守烬人",
+      "role": "余烬管理与控场",
+      "focus": [
+        "秘法",
+        "铁壁"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "隐秘学",
+        "耐受",
+        "威吓",
+        "说服",
+        "分析"
+      ],
+      "gear": [
+        "余烬匣",
+        "导烬杖",
+        "守烬人徽章（具有法定权限）"
+      ],
+      "abilities": [
+        {
+          "name": "降烬",
+          "cost": "2 AP",
+          "effect": "使一名目标烬值 −2，你自己烬值 +1"
+        },
+        {
+          "name": "余烬读数",
+          "cost": "0 AP",
+          "effect": "准确读出一个人或一件物品上的烬值与燃痕"
+        },
+        {
+          "name": "静场",
+          "cost": "2 AP ＋ 专注 2",
+          "effect": "3 米范围内所有秘仪 DF +3，持续一回合"
+        }
+      ],
+      "specializations": [
+        "配额发放（合法的资源优势）",
+        "过载镇压",
+        "灰潮预警",
+        "守烬律（法定权威）",
+        "降烬大师"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:398"
+    },
+    {
+      "id": "career-02",
+      "name": "灰法师",
+      "role": "通用施法者",
+      "focus": [
+        "秘法"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "隐秘学",
+        "分析",
+        "察觉",
+        "历史",
+        "耐受"
+      ],
+      "gear": [
+        "导烬杖",
+        "两本不同作者的笔记",
+        "一枚热量尚未散尽的余烬碎片"
+      ],
+      "abilities": [
+        {
+          "name": "三术在心",
+          "cost": "被动",
+          "effect": "可以准备三项轻术，随时施放而不必事先宣告"
+        },
+        {
+          "name": "共鸣火花",
+          "cost": "1 AP ＋ 专注 1",
+          "effect": "一次 1d6【火焰】的远程攻击，射程 15 米"
+        },
+        {
+          "name": "烬值调度",
+          "cost": "被动",
+          "effect": "每次长歇额外的烬值恢复 +1"
+        }
+      ],
+      "specializations": [
+        "火焰专精",
+        "控场流派",
+        "理论学家（判定加成）",
+        "多术并存",
+        "余烬过载"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:410"
+    },
+    {
+      "id": "career-03",
+      "name": "树语者",
+      "role": "根系与自然",
+      "focus": [
+        "秘法",
+        "游猎"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "生存",
+        "隐秘学",
+        "察觉",
+        "手艺",
+        "共感"
+      ],
+      "gear": [
+        "一段活着的树根",
+        "根系地图残片",
+        "一把播种用的小铲"
+      ],
+      "abilities": [
+        {
+          "name": "根系感知",
+          "cost": "0 AP",
+          "effect": "感知半径 30 米内的根系走向，以及是否存在野炉"
+        },
+        {
+          "name": "生长催化",
+          "cost": "2 AP",
+          "effect": "使一处植物在一分钟内快速生长，形成掩体或障碍"
+        },
+        {
+          "name": "根跃",
+          "cost": "3 AP ＋ 专注 2",
+          "effect": "若站在炉上，可以直接穿行到另一个你去过的炉"
+        }
+      ],
+      "specializations": [
+        "野炉探寻",
+        "木与骨的塑造",
+        "灰潮抵抗",
+        "自然盟友",
+        "根系导航"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:422"
+    },
+    {
+      "id": "career-04",
+      "name": "静裔书记",
+      "role": "书写、档案与法律",
+      "focus": [
+        "秘法",
+        "统帅"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "历史",
+        "分析",
+        "说服",
+        "数据（书写）",
+        "察觉"
+      ],
+      "gear": [
+        "一整套书写工具",
+        "三份盖了章的空白文书",
+        "以及在刻水联邦有效的书记资格"
+      ],
+      "abilities": [
+        {
+          "name": "一字不差",
+          "cost": "被动",
+          "effect": "你写下的任何东西都无法被伪造；也能一眼看出伪造"
+        },
+        {
+          "name": "档案调阅",
+          "cost": "每场景一次",
+          "effect": "在有人管理档案的地方找到一份相关的文件"
+        },
+        {
+          "name": "文书拖延",
+          "cost": "1 AP",
+          "effect": "用一份合规的文书使一个官僚程序延迟至少一个时段"
+        }
+      ],
+      "specializations": [
+        "法律漏洞",
+        "速记（记录一切）",
+        "伪造识别",
+        "文件溯源",
+        "联邦人脉"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:434"
+    },
+    {
+      "id": "career-05",
+      "name": "禁魔者（铁墙）",
+      "role": "反魔法战士",
+      "focus": [
+        "铁壁",
+        "锋刃"
+      ],
+      "vitality_bonus": 14,
+      "skills": [
+        "运动",
+        "格斗",
+        "威吓",
+        "耐受",
+        "劈砍"
+      ],
+      "gear": [
+        "铁墙制式护甲",
+        "长剑",
+        "抑制镣铐",
+        "一份禁魔搜查令"
+      ],
+      "abilities": [
+        {
+          "name": "抑魔体质",
+          "cost": "被动",
+          "effect": "对你施放的秘仪 DF +2；你获得 1 次免疫（每场景）"
+        },
+        {
+          "name": "破术打击",
+          "cost": "2 AP",
+          "effect": "一次攻击，若目标正在维持一个秘仪，则打断它"
+        },
+        {
+          "name": "镣铐",
+          "cost": "2 AP",
+          "effect": "使一个目标在挣脱（力道 DF 15）之前无法施法"
+        }
+      ],
+      "specializations": [
+        "搜查专精",
+        "反制领域",
+        "铁墙军阶（指挥权）",
+        "不可动摇",
+        "净化打击"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:446"
+    },
+    {
+      "id": "career-06",
+      "name": "骨骼匠",
+      "role": "骨骼工艺与亡灵知识",
+      "focus": [
+        "秘法",
+        "游猎"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "手艺",
+        "隐秘学",
+        "医疗",
+        "历史",
+        "运动"
+      ],
+      "gear": [
+        "一套骨雕工具",
+        "三件尚未装配的骨件",
+        "白骨荒野的通行证"
+      ],
+      "abilities": [
+        {
+          "name": "骨材辨识",
+          "cost": "0 AP",
+          "effect": "一眼看出骨头的年龄、来源与是否带有余烬"
+        },
+        {
+          "name": "骨械",
+          "cost": "2 AP",
+          "effect": "用随身骨件快速组装一件可用的工具或武器"
+        },
+        {
+          "name": "骨语",
+          "cost": "被动",
+          "effect": "可以与一具遗骸对话一次，问出它死亡时的三件事"
+        }
+      ],
+      "specializations": [
+        "骨械大师",
+        "通灵仪式",
+        "遗骸追踪",
+        "骨甲锻造",
+        "安魂仪式"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:458"
+    },
+    {
+      "id": "career-07",
+      "name": "遗迹寻者",
+      "role": "探索、陷阱与遗迹",
+      "focus": [
+        "游猎",
+        "诡道"
+      ],
+      "vitality_bonus": 10,
+      "skills": [
+        "察觉",
+        "运动",
+        "手艺",
+        "隐秘学",
+        "生存"
+      ],
+      "gear": [
+        "绳索与攀爬装备",
+        "探测杆",
+        "三天的干粮",
+        "一本前人留下的笔记"
+      ],
+      "abilities": [
+        {
+          "name": "遗迹直觉",
+          "cost": "被动",
+          "effect": "察觉与解除陷阱的判定 +2 骰"
+        },
+        {
+          "name": "快速通过",
+          "cost": "1 AP",
+          "effect": "穿越一片危险地形时不触发判定（每个场景一次）"
+        },
+        {
+          "name": "估价",
+          "cost": "0 AP",
+          "effect": "判断一件出土物的价值与可能来源"
+        }
+      ],
+      "specializations": [
+        "深渊经验（黑暗与地下）",
+        "机关大师",
+        "遗迹史",
+        "负重专家",
+        "先到先得"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:470"
+    },
+    {
+      "id": "career-08",
+      "name": "哑火牧师",
+      "role": "神术与社群",
+      "focus": [
+        "秘法",
+        "统帅"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "说服",
+        "医疗",
+        "历史",
+        "共感",
+        "隐秘学"
+      ],
+      "gear": [
+        "所属神的徽记",
+        "一本祈祷书（最后一页是空白的）",
+        "社群的信任"
+      ],
+      "abilities": [
+        {
+          "name": "哑火的神迹",
+          "cost": "被动",
+          "effect": "每天一次，可以免费把一项神术的效果提升一档"
+        },
+        {
+          "name": "抚慰",
+          "cost": "2 AP ＋ 专注 1",
+          "effect": "为一名目标恢复 1d8 活力并清除一层【恐惧】"
+        },
+        {
+          "name": "社群支持",
+          "cost": "被动",
+          "effect": "在任何有同信仰者的地方，获得食宿与基本协助"
+        }
+      ],
+      "specializations": [
+        "戒律守护（恩宠强化）",
+        "驱邪",
+        "葬礼仪式",
+        "神学辩论",
+        "跨信仰交涉"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:482"
+    },
+    {
+      "id": "career-09",
+      "name": "氏族战士（兽人）",
+      "role": "近战与荣誉",
+      "focus": [
+        "锋刃",
+        "铁壁"
+      ],
+      "vitality_bonus": 16,
+      "skills": [
+        "格斗",
+        "劈砍",
+        "运动",
+        "威吓",
+        "生存"
+      ],
+      "gear": [
+        "氏族武器",
+        "族徽",
+        "冬猎装备"
+      ],
+      "abilities": [
+        {
+          "name": "氏族体魄",
+          "cost": "被动",
+          "effect": "活力上限额外 +6；免疫寒冷环境的惩罚"
+        },
+        {
+          "name": "荣誉挑战",
+          "cost": "1 AP",
+          "effect": "向一个目标挑战，成功则你在对其的攻击上 +1 骰，且对方很难拒绝"
+        },
+        {
+          "name": "冬猎经验",
+          "cost": "被动",
+          "effect": "在野外与恶劣天气中的生存判定 +2 骰"
+        }
+      ],
+      "specializations": [
+        "巨力",
+        "氏族领袖",
+        "冬猎大师",
+        "攀崖者",
+        "南下者（城市适应）"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:494"
+    },
+    {
+      "id": "career-10",
+      "name": "半影游侠",
+      "role": "远程与隐匿",
+      "focus": [
+        "游猎",
+        "诡道"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "射击",
+        "潜行",
+        "察觉",
+        "生存",
+        "隐秘学"
+      ],
+      "gear": [
+        "长弓或短弓",
+        "半影家族的斗篷",
+        "一份未完成的家族任务"
+      ],
+      "abilities": [
+        {
+          "name": "长影",
+          "cost": "被动",
+          "effect": "在光照不足或黄昏中，你的潜行判定 +2 骰"
+        },
+        {
+          "name": "未竟之箭",
+          "cost": "2 AP",
+          "effect": "一次远程攻击，若落空则此箭会在下回合自动再射一次"
+        },
+        {
+          "name": "静默移动",
+          "cost": "被动",
+          "effect": "移动时不触发任何基于声音的察觉"
+        }
+      ],
+      "specializations": [
+        "极远程射击",
+        "影中穿行",
+        "未完成之术",
+        "自然知识",
+        "家族遗产"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:506"
+    },
+    {
+      "id": "career-11",
+      "name": "石匠（矮人）",
+      "role": "结构、耐久与地下",
+      "focus": [
+        "铁壁",
+        "游猎"
+      ],
+      "vitality_bonus": 14,
+      "skills": [
+        "手艺",
+        "运动",
+        "历史",
+        "耐受",
+        "技术"
+      ],
+      "gear": [
+        "整套石工工具",
+        "静林通行证",
+        "一盏长明的苔灯"
+      ],
+      "abilities": [
+        {
+          "name": "石语",
+          "cost": "0 AP",
+          "effect": "判断一处结构的稳定性、年代与是否有隐藏空间"
+        },
+        {
+          "name": "快速封堵",
+          "cost": "2 AP",
+          "effect": "用现场材料封住一条通道，形成持续的重度掩体"
+        },
+        {
+          "name": "黑暗视力",
+          "cost": "被动",
+          "effect": "在完全黑暗中可以正常视物至 15 米"
+        }
+      ],
+      "specializations": [
+        "地下导航",
+        "隧道开凿",
+        "结构加固",
+        "档案管理（静林权限）",
+        "锻造"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:518"
+    },
+    {
+      "id": "career-12",
+      "name": "灰原农夫",
+      "role": "坚韧与日常",
+      "focus": [
+        "铁壁",
+        "统帅"
+      ],
+      "vitality_bonus": 14,
+      "skills": [
+        "耐受",
+        "生存",
+        "手艺",
+        "运动",
+        "共感"
+      ],
+      "gear": [
+        "农具（可作武器）",
+        "一袋种子",
+        "家人的照片（如果他有的话）"
+      ],
+      "abilities": [
+        {
+          "name": "灰土之躯",
+          "cost": "被动",
+          "effect": "体力上限 +6；对【腐蚀】与【火焰】获得抗性"
+        },
+        {
+          "name": "不知疲倦",
+          "cost": "被动",
+          "effect": "每天第一次承受负担时，可以忽略它"
+        },
+        {
+          "name": "一手好饭",
+          "cost": "0 AP",
+          "effect": "一次长歇中，全队恢复额外 +1d6"
+        }
+      ],
+      "specializations": [
+        "坚韧不拔",
+        "农事知识（识别灰土产物）",
+        "公社代表",
+        "负重",
+        "朴素的智慧"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:530"
+    },
+    {
+      "id": "career-13",
+      "name": "根系走私者",
+      "role": "非法通行与信息",
+      "focus": [
+        "诡道",
+        "游猎"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "潜行",
+        "说服",
+        "人脉",
+        "欺骗",
+        "操舵（驾车）"
+      ],
+      "gear": [
+        "一份过期但看起来有效的通行文书",
+        "两只野炉的坐标",
+        "一辆不太起眼的车"
+      ],
+      "abilities": [
+        {
+          "name": "野炉名录",
+          "cost": "被动",
+          "effect": "你知道三个未登记的节点位置，以及它们的规则"
+        },
+        {
+          "name": "避行",
+          "cost": "被动",
+          "effect": "在根系中穿行时，你有 60% 的概率避开巡逻队（由导引者掷骰）"
+        },
+        {
+          "name": "夹带",
+          "cost": "被动",
+          "effect": "你可以携带一件本不该携带的东西通过检查（每个场景一次）"
+        }
+      ],
+      "specializations": [
+        "更多野炉",
+        "货物伪装",
+        "行会内应",
+        "快速穿行",
+        "黑市人脉"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:542"
+    },
+    {
+      "id": "career-14",
+      "name": "燃症医士",
+      "role": "燃痕与疾病治疗",
+      "focus": [
+        "秘法",
+        "统帅"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "医疗",
+        "科学",
+        "共感",
+        "耐受",
+        "分析"
+      ],
+      "gear": [
+        "手术器具",
+        "退热药物",
+        "一份安魂修会的介绍信"
+      ],
+      "abilities": [
+        {
+          "name": "燃症诊断",
+          "cost": "0 AP",
+          "effect": "读出目标的燃痕值，以及他已失去的记忆大致属于哪一类"
+        },
+        {
+          "name": "退热",
+          "cost": "2 AP ＋ 专注 1",
+          "effect": "使目标的烬值 −2，并清除一层燃症症状"
+        },
+        {
+          "name": "防腐处理",
+          "cost": "被动",
+          "effect": "你可以保存一具遗体三十天而不腐坏（有意义地保存线索）"
+        }
+      ],
+      "specializations": [
+        "外科",
+        "病理学（预估灰潮）",
+        "静灰制取（高代价）",
+        "临终照护",
+        "疫情追踪"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:554"
+    },
+    {
+      "id": "career-15",
+      "name": "骨语亡灵师",
+      "role": "死者对话与禁忌知识",
+      "focus": [
+        "秘法",
+        "诡道"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "隐秘学",
+        "共感",
+        "历史",
+        "直觉",
+        "威吓"
+      ],
+      "gear": [
+        "一枚死于非命者的指骨",
+        "一小袋静灰",
+        "一身让别人不太愿意靠近的衣着"
+      ],
+      "abilities": [
+        {
+          "name": "通灵",
+          "cost": "3 AP ＋ 专注 2",
+          "effect": "与一具遗骸对话，可以问三个问题，答案必定真实"
+        },
+        {
+          "name": "死者之忆",
+          "cost": "被动",
+          "effect": "触碰一件死者长期持有的物品，可以看到一段画面"
+        },
+        {
+          "name": "不祥",
+          "cost": "被动",
+          "effect": "你的存在让普通人不舒服。交涉 −1 骰，但威吓 +2 骰"
+        }
+      ],
+      "specializations": [
+        "更长的对话",
+        "遗骸驱使",
+        "禁忌知识",
+        "与亡者交易",
+        "安魂（让死者真正离开）"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:566"
+    },
+    {
+      "id": "career-16",
+      "name": "无火向导",
+      "role": "极端环境与求生",
+      "focus": [
+        "游猎",
+        "铁壁"
+      ],
+      "vitality_bonus": 12,
+      "skills": [
+        "生存",
+        "运动",
+        "耐受",
+        "察觉",
+        "射击"
+      ],
+      "gear": [
+        "冬猎装备",
+        "一张只有他看得懂的雪地图",
+        "一盏从不熄灭的灯"
+      ],
+      "abilities": [
+        {
+          "name": "无火之躯",
+          "cost": "被动",
+          "effect": "在余烬稀薄的区域（如无火之地）不承受任何惩罚"
+        },
+        {
+          "name": "极地导航",
+          "cost": "被动",
+          "effect": "在雪、雾与黑暗中不会迷路"
+        },
+        {
+          "name": "最后的灯",
+          "cost": "被动",
+          "effect": "你的灯可以驱散一次黑暗带来的劣势（每个场景一次）"
+        }
+      ],
+      "specializations": [
+        "极地狩猎",
+        "低温耐受",
+        "灯塔网络",
+        "失踪者搜寻",
+        "寒地战斗"
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:578"
+    },
+    {
+      "id": "wayfarer",
+      "name": "旅人 Wayfarer",
+      "role": "无职途",
+      "focus": [],
+      "vitality_bonus": 0,
+      "skills": [],
+      "gear": [
+        "一件必须由你自己写下的、你正在寻找的东西"
+      ],
+      "abilities": [],
+      "specializations": [],
+      "note": "不获得职途能力。作为补偿，获得 3 点额外属性成长、2 项额外熟练，以及一件必须由你自己写下的、你正在寻找的东西。",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:594"
+    }
+  ],
+  "abilities": [
+    {
+      "id": "arcana-001",
+      "name": "燃点",
+      "category": "火焰与余烬",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "点燃一处可燃物，或让手中的火变大",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:618"
+    },
+    {
+      "id": "arcana-002",
+      "name": "暖手",
+      "category": "火焰与余烬",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在寒冷中保持体温，免疫寒冷带来的惩罚",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:619"
+    },
+    {
+      "id": "arcana-003",
+      "name": "余烬之视",
+      "category": "火焰与余烬",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "看见 10 米内所有带余烬的东西",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:620"
+    },
+    {
+      "id": "arcana-004",
+      "name": "火花",
+      "category": "火焰与余烬",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "一次 1d6【火焰】的远程攻击（射程 15 米）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:621"
+    },
+    {
+      "id": "arcana-005",
+      "name": "火墙",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "制造一道 3 米宽、持续两回合的火墙",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:622"
+    },
+    {
+      "id": "arcana-006",
+      "name": "燃血",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "一名目标（可以是自己）的近战伤害 +2",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:623"
+    },
+    {
+      "id": "arcana-007",
+      "name": "烬爆",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "3 米范围内 2d6【火焰】",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:624"
+    },
+    {
+      "id": "arcana-008",
+      "name": "熄",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "熄灭一片区域的所有火，同时压制该处的秘仪",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:625"
+    },
+    {
+      "id": "arcana-009",
+      "name": "热痕",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "追踪一个在过去一小时内经过此处的人",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:626"
+    },
+    {
+      "id": "arcana-010",
+      "name": "燃症之触",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "2d6【火焰】，且目标燃痕 +1",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:627"
+    },
+    {
+      "id": "arcana-011",
+      "name": "铁水",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使一件金属物体变软（持续一回合），可用于破坏或改造",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:628"
+    },
+    {
+      "id": "arcana-012",
+      "name": "灰烬回春",
+      "category": "火焰与余烬",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "在一片灰烬中催生出可供一人一天食用的食物",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:629"
+    },
+    {
+      "id": "arcana-013",
+      "name": "不灭之火",
+      "category": "火焰与余烬",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "制造一处持续一整天的火源，不会被任何非魔法手段熄灭",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:630"
+    },
+    {
+      "id": "arcana-014",
+      "name": "热浪",
+      "category": "火焰与余烬",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "6 米锥形范围内 3d8【火焰】，且范围内所有人获得【灼烧】",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:631"
+    },
+    {
+      "id": "arcana-015",
+      "name": "燃尽",
+      "category": "火焰与余烬",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "单体 5d8【火焰】；你自己燃痕 +1",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:632"
+    },
+    {
+      "id": "arcana-016",
+      "name": "灰潮",
+      "category": "火焰与余烬",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "制造一场小型的区域性余烬爆发：范围内所有生物受到 3d6，且植物与土地被永久改变",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:633"
+    },
+    {
+      "id": "arcana-017",
+      "name": "止血",
+      "category": "生命与治疗",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "恢复 1d6 活力，或立刻制止一处流血",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:639"
+    },
+    {
+      "id": "arcana-018",
+      "name": "清醒",
+      "category": "生命与治疗",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "移除一层【疲惫】或【中毒】",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:640"
+    },
+    {
+      "id": "arcana-019",
+      "name": "安眠",
+      "category": "生命与治疗",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "使一名愿意的目标进入深度睡眠，长歇效果提升",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:641"
+    },
+    {
+      "id": "arcana-020",
+      "name": "温暖之手",
+      "category": "生命与治疗",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "为一名冻伤或中暑者缓解症状",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:642"
+    },
+    {
+      "id": "arcana-021",
+      "name": "接骨",
+      "category": "生命与治疗",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "恢复 2d6 活力，并移除一层创伤（每个会话一次）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:643"
+    },
+    {
+      "id": "arcana-022",
+      "name": "净化",
+      "category": "生命与治疗",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "移除目标身上的一个负面状态",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:644"
+    },
+    {
+      "id": "arcana-023",
+      "name": "生机",
+      "category": "生命与治疗",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "目标在接下来一小时内所有恢复效果 +2",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:645"
+    },
+    {
+      "id": "arcana-024",
+      "name": "抗病",
+      "category": "生命与治疗",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使一名目标在一整天内免疫疾病与毒素",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:646"
+    },
+    {
+      "id": "arcana-025",
+      "name": "缓燃",
+      "category": "生命与治疗",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使目标的燃痕症状在一小时内不发作",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:647"
+    },
+    {
+      "id": "arcana-026",
+      "name": "群体治愈",
+      "category": "生命与治疗",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "全队各恢复 2d6 活力",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:648"
+    },
+    {
+      "id": "arcana-027",
+      "name": "回光",
+      "category": "生命与治疗",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "让一名濒危者以四分之一活力复活；施术者燃痕 +1",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:649"
+    },
+    {
+      "id": "arcana-028",
+      "name": "生命交易",
+      "category": "生命与治疗",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "把自己的活力转移给另一人，转移量由你决定（每点活力换 1 点）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:650"
+    },
+    {
+      "id": "arcana-029",
+      "name": "微光",
+      "category": "心智与幻觉",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "制造一个拳头大小的光源，可以移动",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:656"
+    },
+    {
+      "id": "arcana-030",
+      "name": "幻声",
+      "category": "心智与幻觉",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在 20 米内的任意位置制造一段声音",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:657"
+    },
+    {
+      "id": "arcana-031",
+      "name": "面容模糊",
+      "category": "心智与幻觉",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "目标对你的记忆变得模糊（持续一小时）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:658"
+    },
+    {
+      "id": "arcana-032",
+      "name": "直觉低语",
+      "category": "心智与幻觉",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "下一次洞察或直觉判定 +2 骰",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:659"
+    },
+    {
+      "id": "arcana-033",
+      "name": "恐惧之影",
+      "category": "心智与幻觉",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "目标获得【恐惧】",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:660"
+    },
+    {
+      "id": "arcana-034",
+      "name": "假象",
+      "category": "心智与幻觉",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "制造一个静止的、不超过人大小的幻象（持续一个场景）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:661"
+    },
+    {
+      "id": "arcana-035",
+      "name": "误导",
+      "category": "心智与幻觉",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "目标的一次察觉判定必定失败（每个场景一次）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:662"
+    },
+    {
+      "id": "arcana-036",
+      "name": "情绪感染",
+      "category": "心智与幻觉",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使一小群人同时陷入同一种情绪",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:663"
+    },
+    {
+      "id": "arcana-037",
+      "name": "沉睡",
+      "category": "心智与幻觉",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使至多三个目标陷入睡眠，可被伤害唤醒",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:664"
+    },
+    {
+      "id": "arcana-038",
+      "name": "心墙",
+      "category": "心智与幻觉",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "一名目标免疫所有心智类效果，持续一小时",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:665"
+    },
+    {
+      "id": "arcana-039",
+      "name": "遗忘",
+      "category": "心智与幻觉",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "抹去目标最近一小时的一段记忆（可通过耐受 DF 16 抵抗）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:666"
+    },
+    {
+      "id": "arcana-040",
+      "name": "群体幻象",
+      "category": "心智与幻觉",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "制造一个覆盖 10 米范围的完整幻象场景，持续一个场景",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:667"
+    },
+    {
+      "id": "arcana-041",
+      "name": "轻步",
+      "category": "移动与空间",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "本回合移动 +3 米，且不发出声音",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:673"
+    },
+    {
+      "id": "arcana-042",
+      "name": "缓落",
+      "category": "移动与空间",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "免疫一次坠落伤害",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:674"
+    },
+    {
+      "id": "arcana-043",
+      "name": "推手",
+      "category": "移动与空间",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "把 5 米内的一个物体或人推开 2 米",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:675"
+    },
+    {
+      "id": "arcana-044",
+      "name": "攀附",
+      "category": "移动与空间",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "可以在垂直表面上行走，持续一回合",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:676"
+    },
+    {
+      "id": "arcana-045",
+      "name": "穿隙",
+      "category": "移动与空间",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "穿过一道厚度不超过 1 米的墙（每个场景一次）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:677"
+    },
+    {
+      "id": "arcana-046",
+      "name": "负重减轻",
+      "category": "移动与空间",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "一个目标在 1 小时内的负重视为十分之一",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:678"
+    },
+    {
+      "id": "arcana-047",
+      "name": "炉跃",
+      "category": "移动与空间",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "从一个炉穿行到另一个你去过的炉",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:679"
+    },
+    {
+      "id": "arcana-048",
+      "name": "空间折叠",
+      "category": "移动与空间",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "让一条走廊的两端暂时相连（持续一个场景）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:680"
+    },
+    {
+      "id": "arcana-049",
+      "name": "定身领域",
+      "category": "移动与空间",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "3 米范围内的目标无法移动（可通过力道 DF 15 挣脱）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:681"
+    },
+    {
+      "id": "arcana-050",
+      "name": "裂隙",
+      "category": "移动与空间",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "打开一道通往随机地点的裂隙。它通向哪里，施术者也不知道",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:682"
+    },
+    {
+      "id": "arcana-051",
+      "name": "护盾",
+      "category": "防护与反制",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "本回合防护 +2",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:688"
+    },
+    {
+      "id": "arcana-052",
+      "name": "格挡术",
+      "category": "防护与反制",
+      "tier": "轻",
+      "ap": null,
+      "ap_note": "反应动作：消耗 1 点保留 AP（原文 AP 列记「反应 1」）",
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "一次针对你的攻击落空（自动视为擦过）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:689"
+    },
+    {
+      "id": "arcana-053",
+      "name": "静场",
+      "category": "防护与反制",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "3 米内的秘仪 DF +2（持续一回合）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:690"
+    },
+    {
+      "id": "arcana-054",
+      "name": "识破",
+      "category": "防护与反制",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "看穿一个幻象或伪装",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:691"
+    },
+    {
+      "id": "arcana-055",
+      "name": "反制",
+      "category": "防护与反制",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "打断一个正在施放的敌方秘仪（对抗判定）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:692"
+    },
+    {
+      "id": "arcana-056",
+      "name": "石肤",
+      "category": "防护与反制",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "一名目标的防护 +3，持续一回合",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:693"
+    },
+    {
+      "id": "arcana-057",
+      "name": "元素抗性",
+      "category": "防护与反制",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "一名目标获得一种元素伤害的抗性，持续一小时",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:694"
+    },
+    {
+      "id": "arcana-058",
+      "name": "法术陷阱",
+      "category": "防护与反制",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "在一处设下陷阱，触发时反弹一个秘仪",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:695"
+    },
+    {
+      "id": "arcana-059",
+      "name": "封锁",
+      "category": "防护与反制",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使一道门或通道无法被打开（持续一小时）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:696"
+    },
+    {
+      "id": "arcana-060",
+      "name": "反射",
+      "category": "防护与反制",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "下一次针对你的秘仪反弹给施术者",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:697"
+    },
+    {
+      "id": "arcana-061",
+      "name": "领域",
+      "category": "防护与反制",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "3 米范围内友军防护 +2，敌军判定 −1 骰，持续两回合",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:698"
+    },
+    {
+      "id": "arcana-062",
+      "name": "绝对静默",
+      "category": "防护与反制",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "10 米范围内完全无法施法，持续一回合（包括你自己）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:699"
+    },
+    {
+      "id": "arcana-063",
+      "name": "骨语",
+      "category": "亡灵与骨骼",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "与一具遗骸对话，问一个关于它死亡时的问题",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:705"
+    },
+    {
+      "id": "arcana-064",
+      "name": "遗骸定位",
+      "category": "亡灵与骨骼",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "指出 30 米内最近的遗骸位置",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:706"
+    },
+    {
+      "id": "arcana-065",
+      "name": "防腐",
+      "category": "亡灵与骨骼",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "使一具遗体在三天内不腐坏",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:707"
+    },
+    {
+      "id": "arcana-066",
+      "name": "骨哨",
+      "category": "亡灵与骨骼",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "用骨头制作一只哨子，吹响时附近所有亡灵会停下来听",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:708"
+    },
+    {
+      "id": "arcana-067",
+      "name": "驱散",
+      "category": "亡灵与骨骼",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "对一个亡灵单位造成 2d6【力场】伤害",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:709"
+    },
+    {
+      "id": "arcana-068",
+      "name": "安魂",
+      "category": "亡灵与骨骼",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "让一个不愿离去的亡灵得到安息（若它愿意）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:710"
+    },
+    {
+      "id": "arcana-069",
+      "name": "骨甲",
+      "category": "亡灵与骨骼",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "用随身骨件为自己附加 +3 防护（持续一小时）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:711"
+    },
+    {
+      "id": "arcana-070",
+      "name": "骸骨之手",
+      "category": "亡灵与骨骼",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "从地面伸出骨手，使一名目标获得【束缚】",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:712"
+    },
+    {
+      "id": "arcana-071",
+      "name": "死者之忆",
+      "category": "亡灵与骨骼",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "触碰遗物，看到它主人死亡前最后的画面",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:713"
+    },
+    {
+      "id": "arcana-072",
+      "name": "唤骨",
+      "category": "亡灵与骨骼",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "唤醒 1d4 具骷髅为你作战十分钟（之后它们会散架）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:714"
+    },
+    {
+      "id": "arcana-073",
+      "name": "死亡低语",
+      "category": "亡灵与骨骼",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "对一个活物造成 3d6【精神】，因为它听见了死者的话",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:715"
+    },
+    {
+      "id": "arcana-074",
+      "name": "半生",
+      "category": "亡灵与骨骼",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "让自己进入假死状态一小时；期间无法行动，但所有的伤势冻结",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:716"
+    },
+    {
+      "id": "arcana-075",
+      "name": "发芽",
+      "category": "自然与根系",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "让一颗种子在一分钟内长成幼苗",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:722"
+    },
+    {
+      "id": "arcana-076",
+      "name": "根系感知",
+      "category": "自然与根系",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "感知 30 米内的根系分布与野炉",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:723"
+    },
+    {
+      "id": "arcana-077",
+      "name": "净化水土",
+      "category": "自然与根系",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "使一小片被污染的水或土变得可饮用／可耕种",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:724"
+    },
+    {
+      "id": "arcana-078",
+      "name": "藤蔓",
+      "category": "自然与根系",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "使一处藤蔓生长并缠住一名目标（【束缚】）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:725"
+    },
+    {
+      "id": "arcana-079",
+      "name": "兽语",
+      "category": "自然与根系",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "与一只动物进行简单交流（每个场景一次）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:726"
+    },
+    {
+      "id": "arcana-080",
+      "name": "木形",
+      "category": "自然与根系",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "让一件木制品改变形状（持续一小时）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:727"
+    },
+    {
+      "id": "arcana-081",
+      "name": "灰土丰收",
+      "category": "自然与根系",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使一小块灰土在一小时内产出可供五人一天的口粮",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:728"
+    },
+    {
+      "id": "arcana-082",
+      "name": "根之径",
+      "category": "自然与根系",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "在地面上开出一条通向最近炉的路径",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:729"
+    },
+    {
+      "id": "arcana-083",
+      "name": "树皮之护",
+      "category": "自然与根系",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "一名目标获得对【钝击】与【穿刺】的抗性（持续一小时）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:730"
+    },
+    {
+      "id": "arcana-084",
+      "name": "林之眼",
+      "category": "自然与根系",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "通过一棵树看到它方圆 100 米内发生的事（持续十分钟）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:731"
+    },
+    {
+      "id": "arcana-085",
+      "name": "活根桥",
+      "category": "自然与根系",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "让根系生长出一座可以跨越 20 米的桥（持续一小时）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:732"
+    },
+    {
+      "id": "arcana-086",
+      "name": "灰潮抵抗",
+      "category": "自然与根系",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "在一小时内，使一片区域内的所有生物免疫灰潮的影响",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:733"
+    },
+    {
+      "id": "arcana-087",
+      "name": "祝福",
+      "category": "神术：哑火的神迹",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "一名目标的下一次判定 +2 骰",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:741"
+    },
+    {
+      "id": "arcana-088",
+      "name": "驱邪",
+      "category": "神术：哑火的神迹",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "对一个异界或亡灵单位造成 1d8【力场】",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:742"
+    },
+    {
+      "id": "arcana-089",
+      "name": "圣所",
+      "category": "神术：哑火的神迹",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "在一处划定一个 3 米的区域，亡灵与异界单位无法进入",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:743"
+    },
+    {
+      "id": "arcana-090",
+      "name": "忏悔",
+      "category": "神术：哑火的神迹",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "使一名目标说出一件他隐瞒的事（可通过耐受 DF 15 抵抗）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:744"
+    },
+    {
+      "id": "arcana-091",
+      "name": "分担",
+      "category": "神术：哑火的神迹",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "替一名队友承担下一次伤害的一半",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:745"
+    },
+    {
+      "id": "arcana-092",
+      "name": "见证",
+      "category": "神术：哑火的神迹",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "记录下当前场景发生的一切，此后无法被任何手段伪改",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:746"
+    },
+    {
+      "id": "arcana-093",
+      "name": "神裁",
+      "category": "神术：哑火的神迹",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "对一名目标造成 3d8【力场】；若目标无辜，则改为 1d8",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:747"
+    },
+    {
+      "id": "arcana-094",
+      "name": "一言",
+      "category": "神术：哑火的神迹",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "说出一句真话。所有听到的人都必须相信它，持续一小时",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:748"
+    },
+    {
+      "id": "arcana-095",
+      "name": "燃痕转移",
+      "category": "禁忌",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "把自己的 1 点燃痕转移给另一个人（对方必须同意，或处于无意识状态）",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:754"
+    },
+    {
+      "id": "arcana-096",
+      "name": "静灰制取",
+      "category": "禁忌",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "从一名活着的生物身上提取静灰。这会永久夺走对方的一段记忆",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:755"
+    },
+    {
+      "id": "arcana-097",
+      "name": "唤灵",
+      "category": "禁忌",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "召唤一个特定死者的灵魂，问三个问题。它未必愿意回答，也未必愿意离开",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:756"
+    },
+    {
+      "id": "arcana-098",
+      "name": "第六纪重现",
+      "category": "禁忌",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "在一片区域内复制第六纪燃症的环境条件。此地此后会持续产出患者",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:757"
+    },
+    {
+      "id": "arcana-099",
+      "name": "树之梦",
+      "category": "禁忌",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "短暂接入世界树的残余意识。你会在一小时内不认识自己的名字，但会知道一件事",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:758"
+    },
+    {
+      "id": "arcana-100",
+      "name": "与神对话",
+      "category": "禁忌",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "烬",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "尝试直接向一位神提问。六百一十二年来，没有人成功过。但每一位尝试者都听到了某种东西",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:759"
+    }
+  ],
+  "equipment": [
+    {
+      "id": "eq-melee-01",
+      "name": "匕首",
+      "kind": "weapon",
+      "damage": "1d4",
+      "ap": 2,
+      "tags": [
+        "精细",
+        "隐蔽"
+      ],
+      "price_tier": "碎银",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:344"
+    },
+    {
+      "id": "eq-melee-02",
+      "name": "短杖／手杖",
+      "kind": "weapon",
+      "damage": "1d4",
+      "ap": 2,
+      "tags": [
+        "钝击",
+        "精细"
+      ],
+      "price_tier": "碎银",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:345"
+    },
+    {
+      "id": "eq-melee-03",
+      "name": "短剑",
+      "kind": "weapon",
+      "damage": "1d6",
+      "ap": 2,
+      "tags": [
+        "精细"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:346"
+    },
+    {
+      "id": "eq-melee-04",
+      "name": "手斧",
+      "kind": "weapon",
+      "damage": "1d6",
+      "ap": 2,
+      "tags": [
+        "斩击"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:347"
+    },
+    {
+      "id": "eq-melee-05",
+      "name": "长剑",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 2,
+      "tags": [
+        "刃",
+        "单手"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:348"
+    },
+    {
+      "id": "eq-melee-06",
+      "name": "战锤",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 3,
+      "tags": [
+        "钝击",
+        "震"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:349"
+    },
+    {
+      "id": "eq-melee-07",
+      "name": "长枪",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 2,
+      "tags": [
+        "穿刺",
+        "双手"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:350"
+    },
+    {
+      "id": "eq-melee-08",
+      "name": "巨斧",
+      "kind": "weapon",
+      "damage": "1d12",
+      "ap": 3,
+      "tags": [
+        "斩击",
+        "双手",
+        "重装"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:351"
+    },
+    {
+      "id": "eq-melee-09",
+      "name": "铁杆（非法回火武器）",
+      "kind": "weapon",
+      "damage": "1d10",
+      "ap": 3,
+      "tags": [
+        "钝击",
+        "共鸣",
+        "不稳定"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:352"
+    },
+    {
+      "id": "eq-ranged-01",
+      "name": "投石索",
+      "kind": "weapon",
+      "damage": "1d4",
+      "ap": 2,
+      "range": "15 米",
+      "tags": [
+        "钝击"
+      ],
+      "price_tier": "碎银",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:358"
+    },
+    {
+      "id": "eq-ranged-02",
+      "name": "短弓",
+      "kind": "weapon",
+      "damage": "1d6",
+      "ap": 2,
+      "range": "25 米",
+      "tags": [
+        "穿刺"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:359"
+    },
+    {
+      "id": "eq-ranged-03",
+      "name": "长弓",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 3,
+      "range": "45 米",
+      "tags": [
+        "穿刺",
+        "双手"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:360"
+    },
+    {
+      "id": "eq-ranged-04",
+      "name": "重弩",
+      "kind": "weapon",
+      "damage": "1d10",
+      "ap": 3,
+      "range": "35 米",
+      "tags": [
+        "穿刺",
+        "重装"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:361"
+    },
+    {
+      "id": "eq-ranged-05",
+      "name": "吹箭（静林工艺）",
+      "kind": "weapon",
+      "damage": "1d4 + 中毒",
+      "ap": 2,
+      "range": "10 米",
+      "tags": [
+        "隐蔽",
+        "腐蚀"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:362"
+    },
+    {
+      "id": "eq-armor-01",
+      "name": "软皮甲",
+      "kind": "armor",
+      "guard": "+2",
+      "load": "轻",
+      "restriction": "无",
+      "price_tier": "碎银",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:368"
+    },
+    {
+      "id": "eq-armor-02",
+      "name": "镶嵌皮甲",
+      "kind": "armor",
+      "guard": "+3",
+      "load": "中",
+      "restriction": "—",
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:369"
+    },
+    {
+      "id": "eq-armor-03",
+      "name": "环片甲",
+      "kind": "armor",
+      "guard": "+4",
+      "load": "中",
+      "restriction": "潜行 −1 骰",
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:370"
+    },
+    {
+      "id": "eq-armor-04",
+      "name": "链甲",
+      "kind": "armor",
+      "guard": "+5",
+      "load": "重",
+      "restriction": "移动 −2 米，潜行 −2 骰",
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:371"
+    },
+    {
+      "id": "eq-armor-05",
+      "name": "板甲",
+      "kind": "armor",
+      "guard": "+7",
+      "load": "重",
+      "restriction": "移动 −3 米，不可攀爬，明显的【显眼】",
+      "price_tier": "贵重 ×2",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:372"
+    },
+    {
+      "id": "eq-armor-06",
+      "name": "骨械甲（白骨荒野）",
+      "kind": "armor",
+      "guard": "+4",
+      "load": "中",
+      "restriction": "每次受到暴击时需耐受",
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:373"
+    },
+    {
+      "id": "eq-gear-01",
+      "name": "余烬匣",
+      "kind": "gear",
+      "effect": "额外的烬值上限 +2；可存储一份余烬",
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:379"
+    },
+    {
+      "id": "eq-gear-02",
+      "name": "导烬杖",
+      "kind": "gear",
+      "effect": "施法时一次判定 +1 骰；每根 3 次后耗尽",
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:380"
+    },
+    {
+      "id": "eq-gear-03",
+      "name": "静灰（一份）",
+      "kind": "gear",
+      "effect": "降低 1 点燃痕；制取过程需要有人付出代价",
+      "price_tier": "贵重 ×3",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:381"
+    },
+    {
+      "id": "eq-gear-04",
+      "name": "炉石（小块）",
+      "kind": "gear",
+      "effect": "在一个没有炉的地方开辟临时节点（一次性）",
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:382"
+    },
+    {
+      "id": "eq-gear-05",
+      "name": "骨徽（身份章）",
+      "kind": "gear",
+      "effect": "属于某个公会或神殿的身份证明",
+      "price_tier": "碎银",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:383"
+    },
+    {
+      "id": "eq-gear-06",
+      "name": "月相历",
+      "kind": "gear",
+      "effect": "知道当前与未来七天的月相（人手一册）",
+      "price_tier": "碎银",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:384"
+    },
+    {
+      "id": "eq-gear-07",
+      "name": "燃症药物",
+      "kind": "gear",
+      "effect": "24 小时内忽略一次燃症症状",
+      "price_tier": "标准",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:385"
+    },
+    {
+      "id": "eq-gear-08",
+      "name": "守烬配额（文件）",
+      "kind": "gear",
+      "effect": "一份合法的额外余烬取用额度",
+      "price_tier": "贵重",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:386"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy-a01",
+      "name": "灰烬虫",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 11,
+      "poise": 6,
+      "attack_bonus": "+3",
+      "damage": "1d4 火焰",
+      "persona": "狡诈",
+      "trait": "成群活动，会钻进衣物里",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:777"
+    },
+    {
+      "id": "enemy-a02",
+      "name": "燃屑群",
+      "tier": "杂兵（群）",
+      "vitality": 12,
+      "guard": 12,
+      "poise": 6,
+      "attack_bonus": "+3",
+      "damage": "1d6 火焰",
+      "persona": "召唤",
+      "trait": "每三只共享一份活力；被打散后会重新聚拢",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:778"
+    },
+    {
+      "id": "enemy-a03",
+      "name": "烬鼠",
+      "tier": "杂兵",
+      "vitality": 8,
+      "guard": 13,
+      "poise": 4,
+      "attack_bonus": "+4",
+      "damage": "1d4 穿刺",
+      "persona": "狡诈",
+      "trait": "偷走亮的东西，也偷走热的东西",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:779"
+    },
+    {
+      "id": "enemy-a04",
+      "name": "热雾",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 11,
+      "poise": 8,
+      "attack_bonus": "+2",
+      "damage": "1d6 火焰",
+      "persona": "控场",
+      "trait": "一团持续散发着高温的雾，会让人中暑",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:780"
+    },
+    {
+      "id": "enemy-a05",
+      "name": "灰藤",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 12,
+      "poise": 10,
+      "attack_bonus": "+3",
+      "damage": "1d6 钝击",
+      "persona": "守护",
+      "trait": "生长在被灰潮污染的土壤上，会缠住路过的一切",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:781"
+    },
+    {
+      "id": "enemy-a06",
+      "name": "碳化雀",
+      "tier": "杂兵",
+      "vitality": 8,
+      "guard": 13,
+      "poise": 4,
+      "attack_bonus": "+3",
+      "damage": "1d4 火焰",
+      "persona": "狡诈",
+      "trait": "飞过时会掉下细小的火星",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:782"
+    },
+    {
+      "id": "enemy-a07",
+      "name": "灰潮行者",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+5",
+      "damage": "1d8 钝击",
+      "persona": "猛攻",
+      "trait": "曾经是一个人，现在它的轮廓还在，内容不多了",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:783"
+    },
+    {
+      "id": "enemy-a08",
+      "name": "焚壳",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 16,
+      "attack_bonus": "+5",
+      "damage": "1d8 火焰",
+      "persona": "守护",
+      "trait": "外壳已经烧硬了，里面还在烧",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:784"
+    },
+    {
+      "id": "enemy-a09",
+      "name": "灼语者",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 13,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 精神",
+      "persona": "控场",
+      "trait": "不断说着热的话，听久了会发烧",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:785"
+    },
+    {
+      "id": "enemy-a10",
+      "name": "烬犬",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 14,
+      "poise": 12,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "猛攻",
+      "trait": "会成群捕猎，牙齿是黑的",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:786"
+    },
+    {
+      "id": "enemy-a11",
+      "name": "灰潮幼体",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 13,
+      "poise": 18,
+      "attack_bonus": "+5",
+      "damage": "2d6 钝击",
+      "persona": "猛攻",
+      "trait": "尚未定型，每次看到它长得都不太一样",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:787"
+    },
+    {
+      "id": "enemy-a12",
+      "name": "半熔者",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 13,
+      "poise": 14,
+      "attack_bonus": "+5",
+      "damage": "1d8 火焰",
+      "persona": "猛攻",
+      "trait": "它身上有一部分已经流下来了，但它还在走",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:788"
+    },
+    {
+      "id": "enemy-a13",
+      "name": "灰蛾群",
+      "tier": "标准",
+      "vitality": 22,
+      "guard": 14,
+      "poise": 10,
+      "attack_bonus": "+5",
+      "damage": "1d6 精神",
+      "persona": "控场",
+      "trait": "扑向光源，也扑向人的眼睛",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:789"
+    },
+    {
+      "id": "enemy-a14",
+      "name": "烬树苗",
+      "tier": "标准",
+      "vitality": 32,
+      "guard": 14,
+      "poise": 20,
+      "attack_bonus": "+5",
+      "damage": "2d6 钝击",
+      "persona": "守护",
+      "trait": "一株正在生长的树，它长得比应有的速度快得多",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:790"
+    },
+    {
+      "id": "enemy-a15",
+      "name": "熔渣爬行者",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 火焰",
+      "persona": "猛攻",
+      "trait": "经过的地方会留下一条玻璃化的痕迹",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:791"
+    },
+    {
+      "id": "enemy-a16",
+      "name": "灰潮祭司",
+      "tier": "精锐",
+      "vitality": 42,
+      "guard": 15,
+      "poise": 22,
+      "attack_bonus": "+7",
+      "damage": "2d8 精神",
+      "persona": "召唤",
+      "trait": "它相信灰潮是一种恩赐，而且它会说出来",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:792"
+    },
+    {
+      "id": "enemy-a17",
+      "name": "双生烬",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 15,
+      "poise": 26,
+      "attack_bonus": "+7",
+      "damage": "2d8 火焰",
+      "persona": "猛攻",
+      "trait": "两个部分，一个一直在烧，一个一直在看着",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:793"
+    },
+    {
+      "id": "enemy-a18",
+      "name": "大静默之物",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 16,
+      "poise": 28,
+      "attack_bonus": "+7",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "靠近它时所有的声音都会消失，包括自己的",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:794"
+    },
+    {
+      "id": "enemy-a19",
+      "name": "焚风",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 17,
+      "poise": 22,
+      "attack_bonus": "+8",
+      "damage": "2d8 火焰",
+      "persona": "控场",
+      "trait": "它不是生物，是一阵带着意志的风",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:795"
+    },
+    {
+      "id": "enemy-a20",
+      "name": "灰潮巨像",
+      "tier": "首领",
+      "vitality": 100,
+      "guard": 16,
+      "poise": 44,
+      "attack_bonus": "+9",
+      "damage": "3d8 钝击",
+      "persona": "猛攻",
+      "trait": "由一整片被改变的森林拼成的人形",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:796"
+    },
+    {
+      "id": "enemy-a21",
+      "name": "第六纪的回声",
+      "tier": "首领",
+      "vitality": 110,
+      "guard": 17,
+      "poise": 46,
+      "attack_bonus": "+9",
+      "damage": "3d8 精神",
+      "persona": "控场",
+      "trait": "那场瘟疫本身记得自己，而且它不喜欢被打断",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:797"
+    },
+    {
+      "id": "enemy-a22",
+      "name": "树之残梦",
+      "tier": "首领",
+      "vitality": 130,
+      "guard": 17,
+      "poise": 52,
+      "attack_bonus": "+9",
+      "damage": "3d10 火焰",
+      "persona": "召唤",
+      "trait": "世界树仍在做的梦，梦中它还没有死",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:798"
+    },
+    {
+      "id": "enemy-b01",
+      "name": "灰原民兵",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 13,
+      "poise": 10,
+      "attack_bonus": "+3",
+      "damage": "1d6 穿刺",
+      "persona": "猛攻",
+      "trait": "农闲时拿起了叉子，他们并不想真的杀人",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:805"
+    },
+    {
+      "id": "enemy-b02",
+      "name": "匪徒",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 12,
+      "poise": 8,
+      "attack_bonus": "+3",
+      "damage": "1d6 斩击",
+      "persona": "狡诈",
+      "trait": "先谈，谈不拢再动手",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:806"
+    },
+    {
+      "id": "enemy-b03",
+      "name": "走私向导",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 12,
+      "poise": 6,
+      "attack_bonus": "+2",
+      "damage": "1d4 钝击",
+      "persona": "狡诈",
+      "trait": "他唯一的优势是知道一条你不认识的路",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:807"
+    },
+    {
+      "id": "enemy-b04",
+      "name": "骨贩学徒",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 12,
+      "poise": 8,
+      "attack_bonus": "+2",
+      "damage": "1d4 钝击",
+      "persona": "守护",
+      "trait": "他护的不是自己，是那一袋货",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:808"
+    },
+    {
+      "id": "enemy-b05",
+      "name": "铁墙列兵",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 16,
+      "poise": 16,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "守护",
+      "trait": "受过训练、纪律良好，且从不使用魔法",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:809"
+    },
+    {
+      "id": "enemy-b06",
+      "name": "铁墙禁魔官",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 17,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d8 斩击",
+      "persona": "控场",
+      "trait": "专门对付施法者，装备针对魔法做了处理",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:810"
+    },
+    {
+      "id": "enemy-b07",
+      "name": "行会护卫",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 15,
+      "poise": 16,
+      "attack_bonus": "+5",
+      "damage": "1d8 钝击",
+      "persona": "守护",
+      "trait": "他保护的是货，不是人",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:811"
+    },
+    {
+      "id": "enemy-b08",
+      "name": "灰焰信徒",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 火焰",
+      "persona": "猛攻",
+      "trait": "他相信应当用尽余烬，而且他的理由很难反驳",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:812"
+    },
+    {
+      "id": "enemy-b09",
+      "name": "守烬巡查",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 18,
+      "attack_bonus": "+5",
+      "damage": "1d8 钝击",
+      "persona": "守护",
+      "trait": "例行公事、记录、上报；他并不想升级事态",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:813"
+    },
+    {
+      "id": "enemy-b10",
+      "name": "兽人劫掠者",
+      "tier": "标准",
+      "vitality": 32,
+      "guard": 14,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d10 斩击",
+      "persona": "猛攻",
+      "trait": "南下寻找更好的冬天，这本身没什么错",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:814"
+    },
+    {
+      "id": "enemy-b11",
+      "name": "半影射手",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 15,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "一箭不发可以等上三个小时",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:815"
+    },
+    {
+      "id": "enemy-b12",
+      "name": "矮人隧道工",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 16,
+      "poise": 20,
+      "attack_bonus": "+5",
+      "damage": "1d8 钝击",
+      "persona": "守护",
+      "trait": "他手里的工具比很多武器更趁手",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:816"
+    },
+    {
+      "id": "enemy-b13",
+      "name": "遗迹竞争者",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+5",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "另一队寻者。你们想要的是同一样东西",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:817"
+    },
+    {
+      "id": "enemy-b14",
+      "name": "铁墙百夫长",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 18,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 穿刺",
+      "persona": "领袖",
+      "trait": "他会先给两次警告，第三次就没有了",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:818"
+    },
+    {
+      "id": "enemy-b15",
+      "name": "灰焰祭司",
+      "tier": "精锐",
+      "vitality": 42,
+      "guard": 15,
+      "poise": 22,
+      "attack_bonus": "+8",
+      "damage": "2d8 火焰",
+      "persona": "召唤",
+      "trait": "把燃症当作洗礼，而且他自己已经是患者",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:819"
+    },
+    {
+      "id": "enemy-b16",
+      "name": "刻水书记官",
+      "tier": "精锐",
+      "vitality": 40,
+      "guard": 15,
+      "poise": 20,
+      "attack_bonus": "+6",
+      "damage": "1d8 精神",
+      "persona": "控场",
+      "trait": "他的武器是文书。他可以合法地毁掉你的一天",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:820"
+    },
+    {
+      "id": "enemy-b17",
+      "name": "兽人氏族长",
+      "tier": "精锐",
+      "vitality": 52,
+      "guard": 16,
+      "poise": 30,
+      "attack_bonus": "+8",
+      "damage": "2d10 斩击",
+      "persona": "领袖",
+      "trait": "他带来了一整个氏族，而他很累",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:821"
+    },
+    {
+      "id": "enemy-b18",
+      "name": "守烬会主事",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 火焰",
+      "persona": "控场",
+      "trait": "他知道所有人的烬值，包括那些不该记录的部分",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:822"
+    },
+    {
+      "id": "enemy-c01",
+      "name": "游骨",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 12,
+      "poise": 8,
+      "attack_bonus": "+3",
+      "damage": "1d6 穿刺",
+      "persona": "猛攻",
+      "trait": "一副走动的骨架，没有理由，也没有目的",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:829"
+    },
+    {
+      "id": "enemy-c02",
+      "name": "骨鼠群",
+      "tier": "杂兵（群）",
+      "vitality": 10,
+      "guard": 12,
+      "poise": 6,
+      "attack_bonus": "+3",
+      "damage": "1d4 穿刺",
+      "persona": "召唤",
+      "trait": "数量极多，且每一只都在啃",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:830"
+    },
+    {
+      "id": "enemy-c03",
+      "name": "未葬者",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 12,
+      "poise": 10,
+      "attack_bonus": "+3",
+      "damage": "1d6 钝击",
+      "persona": "猛攻",
+      "trait": "它还穿着生前的衣服，还在往家走",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:831"
+    },
+    {
+      "id": "enemy-c04",
+      "name": "装甲的遗骸",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 18,
+      "attack_bonus": "+5",
+      "damage": "1d8 斩击",
+      "persona": "守护",
+      "trait": "身上的甲是生前穿的，它记得怎么使用",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:832"
+    },
+    {
+      "id": "enemy-c05",
+      "name": "骨弓手",
+      "tier": "标准",
+      "vitality": 22,
+      "guard": 14,
+      "poise": 12,
+      "attack_bonus": "+5",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "它射得很准。它生前是个好射手",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:833"
+    },
+    {
+      "id": "enemy-c06",
+      "name": "焚骨者",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 16,
+      "attack_bonus": "+6",
+      "damage": "1d8 火焰",
+      "persona": "猛攻",
+      "trait": "骨头里有余烬，所以它一直在烧自己",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:834"
+    },
+    {
+      "id": "enemy-c07",
+      "name": "骨语亡灵",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 13,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d6 精神",
+      "persona": "控场",
+      "trait": "它会说话，而且它说的大多是真话",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:835"
+    },
+    {
+      "id": "enemy-c08",
+      "name": "静裔回响",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+5",
+      "damage": "1d6 精神",
+      "persona": "控场",
+      "trait": "第四纪的死者；它从未听过声音，也不会发出声音",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:836"
+    },
+    {
+      "id": "enemy-c09",
+      "name": "缝合巨骸",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 15,
+      "poise": 26,
+      "attack_bonus": "+7",
+      "damage": "2d8 钝击",
+      "persona": "猛攻",
+      "trait": "由至少十具遗骸缝成，缝线还在动",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:837"
+    },
+    {
+      "id": "enemy-c10",
+      "name": "骨甲指挥官",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 17,
+      "poise": 26,
+      "attack_bonus": "+7",
+      "damage": "2d8 斩击",
+      "persona": "领袖",
+      "trait": "它记得阵型，也记得怎么下令",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:838"
+    },
+    {
+      "id": "enemy-c11",
+      "name": "燃而不尽者",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 15,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 火焰",
+      "persona": "猛攻",
+      "trait": "它希望有人能让它停下来",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:839"
+    },
+    {
+      "id": "enemy-c12",
+      "name": "万人坑之合",
+      "tier": "首领",
+      "vitality": 100,
+      "guard": 15,
+      "poise": 44,
+      "attack_bonus": "+8",
+      "damage": "3d8 钝击",
+      "persona": "召唤",
+      "trait": "整个坑里的死者合成一体，它想站起来，一次就好",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:840"
+    },
+    {
+      "id": "enemy-c13",
+      "name": "第六纪的患者",
+      "tier": "首领",
+      "vitality": 96,
+      "guard": 16,
+      "poise": 40,
+      "attack_bonus": "+9",
+      "damage": "3d8 火焰",
+      "persona": "控场",
+      "trait": "一百年前的死者，至今仍在发烧",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:841"
+    },
+    {
+      "id": "enemy-c14",
+      "name": "未安息的祭司",
+      "tier": "首领",
+      "vitality": 110,
+      "guard": 17,
+      "poise": 46,
+      "attack_bonus": "+9",
+      "damage": "3d8 精神",
+      "persona": "领袖",
+      "trait": "他死的时候正在祈祷，而祈祷从未得到回答",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:842"
+    },
+    {
+      "id": "enemy-d01",
+      "name": "灰狼",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 13,
+      "poise": 8,
+      "attack_bonus": "+4",
+      "damage": "1d6 穿刺",
+      "persona": "猛攻",
+      "trait": "比正常的狼瘦，也比正常的狼耐心",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:849"
+    },
+    {
+      "id": "enemy-d02",
+      "name": "骨鸦群",
+      "tier": "杂兵（群）",
+      "vitality": 10,
+      "guard": 13,
+      "poise": 6,
+      "attack_bonus": "+4",
+      "damage": "1d4 穿刺",
+      "persona": "狡诈",
+      "trait": "它们只吃已经死的东西，但它们会等",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:850"
+    },
+    {
+      "id": "enemy-d03",
+      "name": "灰原野猪",
+      "tier": "杂兵",
+      "vitality": 16,
+      "guard": 12,
+      "poise": 12,
+      "attack_bonus": "+4",
+      "damage": "1d6 穿刺",
+      "persona": "猛攻",
+      "trait": "冲过来的时候很直，从不减速",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:851"
+    },
+    {
+      "id": "enemy-d04",
+      "name": "岩羊",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 13,
+      "poise": 8,
+      "attack_bonus": "+3",
+      "damage": "1d6 钝击",
+      "persona": "狡诈",
+      "trait": "它站在你够不到的地方，就这么看着",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:852"
+    },
+    {
+      "id": "enemy-d05",
+      "name": "冬熊",
+      "tier": "标准",
+      "vitality": 34,
+      "guard": 14,
+      "poise": 20,
+      "attack_bonus": "+6",
+      "damage": "1d10 钝击",
+      "persona": "猛攻",
+      "trait": "它只是想吃东西，而你们挡在食物和它之间",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:853"
+    },
+    {
+      "id": "enemy-d06",
+      "name": "齿山雪豹",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 15,
+      "poise": 14,
+      "attack_bonus": "+7",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "它会在你身后出现，而且它已经观察你很久了",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:854"
+    },
+    {
+      "id": "enemy-d07",
+      "name": "灰潮巨鹿",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 14,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d8 钝击",
+      "persona": "猛攻",
+      "trait": "角上长着不该长在角上的东西",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:855"
+    },
+    {
+      "id": "enemy-d08",
+      "name": "洞穴蛛母",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 16,
+      "attack_bonus": "+6",
+      "damage": "1d8 腐蚀",
+      "persona": "召唤",
+      "trait": "它守护的是卵，而不是自己",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:856"
+    },
+    {
+      "id": "enemy-d09",
+      "name": "秃鹫王",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 14,
+      "poise": 12,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "它总是第一个到达，最后一个离开",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:857"
+    },
+    {
+      "id": "enemy-d10",
+      "name": "熔岩巨龟",
+      "tier": "精锐",
+      "vitality": 50,
+      "guard": 18,
+      "poise": 32,
+      "attack_bonus": "+7",
+      "damage": "2d8 火焰",
+      "persona": "守护",
+      "trait": "移动缓慢，但几乎无法被阻止",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:858"
+    },
+    {
+      "id": "enemy-d11",
+      "name": "齿山巨人",
+      "tier": "精锐",
+      "vitality": 56,
+      "guard": 15,
+      "poise": 30,
+      "attack_bonus": "+8",
+      "damage": "2d10 钝击",
+      "persona": "猛攻",
+      "trait": "它并不愤怒，它只是很大",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:859"
+    },
+    {
+      "id": "enemy-d12",
+      "name": "守护苔兽",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 16,
+      "poise": 28,
+      "attack_bonus": "+7",
+      "damage": "2d8 腐蚀",
+      "persona": "守护",
+      "trait": "它守护静林，从不离开",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:860"
+    },
+    {
+      "id": "enemy-d13",
+      "name": "巨干之下的东西",
+      "tier": "首领",
+      "vitality": 130,
+      "guard": 16,
+      "poise": 50,
+      "attack_bonus": "+9",
+      "damage": "3d10 钝击",
+      "persona": "猛攻",
+      "trait": "它一直住在主干底下，比所有人住得都久",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:861"
+    },
+    {
+      "id": "enemy-d14",
+      "name": "未被命名的巨兽",
+      "tier": "首领",
+      "vitality": 150,
+      "guard": 17,
+      "poise": 56,
+      "attack_bonus": "+10",
+      "damage": "3d10 穿刺",
+      "persona": "猛攻",
+      "trait": "它没有任何名字，因为见过它的人都没有回来命名",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:862"
+    },
+    {
+      "id": "enemy-e01",
+      "name": "灰焰燃者",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 火焰",
+      "persona": "猛攻",
+      "trait": "他相信应当用尽余烬，而且他已经在用了",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:869"
+    },
+    {
+      "id": "enemy-e02",
+      "name": "安魂修会审问者",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "他问的问题都很平静，也都很难回答",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:870"
+    },
+    {
+      "id": "enemy-e03",
+      "name": "环形行会收债人",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 钝击",
+      "persona": "猛攻",
+      "trait": "他只谈钱，而且他很讲道理",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:871"
+    },
+    {
+      "id": "enemy-e04",
+      "name": "无声审判官",
+      "tier": "精锐",
+      "vitality": 52,
+      "guard": 18,
+      "poise": 28,
+      "attack_bonus": "+8",
+      "damage": "2d8 穿刺",
+      "persona": "控场",
+      "trait": "铁墙的审讯从不发出声音，这是第四纪的传统",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:872"
+    },
+    {
+      "id": "enemy-e05",
+      "name": "叛逃的守烬人",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 火焰",
+      "persona": "控场",
+      "trait": "她带走了配额记录，也带走了一个理由",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:873"
+    },
+    {
+      "id": "enemy-e06",
+      "name": "静林档案守",
+      "tier": "精锐",
+      "vitality": 42,
+      "guard": 16,
+      "poise": 22,
+      "attack_bonus": "+6",
+      "damage": "2d6 精神",
+      "persona": "守护",
+      "trait": "他守的不是书，是那些不该被读到的部分",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:874"
+    },
+    {
+      "id": "enemy-e07",
+      "name": "半影家族末子",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+8",
+      "damage": "2d8 穿刺",
+      "persona": "狡诈",
+      "trait": "他要用一件事来证明自己，而这件事尚未完成",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:875"
+    },
+    {
+      "id": "enemy-e08",
+      "name": "骨匠行会会长",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 17,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 钝击",
+      "persona": "领袖",
+      "trait": "他知道白骨荒野里每一具重要遗骸的位置",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:876"
+    },
+    {
+      "id": "enemy-e09",
+      "name": "冬猎队队长",
+      "tier": "精锐",
+      "vitality": 50,
+      "guard": 16,
+      "poise": 28,
+      "attack_bonus": "+8",
+      "damage": "2d10 穿刺",
+      "persona": "守护",
+      "trait": "他负责让北方活下来，每年都少几个人",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:877"
+    },
+    {
+      "id": "enemy-e10",
+      "name": "灰原十二家族家主",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+7",
+      "damage": "2d8 钝击",
+      "persona": "领袖",
+      "trait": "他计算得很准，包括人命",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:878"
+    },
+    {
+      "id": "enemy-e11",
+      "name": "第七纪的继承者",
+      "tier": "首领",
+      "vitality": 110,
+      "guard": 18,
+      "poise": 48,
+      "attack_bonus": "+9",
+      "damage": "3d8 火焰",
+      "persona": "领袖",
+      "trait": "他相信自己能让第七纪不重蹈第六纪，而且论据很有说服力",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:879"
+    },
+    {
+      "id": "enemy-e12",
+      "name": "静灰的制取者",
+      "tier": "首领",
+      "vitality": 120,
+      "guard": 17,
+      "poise": 50,
+      "attack_bonus": "+9",
+      "damage": "3d10 精神",
+      "persona": "控场",
+      "trait": "他一直在制取消除燃痕的药，代价由别人支付",
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:880"
+    }
+  ],
+  "random_tables": [
+    {
+      "id": "opening_hooks",
+      "name": "开场钩子",
+      "die": "d12",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "你们在灰里挖出了一枚种子。它还活着，而且它正在发芽。"
+        },
+        {
+          "roll": 2,
+          "result": "一位守烬人上门，说你的烬值记录出现了一个不可能的数字：负数。"
+        },
+        {
+          "roll": 3,
+          "result": "村里最老的树在一夜之间开了花。老人们都来看，谁也不说话。"
+        },
+        {
+          "roll": 4,
+          "result": "一个孩子说他梦见了树。他画的树，与史书记载的形状一模一样。"
+        },
+        {
+          "roll": 5,
+          "result": "有人在用你的名字登记余烬配额，而登记地点在三百公里外。"
+        },
+        {
+          "roll": 6,
+          "result": "一队遗迹寻者回来了，队伍里有七个人出去，七个人回来，但只有一个还记得进去时说了什么。"
+        },
+        {
+          "roll": 7,
+          "result": "你们在白骨荒野买到了一副骨骼。骨语显示，它死的时候你就在场。"
+        },
+        {
+          "roll": 8,
+          "result": "铁墙的巡逻队出现在你们村口，他们要求带走所有会施法的人——包括那个只会点火的老人。"
+        },
+        {
+          "roll": 9,
+          "result": "根系网络的一个官炉熄灭了。环形行会说这是技术问题，但最近三个月已经熄了四个。"
+        },
+        {
+          "roll": 10,
+          "result": "一位牧师公开宣布：他收到了回应。第二天他改口，第三天他失踪。"
+        },
+        {
+          "roll": 11,
+          "result": "静林的档案守给你们看了一份第三纪的文件，日期是明天。"
+        },
+        {
+          "roll": 12,
+          "result": "你们的邻居开始发低烧。全城已经有四百人发低烧了，官方数字是零。"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:892"
+    },
+    {
+      "id": "rumors",
+      "name": "城市与乡野传闻",
+      "die": "d12",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "巨干底下第九层有人住着，而且他已经很久没出来了。"
+        },
+        {
+          "roll": 2,
+          "result": "守烬人会自己的配额记录有两套，一套给公众看。"
+        },
+        {
+          "roll": 3,
+          "result": "第六纪的死者并没有全死透，有一批被埋在了不该埋的地方。"
+        },
+        {
+          "roll": 4,
+          "result": "有个野炉通向一个不该存在的地方，环形行会正在找它，想把永久封上。"
+        },
+        {
+          "roll": 5,
+          "result": "灰母的祭司们仍然在祈祷，而且他们相信神其实一直在回答，只是我们听不见。"
+        },
+        {
+          "roll": 6,
+          "result": "半影家族有一件东西已经完成了，但他们否认它的存在。"
+        },
+        {
+          "roll": 7,
+          "result": "在铁墙王国，禁魔庭自己也在使用余烬。"
+        },
+        {
+          "roll": 8,
+          "result": "静灰的制取配方里有一味东西，不是可以买卖的。"
+        },
+        {
+          "roll": 9,
+          "result": "齿山有一位巨人声称，他记得树还活着的时候。"
+        },
+        {
+          "roll": 10,
+          "result": "无火之地的灯塔从来没有熄灭过，哪怕一次。"
+        },
+        {
+          "roll": 11,
+          "result": "兽人氏族们正在南下，不是因为战争，是因为北方的冬天提前了。"
+        },
+        {
+          "roll": 12,
+          "result": "世界树死前说的最后一句话被记录在静林，但需要两个人同时在场才能读。"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:909"
+    },
+    {
+      "id": "ruins",
+      "name": "遗迹",
+      "die": "d12",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "一座还没有倒塌的钟楼，钟上刻着第四纪的日期"
+        },
+        {
+          "roll": 2,
+          "result": "一间摆满了未完成雕像的工作室"
+        },
+        {
+          "roll": 3,
+          "result": "一段仍然活着的树根，暴露在空气中"
+        },
+        {
+          "roll": 4,
+          "result": "一间所有文书都写了一半的档案室"
+        },
+        {
+          "roll": 5,
+          "result": "一座倒置的塔，尖端插进地里"
+        },
+        {
+          "roll": 6,
+          "result": "一处温泉，水温与人体相同，里面有骨头"
+        },
+        {
+          "roll": 7,
+          "result": "一整面刻着名字的墙，名字每天都在增加"
+        },
+        {
+          "roll": 8,
+          "result": "一座没有门的房子，只有一个出口在屋顶"
+        },
+        {
+          "roll": 9,
+          "result": "一片圆形的空地，草长成了完美的同心圆"
+        },
+        {
+          "roll": 10,
+          "result": "一条通往地下、且沿途都有灯的阶梯"
+        },
+        {
+          "roll": 11,
+          "result": "一艘搁浅在内陆的船，船身刻满了刻度"
+        },
+        {
+          "roll": 12,
+          "result": "一座祭坛，上面的供品还很新鲜"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:926"
+    },
+    {
+      "id": "moon_events",
+      "name": "月相事件",
+      "die": "d8",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "所有人施法时都感到一阵迟滞（新月）"
+        },
+        {
+          "roll": 2,
+          "result": "夜里的动物全部安静下来，持续整夜（新月）"
+        },
+        {
+          "roll": 3,
+          "result": "一处野炉在无人引导的情况下自行开启（上弦）"
+        },
+        {
+          "roll": 4,
+          "result": "根系中出现了一条全新的分支（上弦）"
+        },
+        {
+          "roll": 5,
+          "result": "所有的火都烧得更旺，包括不该烧的（满月）"
+        },
+        {
+          "roll": 6,
+          "result": "有人在这一夜施法时听到了回答（满月）"
+        },
+        {
+          "roll": 7,
+          "result": "一整片区域的记忆出现了轻微的错位（下弦）"
+        },
+        {
+          "roll": 8,
+          "result": "有人在这一夜忘记了自己最重要的那件事（下弦）"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:943"
+    },
+    {
+      "id": "names_common",
+      "name": "名字素材·常见名",
+      "die": "d20",
+      "use": "原文为素材清单而非掷骰表；按条目数落为行表，roll 从 1 起，逐条溯源该行。",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "灰"
+        },
+        {
+          "roll": 2,
+          "result": "烬"
+        },
+        {
+          "roll": 3,
+          "result": "柯"
+        },
+        {
+          "roll": 4,
+          "result": "岑"
+        },
+        {
+          "roll": 5,
+          "result": "禾"
+        },
+        {
+          "roll": 6,
+          "result": "砚"
+        },
+        {
+          "roll": 7,
+          "result": "迟"
+        },
+        {
+          "roll": 8,
+          "result": "缓"
+        },
+        {
+          "roll": 9,
+          "result": "温"
+        },
+        {
+          "roll": 10,
+          "result": "灼"
+        },
+        {
+          "roll": 11,
+          "result": "岑"
+        },
+        {
+          "roll": 12,
+          "result": "砚"
+        },
+        {
+          "roll": 13,
+          "result": "霁"
+        },
+        {
+          "roll": 14,
+          "result": "熙"
+        },
+        {
+          "roll": 15,
+          "result": "壤"
+        },
+        {
+          "roll": 16,
+          "result": "壤生"
+        },
+        {
+          "roll": 17,
+          "result": "长明"
+        },
+        {
+          "roll": 18,
+          "result": "守夜"
+        },
+        {
+          "roll": 19,
+          "result": "小满"
+        },
+        {
+          "roll": 20,
+          "result": "霜降"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:956"
+    },
+    {
+      "id": "names_clan",
+      "name": "名字素材·氏族与家族",
+      "die": "d10",
+      "use": "原文为素材清单而非掷骰表；按条目数落为行表，roll 从 1 起，逐条溯源该行。",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "铁炉"
+        },
+        {
+          "roll": 2,
+          "result": "灰穗"
+        },
+        {
+          "roll": 3,
+          "result": "静水"
+        },
+        {
+          "roll": 4,
+          "result": "长影"
+        },
+        {
+          "roll": 5,
+          "result": "骨节"
+        },
+        {
+          "roll": 6,
+          "result": "冬牙"
+        },
+        {
+          "roll": 7,
+          "result": "石苔"
+        },
+        {
+          "roll": 8,
+          "result": "未竟"
+        },
+        {
+          "roll": 9,
+          "result": "半影"
+        },
+        {
+          "roll": 10,
+          "result": "无火"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:957"
+    },
+    {
+      "id": "names_place",
+      "name": "名字素材·地名",
+      "die": "d7",
+      "use": "原文为素材清单而非掷骰表；按条目数落为行表，roll 从 1 起，逐条溯源该行。",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "灰穗镇"
+        },
+        {
+          "roll": 2,
+          "result": "三炉口"
+        },
+        {
+          "roll": 3,
+          "result": "断枝渡"
+        },
+        {
+          "roll": 4,
+          "result": "静林第七层"
+        },
+        {
+          "roll": 5,
+          "result": "白骨第七坑"
+        },
+        {
+          "roll": 6,
+          "result": "静默崖"
+        },
+        {
+          "roll": 7,
+          "result": "未名渡口"
+        }
+      ],
+      "source": "docs/scenario/06-世界模组II-余烬纪元.md:958"
+    }
+  ]
+}
