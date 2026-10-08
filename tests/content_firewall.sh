@@ -3,7 +3,9 @@
 # 内容防火墙（CI「内容防火墙门」）
 #
 # 对**已跟踪文件**扫描四类高风险内容，命中即非零退出：
-#   1. 禁止路径：reference/、corpus/，以及第三方数据的翻译 / 改名 / 微调派生文件名；
+#   1. 禁止路径：reference/、corpus/，已知第三方派生数据路径
+#      （data/{spells,monsters,species,backgrounds}*.json、data/campaigns/*），
+#      以及第三方数据的翻译 / 改名 / 微调派生文件名；
 #   2. 高风险第三方品牌标识：清单见 tests/content_firewall_terms.txt（可编辑）；
 #   3. 密钥：sk- / ghp_ / github_pat_ / AKIA / hf_ / AIza / PRIVATE KEY；
 #   4. 隐私：真实用户主目录路径、C:\Users\、内网 IP、真实邮箱（排除 GitHub noreply）。
@@ -11,6 +13,11 @@
 # 设计要点：扫描逻辑与清单分开放置；脚本自身、清单文件、.gitignore 不参与扫描，
 # 避免「扫描规则命中自己」。禁止路径按**路径**判断而非正文，
 # 以免 AGENTS.md 中作为反面示例的 `reference/` / `corpus/` 字样被误判。
+#
+# 文件列表一律走 `git ls-files -z`、正文检索一律走 `core.quotepath=false`：
+# git 默认会把中文等路径转义成 `"docs/05-\344\270\226....md"` 的形式，若把转义串
+# 当 pathspec 回传 git grep，匹配不到即「没命中」——中文名文件（本仓库 `docs/` 全是）
+# 会被静默跳过，属于 fail-open。
 #
 # 用法：bash tests/content_firewall.sh
 set -u
@@ -20,13 +27,19 @@ cd "$(dirname "$0")/.." || exit 2
 TERMS_FILE="tests/content_firewall_terms.txt"
 SELF="tests/content_firewall.sh"
 
+# 不转义路径的 git grep（命中信息里也能看到真实文件名）
+git_grep() {
+    git -c core.quotepath=false grep "$@"
+}
+
 hits=0
 note_hit() {
     printf '  ✗ [%s] %s\n' "$1" "$2"
     hits=$((hits + 1))
 }
 
-mapfile -t all_files < <(git ls-files)
+# -z：NUL 分隔、不做任何转义，中文 / 空格 / 引号文件名都能原样拿到
+mapfile -d '' -t all_files < <(git ls-files -z)
 if [ "${#all_files[@]}" -eq 0 ]; then
     echo "内容防火墙：没有已跟踪文件，跳过。"
     exit 0
@@ -48,7 +61,7 @@ grep_hits() {
     local category="$1"
     shift
     local out
-    if out="$(git grep -n -i "$@" -- "${scan_files[@]}" 2>/dev/null)"; then
+    if out="$(git_grep -n -i "$@" -- "${scan_files[@]}" 2>/dev/null)"; then
         while IFS= read -r line; do
             [ -n "$line" ] && note_hit "$category" "$line"
         done <<< "$out"
@@ -56,14 +69,36 @@ grep_hits() {
 }
 
 # --- 1) 禁止路径 ---------------------------------------------------------
+# 全程只按**路径**判断、不读正文，因此 AGENTS.md / .gitignore 中作为反面示例出现的
+# `reference/`、`corpus/`、`data/monsters.json` 等字样不会被误伤。
+# 匹配统一走小写副本，避免 `data/Campaigns/...` 之类的大小写变体绕过。
 echo "· 禁止路径"
 for f in "${all_files[@]}"; do
-    case "/$f" in
+    lc="${f,,}"
+    # 1a) 目录型：任意层级的第三方参考目录（含 data/corpus/、data/reference/）
+    case "/$lc" in
         */reference/* | */corpus/*)
             note_hit "禁止路径" "$f（位于第三方参考目录）"
             continue
             ;;
     esac
+
+    # 1b) 已知第三方派生数据：AGENTS.md 铁律 1 点名的路径
+    #   data/{spells,monsters,species,backgrounds}*.json —— 点名文件及其改名 / 译文后缀变体
+    #   data/campaigns/*                                 —— 该目录下任意层级文件
+    # 仅限 data/ 顶层，故 NotDND 自己的 data/system/attributes.json、
+    # data/worlds/*.json、data/schema/*.schema.json 不受影响。
+    case "$lc" in
+        data/spells*.json | data/monsters*.json | data/species*.json | data/backgrounds*.json)
+            note_hit "禁止路径" "$f（已知第三方派生数据文件）"
+            continue
+            ;;
+        data/campaigns/*)
+            note_hit "禁止路径" "$f（已知第三方剧本数据目录）"
+            continue
+            ;;
+    esac
+
     base="${f##*/}"
     case "$base" in
         *翻译* | *译文* | *译本* | *改名* | *微调* | *派生* | *衍生* | *山寨* | *复刻* | \
@@ -108,7 +143,7 @@ grep_hits "隐私" -E -e '(^|[^0-9])172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9
 
 # 真实邮箱（排除 GitHub 的 *.users.noreply.github.com）
 email_re='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
-if out="$(git grep -n -iE "$email_re" -- "${scan_files[@]}" 2>/dev/null)"; then
+if out="$(git_grep -n -iE "$email_re" -- "${scan_files[@]}" 2>/dev/null)"; then
     while IFS= read -r line; do
         [ -z "$line" ] && continue
         emails="$(grep -oE "$email_re" <<< "$line")"
