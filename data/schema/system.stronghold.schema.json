@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.stronghold）",
+  "description": "互动层第七节：取得据点、设施 8（上限 5）、维护成本 3 级恶化、据点事件 d20 表 20 行。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "acquisition", "facility_limit", "facilities", "maintenance", "events"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.stronghold"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["facilities", "max_facilities", "maintenance_failures", "event_rows"],
+      "properties": {
+        "facilities": {"const": 8},
+        "max_facilities": {"const": 5},
+        "maintenance_failures": {"const": 3},
+        "event_rows": {"const": 20}
+      },
+      "additionalProperties": false
+    },
+    "acquisition": {
+      "type": "object",
+      "required": ["examples", "examples_source", "cost", "source"],
+      "properties": {
+        "examples": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "examples_source": {"$ref": "common.schema.json#/$defs/source"},
+        "cost": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "facility_limit": {
+      "type": "object",
+      "required": ["max", "rule", "source"],
+      "properties": {
+        "max": {"const": 5},
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "facilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "cost", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "cost": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "maintenance": {
+      "type": "object",
+      "required": ["cost", "source", "failures", "note"],
+      "properties": {
+        "cost": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "effect", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "object",
+          "required": ["rule", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "events": {
+      "type": "object",
+      "required": ["die", "timing", "timing_source", "source", "rows"],
+      "properties": {
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "timing": {"type": "string", "minLength": 1},
+        "timing_source": {"$ref": "common.schema.json#/$defs/source"},
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["roll", "event", "source"],
+            "properties": {
+              "roll": {"type": "integer", "minimum": 1},
+              "event": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

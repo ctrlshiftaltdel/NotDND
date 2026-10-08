@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.investigation）",
+  "description": "互动层第三节：三线索法则、调查四动作、推理板、误导线索、时间压力 4。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "three_clue_rule", "clue_principle", "actions", "scene_hint", "board", "misdirection", "time_pressure"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.investigation"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["rule_of_three_paths", "actions", "board_responses", "pressure_types"],
+      "properties": {
+        "rule_of_three_paths": {"const": 3},
+        "actions": {"const": 4},
+        "board_responses": {"const": 3},
+        "pressure_types": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "three_clue_rule": {
+      "type": "object",
+      "required": ["source", "statement", "why", "why_source", "prep", "prep_source", "example"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "statement": {"type": "string", "minLength": 1},
+        "why": {"type": "string", "minLength": 1},
+        "why_source": {"$ref": "common.schema.json#/$defs/source"},
+        "prep": {"type": "string", "minLength": 1},
+        "prep_source": {"$ref": "common.schema.json#/$defs/source"},
+        "example": {
+          "type": "object",
+          "required": ["source", "conclusion", "paths"],
+          "properties": {
+            "source": {"$ref": "common.schema.json#/$defs/source"},
+            "conclusion": {"type": "string", "minLength": 1},
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["order", "path", "source"],
+                "properties": {
+                  "order": {"type": "integer", "minimum": 1},
+                  "path": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "clue_principle": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "skills", "gains", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "skills": {"type": "string", "minLength": 1},
+          "gains": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "scene_hint": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "board": {
+      "type": "object",
+      "required": ["source", "steps", "responses", "note"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "step", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "step": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "effect", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "object",
+          "required": ["rule", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "misdirection": {
+      "type": "object",
+      "required": ["source", "rules"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "time_pressure": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "mechanic", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "mechanic": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

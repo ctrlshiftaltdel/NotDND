@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.social）",
+  "description": "互动层第二节：交涉论战——启用条件、立场/说服点公式、玩家行动 6、NPC 应对 5、立场归零、好感与敬畏、论证四路径、轻量版。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "use_rule", "setup", "player_actions", "npc_responses", "zero_stance", "relation_meters", "relation_effects", "argument_paths", "gm_duty", "light_version"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.social"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["use_conditions", "player_actions", "npc_responses", "relation_meters", "argument_paths", "light_outcomes"],
+      "properties": {
+        "use_conditions": {"const": 3},
+        "player_actions": {"const": 6},
+        "npc_responses": {"const": 5},
+        "relation_meters": {"const": 2},
+        "argument_paths": {"const": 4},
+        "light_outcomes": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "use_rule": {
+      "type": "object",
+      "required": ["source", "threshold", "conditions"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "threshold": {"type": "string", "minLength": 1},
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "condition", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "condition": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "setup": {
+      "type": "object",
+      "required": ["source", "stance_formula", "persuasion_points_start"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "stance_formula": {"type": "string", "minLength": 1},
+        "persuasion_points_start": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "player_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "cost", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "cost": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "npc_responses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "condition", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "condition": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "zero_stance": {
+      "type": "object",
+      "required": ["source", "rule", "effects"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rule": {"type": "string", "minLength": 1},
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "effect", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "relation_meters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "range", "meaning", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "range": {"type": "string", "minLength": 1},
+          "meaning": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "relation_effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "effect", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "argument_paths": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "skills", "effective_on", "ineffective_on", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "skills": {"type": "string", "minLength": 1},
+          "effective_on": {"type": "string", "minLength": 1},
+          "ineffective_on": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "gm_duty": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "light_version": {
+      "type": "object",
+      "required": ["source", "check", "outcomes", "recommendation", "recommendation_source"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "check": {"type": "string", "minLength": 1},
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["band", "result", "source"],
+            "properties": {
+              "band": {"type": "string", "minLength": 1},
+              "result": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "recommendation": {"type": "string", "minLength": 1},
+        "recommendation_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

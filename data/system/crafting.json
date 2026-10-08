@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "kind": "system.crafting",
+  "source": "docs/system/03-互动层.md:265",
+  "note": "工艺与制造：让「我造东西」成为一条可行的角色路线，而不只是一句设定。",
+  "declared": {
+    "components": 3,
+    "item_tiers": 4,
+    "quality_grades": 5,
+    "modifications": 5,
+    "world_flavors": 3,
+    "max_mods_per_item": 3
+  },
+  "components": {
+    "source": "docs/system/03-互动层.md:271",
+    "items": [
+      {"id": "blueprint", "name": "蓝图", "detail": "可以从势力、导师、废墟、数据库中获得；稀有度分为 普通 / 进阶 / 稀有 / 唯一。", "source": "docs/system/03-互动层.md:273"},
+      {"id": "material", "name": "材料", "detail": "从场景中获取，或从市场购买；材料有自己的品质等级（-1 / +0 / +1）。", "source": "docs/system/03-互动层.md:275"},
+      {"id": "worktime", "name": "工时", "detail": "以「工作时段」为单位，每个等级的物品需要不同工时。", "source": "docs/system/03-互动层.md:277"}
+    ],
+    "blueprint_rarities": ["普通", "进阶", "稀有", "唯一"],
+    "blueprint_rarity_source": "docs/system/03-互动层.md:273",
+    "material_qualities": ["-1", "+0", "+1"],
+    "material_quality_source": "docs/system/03-互动层.md:275"
+  },
+  "tiers": [
+    {"id": "simple", "name": "简易", "examples": "绳子、陷阱、简易药品", "worktime": "1 时段", "craft_df": 10, "requirement": "无", "source": "docs/system/03-互动层.md:281"},
+    {"id": "standard", "name": "标准", "examples": "常规武器、通信设备、护符", "worktime": "3 时段", "craft_df": 13, "requirement": "工作台", "source": "docs/system/03-互动层.md:282"},
+    {"id": "fine", "name": "精良", "examples": "改造武器、专业设备、共鸣增幅器", "worktime": "1 天（3 时段）", "craft_df": 16, "requirement": "专业工坊", "source": "docs/system/03-互动层.md:283"},
+    {"id": "masterwork", "name": "杰作", "examples": "独一无二的作品", "worktime": "3 天", "craft_df": 19, "requirement": "稀有材料 + 专业工坊 + 一次灵感场景", "source": "docs/system/03-互动层.md:284"}
+  ],
+  "quality_grades": [
+    {"id": "triumph", "outcome": "凯旋", "name": "杰作品质", "effect": "伤害／效果 +2，或一枚额外插槽（构建引擎）", "source": "docs/system/03-互动层.md:292"},
+    {"id": "success", "outcome": "成功", "name": "精良品质", "effect": "伤害／效果 +1", "source": "docs/system/03-互动层.md:293"},
+    {"id": "narrow", "outcome": "险成", "name": "标准品质", "effect": "按蓝图数值", "source": "docs/system/03-互动层.md:294"},
+    {"id": "setback", "outcome": "挫败", "name": "粗糙品质", "effect": "数值 −1，且每次使用场景故障时 d20 掷 1–2 触发故障", "source": "docs/system/03-互动层.md:295"},
+    {"id": "disaster", "outcome": "灾难", "name": "失败品", "effect": "材料损失一半，且可能在使用时反噬", "source": "docs/system/03-互动层.md:296"}
+  ],
+  "modifications": [
+    {"id": "sight", "name": "加装瞄准／校准", "df": 13, "effect": "远程武器 +1 骰或 −1 DF", "source": "docs/system/03-互动层.md:304"},
+    {"id": "plating", "name": "加装护片", "df": 12, "effect": "护甲 Guard +1，移动 −1 米", "source": "docs/system/03-互动层.md:305"},
+    {"id": "elemental", "name": "元素镀层", "df": 15, "effect": "攻击获得某个伤害标签（火焰／电击／腐蚀等）", "source": "docs/system/03-互动层.md:306"},
+    {"id": "lightening", "name": "减轻结构", "df": 14, "effect": "移除【重装】标签或减负载", "source": "docs/system/03-互动层.md:307"},
+    {"id": "slot", "name": "模块插槽（构建引擎）", "df": 17, "effect": "为该物品增加 1 个符纹插槽", "source": "docs/system/03-互动层.md:308"}
+  ],
+  "mod_limit": {
+    "max": 3,
+    "rule": "每个物品最多 3 次改造，之后结构不稳定；这条限制防止一件武器成长为吞食所有资源的黑洞。",
+    "source": "docs/system/03-互动层.md:310"
+  },
+  "world_flavors": [
+    {"world": "阈界都市", "craft_name": "共鸣调谐", "trait": "制作过程可能引入不稳定的【共鸣】副作用", "source": "docs/system/03-互动层.md:316"},
+    {"world": "余烬纪元", "craft_name": "符文锻造", "trait": "与沉默的神祇残余共鸣，成功率受月相影响", "source": "docs/system/03-互动层.md:317"},
+    {"world": "熵网", "craft_name": "义体改装", "trait": "每次改装都涉及身体的取舍（牺牲某个属性换取功能）", "source": "docs/system/03-互动层.md:318"}
+  ]
+}

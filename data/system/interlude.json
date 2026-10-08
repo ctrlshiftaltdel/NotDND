@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "kind": "system.interlude",
+  "source": "docs/system/03-互动层.md:517",
+  "note": "休整与间幕：间幕时机、间幕行动 9、并行叙事 Vignette、时间跳跃与章节结构。",
+  "declared": {
+    "timing_triggers": 3,
+    "actions": 9,
+    "vignette_examples": 4,
+    "time_skip_steps": 4,
+    "chapter_lines": 4
+  },
+  "timing": {
+    "source": "docs/system/03-互动层.md:521",
+    "triggers": [
+      {"order": 1, "trigger": "每次会话结束时；", "source": "docs/system/03-互动层.md:523"},
+      {"order": 2, "trigger": "每个章节结束时（大修整）；", "source": "docs/system/03-互动层.md:524"},
+      {"order": 3, "trigger": "剧情中出现超过一周的时间跳跃时。", "source": "docs/system/03-互动层.md:525"}
+    ]
+  },
+  "action_budget": {
+    "per_interlude": 1,
+    "per_grand_interlude": 2,
+    "rule": "每位角色在间幕中可以选择一项行动（大修整可以选择两项）。",
+    "source": "docs/system/03-互动层.md:529"
+  },
+  "actions": [
+    {"id": "train", "name": "训练", "effect": "学习一项新机动或能力；需要找到导师或资料", "source": "docs/system/03-互动层.md:533"},
+    {"id": "recover", "name": "康复", "effect": "移除一层创伤或降低负担 1 点", "source": "docs/system/03-互动层.md:534"},
+    {"id": "socialize", "name": "社交", "effect": "提升与某个 NPC 的羁绊，或结识新关系（掷一次决定结果）", "source": "docs/system/03-互动层.md:535"},
+    {"id": "side_job", "name": "副业", "effect": "赚取收入，金额由相关技能判定决定", "source": "docs/system/03-互动层.md:536"},
+    {"id": "craft", "name": "制作", "effect": "进行一次工艺活动（见第 4 节）", "source": "docs/system/03-互动层.md:537"},
+    {"id": "research", "name": "研究", "effect": "针对一个明确的问题推进调查，导引者必须给出实际进展", "source": "docs/system/03-互动层.md:538"},
+    {"id": "repay", "name": "偿还", "effect": "处理债务、人情或遗留问题", "source": "docs/system/03-互动层.md:539"},
+    {"id": "maintain_bond", "name": "维护关系", "effect": "防止关系衰减，或者主动修复一段恶化的关系", "source": "docs/system/03-互动层.md:540"},
+    {"id": "personal", "name": "个人事务", "effect": "一个有叙事意义但不涉及主要剧情的目标（例如：回家参加葬礼、寻找失散的亲人）", "source": "docs/system/03-互动层.md:541"}
+  ],
+  "personal_note": {
+    "rule": "「个人事务」是最被低估的选项：它给了 AI 主持人一个天然的机会去创造只属于某个角色的支线，这是让玩家感到被看见的最佳手段。",
+    "source": "docs/system/03-互动层.md:543"
+  },
+  "vignette": {
+    "source": "docs/system/03-互动层.md:547",
+    "length": "100–200 字",
+    "examples": [
+      {"order": 1, "example": "训练过程中的一个失败与领悟；", "source": "docs/system/03-互动层.md:549"},
+      {"order": 2, "example": "与某个 NPC 的一次简短互动；", "source": "docs/system/03-互动层.md:550"},
+      {"order": 3, "example": "一个与主线无关的、揭示角色私生活的瞬间；", "source": "docs/system/03-互动层.md:551"},
+      {"order": 4, "example": "一个伏笔的暗示。", "source": "docs/system/03-互动层.md:552"}
+    ],
+    "note": {
+      "rule": "这些小场景片段不需要掷骰，但它们决定了这场战役在玩家记忆里是「一串任务」还是「一段人生」。",
+      "source": "docs/system/03-互动层.md:554"
+    }
+  },
+  "time_skip": {
+    "source": "docs/system/03-互动层.md:558",
+    "steps": [
+      {"order": 1, "step": "导引者宣布跳过的时间长度；", "source": "docs/system/03-互动层.md:560"},
+      {"order": 2, "step": "每位玩家简要描述这段时间自己做了什么（一句话即可）；", "source": "docs/system/03-互动层.md:561"},
+      {"order": 3, "step": "导引者为这段时间发生的世界变化做一次概述（一到三个要点）；", "source": "docs/system/03-互动层.md:562"},
+      {"order": 4, "step": "结算：维护费、关系衰减、负担恢复、势力的动静。", "source": "docs/system/03-互动层.md:563"}
+    ]
+  },
+  "chapter_structure": {
+    "source": "docs/system/03-互动层.md:568",
+    "lines": [
+      {"order": 1, "line": "一个章节 = 3–5 次会话", "source": "docs/system/03-互动层.md:568"},
+      {"order": 2, "line": "= 一条主线 + 1–2 条个人支线", "source": "docs/system/03-互动层.md:569"},
+      {"order": 3, "line": "= 一个明确的起承转合", "source": "docs/system/03-互动层.md:570"},
+      {"order": 4, "line": "= 结束时：1 次升级 + 1 次大修整", "source": "docs/system/03-互动层.md:571"}
+    ]
+  }
+}

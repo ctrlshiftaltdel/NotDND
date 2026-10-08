@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "system.travel",
+  "source": "docs/system/03-互动层.md:42",
+  "note": "行程与移动裁定：按距离与危险度分四档；迷路不应当是惩罚，而应当是岔路。",
+  "declared": {"routes": 4},
+  "routes": [
+    {"id": "short", "name": "短程", "scope": "同城一个区到另一个区", "duration": "1 时段", "check": "无，或特殊情况下的人脉／熟悉度判定", "source": "docs/system/03-互动层.md:46"},
+    {"id": "medium", "name": "中程", "scope": "跨城、郊外深入", "duration": "半天（2 时段）", "check": "导航 DF 12 或载具操作", "source": "docs/system/03-互动层.md:47"},
+    {"id": "long", "name": "远程", "scope": "荒野、穿越被封锁的区域", "duration": "全天 +", "check": "生存 DF 14，且每段行程都做风险判定", "source": "docs/system/03-互动层.md:48"},
+    {"id": "dangerous", "name": "危险穿越", "scope": "敌区、阈界裂隙、雷区", "duration": "视情况", "check": "潜行／生存 DF 16，每 1 时段一次风险判定", "source": "docs/system/03-互动层.md:49"}
+  ],
+  "lost_rules": {
+    "source": "docs/system/03-互动层.md:70",
+    "rules": [
+      {"order": 1, "rule": "导航失败时不要让队伍原地打转，而是让他们到达一个意料之外但有趣的地方。", "source": "docs/system/03-互动层.md:72"},
+      {"order": 2, "rule": "迷路消耗 1 个时段，并给风险池增加 1 枚标记。", "source": "docs/system/03-互动层.md:73"},
+      {"order": 3, "rule": "拥有【本土人物】类背景标签的角色，在其熟悉区域自动免除导航判定。", "source": "docs/system/03-互动层.md:74"}
+    ]
+  }
+}

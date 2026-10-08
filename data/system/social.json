@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "kind": "system.social",
+  "source": "docs/system/03-互动层.md:103",
+  "note": "交涉论战：把重要的交涉做成一场与战斗同等结构的交锋——有立场、有防御、有资源消耗、有取舍。",
+  "declared": {
+    "use_conditions": 3,
+    "player_actions": 6,
+    "npc_responses": 5,
+    "relation_meters": 2,
+    "argument_paths": 4,
+    "light_outcomes": 4
+  },
+  "use_rule": {
+    "source": "docs/system/03-互动层.md:110",
+    "threshold": "满足任意两条即可启用",
+    "conditions": [
+      {"order": 1, "condition": "这次交涉的结果会影响剧情走向；", "source": "docs/system/03-互动层.md:114"},
+      {"order": 2, "condition": "对方有理由拒绝你；", "source": "docs/system/03-互动层.md:115"},
+      {"order": 3, "condition": "你有超过一种说服路径可以选择。", "source": "docs/system/03-互动层.md:116"}
+    ]
+  },
+  "setup": {
+    "source": "docs/system/03-互动层.md:121",
+    "stance_formula": "对方立场 = 10 + (对方的心智或气场) + 场景修正",
+    "persuasion_points_start": 3
+  },
+  "player_actions": [
+    {"id": "argue", "name": "论证", "cost": "1 点", "effect": "进行一次说服／统率／分析判定。成功则削减对方立场 1d6 + 你的气场修正", "source": "docs/system/03-互动层.md:129"},
+    {"id": "pressure", "name": "施压", "cost": "1 点", "effect": "进行威胁判定。成功则削减 1d8，但对方好感 −1", "source": "docs/system/03-互动层.md:130"},
+    {"id": "empathize", "name": "共感", "cost": "1 点", "effect": "进行共感判定。成功则不削减立场，但发现对方的一个 Lever（软肋论点），使下一次论证对该论点获得 +2 骰", "source": "docs/system/03-互动层.md:131"},
+    {"id": "disguise", "name": "伪装", "cost": "1 点", "effect": "进行欺骗判定。成功则你的下一次行动获得 +2 骰；失败则对方立场 +2 且你的说服力永久受损", "source": "docs/system/03-互动层.md:132"},
+    {"id": "concede", "name": "让步", "cost": "0 点", "effect": "提出一个具体的利益交换。对方立场削减 1d10，但你欠对方一个明确的人情或资源（写入账本）", "source": "docs/system/03-互动层.md:133"},
+    {"id": "withdraw", "name": "收手", "cost": "—", "effect": "终止交涉，维持当前关系等级", "source": "docs/system/03-互动层.md:134"}
+  ],
+  "npc_responses": [
+    {"id": "rebut", "name": "反驳", "condition": "常规", "effect": "对方掷一次对抗；若赢过你，你的说服点 −1", "source": "docs/system/03-互动层.md:140"},
+    {"id": "hold", "name": "坚守", "condition": "立场低于一半", "effect": "对方立场 +1d6（相当于恢复）", "source": "docs/system/03-互动层.md:141"},
+    {"id": "counter", "name": "反问", "condition": "你使用了伪装", "effect": "你必须立即回应一次欺骗或分析，失败则交涉立即破裂", "source": "docs/system/03-互动层.md:142"},
+    {"id": "concede", "name": "让步", "condition": "立场低于 1/4", "effect": "对方提出一项让步；你可以接受并终止，或拒绝并继续（此时对方立场 +0，且你获得 1 点额外说服点）", "source": "docs/system/03-互动层.md:143"},
+    {"id": "rupture", "name": "破裂", "condition": "你好感低于 −2", "effect": "对方终止交涉，且此次相遇的所有后续判定 +3 难度", "source": "docs/system/03-互动层.md:144"}
+  ],
+  "zero_stance": {
+    "source": "docs/system/03-互动层.md:148",
+    "rule": "立场降到 0 时，对方接受你的核心诉求。",
+    "effects": [
+      {"order": 1, "effect": "接受不等于喜欢。你可以得到他的协助，同时让他敬畏 −2；", "source": "docs/system/03-互动层.md:150"},
+      {"order": 2, "effect": "导引者应当演出对方「不得不答应」时的具体反应——这是最有戏的部分；", "source": "docs/system/03-互动层.md:151"},
+      {"order": 3, "effect": "若对方的敬畏低于 −2，他可能会事后报复，或者在下个场景中反悔。", "source": "docs/system/03-互动层.md:152"}
+    ]
+  },
+  "relation_meters": [
+    {"id": "affinity", "name": "好感", "en": "Affinity", "range": "−3 ~ +3", "meaning": "他喜欢你吗", "source": "docs/system/03-互动层.md:160"},
+    {"id": "awe", "name": "敬畏", "en": "Awe", "range": "−3 ~ +3", "meaning": "他怕你／敬你吗", "source": "docs/system/03-互动层.md:161"}
+  ],
+  "relation_effects": [
+    {"order": 1, "effect": "好感高，对方会主动提供额外帮助与信息；", "source": "docs/system/03-互动层.md:165"},
+    {"order": 2, "effect": "敬畏高，对方不会轻易反对你，但也不会真心帮你；", "source": "docs/system/03-互动层.md:166"},
+    {"order": 3, "effect": "两者皆低，对方会敷衍甚至暗中使坏；", "source": "docs/system/03-互动层.md:167"},
+    {"order": 4, "effect": "两者皆高，这是最稳固也最珍贵的关系。", "source": "docs/system/03-互动层.md:168"}
+  ],
+  "argument_paths": [
+    {"id": "interest", "name": "利益", "skills": "说服 / 分析", "effective_on": "商人、官僚、务实者", "ineffective_on": "理想主义者、狂热者", "source": "docs/system/03-互动层.md:176"},
+    {"id": "duty", "name": "道义", "skills": "说服 / 统率", "effective_on": "有信念者、守卫、英雄型", "ineffective_on": "犬儒者、绝望者", "source": "docs/system/03-互动层.md:177"},
+    {"id": "fear", "name": "恐惧", "skills": "威胁 / 统率", "effective_on": "胆怯者、有弱点被抓住者", "ineffective_on": "无所畏惧者、已有退路者", "source": "docs/system/03-互动层.md:178"},
+    {"id": "emotion", "name": "情感", "skills": "共感 / 表演", "effective_on": "有软肋者、孤独者", "ineffective_on": "冷漠者、高度纪律者", "source": "docs/system/03-互动层.md:179"}
+  ],
+  "gm_duty": {
+    "rule": "在 NPC 描述中明确写出「哪种论证对他有效 / 无效」，让玩家的「侦探出他的软肋」变成一个可获益的策略步骤。",
+    "source": "docs/system/03-互动层.md:181"
+  },
+  "light_version": {
+    "source": "docs/system/03-互动层.md:185",
+    "check": "进行一次说服判定",
+    "outcomes": [
+      {"band": "R ≥ +6", "result": "对方接受 + 主动提供额外帮助", "source": "docs/system/03-互动层.md:189"},
+      {"band": "R ≥ 0", "result": "对方接受", "source": "docs/system/03-互动层.md:190"},
+      {"band": "R = -1", "result": "对方接受但你欠一个人情", "source": "docs/system/03-互动层.md:191"},
+      {"band": "R ≤ -3", "result": "对方拒绝且情况恶化", "source": "docs/system/03-互动层.md:192"}
+    ],
+    "recommendation": "轻量版用于日常 NPC；完整论战用于重要 NPC 与剧情关键时刻。同一个会话里通常只进行 1–2 场完整论战。",
+    "recommendation_source": "docs/system/03-互动层.md:195"
+  }
+}

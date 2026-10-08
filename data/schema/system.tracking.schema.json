@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tracking）",
+  "description": "互动层第一节：追踪 DF 表（5 级新鲜度）与成功/失败后果。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "levels", "consequences"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tracking"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["freshness_levels"],
+      "properties": {
+        "freshness_levels": {"const": 5}
+      },
+      "additionalProperties": false
+    },
+    "levels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "freshness", "df", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "freshness": {"type": "string", "minLength": 1},
+          "df": {"type": "integer", "minimum": 1},
+          "note": {"type": "string"},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "consequences": {
+      "type": "object",
+      "required": ["success", "failure", "source"],
+      "properties": {
+        "success": {"type": "string", "minLength": 1},
+        "failure": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

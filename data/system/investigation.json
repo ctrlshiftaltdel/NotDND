@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "kind": "system.investigation",
+  "source": "docs/system/03-互动层.md:199",
+  "note": "调查与线索：三线索法则、四种调查动作、推理板、误导线索与时间压力。",
+  "declared": {
+    "rule_of_three_paths": 3,
+    "actions": 4,
+    "board_responses": 3,
+    "pressure_types": 4
+  },
+  "three_clue_rule": {
+    "source": "docs/system/03-互动层.md:203",
+    "statement": "每一条玩家需要知道的结论，都应当至少有 3 条独立的途径可以获得它。",
+    "why": "这条法则是 AI 主持人最重要的安全网：它防止「玩家没找到那个唯一的线索导致整个故事卡死」。",
+    "why_source": "docs/system/03-互动层.md:205",
+    "prep": "导引者应当在准备阶段就把关键结论列出来，并为每条列出三条途径。",
+    "prep_source": "docs/system/03-互动层.md:207",
+    "example": {
+      "source": "docs/system/03-互动层.md:210",
+      "conclusion": "货柜 B7 里装的是活体，不是机械",
+      "paths": [
+        {"order": 1, "path": "贿赂码头调度员查看清单", "source": "docs/system/03-互动层.md:211"},
+        {"order": 2, "path": "夜袭货柜，直接看到", "source": "docs/system/03-互动层.md:212"},
+        {"order": 3, "path": "追踪那辆运输车的行驶路线，终点是生物处理厂", "source": "docs/system/03-互动层.md:213"}
+      ]
+    }
+  },
+  "clue_principle": {
+    "rule": "关键线索永远不藏在判定后面。玩家主动搜查时，只要线索确实在这里就应当找到，只是需要付出时间；判定只决定额外收益（找到得多快、有没有顺手拿到别的东西、有没有留下痕迹）。",
+    "source": "docs/system/03-互动层.md:218"
+  },
+  "actions": [
+    {"id": "survey", "name": "勘察现场", "skills": "察觉", "gains": "物理痕迹、遗留物、异常之处", "source": "docs/system/03-互动层.md:224"},
+    {"id": "interview", "name": "访谈知情人", "skills": "说服 / 人脉 / 共感", "gains": "口述信息、传闻、动机", "source": "docs/system/03-互动层.md:225"},
+    {"id": "records", "name": "调阅记录", "skills": "数据 / 分析 / 历史", "gains": "文档、时序、矛盾点", "source": "docs/system/03-互动层.md:226"},
+    {"id": "reproduce", "name": "复现与实验", "skills": "科学 / 技术 / 分析", "gains": "验证假设，排除不可能", "source": "docs/system/03-互动层.md:227"}
+  ],
+  "scene_hint": {
+    "rule": "一个有价值的调查场景应当至少包含两种动作路径，让不同技能类型的角色都能发光。",
+    "source": "docs/system/03-互动层.md:229"
+  },
+  "board": {
+    "source": "docs/system/03-互动层.md:231",
+    "steps": [
+      {"order": 1, "step": "每条获得的线索都写上去；", "source": "docs/system/03-互动层.md:235"},
+      {"order": 2, "step": "玩家可以自由提交假设；", "source": "docs/system/03-互动层.md:236"},
+      {"order": 3, "step": "导引者收到假设后必须回应以下三者之一。", "source": "docs/system/03-互动层.md:237"}
+    ],
+    "responses": [
+      {"id": "valid", "name": "成立", "effect": "这确实就是答案（或非常接近）；", "source": "docs/system/03-互动层.md:238"},
+      {"id": "need_more", "name": "需要更多证据", "effect": "指出还需要哪一种线索；", "source": "docs/system/03-互动层.md:239"},
+      {"id": "invalid", "name": "不成立", "effect": "诚实指出它不成立，并说明为何（给出反证的线索）。", "source": "docs/system/03-互动层.md:240"}
+    ],
+    "note": {
+      "rule": "永远不要用「你自己猜吧」来回应；AI 主持人最常见的失误就是把推理环节变成让玩家自言自语。",
+      "source": "docs/system/03-互动层.md:242"
+    }
+  },
+  "misdirection": {
+    "source": "docs/system/03-互动层.md:246",
+    "rules": [
+      {"order": 1, "rule": "导引者可以给出误导性线索，但必须留下可被发现的矛盾；", "source": "docs/system/03-互动层.md:248"},
+      {"order": 2, "rule": "玩家用「分析」或「直觉」判定可以发现矛盾（DF 14）；", "source": "docs/system/03-互动层.md:249"},
+      {"order": 3, "rule": "被误导应当带来有趣的岔路，而不是纯粹的损失。", "source": "docs/system/03-互动层.md:250"}
+    ]
+  },
+  "time_pressure": [
+    {"id": "hunter", "name": "追捕者", "mechanic": "每 2 个时段，追捕者向你们逼近一步", "source": "docs/system/03-互动层.md:258"},
+    {"id": "deadline", "name": "截止期限", "mechanic": "N 个时段后机会消失", "source": "docs/system/03-互动层.md:259"},
+    {"id": "deterioration", "name": "恶化", "mechanic": "受害者状况每时段恶化，影响结局质量", "source": "docs/system/03-互动层.md:260"},
+    {"id": "rival", "name": "竞争", "mechanic": "另一组人也在查同一件事，进度并行推进", "source": "docs/system/03-互动层.md:261"}
+  ]
+}
