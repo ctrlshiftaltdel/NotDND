@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_combat）",
+  "description": "战术引擎第五、六节：攻击流程、攻击结果等级 5 档、严重失手 d6 表 6、伤害骰规则、掩体 4 档与损坏规则、先攻公式与敌人分组行动。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "attack_flow", "attack_grades", "fumble", "damage", "cover", "cover_damage", "initiative"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_combat"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["attack_grades", "fumble_rows", "cover_tiers"],
+      "properties": {
+        "attack_grades": {"const": 5},
+        "fumble_rows": {"const": 6},
+        "cover_tiers": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "attack_flow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "step", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "step": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "attack_grades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "condition", "name", "en", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "condition": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "fumble": {
+      "type": "object",
+      "required": ["trigger", "effects", "die", "rows", "simplified", "source"],
+      "properties": {
+        "trigger": {"type": "string", "minLength": 1},
+        "effects": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["roll", "consequence", "source"],
+            "properties": {
+              "roll": {"type": "integer", "minimum": 1},
+              "consequence": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "simplified": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "damage": {
+      "type": "object",
+      "required": ["note", "weapon_classes"],
+      "properties": {
+        "note": {"type": "string", "minLength": 1},
+        "weapon_classes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "bonus_rule", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "bonus_rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "cover": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "guard_bonus", "restriction", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "guard_bonus": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+          "restriction": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "cover_damage": {
+      "type": "object",
+      "required": ["margin_max", "rule", "source"],
+      "properties": {
+        "margin_max": {"type": "integer", "minimum": 0},
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "initiative": {
+      "type": "object",
+      "required": ["formula", "rules", "ambush", "enemy_grouping", "source"],
+      "properties": {
+        "formula": {"type": "string", "minLength": 1},
+        "rules": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "ambush": {"type": "string", "minLength": 1},
+        "enemy_grouping": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

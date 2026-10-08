@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactics_disciplines",
+  "source": "docs/system/02A-战术引擎.md:360",
+  "declared": {
+    "disciplines": 6,
+    "layers": 5,
+    "abilities_per_layer": 2,
+    "abilities": 60
+  },
+  "rules": {
+    "layers": 5,
+    "per_layer": 2,
+    "unlock": "你可以在该流派中投资成长选择解锁更高层能力；要达到第 N 层，需要已拥有至少 (N−1) 项本流派能力。",
+    "cross_branch": "角色在 1 级选择 1 个流派，每 2 级可以跨流派分支一次（可选择第二个流派的低级能力）。",
+    "source": "docs/system/02A-战术引擎.md:364"
+  },
+  "disciplines": [
+    {
+      "id": "edge", "name": "锋刃", "en": "Edge", "role": "近战爆发／追打", "feel": "越打越强，惩罚任何犹豫",
+      "source": "docs/system/02A-战术引擎.md:370",
+      "abilities": [
+        {"layer": 1, "name": "追猎本能", "effect": "你对上一次攻击过的敌人再次攻击时 +1 骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:383"},
+        {"layer": 1, "name": "压迫姿态", "effect": "你的暴击额外造成 1 层【失衡】", "capstone": false, "source": "docs/system/02A-战术引擎.md:384"},
+        {"layer": 2, "name": "连击", "effect": "同一回合内对同一目标的第二及后续攻击各 +1 骰（最多 +3）", "capstone": false, "source": "docs/system/02A-战术引擎.md:385"},
+        {"layer": 2, "name": "破军一击", "effect": "花费 3 AP：一次攻击，若命中则目标承受额外一次武器伤害骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:386"},
+        {"layer": 3, "name": "血勇", "effect": "你每累计受到 10 点伤害，下一次攻击 +1 骰（每场战斗最多 +3）", "capstone": false, "source": "docs/system/02A-战术引擎.md:387"},
+        {"layer": 3, "name": "不竭追击", "effect": "当你击倒一个敌人时，立即恢复 1 AP", "capstone": false, "source": "docs/system/02A-战术引擎.md:388"},
+        {"layer": 4, "name": "视线所及", "effect": "当敌人离开你的攻击范围时，你可以立即移动至多一半速度进行追击", "capstone": false, "source": "docs/system/02A-战术引擎.md:389"},
+        {"layer": 4, "name": "终结技", "effect": "花费 3 AP + 专注 3：对一名处于【破韧】或活力低于 1/4 的目标攻击，若命中则必定暴击且伤害骰 +1 阶", "capstone": true, "source": "docs/system/02A-战术引擎.md:390"},
+        {"layer": 5, "name": "刃舞", "effect": "每回合一次，你可以把一次对你落空的攻击改为命中", "capstone": false, "source": "docs/system/02A-战术引擎.md:391"},
+        {"layer": 5, "name": "无人可挡", "effect": "你在同一个回合内击倒 2 个以上敌人时，可以立即再获得完整的一个回合（每场战斗一次）", "capstone": false, "source": "docs/system/02A-战术引擎.md:392"}
+      ]
+    },
+    {
+      "id": "bulwark", "name": "铁壁", "en": "Bulwark", "role": "保护／抗打击", "feel": "站在原地变成了一种战术选择",
+      "source": "docs/system/02A-战术引擎.md:371",
+      "abilities": [
+        {"layer": 1, "name": "坚守", "effect": "你在守势姿态下额外 +1 防护，且移动不再是 0", "capstone": false, "source": "docs/system/02A-战术引擎.md:398"},
+        {"layer": 1, "name": "盾墙", "effect": "使用盾牌或厚护甲时，你的所有豁免 +1 枚助势骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:399"},
+        {"layer": 2, "name": "援护反应", "effect": "花费你的反应：把一次对队友的攻击改为针对你（见 CORE 第 6 节反应表）", "capstone": false, "source": "docs/system/02A-战术引擎.md:400"},
+        {"layer": 2, "name": "稳固地步", "effect": "你免疫推撞、绊摔与任何形式的强制位移，除非该效果源自比你体型大一级的单位", "capstone": false, "source": "docs/system/02A-战术引擎.md:401"},
+        {"layer": 3, "name": "反震", "effect": "当近战攻击对你落空时，攻击者自动获得 1 层【失衡】", "capstone": false, "source": "docs/system/02A-战术引擎.md:402"},
+        {"layer": 3, "name": "钢筋铁骨", "effect": "你的活力上限 +10；每次长歇额外恢复 1d8", "capstone": false, "source": "docs/system/02A-战术引擎.md:403"},
+        {"layer": 4, "name": "挑衅专精", "effect": "你的挑衅自动成功（对心智类免疫者除外），并可以同时挑衅两个目标", "capstone": false, "source": "docs/system/02A-战术引擎.md:404"},
+        {"layer": 4, "name": "不动如山", "effect": "每场战斗一次，你可以宣布进入不动状态：移动降为 0，防护 +4，并免疫本场首次施加于你的任意一个状态", "capstone": true, "source": "docs/system/02A-战术引擎.md:405"},
+        {"layer": 5, "name": "化身壁垒", "effect": "花费 3 AP + 专注 3：在你的相邻区域制造一个“不可通过”的屏障（10 点活力），持续到被破坏", "capstone": false, "source": "docs/system/02A-战术引擎.md:406"},
+        {"layer": 5, "name": "共鸣守护", "effect": "任何针对与你相邻的队友的攻击，你都可以替其承受一半伤害（不消耗反应）", "capstone": false, "source": "docs/system/02A-战术引擎.md:407"}
+      ]
+    },
+    {
+      "id": "stalker", "name": "游猎", "en": "Stalker", "role": "远程／机动／预设", "feel": "让敌人进入你安排好的地方",
+      "source": "docs/system/02A-战术引擎.md:372",
+      "abilities": [
+        {"layer": 1, "name": "猎手的耐心", "effect": "你若上一回合未攻击，本回合首次远程攻击 +2 骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:413"},
+        {"layer": 1, "name": "地形适应者", "effect": "你在任何非城市地形中都可以获得轻掩体（即使没有遮蔽物）", "capstone": false, "source": "docs/system/02A-战术引擎.md:414"},
+        {"layer": 2, "name": "预设陷阱", "effect": "花费 2 AP：设置一个陷阱，敌人进入时触发，造成 1d10 + 【束缚】（每场一次，或消耗随身道具）", "capstone": false, "source": "docs/system/02A-战术引擎.md:415"},
+        {"layer": 2, "name": "致命预判", "effect": "你对处于移动中、或刚脱离掩体的目标发动攻击时 +1 枚助势骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:416"},
+        {"layer": 3, "name": "双重疑难区", "effect": "你的压制射击可以覆盖两个相邻区域", "capstone": false, "source": "docs/system/02A-战术引擎.md:417"},
+        {"layer": 3, "name": "鹰眼", "effect": "你的远程攻击射程翻倍（若武器有最小射程要求则取消该要求）", "capstone": false, "source": "docs/system/02A-战术引擎.md:418"},
+        {"layer": 4, "name": "猎杀标记", "effect": "花费 1 AP：标记一个目标，你对它的攻击 +1 枚助势骰，且它无法对你进入隐匿状态（持续到目标脱离你的视线）", "capstone": false, "source": "docs/system/02A-战术引擎.md:419"},
+        {"layer": 4, "name": "一击必杀", "effect": "花费 3 AP + 专注 2：一次远程攻击，若目标未察觉你，则本次攻击必定暴击并额外造成 2 层【流血】", "capstone": true, "source": "docs/system/02A-战术引擎.md:420"},
+        {"layer": 5, "name": "追踪者", "effect": "你可以在移动后仍保有掩护射击的机会，且你的巡查动作可以发现地图上所有隐藏的敌人", "capstone": false, "source": "docs/system/02A-战术引擎.md:421"},
+        {"layer": 5, "name": "荒野之主", "effect": "你在所选地形（森林／城市／废墟／雪原）中获得【隐形】级伪装能力（静止时视为隐匿）", "capstone": false, "source": "docs/system/02A-战术引擎.md:422"}
+      ]
+    },
+    {
+      "id": "adept", "name": "秘法", "en": "Adept", "role": "控场／能力运用", "feel": "用一个法术改写整个回合的结构",
+      "note": "秘法之道在世界模组中会转型为具体的魔法／共鸣／协议体系。此处只给出通用的机械外壳。",
+      "source": "docs/system/02A-战术引擎.md:373",
+      "abilities": [
+        {"layer": 1, "name": "专注调控", "effect": "你的专注上限 +2", "capstone": false, "source": "docs/system/02A-战术引擎.md:430"},
+        {"layer": 1, "name": "施法准备", "effect": "你在未遭受伤害的完整回合后，可以免费提前支付一个能力的专注消耗（该能力在下一回合视为已支付）", "capstone": false, "source": "docs/system/02A-战术引擎.md:431"},
+        {"layer": 2, "name": "双元施放", "effect": "每场战斗一次，你的一个能力目标可以 +1（或将单次目标变为 3 米小范围）", "capstone": false, "source": "docs/system/02A-战术引擎.md:432"},
+        {"layer": 2, "name": "过载施放", "effect": "你可以额外支付 2 点专注，令一个能力的所有效果 +25% 或范围扩大一倍", "capstone": false, "source": "docs/system/02A-战术引擎.md:433"},
+        {"layer": 3, "name": "反制", "effect": "花费你的反应：当敌人施放能力时进行一次对抗（d20 + 心智），成功则该能力被中断", "capstone": false, "source": "docs/system/02A-战术引擎.md:434"},
+        {"layer": 3, "name": "持续专注", "effect": "你的持续型能力在你遭受伤害时不需要额外豁免即可维持", "capstone": false, "source": "docs/system/02A-战术引擎.md:435"},
+        {"layer": 4, "name": "领域展开", "effect": "花费 3 AP + 专注 4：在当前区域制造一个持续 2 回合的效果领域，效果由你已掌握的一项能力决定", "capstone": true, "source": "docs/system/02A-战术引擎.md:436"},
+        {"layer": 4, "name": "能量回收", "effect": "每当敌人对你施放的能力被你抵抗成功，你恢复 1 点专注", "capstone": false, "source": "docs/system/02A-战术引擎.md:437"},
+        {"layer": 5, "name": "双生施法", "effect": "每场战斗一次，你可以连续施放两个能力（第二个能力的专注消耗减半）", "capstone": false, "source": "docs/system/02A-战术引擎.md:438"},
+        {"layer": 5, "name": "法则弯曲", "effect": "花费 3 AP + 专注 5：制造一个持续到场景结束的效果：改写一条本地规则（例如“此区域内重力反转”）。具体效果需与导引者协商确定。", "capstone": false, "source": "docs/system/02A-战术引擎.md:439"}
+      ]
+    },
+    {
+      "id": "rogue", "name": "诡道", "en": "Rogue", "role": "隐匿／欺诈／暴击", "feel": "从不正面对抗，永远在你意料之外",
+      "source": "docs/system/02A-战术引擎.md:374",
+      "abilities": [
+        {"layer": 1, "name": "暗处突袭", "effect": "你从隐匿状态发起的第一次攻击 +2 骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:445"},
+        {"layer": 1, "name": "快手", "effect": "你在巧手与欺骗上获得专精（若已有专精则改为 +2）", "capstone": false, "source": "docs/system/02A-战术引擎.md:446"},
+        {"layer": 2, "name": "消失", "effect": "花费 1 AP：若你处于任何掩体后或目标的视野边缘，进行一次隐藏判定（视为隐匿）", "capstone": false, "source": "docs/system/02A-战术引擎.md:447"},
+        {"layer": 2, "name": "背刺", "effect": "你对未察觉你的目标攻击时，伤害骰 +1 阶（d6→d8→d10）", "capstone": false, "source": "docs/system/02A-战术引擎.md:448"},
+        {"layer": 3, "name": "淬毒", "effect": "花费简短的时间与资源，你的武器在下次命中时额外造成 2d6【腐蚀】并施加【中毒】（每场景一次）", "capstone": false, "source": "docs/system/02A-战术引擎.md:449"},
+        {"layer": 3, "name": "挑拨", "effect": "花费 1 AP：一次威胁或欺骗（DF 由导引者定），成功则令敌方两个单位互相敌对一回合", "capstone": false, "source": "docs/system/02A-战术引擎.md:450"},
+        {"layer": 4, "name": "影步", "effect": "你可以穿过敌人的相邻区域而不触发任何反应", "capstone": false, "source": "docs/system/02A-战术引擎.md:451"},
+        {"layer": 4, "name": "致命节奏", "effect": "当你的攻击使目标的韧性降到一半以下时，你可以立即追加一次后续攻击（每回合一次）", "capstone": true, "source": "docs/system/02A-战术引擎.md:452"},
+        {"layer": 5, "name": "无中生有", "effect": "你可以在一次搜索／交互后“恰好”发现一件对你有用的小道具（每日一次，需由导引者认可合理性）", "capstone": false, "source": "docs/system/02A-战术引擎.md:453"},
+        {"layer": 5, "name": "魅影替身", "effect": "花费 3 AP + 专注 3：制造一个你的镜像分身，敌人本回合有 50% 概率攻击它而不是你", "capstone": false, "source": "docs/system/02A-战术引擎.md:454"}
+      ]
+    },
+    {
+      "id": "marshal", "name": "统帅", "en": "Marshal", "role": "增益／连携／指挥", "feel": "队友变强就是你自己变强",
+      "source": "docs/system/02A-战术引擎.md:375",
+      "abilities": [
+        {"layer": 1, "name": "指令：集中", "effect": "花费 1 AP：一名队友的下一次判定 +1 骰", "capstone": false, "source": "docs/system/02A-战术引擎.md:460"},
+        {"layer": 1, "name": "战前动员令", "effect": "战斗开始时掷一次，结果加入全队的气势池（最小加 1）", "capstone": false, "source": "docs/system/02A-战术引擎.md:461"},
+        {"layer": 2, "name": "战况解读", "effect": "花费 1 AP：得知敌方当前所有单位的剩余韧性（低于一半 / 接近破韧）", "capstone": false, "source": "docs/system/02A-战术引擎.md:462"},
+        {"layer": 2, "name": "连锁先锋", "effect": "你的连携层数上限 +1", "capstone": false, "source": "docs/system/02A-战术引擎.md:463"},
+        {"layer": 3, "name": "指令：夹击", "effect": "花费 1 AP：指定一名队友与目标，该队友本次攻击对该目标 +2 枚助势骰，若命中则立即为他开启一次连携窗口", "capstone": false, "source": "docs/system/02A-战术引擎.md:464"},
+        {"layer": 3, "name": "重整指令", "effect": "花费 2 AP：一名队友立即清除 2 个减益状态并恢复 1d8 活力（每场一次）", "capstone": false, "source": "docs/system/02A-战术引擎.md:465"},
+        {"layer": 4, "name": "总攻令", "effect": "花费 3 AP + 专注 3：全队立即获得 1 AP（每人），且本回合所有连携不再消耗反应额度（每场一次）", "capstone": true, "source": "docs/system/02A-战术引擎.md:466"},
+        {"layer": 4, "name": "士气常伴", "effect": "你的小队的气势池上限 +2", "capstone": false, "source": "docs/system/02A-战术引擎.md:467"},
+        {"layer": 5, "name": "号令队列", "effect": "花费 3 AP：指定一名队友立刻获得一个完整回合（跳过顺序）", "capstone": false, "source": "docs/system/02A-战术引擎.md:468"},
+        {"layer": 5, "name": "不弃的胜利", "effect": "当有队友进入濒危时，你立即获得 2 AP 并可以用这些 AP 立即进行救援（无需等到你的回合）", "capstone": false, "source": "docs/system/02A-战术引擎.md:469"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactics_optional_rules",
+  "source": "docs/system/02A-战术引擎.md:589",
+  "note": "以下规则默认关闭。它们是为特定口味的团准备的调味料。",
+  "declared": {
+    "wound_rows": 12
+  },
+  "wound_table": {
+    "die": "d12",
+    "trigger": "当角色受到暴击或单次损失超过 1/3 活力时掷 d12。",
+    "source": "docs/system/02A-战术引擎.md:593",
+    "rows": [
+      {"roll": 1, "wound": "失去一只眼睛：依赖视力的判定 −1 骰，永久", "source": "docs/system/02A-战术引擎.md:599"},
+      {"roll": 2, "wound": "手臂骨折：该手臂不能使用精细动作，直到治疗", "source": "docs/system/02A-战术引擎.md:600"},
+      {"roll": 3, "wound": "严重脑震荡：所有心智类判定 −1 骰，直到长歇", "source": "docs/system/02A-战术引擎.md:601"},
+      {"roll": 4, "wound": "内脏损伤：移动 −2 米，直到长歇", "source": "docs/system/02A-战术引擎.md:602"},
+      {"roll": 5, "wound": "留下永久性疤痕：交涉时获得 +1 骰，察觉时 −1 骰", "source": "docs/system/02A-战术引擎.md:603"},
+      {"roll": 6, "wound": "大腿中箭：移动减半", "source": "docs/system/02A-战术引擎.md:604"},
+      {"roll": 7, "wound": "失去手指：射击与巧手 −1 骰", "source": "docs/system/02A-战术引擎.md:605"},
+      {"roll": 8, "wound": "耳鸣：洞察类判定 −1 骰，一天", "source": "docs/system/02A-战术引擎.md:606"},
+      {"roll": 9, "wound": "慢性疼痛：每晚需通过耐受检定才能长歇", "source": "docs/system/02A-战术引擎.md:607"},
+      {"roll": 10, "wound": "失去一个重要随身物品（剑、通讯器、药物）", "source": "docs/system/02A-战术引擎.md:608"},
+      {"roll": 11, "wound": "脑震荡引起失忆：忘记最近 24 小时的一件事", "source": "docs/system/02A-战术引擎.md:609"},
+      {"roll": 12, "wound": "濒死体验：获得永久 +1 负担，但赢得 1 点决意上限", "source": "docs/system/02A-战术引擎.md:610"}
+    ]
+  },
+  "ammo": {
+    "source": "docs/system/02A-战术引擎.md:612",
+    "rules": [
+      "每次远程攻击消耗 1 单位弹药；每次速射消耗对应倍数。",
+      "弹药耗尽后需要 2 AP 装填，或在间幕补充。",
+      "简化版：只在遭遇结束后检查一次弹药是否足够补充；若不够，需要在下一个场景想办法。"
+    ]
+  },
+  "morale": {
+    "formula": "d20 vs DF 12 + 队伍规模 − 目睹的己方伤亡数",
+    "triggers": [
+      "该组敌人损失超过一半；",
+      "敌方首领被击败；",
+      "敌人受到一次暴击并且该次伤害超过其剩余活力的一半。"
+    ],
+    "failure_outcome": "失败则该个体溃逃或投降（由导引者选择更符合叙事的一个）。这让战斗提前收束，而不是把最后一滴血打完。",
+    "source": "docs/system/02A-战术引擎.md:620"
+  },
+  "chase": {
+    "policies": ["速度", "欺骗", "地利", "干扰"],
+    "win_condition": "双方各掷一次对应的技能判定，率先累计三次成功者达成目标。",
+    "round_note": "每一轮对抗，导引者都应当演出一段环境变化（转入巷弄、跳上车顶、穿过人群）。",
+    "source": "docs/system/02A-战术引擎.md:630"
+  },
+  "players_roll_all": {
+    "formula": "d20 + 灵巧 + 态势 vs 敌人的攻击加值 + 10",
+    "note": "敌方的命中由玩家的闪避判定取代；玩家的优势骰成为主动防御的资源。这显著提高玩家的参与感与安全感。适合偏叙事的团。",
+    "source": "docs/system/02A-战术引擎.md:638"
+  },
+  "theater_vs_map": {
+    "source": "docs/system/02A-战术引擎.md:640",
+    "modes": [
+      {"id": "theater", "name": "心象剧场（默认）", "description": "不使用地图，位置以“近／中／远”与“相邻／脱离”描述。速度更快，但要求导引者在口头上清晰地维护空间一致性。", "recommended": true, "source": "docs/system/02A-战术引擎.md:642"},
+      {"id": "map", "name": "战术地图（可选）", "description": "使用区域（zone）而非方格。每个区域描述其固有的特征。适合重视走位的团队，强烈推荐配合地图使用本系统。", "source": "docs/system/02A-战术引擎.md:643"}
+    ]
+  },
+  "single_enemy_die": {
+    "rule": "为简化 AI 的运算，可以让所有敌人的攻击都使用同一个 d20 结果（每次各类型掷一次）。",
+    "note": "这让 AI 表达更整齐，但减少了随机性。适合入门团。",
+    "source": "docs/system/02A-战术引擎.md:647"
+  }
+}

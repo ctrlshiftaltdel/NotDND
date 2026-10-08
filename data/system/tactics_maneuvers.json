@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactics_maneuvers",
+  "source": "docs/system/02A-战术引擎.md:292",
+  "declared": {
+    "maneuvers": 30,
+    "core_nine": 9
+  },
+  "learning": {
+    "starting_common": 3,
+    "starting_discipline": 2,
+    "per_level": "每次升级可以选择一个新机动（作为成长选择的选项 E 的一个分支）。",
+    "teaching": "机动可以被临时教授：一名已有该机动的角色，花费一次训练场景即可教会队友。",
+    "source": "docs/system/02A-战术引擎.md:298"
+  },
+  "categories": ["近战类", "远程类", "移动与位置类", "控制与辅助类"],
+  "maneuvers": [
+    {"id": "M01", "no": 1, "name": "精准突刺", "category": "近战类", "ap": "2", "contest": "命中 +1 骰", "effect": "本次攻击忽略目标 2 点防护，并且无视轻度掩体", "core": true, "source": "docs/system/02A-战术引擎.md:310"},
+    {"id": "M02", "no": 2, "name": "双连斩", "category": "近战类", "ap": "3", "contest": "两次各自 −1 骰", "effect": "对同一目标连续攻击两次", "core": false, "source": "docs/system/02A-战术引擎.md:311"},
+    {"id": "M03", "no": 3, "name": "破盾猛击", "category": "近战类", "ap": "2", "contest": "力道 vs 目标力道", "effect": "造成普通攻击伤害，并额外削减目标 4 点韧性", "core": true, "source": "docs/system/02A-战术引擎.md:312"},
+    {"id": "M04", "no": 4, "name": "缴械", "category": "近战类", "ap": "2", "contest": "攻击判定 −2 骰", "effect": "命中则目标武器脱手，落在 1d4 米外", "core": false, "source": "docs/system/02A-战术引擎.md:313"},
+    {"id": "M05", "no": 5, "name": "推撞", "category": "近战类", "ap": "1", "contest": "力道 vs 力道／体魄", "effect": "成功则推动目标 3 米，并使其获得 1 层【失衡】；若撞到硬物则额外造成 1d6 钝击", "core": true, "source": "docs/system/02A-战术引擎.md:314"},
+    {"id": "M06", "no": 6, "name": "绊摔", "category": "近战类", "ap": "2", "contest": "力道 vs 灵巧", "effect": "成功则目标获得 3 层【失衡】（即倒地），失去所有已剩余移动", "core": false, "source": "docs/system/02A-战术引擎.md:315"},
+    {"id": "M07", "no": 7, "name": "回旋斩", "category": "近战类", "ap": "3", "contest": "攻击判定 −2 骰", "effect": "攻击所有与你相邻的敌人，对每个目标造成一次攻击伤害", "core": false, "source": "docs/system/02A-战术引擎.md:316"},
+    {"id": "M08", "no": 8, "name": "跳斩", "category": "近战类", "ap": "2", "contest": "攻击判定", "effect": "可跨越一次地形（至多 4 米）后攻击，本次攻击 +2 伤害；若从高处跃下则 +1d6", "core": false, "source": "docs/system/02A-战术引擎.md:317"},
+    {"id": "M09", "no": 9, "name": "钉住", "category": "近战类", "ap": "2", "contest": "命中则可", "effect": "使用穿刺武器时，目标被【束缚】直至其用 1 AP 拔出", "core": false, "source": "docs/system/02A-战术引擎.md:318"},
+    {"id": "M10", "no": 10, "name": "震击", "category": "近战类", "ap": "2", "contest": "力道 vs 体魄", "effect": "成功则目标获得 3 层【失衡】，且本回合防护 −2", "core": false, "source": "docs/system/02A-战术引擎.md:319"},
+    {"id": "M11", "no": 11, "name": "要害打击", "category": "近战类", "ap": "3 + 专注 2", "contest": "攻击判定 −1 骰", "effect": "命中则额外掷一次伤害骰，并使目标获得 3 层【流血】", "core": true, "source": "docs/system/02A-战术引擎.md:320"},
+    {"id": "M12", "no": 12, "name": "破甲", "category": "近战类", "ap": "2", "contest": "攻击判定", "effect": "命中后目标的护甲 Guard 永久 −2，直到其后被修复；若目标无护甲则改为 6 点韧性削减", "core": false, "source": "docs/system/02A-战术引擎.md:321"},
+    {"id": "M13", "no": 13, "name": "精准射击", "category": "远程类", "ap": "2", "contest": "攻击判定", "effect": "本次攻击忽略目标掩体带来的一半防护加成", "core": true, "source": "docs/system/02A-战术引擎.md:327"},
+    {"id": "M14", "no": 14, "name": "压制射击", "category": "远程类", "ap": "2", "contest": "攻击判定", "effect": "指定一个 3 米区域，敌人进入该区域时触发你的攻击（消耗你的下一次反应）", "core": false, "source": "docs/system/02A-战术引擎.md:328"},
+    {"id": "M15", "no": 15, "name": "掩护射击", "category": "远程类", "ap": "2", "contest": "攻击判定 −1 骰", "effect": "为一名移动中的队友提供火力掩护，队友在该移动中不计剩余的暴露惩罚", "core": false, "source": "docs/system/02A-战术引擎.md:329"},
+    {"id": "M16", "no": 16, "name": "跳弹射击", "category": "远程类", "ap": "2", "contest": "命中判定 −1 骰", "effect": "攻击可以利用墙面反弹，绕过掩体（忽略全部掩体加成）", "core": false, "source": "docs/system/02A-战术引擎.md:330"},
+    {"id": "M17", "no": 17, "name": "连环速射", "category": "远程类", "ap": "3", "contest": "三次攻击各 −2 骰", "effect": "消耗三个单位的弹药，对同一目标射击三次", "core": false, "source": "docs/system/02A-战术引擎.md:331"},
+    {"id": "M18", "no": 18, "name": "战术转移", "category": "移动与位置类", "ap": "1", "contest": "—", "effect": "移动一次但不触发敌方借机／反手打击；可与守势姿态组合", "core": true, "source": "docs/system/02A-战术引擎.md:337"},
+    {"id": "M19", "no": 19, "name": "抢占高地", "category": "移动与位置类", "ap": "2", "contest": "运动 DF 14", "effect": "攀上高处，获得【高地】：远程判定 +1 骰，且近战敌人对你 −1 骰", "core": false, "source": "docs/system/02A-战术引擎.md:338"},
+    {"id": "M20", "no": 20, "name": "利用地形", "category": "移动与位置类", "ap": "1", "contest": "巡查 DF 12", "effect": "在本回合内找到并利用一个临时优势位置，下一次判定 +1 骰", "core": false, "source": "docs/system/02A-战术引擎.md:339"},
+    {"id": "M21", "no": 21, "name": "脱离机动", "category": "移动与位置类", "ap": "2", "contest": "杂技 vs 目标力道", "effect": "自动脱离所有束缚与擒抱，并向后移动 3 米而不触发反手打击", "core": false, "source": "docs/system/02A-战术引擎.md:340"},
+    {"id": "M22", "no": 22, "name": "换位拦截", "category": "移动与位置类", "ap": "2", "contest": "—", "effect": "移动至多一半速度，并阻挡一名试图通过的敌人（对方需先用 1 AP 突破）", "core": false, "source": "docs/system/02A-战术引擎.md:341"},
+    {"id": "M23", "no": 23, "name": "援助友军", "category": "控制与辅助类", "ap": "2", "contest": "—", "effect": "为队友的下一次判定提供 +1 枚助势骰，需描述具体的帮助方式", "core": true, "source": "docs/system/02A-战术引擎.md:347"},
+    {"id": "M24", "no": 24, "name": "挑衅", "category": "控制与辅助类", "ap": "1", "contest": "气场 vs 目标心智", "effect": "成功则目标在本回合内必须优先攻击你（心智免疫者除外）", "core": false, "source": "docs/system/02A-战术引擎.md:348"},
+    {"id": "M25", "no": 25, "name": "战术指示", "category": "控制与辅助类", "ap": "1", "contest": "统率 DF 12", "effect": "指定一名队友，其下一次判定 +1 枚助势骰", "core": false, "source": "docs/system/02A-战术引擎.md:349"},
+    {"id": "M26", "no": 26, "name": "扬沙／闪光", "category": "控制与辅助类", "ap": "1", "contest": "—", "effect": "目标针对你的视觉判定 DF +3，持续一回合；你需事先持有对应道具", "core": false, "source": "docs/system/02A-战术引擎.md:350"},
+    {"id": "M27", "no": 27, "name": "援护掩护", "category": "控制与辅助类", "ap": "1", "contest": "—", "effect": "你成为队友的掩体，队友获得 +3 防护，但你会承担转移到你身上的伤害的一半", "core": false, "source": "docs/system/02A-战术引擎.md:351"},
+    {"id": "M28", "no": 28, "name": "重整旗鼓", "category": "控制与辅助类", "ap": "1", "contest": "统率 DF 12", "effect": "移除一名队友身上的一层【恐惧】或【失衡】", "core": true, "source": "docs/system/02A-战术引擎.md:352"},
+    {"id": "M29", "no": 29, "name": "连锁反击", "category": "控制与辅助类", "ap": "反应 1", "contest": "—", "effect": "当敌人的攻击对你落空后，你可以立即对其发动一次基础攻击", "core": false, "source": "docs/system/02A-战术引擎.md:353"},
+    {"id": "M30", "no": 30, "name": "伏击突袭", "category": "控制与辅助类", "ap": "3", "contest": "隐蔽 vs 目标察觉", "effect": "从隐匿状态发起，若目标未察觉：本次攻击伤害骰翻倍，且目标自动获得【破绽】", "core": true, "source": "docs/system/02A-战术引擎.md:354"}
+  ],
+  "core_nine": {
+    "count": 9,
+    "numbers": [1, 3, 5, 11, 13, 18, 23, 28, 30],
+    "source": "docs/system/02A-战术引擎.md:356"
+  }
+}

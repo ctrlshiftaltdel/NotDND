@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactics_combat",
+  "source": "docs/system/02A-战术引擎.md:205",
+  "declared": {
+    "attack_grades": 5,
+    "fumble_rows": 6,
+    "cover_tiers": 4
+  },
+  "attack_flow": [
+    {"order": 1, "step": "选择目标与武器／能力", "source": "docs/system/02A-战术引擎.md:210"},
+    {"order": 2, "step": "支付 AP", "source": "docs/system/02A-战术引擎.md:211"},
+    {"order": 3, "step": "掷 d20 + [相关属性] + [武器／能力熟练] + 助势骰 vs 目标的防护 Guard", "source": "docs/system/02A-战术引擎.md:212"},
+    {"order": 4, "step": "依据命中等级表判定命中等级", "source": "docs/system/02A-战术引擎.md:213"},
+    {"order": 5, "step": "命中则掷伤害骰 + [属性修正的一半，向下取整] + [武器／能力加值]", "source": "docs/system/02A-战术引擎.md:214"},
+    {"order": 6, "step": "应用抗性／弱点", "source": "docs/system/02A-战术引擎.md:215"},
+    {"order": 7, "step": "扣活力，并按 CORE 第 8 节扣韧性", "source": "docs/system/02A-战术引擎.md:216"}
+  ],
+  "attack_grades": [
+    {"id": "critical", "condition": "高出 10 点以上", "name": "暴击", "en": "Critical",
+     "effect": "掷两次伤害骰，取较高的一次，再加上正常伤害；必定造成横向的额外状态（1 层【失衡】或【流血】）",
+     "source": "docs/system/02A-战术引擎.md:223"},
+    {"id": "solid", "condition": "高出 6–9 点", "name": "重击", "en": "Solid",
+     "effect": "正常伤害 + 2", "source": "docs/system/02A-战术引擎.md:224"},
+    {"id": "hit", "condition": "高出 0–5 点", "name": "命中", "en": "Hit",
+     "effect": "正常伤害", "source": "docs/system/02A-战术引擎.md:225"},
+    {"id": "graze", "condition": "低 1–2 点", "name": "擦过", "en": "Graze",
+     "effect": "一半伤害（向下取整），不触发任何附加效果", "source": "docs/system/02A-战术引擎.md:226"},
+    {"id": "miss", "condition": "低 3 点以上", "name": "落空", "en": "Miss",
+     "effect": "无伤害；目标可借此获得一次反手打击的反应机会", "source": "docs/system/02A-战术引擎.md:227"}
+  ],
+  "fumble": {
+    "trigger": "攻击掷出自然 1（仅战术引擎适用）",
+    "effects": ["不造成伤害", "立即获得 1 层【失衡】", "导引者从失手表掷一次（或自行选择更贴合场面的）"],
+    "die": "d6",
+    "source": "docs/system/02A-战术引擎.md:229",
+    "rows": [
+      {"roll": 1, "consequence": "武器脱手，落在距离你 1d4 米的位置，需 1 AP 捡回", "source": "docs/system/02A-战术引擎.md:239"},
+      {"roll": 2, "consequence": "你的攻击破坏了掩体，自己失去了它", "source": "docs/system/02A-战术引擎.md:240"},
+      {"roll": 3, "consequence": "你跌进了敌人的控制区，对方获得一次免费的攻击机会", "source": "docs/system/02A-战术引擎.md:241"},
+      {"roll": 4, "consequence": "武器卡住／卡壳，需要 1 AP 修理后才能再次使用", "source": "docs/system/02A-战术引擎.md:242"},
+      {"roll": 5, "consequence": "你误伤了相邻的一个队友（造成一半伤害）", "source": "docs/system/02A-战术引擎.md:243"},
+      {"roll": 6, "consequence": "你暴露了自己的意图和位置，敌人获得针对你的 +1 骰（持续一回合）", "source": "docs/system/02A-战术引擎.md:244"}
+    ],
+    "simplified": "推荐给新手团：把自然 1 简化为“仅失去这回合剩下的 AP”，然后在玩家熟悉后再启用完整表。"
+  },
+  "damage": {
+    "note": "各武器有各自的伤害骰（见世界模组装备表）。近战武器的伤害加值取决于武器性质。",
+    "weapon_classes": [
+      {"id": "fine", "name": "精细武器（匕首、细剑）", "bonus_rule": "属性修正全额", "source": "docs/system/02A-战术引擎.md:252"},
+      {"id": "strength", "name": "力量武器（战斧、重锤）", "bonus_rule": "力道修正", "source": "docs/system/02A-战术引擎.md:253"},
+      {"id": "balanced", "name": "均衡武器（长枪、警棍）", "bonus_rule": "取力道与灵巧较高者的一半（向下取整）", "source": "docs/system/02A-战术引擎.md:254"},
+      {"id": "ranged", "name": "远程武器", "bonus_rule": "+ 洞察修正的一半（向下取整），弩与小口径枪械不加修正", "source": "docs/system/02A-战术引擎.md:255"}
+    ]
+  },
+  "cover": [
+    {"id": "light", "name": "轻度（齐腰矮墙、垃圾桶）", "guard_bonus": 2, "restriction": "可就地获得，移动不受影响", "source": "docs/system/02A-战术引擎.md:261"},
+    {"id": "medium", "name": "中度（车引擎盖、窗户后）", "guard_bonus": 4, "restriction": "必须移动到该位置；离开时失去", "source": "docs/system/02A-战术引擎.md:262"},
+    {"id": "heavy", "name": "重度（承重墙角、沙袋掩体）", "guard_bonus": 6, "restriction": "无法在此移动，且只有探出身体时才能攻击", "source": "docs/system/02A-战术引擎.md:263"},
+    {"id": "full", "name": "完全（厚墙后）", "guard_bonus": null, "restriction": "无法被攻击，你也无法攻击", "source": "docs/system/02A-战术引擎.md:264"}
+  ],
+  "cover_damage": {
+    "margin_max": 3,
+    "rule": "掩体会随攻击而损坏：当攻击落空但与防护的差距 ≤ 3 时，导引者可判定掩体受损（中度掩体受损后降级为轻度）。",
+    "source": "docs/system/02A-战术引擎.md:266"
+  },
+  "initiative": {
+    "formula": "先攻掷骰 = d20 + 洞察修正 + 灵巧修正的一半（向下取整）",
+    "rules": [
+      "玩家小队可以把自己内部顺序任意调换（鼓励配合），但不能插到敌人中间。",
+      "敌人按其类型分组：同一类型的敌人在同一时间点一起行动，由导引者一次性描述。"
+    ],
+    "ambush": "偷袭轮：如果敌人在开始时未察觉小队，则小队获得一整轮免费行动。这是埋伏的巨大回报。",
+    "enemy_grouping": [
+      {"order": 1, "rule": "把敌人分成 2–4 组（近战组、远程组、施法组、首领组）。", "source": "docs/system/02A-战术引擎.md:286"},
+      {"order": 2, "rule": "每组在同一时间点行动，一次性描述该组所有单位的动作。", "source": "docs/system/02A-战术引擎.md:287"},
+      {"order": 3, "rule": "每组应当有一个明确的“当前目标偏好”（见 04 战术人格），让玩家能预判威胁。", "source": "docs/system/02A-战术引擎.md:288"}
+    ],
+    "source": "docs/system/02A-战术引擎.md:270"
+  }
+}

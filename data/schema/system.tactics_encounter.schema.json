@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_encounter）",
+  "description": "战术引擎第十节：遭遇预算系统——上限公式、预算表（2–6 人 × 1/3/5/7/9/12 级）、遭遇强度 4 档、组成限制 4 条、群战处理。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "formula", "formula_source", "budget_cells", "strength", "composition_limits", "mass_combat"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_encounter"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["strength_tiers", "composition_limits"],
+      "properties": {
+        "strength_tiers": {"const": 4},
+        "composition_limits": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "formula": {"type": "string", "minLength": 1},
+    "formula_source": {"$ref": "common.schema.json#/$defs/source"},
+    "budget_cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["party_size", "level", "budget", "source"],
+        "properties": {
+          "party_size": {"type": "integer", "minimum": 1},
+          "level": {"type": "integer", "minimum": 1, "maximum": 12},
+          "budget": {"type": "integer", "minimum": 0},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "strength": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "ratio", "experience", "timing", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "ratio": {"type": "string", "minLength": 1},
+          "experience": {"type": "string", "minLength": 1},
+          "timing": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "composition_limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "mass_combat": {
+      "type": "object",
+      "required": ["threshold", "rules", "source"],
+      "properties": {
+        "threshold": {"type": "string", "minLength": 1},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "name", "effect", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "name": {"type": "string", "minLength": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

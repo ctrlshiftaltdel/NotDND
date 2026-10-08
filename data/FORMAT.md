@@ -192,11 +192,99 @@ data/
   `combat | mobility | mind | social | resilience`。
 - `feats[]`：`{order, id, name, category, effect, source}`（30 项，`order` 1–30）。
 
+**`system.tactics_resolution`**（战术判定 / 助势骰 / 五档结果；`docs/system/02A` 第一至三节）
+
+- `declared`：自述计数 `{advantage_sources:9, disadvantage_sources:7, outcome_grades:5,
+  catastrophe_rows:20, max_edge_layers:3}`，便于机器核对。
+- `resolution`：`{formula, components[], df_compare[], play_principle, play_principle_source?}`；
+  `components[]` 为 `{name, detail, source}`；`df_compare[]` 为
+  `{relation(gt|eq|lt), outcome, source}`。
+- `skip_roll[]`：`{order, situation, source}`。
+- `edge_dice`：`{die, rule, tiers[], max_layers, beyond_max, beyond_max_source?,
+  disadvantage, cancellation, same_source_rule, …}`；`tiers[]` 为
+  `{layer(1–3), name, dice, expectation, source}`。
+- `advantage_sources[]` / `disadvantage_sources[]`：`{name, layers[], note?, source}`，
+  `layers` 为正 / 负整数数组（优势 `1–3`、劣势 `−3–−1`）。
+- `outcome_formula?`、`outcome_grades[]`：`{id, band, name, en, meaning, consequence, source}`。
+- `catastrophe_table`：`{die, rows[], source}`，`rows[]` 为 `{roll, result, source}`。
+
+**`system.tactics_difficulty`**（难度值参考与设定向导；第四节）
+
+- `declared`：`{ladder_rows:10, party_level_rows:3}`。
+- `improvised`：`{baseline, adjustments[]}`，`adjustments[]` 为 `{question, delta, source}`。
+- `ladder[]`：`{df, name, analogy, open_ended?, source}`。
+- `by_party_level[]`：`{level_range, typical_bonus, target_df, source}`。
+- `split_rule`：`{threshold, rule, example, source}`。
+
+**`system.tactics_combat`**（攻击判定 / 掩体 / 先攻与分组；第五、六节）
+
+- `declared`：`{attack_grades:5, fumble_rows:6, cover_tiers:4}`。
+- `attack_flow[]`：`{order, step, source}`。
+- `attack_grades[]`：`{id, condition, name, en, effect, source}`。
+- `fumble`：`{trigger, effects[], die, rows[], simplified, source}`，
+  `rows[]` 为 `{roll, consequence, source}`。
+- `damage`：`{note, weapon_classes[]}`，`weapon_classes[]` 为 `{id, name, bonus_rule, source}`。
+- `cover[]`：`{id, name, guard_bonus, restriction, source}`，`guard_bonus` 可为 `null`（完全掩体）。
+- `cover_damage`：`{margin_max, rule, source}`。
+- `initiative`：`{formula, rules[], ambush, enemy_grouping[], source}`。
+
+**`system.tactics_maneuvers`**（通用机动库；第七节）
+
+- `declared`：`{maneuvers:30, core_nine:9}`。
+- `learning`：`{starting_common, starting_discipline, per_level, teaching, source}`。
+- `categories[]`：枚举 `近战类 | 远程类 | 移动与位置类 | 控制与辅助类`。
+- `maneuvers[]`：`{id, no(1–30), name, category, ap, contest, effect, core, source}`。
+- `core_nine`：`{count:9, numbers[], source}`，`numbers[]` 为机动 `no`。
+
+**`system.tactics_disciplines`**（六大战术流派与能力树；第八节）
+
+- `declared`：`{disciplines:6, layers:5, abilities_per_layer:2, abilities:60}`。
+- `rules`：`{layers, per_layer, unlock, cross_branch, source}`。
+- `disciplines[]`：`{id, name, en, role, feel, note?, abilities[], source}`；
+  `abilities[]` 为 `{layer(1–5), name, effect, capstone, source}`。
+
+**`system.tactics_enemies`**（敌人快速生成；第九节）
+
+- `declared`：`{tiers:4, affixes:14, affix_limit:4}`。
+- `tiers[]`：`{id(minion|standard|elite|boss), name, vitality, guard, poise, attack_bonus,
+  damage, ap, df, budget, source}`。
+- `scaling[]`：`{level_range, vitality, guard, attack_bonus, damage, source}`；
+  另有 `scaling_note` / `scaling_note_source?`。
+- `affixes[]`：`{name, effect, budget, source}`。
+- `affix_limit`：`{max:4, reason, source}`。
+- `assembly_example?`：`{description, base, affixes[], budget, source}`。
+
+**`system.tactics_encounter`**（遭遇预算系统；第十节）
+
+- `declared`：`{strength_tiers:4, composition_limits:4}`。
+- `formula` / `formula_source?`。
+- `budget_cells[]`：`{party_size, level, budget, source}`（扁平单元格，便于校验）。
+- `strength[]`：`{id, name, ratio, experience, timing, source}`。
+- `composition_limits[]`：`{order, rule, source}`。
+- `mass_combat`：`{threshold, rules[], source}`。
+
+**`system.tactics_optional_rules`**（默认关闭的可选规则；第十一节）
+
+- `note`、`declared`：`{wound_rows:12}`。
+- `wound_table`：`{die, trigger, rows[], source}`，`rows[]` 为 `{roll, wound, source}`。
+- `ammo`：`{rules[], source}`；`morale`：`{formula, triggers[], failure_outcome, source}`。
+- `chase`：`{policies[], win_condition, round_note, source}`。
+- `players_roll_all`：`{formula, note, source}`。
+- `theater_vs_map`：`{modes[], source}`，`modes[]` 为
+  `{id, name, description, recommended?, source}`。
+- `single_enemy_die`：`{rule, note, source}`。
+
 > **计数核对**（M1.1a 逐条比对 `docs/system/01`）：技能 29；伤害标签 11；性质标签 33；
 > 减益 11 / 增益 5 / 派生状态 2；态势 4；动作价格 **10**；反应 5；过载 3；体型加值 5；
 > 场地要素 d20 表 20 行；成长选择 6 类；通用专长 30。
 > ⚠️ 动作价格表以 `docs/system/01` 第六节为准为 **10 行**（移动/姿态切换/辅助动作/基础攻击/
 > 全额能力/快速能力/压制动作/巡查动作/协助/反应）；若别处记为「11」，以源文档为准。
+
+> **计数核对**（M1.1b 逐条比对 `docs/system/02A`）：机动 **30**（核心九式 **9**）；流派 **6**、
+> 能力 **60**（每流派 5 层 × 2 项，终结技 6）；敌人模板 **4** 档；等级缩放 6 行；
+> 词缀 **14**（叠加上限 **4**）；遭遇预算表 5 人 × 6 级 = 30 格；强度 4；组成限制 4；
+> DF 阶梯 **10**；按等级设 DF 3；攻击结果 **5**；掩体 **4**；严重失手 d6 **6**；伤口 d12 **12**；
+> 优势来源 **9** / 劣势来源 **7**；五档结果 **5**；灾难 d20 **20**。
 
 
 ### 4.2 world 族
