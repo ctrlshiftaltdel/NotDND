@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_die_ranks）",
+  "description": "构建引擎第三节：骰阶 I–V（d6/d8/d10/d12/d20，起始 d8）、属性↔骰阶对照、期望成功数速查（骰池 2–10 枚 × d8/d10/d12）、配装建议。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "note", "ranks", "starting", "starting_source", "expected_dice", "expected_successes", "advice", "advice_source"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_die_ranks"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["die_ranks", "expected_rows"],
+      "properties": {
+        "die_ranks": {"const": 5},
+        "expected_rows": {"const": 8}
+      },
+      "additionalProperties": false
+    },
+    "note": {"type": "string", "minLength": 1},
+    "ranks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rank", "die", "unlock", "source"],
+        "properties": {
+          "rank": {"enum": ["I", "II", "III", "IV", "V"]},
+          "die": {"type": "string", "pattern": "^d[0-9]+$"},
+          "unlock": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "starting": {"type": "string", "minLength": 1},
+    "starting_source": {"$ref": "common.schema.json#/$defs/source"},
+    "expected_dice": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^d[0-9]+$"}
+    },
+    "expected_successes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["pool", "d8", "d10", "d12", "source"],
+        "properties": {
+          "pool": {"type": "integer", "minimum": 1},
+          "d8": {"type": "number", "minimum": 0},
+          "d10": {"type": "number", "minimum": 0},
+          "d12": {"type": "number", "minimum": 0},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "advice": {"type": "string", "minLength": 1},
+    "advice_source": {"$ref": "common.schema.json#/$defs/source"}
+  },
+  "additionalProperties": false
+}

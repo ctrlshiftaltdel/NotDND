@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "kind": "system.build_growth",
+  "source": "docs/system/02B-构建引擎.md:345",
+  "declared": {"bp_per_level": 2, "spend_items": 12, "starting_items": 6, "routes": 3},
+  "bp_per_level": 2,
+  "bp_rule": "每升一级 → 获得 2 BP。（战术引擎每级给 1 个成长选择；构建引擎给 2 点，因为它的每一项都要单独投资。）",
+  "bp_rule_source": "docs/system/02B-构建引擎.md:350",
+  "spend": [
+    {"id": "attribute", "name": "属性 +1", "bp": 3, "note": "单项上限 10；通过此方式每项最多 +4", "source": "docs/system/02B-构建引擎.md:359"},
+    {"id": "die_rank", "name": "某属性的骰阶 +1 阶", "bp": 4, "note": "上限 V 阶（d20）", "source": "docs/system/02B-构建引擎.md:360"},
+    {"id": "new_skill", "name": "获得一项新技能熟练", "bp": 2, "note": "该技能的骰池额外 +1 枚", "source": "docs/system/02B-构建引擎.md:361"},
+    {"id": "specialize", "name": "技能升级为专精", "bp": 2, "note": "需已有熟练；骰池再 +1 枚", "source": "docs/system/02B-构建引擎.md:362"},
+    {"id": "new_glyph", "name": "获得一枚新符纹", "bp": 2, "note": "永久拥有，可随时调整安装位置", "source": "docs/system/02B-构建引擎.md:363"},
+    {"id": "new_slot", "name": "新增一个插槽", "bp": 3, "note": "最多额外购买 2 个", "source": "docs/system/02B-构建引擎.md:364"},
+    {"id": "faculty_level", "name": "一项能力等级 +1", "bp": 2, "note": "伤害／范围／持续时间提升", "source": "docs/system/02B-构建引擎.md:365"},
+    {"id": "new_faculty", "name": "掌握一项新能力", "bp": 3, "note": "从所属职途的能力列表中选择", "source": "docs/system/02B-构建引擎.md:366"},
+    {"id": "focus_cap", "name": "专注上限 +2", "bp": 1, "note": "无上限限制", "source": "docs/system/02B-构建引擎.md:367"},
+    {"id": "stress_cap", "name": "应力上限 +2", "bp": 1, "note": "无上限限制", "source": "docs/system/02B-构建引擎.md:368"},
+    {"id": "momentum_start", "name": "场景起始动量 +1", "bp": 2, "note": "最多 +3", "source": "docs/system/02B-构建引擎.md:369"},
+    {"id": "crossover", "name": "越界学习：跨流派学一项能力", "bp": 5, "note": "每角色限 2 次", "source": "docs/system/02B-构建引擎.md:370"}
+  ],
+  "starting": [
+    {"order": 1, "item": "属性：按 CORE 第 1 节方法确定（所有骰阶为 d8）", "source": "docs/system/02B-构建引擎.md:375"},
+    {"order": 2, "item": "2 项技能熟练 + 1 项技能专精", "source": "docs/system/02B-构建引擎.md:376"},
+    {"order": 3, "item": "1 个插槽", "source": "docs/system/02B-构建引擎.md:377"},
+    {"order": 4, "item": "2 枚自选符纹", "source": "docs/system/02B-构建引擎.md:378"},
+    {"order": 5, "item": "3 项能力（其中 1 项可装符纹）", "source": "docs/system/02B-构建引擎.md:379"},
+    {"order": 6, "item": "起始 BP：0（后续每级 2 BP）", "source": "docs/system/02B-构建引擎.md:380"}
+  ],
+  "routes": [
+    {"name": "「重炮」路线",
+     "description": "把插槽全部装给一个伤害能力，堆叠增幅类与代价类符纹；属性投资到相关的心智或力道上；相信一击定胜负。",
+     "risk": "弹药（专注）消耗极快。",
+     "source": "docs/system/02B-构建引擎.md:387"},
+    {"name": "「织网」路线",
+     "description": "把效率类符纹堆在一起，让能力的消耗降到最低，然后用节省下来的资源反复使用；属性投资到骰池规模上；靠多次行动取胜。",
+     "risk": "单点爆发不足，遇上高防护目标会很吃力。",
+     "source": "docs/system/02B-构建引擎.md:389"},
+    {"name": "「共鸣」路线",
+     "description": "投入连锁类与转化类符纹，追求「一次判定引发多重效果」；高度依赖队友先创造出状态再引爆。",
+     "risk": "单打独斗时大幅削弱，这是一条必须依赖团队的路线。",
+     "source": "docs/system/02B-构建引擎.md:391"}
+  ]
+}

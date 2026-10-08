@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_conversion）",
+  "description": "构建引擎第十一节（附录）：双引擎互转对照表——何时换引擎、属性转换、熟练与专精转换、难度转换、助势骰↔骰池、敌人防御转换、伤害转换、迁移五步法、混用限制。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "note", "note_source", "when_to_switch", "attribute_conversion", "proficiency_conversion", "difficulty_conversion", "difficulty_note", "difficulty_note_source", "edge_conversion", "enemy_defense_conversion", "damage_conversion", "migration_steps", "mixing_limits"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_conversion"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["switch_scenarios", "attribute_rows", "proficiency_rows", "difficulty_rows", "edge_rows", "enemy_defense_rows", "damage_rows", "migration_steps", "mixing_limits"],
+      "properties": {
+        "switch_scenarios": {"const": 5},
+        "attribute_rows": {"const": 5},
+        "proficiency_rows": {"const": 4},
+        "difficulty_rows": {"const": 8},
+        "edge_rows": {"const": 4},
+        "enemy_defense_rows": {"const": 5},
+        "damage_rows": {"const": 5},
+        "migration_steps": {"const": 5},
+        "mixing_limits": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "note": {"type": "string", "minLength": 1},
+    "note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "when_to_switch": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["situation", "advice", "source"],
+        "properties": {
+          "situation": {"type": "string", "minLength": 1},
+          "advice": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "attribute_conversion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["value_range", "tactics_use", "build_use", "source"],
+        "properties": {
+          "value_range": {"type": "string", "minLength": 1},
+          "tactics_use": {"type": "string", "minLength": 1},
+          "build_use": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "proficiency_conversion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["item", "tactics", "build", "source"],
+        "properties": {
+          "item": {"type": "string", "minLength": 1},
+          "tactics": {"type": "string", "minLength": 1},
+          "build": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "difficulty_conversion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tactics_df", "build_need", "name", "source"],
+        "properties": {
+          "tactics_df": {"type": "string", "minLength": 1},
+          "build_need": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "difficulty_note": {"type": "string", "minLength": 1},
+    "difficulty_note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "edge_conversion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tactics", "build", "source"],
+        "properties": {
+          "tactics": {"type": "string", "minLength": 1},
+          "build": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "enemy_defense_conversion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tactics_guard", "build_dodge", "source"],
+        "properties": {
+          "tactics_guard": {"type": "string", "minLength": 1},
+          "build_dodge": {"type": "integer", "minimum": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "damage_conversion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["tactics_result", "build_match", "source"],
+        "properties": {
+          "tactics_result": {"type": "string", "minLength": 1},
+          "build_match": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "migration_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "step", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "step": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "mixing_limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule", "source"],
+        "properties": {
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_glyph_slots）",
+  "description": "构建引擎第八节：符纹插槽系统（每个能力最多 3 个插槽、可拆装调整）、插槽获得表（起始 / 等级 4 / 7 / 10 / 构建点购买，共 5 源）、符纹获得途径（3 源）、符纹结构模板。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "concept", "slot_sources", "slot_note", "slot_note_source", "glyph_sources", "structure"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_glyph_slots"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["max_slots_per_faculty", "slot_sources", "glyph_sources"],
+      "properties": {
+        "max_slots_per_faculty": {"const": 3},
+        "slot_sources": {"const": 5},
+        "glyph_sources": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "concept": {
+      "type": "object",
+      "required": ["basis", "basis_source", "max_slots", "max_slots_rule", "swap_rule", "source"],
+      "properties": {
+        "basis": {"type": "string", "minLength": 1},
+        "basis_source": {"$ref": "common.schema.json#/$defs/source"},
+        "max_slots": {"const": 3},
+        "max_slots_rule": {"type": "string", "minLength": 1},
+        "swap_rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "slot_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["origin", "slots", "source"],
+        "properties": {
+          "origin": {"type": "string", "minLength": 1},
+          "slots": {"type": "integer", "minimum": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "slot_note": {"type": "string", "minLength": 1},
+    "slot_note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "glyph_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["origin", "detail", "source"],
+        "properties": {
+          "origin": {"type": "string", "minLength": 1},
+          "detail": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "structure": {
+      "type": "object",
+      "required": ["template", "template_source", "note", "note_source"],
+      "properties": {
+        "template": {"type": "string", "minLength": 1},
+        "template_source": {"$ref": "common.schema.json#/$defs/source"},
+        "note": {"type": "string", "minLength": 1},
+        "note_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

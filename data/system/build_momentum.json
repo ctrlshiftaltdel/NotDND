@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "kind": "system.build_momentum",
+  "source": "docs/system/02B-构建引擎.md:142",
+  "declared": {"gain_sources": 7, "spends": 7},
+  "pool": {
+    "rule": "动量池 = 共享池（起始 0，上限 10） ＋ 每人各自的持有上限 5",
+    "shared_start": 0,
+    "shared_cap": 10,
+    "per_person_cap": 5,
+    "source": "docs/system/02B-构建引擎.md:147"
+  },
+  "timing": "动量可以在任何时候花费，包括他人的回合。",
+  "timing_source": "docs/system/02B-构建引擎.md:164",
+  "gain": [
+    {"source_label": "判定结果为成功", "amount": 1, "source": "docs/system/02B-构建引擎.md:154"},
+    {"source_label": "判定结果为凯旋", "amount": 2, "source": "docs/system/02B-构建引擎.md:155"},
+    {"source_label": "判定结果为灾难", "amount": 2, "source": "docs/system/02B-构建引擎.md:156"},
+    {"source_label": "队友的协助动作生效", "amount": 1, "source": "docs/system/02B-构建引擎.md:157"},
+    {"source_label": "你承受了一次超过 10 点的伤害", "amount": 1, "source": "docs/system/02B-构建引擎.md:158"},
+    {"source_label": "你演出了符合角色驱动、且对自己不利的抉择", "amount": 1, "note": "导引者判定", "source": "docs/system/02B-构建引擎.md:159"},
+    {"source_label": "敌人发生一次士气崩溃", "amount": 2, "note": "全队", "source": "docs/system/02B-构建引擎.md:160"}
+  ],
+  "spends": [
+    {"id": "boost", "cost": 1, "name": "补强", "effect": "向正在进行的判定追加 1 枚骰（可多次，上限 3 枚）", "source": "docs/system/02B-构建引擎.md:168"},
+    {"id": "reroll", "cost": 2, "name": "重掷", "effect": "重掷池中所有未成功的骰子一次", "source": "docs/system/02B-构建引擎.md:169"},
+    {"id": "upgrade", "cost": 2, "name": "升阶", "effect": "本次判定中，把所有骰视为高一阶（d8→d10→d12）", "source": "docs/system/02B-构建引擎.md:170"},
+    {"id": "rewrite", "cost": 1, "name": "改写失败", "effect": "把一次 −1 结果提升为 0（险成）", "source": "docs/system/02B-构建引擎.md:171"},
+    {"id": "extra_action", "cost": 3, "name": "额外行动", "effect": "在当前时刻获得额外 1 AP", "source": "docs/system/02B-构建引擎.md:172"},
+    {"id": "refresh", "cost": 2, "name": "刷新", "effect": "一项本场景已消耗的能力可以再用一次", "source": "docs/system/02B-构建引擎.md:173"},
+    {"id": "combo_boost", "cost": 1, "name": "连携增强", "effect": "下一次连携完成时，额外获得 1 层连锁", "source": "docs/system/02B-构建引擎.md:174"}
+  ],
+  "clear": {
+    "rule": "每个场景结束时，共享池中的动量清零。未使用的动量不会累积到下一幕——这逼迫玩家在当下就用掉它，形成紧凑的资源节奏。",
+    "source": "docs/system/02B-构建引擎.md:178"
+  }
+}

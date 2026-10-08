@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_pool）",
+  "description": "构建引擎第一节：骰池构成（主属性枚数 + 熟练枚数 + 专精 + 临时）、成功阈值（≥5 记 1 次成功）、单骰成功率表、需求成功数表（8 档）与战术 DF 对照、判定四步。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "pool", "success_threshold", "required_successes", "resolution_steps"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_pool"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["pool_parts", "die_rates", "required_successes"],
+      "properties": {
+        "pool_parts": {"const": 4},
+        "die_rates": {"const": 4},
+        "required_successes": {"const": 8}
+      },
+      "additionalProperties": false
+    },
+    "pool": {
+      "type": "object",
+      "required": ["formula", "parts", "note"],
+      "properties": {
+        "formula": {"type": "string", "minLength": 1},
+        "parts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "detail", "source"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "detail": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "success_threshold": {
+      "type": "object",
+      "required": ["rule", "threshold", "default_die", "die_rates"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "threshold": {"const": 5},
+        "default_die": {"const": "d10"},
+        "die_rates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["die", "rate", "source"],
+            "properties": {
+              "die": {"type": "string", "pattern": "^d[0-9]+$"},
+              "rate": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "required_successes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["need", "name", "tactics_df", "source"],
+        "properties": {
+          "need": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "tactics_df": {"type": "integer", "minimum": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "resolution_steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "step", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "step": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

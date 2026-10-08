@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_growth）",
+  "description": "构建引擎第九节：每级 2 BP、花费表（12 项）、1 级起始资源（6 项）、三种典型构筑路线（重炮/织网/共鸣）。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "bp_per_level", "bp_rule", "bp_rule_source", "spend", "starting", "routes"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_growth"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["bp_per_level", "spend_items", "starting_items", "routes"],
+      "properties": {
+        "bp_per_level": {"const": 2},
+        "spend_items": {"const": 12},
+        "starting_items": {"const": 6},
+        "routes": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "bp_per_level": {"const": 2},
+    "bp_rule": {"type": "string", "minLength": 1},
+    "bp_rule_source": {"$ref": "common.schema.json#/$defs/source"},
+    "spend": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "bp", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "bp": {"type": "integer", "minimum": 1},
+          "note": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "starting": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "item", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "item": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "description", "risk", "source"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "risk": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

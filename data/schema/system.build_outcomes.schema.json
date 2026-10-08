@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_outcomes）",
+  "description": "构建引擎第二节：以成功数差（S − N）划分的五档结果梯度（凯旋/成功/险成/挫败/灾难，各带动量补偿）、两条特例（全骰皆负、最大值爆发）。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "formula", "grades", "special_cases"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_outcomes"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["grades", "special_cases"],
+      "properties": {
+        "grades": {"const": 5},
+        "special_cases": {"const": 2}
+      },
+      "additionalProperties": false
+    },
+    "formula": {"type": "string", "minLength": 1},
+    "grades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "band", "name", "en", "consequence", "momentum", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "band": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "consequence": {"type": "string", "minLength": 1},
+          "momentum": {"type": "integer", "minimum": 0},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "design_note": {"type": "string", "minLength": 1},
+    "design_note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "special_cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "rule", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

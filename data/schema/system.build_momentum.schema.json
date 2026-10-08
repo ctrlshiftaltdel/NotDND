@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_momentum）",
+  "description": "构建引擎第四节：动量池结构（共享池起始 0 上限 10 + 每人持有上限 5）、获取表（7 条）、花费表（7 条）、任意时刻可花费、每场景结束清零。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "pool", "timing", "timing_source", "gain", "spends", "clear"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_momentum"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["gain_sources", "spends"],
+      "properties": {
+        "gain_sources": {"const": 7},
+        "spends": {"const": 7}
+      },
+      "additionalProperties": false
+    },
+    "pool": {
+      "type": "object",
+      "required": ["rule", "shared_start", "shared_cap", "per_person_cap", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "shared_start": {"const": 0},
+        "shared_cap": {"const": 10},
+        "per_person_cap": {"const": 5},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "timing": {"type": "string", "minLength": 1},
+    "timing_source": {"$ref": "common.schema.json#/$defs/source"},
+    "gain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_label", "amount", "source"],
+        "properties": {
+          "source_label": {"type": "string", "minLength": 1},
+          "amount": {"type": "integer", "minimum": 1},
+          "note": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "spends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "cost", "name", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "cost": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "clear": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
