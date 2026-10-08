@@ -1,0 +1,18 @@
+# 行尾统一为 LF。
+#
+# 背景：PR #10 曾把 AGENTS.md 整文件从 LF 改成 CRLF，diff 呈现为全文重写、无法审查
+# （改动是经 API 直接提交的，绕过了 git 的行尾规范化）。
+# 有了本文件，git 在提交时统一规范化；Windows 上检出也不会再引入 CRLF。
+#
+# 注意：经 API 提交内容仍会绕过这里的规则——改仓库文件请走 git。
+
+*.md text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
