@@ -238,6 +238,25 @@ def check_empty_data_dir_ok():
     assert "未发现数据文件" in result.stdout, "缺少空数据提示"
 
 
+def check_pilot_attributes():
+    """试点数据字段自洽，且过 schema；真实 data/ 树含至少 1 个数据文件。"""
+    path = os.path.join(ROOT, "data", "system", "attributes.json")
+    assert os.path.isfile(path), "缺少 data/system/attributes.json"
+    errors = validate_data.validate_file(path, SCHEMA_DIR, ROOT)
+    assert not errors, "试点数据未过校验: %s" % "; ".join(errors)
+    checked, tree_errors = validate_data.validate_tree(
+        os.path.join(ROOT, "data"), SCHEMA_DIR, ROOT)
+    assert checked >= 1, "真实 data/ 未发现数据文件"
+    assert not tree_errors, "真实 data/ 校验失败: %s" % "; ".join(tree_errors)
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+    assert [a["id"] for a in data["attributes"]] == ["MGT", "FIN", "VIG", "INS", "MND", "PRE"]
+    expected = {1: -2, 2: -1, 3: -1, 4: 0, 5: 0, 6: 1, 7: 1, 8: 2, 9: 2, 10: 3}
+    got = {m["value"]: m["modifier"] for m in data["modifiers"]}
+    assert got == expected, "属性修正表与 docs/system/01 不一致: %s" % got
+    assert sorted(l["value"] for l in data["levels"]) == list(range(1, 11)), "等级表应覆盖 1–10"
+
+
 def main():
     checks = (
         check_format_doc,
@@ -251,6 +270,7 @@ def main():
         check_good_fixture_passes,
         check_bad_fixtures_fail,
         check_empty_data_dir_ok,
+        check_pilot_attributes,
     )
     failures = 0
     for check in checks:
