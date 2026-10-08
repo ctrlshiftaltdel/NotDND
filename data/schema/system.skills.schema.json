@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.skills）",
+  "description": "29 项技能（属性对取高、分类、用途）与合并项别名；源自 docs/system/01-内核CORE.md 第三节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared_total", "proficiency_note", "categories", "skills", "aliases"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.skills"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared_total": {"const": 29},
+    "proficiency_note": {"type": "string", "minLength": 1},
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "source"],
+        "properties": {
+          "id": {"enum": ["physical", "mobility", "perception", "knowledge", "survival", "social"]},
+          "name": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "attributes", "category", "use", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "attributes": {
+            "type": "array",
+            "items": {"enum": ["MGT", "FIN", "VIG", "INS", "MND", "PRE"]}
+          },
+          "category": {"enum": ["physical", "mobility", "perception", "knowledge", "survival", "social"]},
+          "use": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "aliases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["alias", "target", "source"],
+        "properties": {
+          "alias": {"type": "string", "minLength": 1},
+          "target": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

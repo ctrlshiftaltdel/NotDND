@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.combat）",
+  "description": "战斗支柱：韧性破韧（体型加值 5、削减手段、重整、首领三阶段）、连携（触发 6 / 响应 3 / 连锁层）、场地要素（通用 d20 表 20 行 + 结构）；源自 docs/system/01-内核CORE.md 第八至十节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "poise", "combo", "site_elements"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.combat"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "poise": {
+      "type": "object",
+      "required": ["name", "formula", "note", "body_sizes", "reduction", "reduction_caveat", "recovery", "recovery_source", "break", "boss_shield"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "formula": {"type": "string", "minLength": 1},
+        "note": {"type": "string", "minLength": 1},
+        "body_sizes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "bonus", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "bonus": {"type": "integer", "minimum": 0},
+              "extra": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "reduction": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "method", "amount", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "method": {"type": "string", "minLength": 1},
+              "amount": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "reduction_caveat": {"type": "string", "minLength": 1},
+        "recovery": {"type": "string", "minLength": 1},
+        "recovery_source": {"$ref": "common.schema.json#/$defs/source"},
+        "break": {
+          "type": "object",
+          "required": ["effects", "note"],
+          "properties": {
+            "effects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "effect", "value", "source"],
+                "properties": {
+                  "id": {"type": "string", "minLength": 1},
+                  "effect": {"type": "string", "minLength": 1},
+                  "value": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            },
+            "note": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": false
+        },
+        "boss_shield": {
+          "type": "object",
+          "required": ["layers", "recover", "note", "phases"],
+          "properties": {
+            "layers": {"type": "integer", "minimum": 1},
+            "recover": {"type": "string", "minLength": 1},
+            "note": {"type": "string", "minLength": 1},
+            "phases": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["order", "name", "change", "source"],
+                "properties": {
+                  "order": {"type": "integer", "minimum": 1},
+                  "name": {"type": "string", "minLength": 1},
+                  "change": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "combo": {
+      "type": "object",
+      "required": ["triggers", "limit", "limit_source", "responses", "chain", "pursuit", "pursuit_source"],
+      "properties": {
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "name", "description", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "name": {"type": "string", "minLength": 1},
+              "description": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "limit": {"type": "string", "minLength": 1},
+        "limit_source": {"$ref": "common.schema.json#/$defs/source"},
+        "responses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "en", "effect", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "en": {"type": "string", "minLength": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "chain": {
+          "type": "object",
+          "required": ["rule", "grants", "reset", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "grants": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "reset": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        },
+        "pursuit": {"type": "string", "minLength": 1},
+        "pursuit_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "site_elements": {
+      "type": "object",
+      "required": ["count_rule", "count_source", "adopt_conditions", "format", "table", "player_request"],
+      "properties": {
+        "count_rule": {"type": "string", "minLength": 1},
+        "count_source": {"$ref": "common.schema.json#/$defs/source"},
+        "adopt_conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "name", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "name": {"type": "string", "minLength": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "format": {
+          "type": "object",
+          "required": ["fields", "types", "source"],
+          "properties": {
+            "fields": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "types": {"type": "array", "items": {"enum": ["掩体", "危险", "机关", "增幅", "情绪", "机动"]}},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        },
+        "table": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["roll", "name", "type", "df", "effect", "source"],
+            "properties": {
+              "roll": {"type": "integer", "minimum": 1},
+              "name": {"type": "string", "minLength": 1},
+              "type": {"enum": ["掩体", "危险", "机关", "增幅", "情绪", "机动"]},
+              "df": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "player_request": {
+          "type": "object",
+          "required": ["cost", "rule", "outcomes"],
+          "properties": {
+            "cost": {"type": "string", "minLength": 1},
+            "rule": {"type": "string", "minLength": 1},
+            "outcomes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["order", "name", "rule", "source"],
+                "properties": {
+                  "order": {"type": "integer", "minimum": 1},
+                  "name": {"type": "string", "minLength": 1},
+                  "rule": {"type": "string", "minLength": 1},
+                  "source": {"$ref": "common.schema.json#/$defs/source"}
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

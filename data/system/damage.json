@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "kind": "system.damage",
+  "source": "docs/system/01-内核CORE.md:566",
+  "resolution_flow": [
+    {"order": 1, "step": "攻击者宣布攻击目标、使用武器／能力，并声明投入的资源（专注、气势等）",
+     "source": "docs/system/01-内核CORE.md:571"},
+    {"order": 2, "step": "进行攻击判定 → 与目标防护比较", "source": "docs/system/01-内核CORE.md:572"},
+    {"order": 3, "step": "命中 → 掷伤害骰 + 属性／武器修正", "source": "docs/system/01-内核CORE.md:573"},
+    {"order": 4, "step": "应用目标对该伤害标签的抗性／弱点／免疫", "source": "docs/system/01-内核CORE.md:574"},
+    {"order": 5, "step": "扣减活力", "source": "docs/system/01-内核CORE.md:575"},
+    {"order": 6, "step": "同时按第 8 节规则扣减韧性", "source": "docs/system/01-内核CORE.md:576"},
+    {"order": 7, "step": "若触发额外状态，一并施加", "source": "docs/system/01-内核CORE.md:577"},
+    {"order": 8, "step": "导引者演出结果，然后检查是否触发破韧", "source": "docs/system/01-内核CORE.md:578"}
+  ],
+  "outcomes": [
+    {"id": "hit", "name": "命中", "condition": "判定结果 ≥ 目标防护",
+     "effect": "造成基础伤害", "source": "docs/system/01-内核CORE.md:583"},
+    {"id": "crit", "name": "暴击", "condition": "判定结果超出防护 10 点以上",
+     "effect": "额外掷一次完整伤害骰加入伤害", "source": "docs/system/01-内核CORE.md:584"},
+    {"id": "graze", "name": "擦过", "condition": "判定结果低于防护但差距 ≤ 2",
+     "effect": "造成一半伤害，不触发附加效果", "source": "docs/system/01-内核CORE.md:585"},
+    {"id": "fumble", "name": "严重失手", "condition": "自然 1（仅战术引擎）",
+     "effect": "不造成伤害，并依据武器类型产生一个自伤／自暴露后果（由导引者演出，例如武器脱手、失衡、误伤掩体）",
+     "source": "docs/system/01-内核CORE.md:586"}
+  ],
+  "relations": [
+    {"id": "resistance", "name": "抗性", "en": "Resistance",
+     "effect": "该伤害类型造成的伤害减半（向下取整），相关附加状态的判定获得 +1 骰对抗",
+     "source": "docs/system/01-内核CORE.md:592"},
+    {"id": "weakness", "name": "弱点", "en": "Weakness",
+     "effect": "该伤害类型造成的伤害 +50%，且触发时额外造成 1 层【失衡】",
+     "source": "docs/system/01-内核CORE.md:593"},
+    {"id": "immunity", "name": "免疫", "en": "Immunity",
+     "effect": "该伤害类型无效，但对于附带的状态可能依然生效（取决于具体描述）",
+     "source": "docs/system/01-内核CORE.md:594"},
+    {"id": "absorb", "name": "吸收", "en": "Absorb",
+     "effect": "该伤害类型反而恢复等量活力，通常是单位的核心设定",
+     "source": "docs/system/01-内核CORE.md:595"}
+  ],
+  "downed": {
+    "trigger": "活力降至 0 时，角色进入濒危",
+    "effects": [
+      {"order": 1, "rule": "立即失去所有 AP 与反应额度", "source": "docs/system/01-内核CORE.md:603"},
+      {"order": 2, "rule": "无法行动，若被移动则需要他人搬运", "source": "docs/system/01-内核CORE.md:604"}
+    ],
+    "struggle": "每次在自己的回合开始时进行挣扎判定：d20 + 体魄修正 vs DF 12",
+    "struggle_source": "docs/system/01-内核CORE.md:605",
+    "success": "累计 3 次成功 → 稳定下来，恢复 1 点活力，获得 1 层【创伤】",
+    "success_source": "docs/system/01-内核CORE.md:606",
+    "failure": "累计 3 次失败 → 消亡",
+    "failure_source": "docs/system/01-内核CORE.md:607",
+    "damage_escalation": "在此期间每受到一次伤害，失败计数 +1（若是暴击则 +2）",
+    "damage_escalation_source": "docs/system/01-内核CORE.md:608",
+    "rescue": "任意队友可花费 2 AP 执行医疗（DF 14），使其立即稳定",
+    "rescue_source": "docs/system/01-内核CORE.md:609"
+  },
+  "fade": {
+    "note": "角色的躯壳走到终点即为消亡",
+    "note_source": "docs/system/01-内核CORE.md:613",
+    "rules": [
+      {"order": 1, "rule": "玩家有权用一句独白／闪回收尾自己的角色，这段叙事优先于导引者的叙述",
+       "source": "docs/system/01-内核CORE.md:615"},
+      {"order": 2, "rule": "玩家可以花费 2 点决意或全队同意支付 3 点气势 触发回光：以活力上限的 1/4 复燃，永久获得 +1 负担，并在场景结束后昏迷。这是可选规则，强烈推荐新手团启用。",
+       "source": "docs/system/01-内核CORE.md:616"}
+    ]
+  },
+  "trauma": {
+    "note": "每次濒危稳定后获得一层【创伤】",
+    "note_source": "docs/system/01-内核CORE.md:620",
+    "levels": [
+      {"range": "1–2", "effect": "无机械影响，仅叙事提醒", "source": "docs/system/01-内核CORE.md:624"},
+      {"range": "3", "effect": "活力上限 −5", "source": "docs/system/01-内核CORE.md:625"},
+      {"range": "4+", "effect": "每次进入战斗开局获得 1 层【恐惧】（道具与治疗可以逐渐淡化）",
+       "source": "docs/system/01-内核CORE.md:626"}
+    ],
+    "recovery": "创伤需通过长歇消除（每次长歇 −1 层），或通过专门的康复、叙事疗愈情节清理。在真正安全的环境中长歇可 −2 层。",
+    "recovery_source": "docs/system/01-内核CORE.md:628"
+  }
+}

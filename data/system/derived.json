@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "kind": "system.derived",
+  "source": "docs/system/01-内核CORE.md:80",
+  "formulas": [
+    {
+      "id": "vitality",
+      "name": "活力上限",
+      "formula": "(体魄 × 3) + 职途起始活力 + (角色等级 - 1) × 2",
+      "note": "职途起始活力一般为 +6 到 +14；1 级角色的典型活力范围在 18 到 27 之间",
+      "source": "docs/system/01-内核CORE.md:87"
+    },
+    {
+      "id": "guard",
+      "name": "防护",
+      "formula": "10 + 所穿护甲的 Guard 值 + 态势修正 + 掩体修正",
+      "note": "护甲的 Guard 值范围 +0 到 +6；穿戴重甲会限制于特定尺度的移动与潜行",
+      "source": "docs/system/01-内核CORE.md:97"
+    },
+    {
+      "id": "move",
+      "name": "移动速度",
+      "formula": "6 + (灵巧修正) 米，最低 3 米",
+      "note": "每支付 1 AP 可移动一次这个距离",
+      "source": "docs/system/01-内核CORE.md:105"
+    },
+    {
+      "id": "carry",
+      "name": "负重上限",
+      "formula": "舒适负重 = 力道 × 5 公斤；最大负重 = 力道 × 10 公斤",
+      "note": "超出舒适值后移动 −2 米、敏捷类判定 −1",
+      "source": "docs/system/01-内核CORE.md:113"
+    },
+    {
+      "id": "initiative",
+      "name": "起始先攻",
+      "formula": "洞察修正 + 灵巧修正的一半（向下取整）",
+      "note": "世界模组中的某些职途会额外提供加值",
+      "source": "docs/system/01-内核CORE.md:120"
+    }
+  ],
+  "load_labels": ["轻", "中", "重"],
+  "load_rules": [
+    {
+      "id": "medium_plus",
+      "label": "中",
+      "condition": "总重达到该负载等级以上",
+      "effect": "移动 −1 米",
+      "source": "docs/system/01-内核CORE.md:127"
+    },
+    {
+      "id": "heavy_twice",
+      "label": "重",
+      "min_count": 2,
+      "condition": "达到两件以上该负载等级",
+      "effect": "移动 −2 米，且不能采用疾冲刺态势",
+      "source": "docs/system/01-内核CORE.md:127"
+    }
+  ],
+  "note": "负载标签是为不想算公斤的团准备的简化规则，默认启用"
+}

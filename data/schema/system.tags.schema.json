@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tags）",
+  "description": "伤害标签 11 + 性质标签 33 + 标签交互裁定原则；源自 docs/system/01-内核CORE.md 第四节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "damage_tags", "property_tags", "interaction_principles"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tags"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "damage_tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "meaning", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "meaning": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "property_tags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "interaction_principles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "name", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

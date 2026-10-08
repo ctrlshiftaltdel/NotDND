@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.conditions）",
+  "description": "状态：减益 11 + 增益 5 + 派生状态（疲惫 / 过载中）+ 叠加规则；源自 docs/system/01-内核CORE.md 第五节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "debuffs", "buffs", "derived", "stacking_rules"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.conditions"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "debuffs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "effect", "removal", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "removal": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "buffs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "derived": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "trigger", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "trigger": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "stacking_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.growth）",
+  "description": "成长总纲：12 级三层制、升级条件、每级固定收益、熟练加值量表 3 档、成长选择 6 类、通用专长 30 项；源自 docs/system/01-内核CORE.md 第十四节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "tiers", "levelup", "per_level", "proficiency_bonus", "choices", "choice_restriction", "choice_restriction_source", "feat_categories", "feats"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.growth"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["tiers", "proficiency_tiers", "choice_categories", "feats"],
+      "properties": {
+        "tiers": {"const": 3},
+        "proficiency_tiers": {"const": 3},
+        "choice_categories": {"const": 6},
+        "feats": {"const": 30}
+      },
+      "additionalProperties": false
+    },
+    "tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "name", "levels", "story", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "levels": {"type": "string", "minLength": 1},
+          "story": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "levelup": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "recommended", "rule", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "recommended": {"type": "boolean"},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "per_level": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "gain", "value", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "gain": {"type": "string", "minLength": 1},
+          "value": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "proficiency_bonus": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["levels", "bonus", "source"],
+        "properties": {
+          "levels": {"type": "string", "minLength": 1},
+          "bonus": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "choices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "name", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "label": {"enum": ["A", "B", "C", "D", "E", "F"]},
+          "name": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "choice_restriction": {"type": "string", "minLength": 1},
+    "choice_restriction_source": {"$ref": "common.schema.json#/$defs/source"},
+    "feat_categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "source"],
+        "properties": {
+          "id": {"enum": ["combat", "mobility", "mind", "social", "resilience"]},
+          "name": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "feats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "id", "name", "category", "effect", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1, "maximum": 30},
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "category": {"enum": ["combat", "mobility", "mind", "social", "resilience"]},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
