@@ -3,6 +3,8 @@
 
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_data.py` 运行。
 """
+import glob
+import json
 import os
 import sys
 
@@ -94,12 +96,66 @@ def check_unsupported_keyword():
     assert not validate_data.collect_unsupported(ok), "误报支持的关键字"
 
 
+SCHEMA_DIR = os.path.join(ROOT, "data", "schema")
+
+
+def check_schemas_keyword_clean():
+    """data/schema/*.schema.json 只使用文档化子集。"""
+    bad = []
+    for path in sorted(glob.glob(os.path.join(SCHEMA_DIR, "*.schema.json"))):
+        with open(path, encoding="utf-8") as handle:
+            schema = json.load(handle)
+        for where, kw in validate_data.collect_unsupported(schema):
+            bad.append("%s %s: %s" % (os.path.basename(path), where, kw))
+    assert not bad, "schema 使用了未支持关键字: %s" % "; ".join(bad)
+
+
+def check_registry():
+    """登记表登记 system 族，且指向存在的 schema 文件。
+
+    world / random_tables / scenario 三族在后续任务补全。
+    """
+    with open(os.path.join(SCHEMA_DIR, "registry.json"), encoding="utf-8") as handle:
+        registry = json.load(handle)
+    kinds = registry["kinds"]
+    for expected in ("system.attributes",):
+        assert expected in kinds, "registry 缺少 kind: %s" % expected
+        assert os.path.isfile(os.path.join(SCHEMA_DIR, kinds[expected])), \
+            "registry 指向不存在的 schema: %s" % kinds[expected]
+
+
+def check_system_schema_validation():
+    """system.schema.json 接受合法样本、拒绝违反样本。"""
+    with open(os.path.join(SCHEMA_DIR, "system.schema.json"), encoding="utf-8") as handle:
+        schema = json.load(handle)
+    good = {
+        "schema_version": 1, "kind": "system.attributes",
+        "source": "docs/system/01-内核CORE.md:30",
+        "attributes": [{"id": "MGT", "name": "力道", "en": "Might",
+                        "question": "你能施加多大的外力？",
+                        "source": "docs/system/01-内核CORE.md:36"}],
+        "levels": [{"value": 1, "label": "严重缺陷",
+                    "source": "docs/system/01-内核CORE.md:49"}],
+        "modifiers": [{"value": 1, "modifier": -2,
+                       "source": "docs/system/01-内核CORE.md:64"}],
+    }
+    assert not validate_data.check_schema(good, schema, SCHEMA_DIR), \
+        "合法样本被判失败"
+    bad = json.loads(json.dumps(good))
+    bad["attributes"][0]["id"] = "STR"
+    assert validate_data.check_schema(bad, schema, SCHEMA_DIR), \
+        "非法属性 id 未被判失败"
+
+
 def main():
     checks = (
         check_format_doc,
         check_keyword_engine,
         check_one_of_edges,
         check_unsupported_keyword,
+        check_schemas_keyword_clean,
+        check_registry,
+        check_system_schema_validation,
     )
     failures = 0
     for check in checks:

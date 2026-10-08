@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "kinds": {
+    "system.attributes": "system.schema.json"
+  }
+}
