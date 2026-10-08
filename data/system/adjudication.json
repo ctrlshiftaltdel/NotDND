@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "kind": "system.adjudication",
+  "source": "docs/system/04-导引者操作系统.md:70",
+  "note": "规则冲突或无规则覆盖时的裁决优先级堆栈（自上而下 6 级）与默认裁决表（7 行）。",
+  "declared": {
+    "stack_levels": 6,
+    "default_rulings": 7
+  },
+  "stack": [
+    {"level": 1, "name": "玩家代理权", "question": "玩家拥有角色的意图、情绪、信念与私人事项的最终解释权。",
+     "source": "docs/system/04-导引者操作系统.md:76"},
+    {"level": 2, "name": "已建立的事实", "question": "之前明确在场发生的事，不可被推翻，只有被新事实覆盖。",
+     "source": "docs/system/04-导引者操作系统.md:79"},
+    {"level": 3, "name": "虚构逻辑", "question": "物理常识、人物性格、动机的连贯性。",
+     "source": "docs/system/04-导引者操作系统.md:82"},
+    {"level": 4, "name": "具体规则 > 通用规则", "question": "写在某能力／某物品上的文本，优先于通用规则正文。",
+     "source": "docs/system/04-导引者操作系统.md:85"},
+    {"level": 5, "name": "戏剧价值 > 数值精确", "question": "两者冲突时，允许临时让位于更好的故事，但需公开说明。",
+     "source": "docs/system/04-导引者操作系统.md:88"},
+    {"level": 6, "name": "默认裁决", "question": "以上皆不适用时，查默认裁决表（见 default_table）。",
+     "source": "docs/system/04-导引者操作系统.md:91"}
+  ],
+  "default_table": {
+    "source": "docs/system/04-导引者操作系统.md:95",
+    "rows": [
+      {"order": 1, "situation": "同时触发的多个效果谁先", "default_rule": "由受影响的玩家决定顺序",
+       "source": "docs/system/04-导引者操作系统.md:100"},
+      {"order": 2, "situation": "某件物品是否在某个场景存在", "default_rule": "若不影响剧情平衡，默认存在",
+       "source": "docs/system/04-导引者操作系统.md:101"},
+      {"order": 3, "situation": "一个 NPC 知道什么", "default_rule": "若他与信息来源有合理联系，默认他知道；否则默认不知道但能猜到一部分",
+       "source": "docs/system/04-导引者操作系统.md:102"},
+      {"order": 4, "situation": "距离／时间的模糊判定", "default_rule": "取对玩家有利的值，但要付出一个时段",
+       "source": "docs/system/04-导引者操作系统.md:103"},
+      {"order": 5, "situation": "某项行动是否需要掷骰", "default_rule": "若失败会很有趣，就掷；否则直接给结果",
+       "source": "docs/system/04-导引者操作系统.md:104"},
+      {"order": 6, "situation": "规则文本有歧义", "default_rule": "取对玩家较不利、但可以被后续行动翻转的那个解释",
+       "source": "docs/system/04-导引者操作系统.md:105"},
+      {"order": 7, "situation": "玩家想做的事超出规则范围", "default_rule": "允许，代价自拟（通常是 AP + 一个叙事代价）",
+       "source": "docs/system/04-导引者操作系统.md:106"}
+    ]
+  },
+  "principle": {
+    "rule": "永远不要因为没有规则而拒绝玩家的行动。世界比规则手册大。",
+    "source": "docs/system/04-导引者操作系统.md:109"
+  }
+}

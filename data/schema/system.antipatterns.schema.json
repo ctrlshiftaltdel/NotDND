@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.antipatterns）",
+  "description": "导引者操作系统第十五节：AI 主持人最常犯的 15 条反模式（表现与修正）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "patterns"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.antipatterns"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["patterns"],
+      "properties": {
+        "patterns": {"const": 15}
+      },
+      "additionalProperties": false
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["no", "name", "manifestation", "fix", "source"],
+        "properties": {
+          "no": {"type": "integer", "minimum": 1, "maximum": 15},
+          "name": {"type": "string", "minLength": 1},
+          "manifestation": {"type": "string", "minLength": 1},
+          "fix": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.ledger_spec）",
+  "description": "导引者操作系统第四节：世界账本的更新规则、格式指向与最小可行版本。账本骨架复用 common.schema.json 的 $defs.ledger，此处不重复定义字段。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "ledger_schema_ref", "rules", "min_viable"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.ledger_spec"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["rules", "min_fields"],
+      "properties": {
+        "rules": {"const": 3},
+        "min_fields": {"const": 5}
+      },
+      "additionalProperties": false
+    },
+    "ledger_schema_ref": {"const": "common.schema.json#/$defs/ledger"},
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "min_viable": {
+      "type": "object",
+      "required": ["fields", "rule", "source"],
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

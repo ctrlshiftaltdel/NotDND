@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "kind": "system.clue_enforcement",
+  "source": "docs/system/04-导引者操作系统.md:700",
+  "note": "三线索法则的执行：准备四途径、途中三条救济手段与不要做的事。",
+  "declared": {
+    "prep_paths": 4,
+    "relief_methods": 3,
+    "avoidances": 4
+  },
+  "prep_example": {
+    "source": "docs/system/04-导引者操作系统.md:708",
+    "goal": "玩家需要知道「货柜 B7 里装的是活体」",
+    "paths": [
+      {"order": 1, "path": "途径 A（物理）：夜袭打开货柜", "source": "docs/system/04-导引者操作系统.md:710"},
+      {"order": 2, "path": "途径 B（文档）：贿赂／说服调度员查看舱单", "source": "docs/system/04-导引者操作系统.md:711"},
+      {"order": 3, "path": "途径 C（人证）：找到那位当晚在场的叉车司机", "source": "docs/system/04-导引者操作系统.md:712"},
+      {"order": 4, "path": "途径 D（推理）：由三条间接线索推出（温度记录、气味投诉、保险单金额异常）",
+       "source": "docs/system/04-导引者操作系统.md:713"}
+    ]
+  },
+  "prep_rule": {
+    "rule": "准备四条，玩家只需要命中一条。多出来的那些不是浪费——它们是你应对意外玩家行为的保险。",
+    "source": "docs/system/04-导引者操作系统.md:716"
+  },
+  "relief": [
+    {"id": "inform", "name": "主动告知", "method": "一个 NPC 主动提及这件事（要有合理的动机，例如「他也想知道」）",
+     "source": "docs/system/04-导引者操作系统.md:724"},
+    {"id": "manifest", "name": "环境显化", "method": "让相关的线索在场景中变得显眼，不需要判定即可注意到",
+     "source": "docs/system/04-导引者操作系统.md:725"},
+    {"id": "event", "name": "事件带出", "method": "用一个随机事件把线索推到玩家面前（例如：一场纠纷恰好暴露了舱单）",
+     "source": "docs/system/04-导引者操作系统.md:726"}
+  ],
+  "relief_rule": {
+    "rule": "「玩家没找到」永远是导引者的失职，不是玩家的失败。",
+    "source": "docs/system/04-导引者操作系统.md:728"
+  },
+  "avoid": [
+    {"order": 1, "rule": "不要设置必须由某个特定技能才能通过的门（除非团队中确实有人拥有该技能）",
+     "source": "docs/system/04-导引者操作系统.md:732"},
+    {"order": 2, "rule": "不要把线索藏在一次掷骰之后（见 docs/system/03）",
+     "source": "docs/system/04-导引者操作系统.md:733"},
+    {"order": 3, "rule": "不要因为「剧情应该很难」而拒绝给信息",
+     "source": "docs/system/04-导引者操作系统.md:734"},
+    {"order": 4, "rule": "不要在玩家已经推理正确时仍然要求掷骰确认",
+     "source": "docs/system/04-导引者操作系统.md:735"}
+  ]
+}

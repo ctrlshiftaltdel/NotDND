@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tone_packs）",
+  "description": "导引者操作系统第十三节：八种语气包（描写偏好 / 对话风格 / 事件倾向 / 禁忌）与切换时机。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "usage", "packs", "switching"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tone_packs"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["packs", "switch_triggers"],
+      "properties": {
+        "packs": {"const": 8},
+        "switch_triggers": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "usage": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "packs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "prose", "dialogue", "events", "taboo", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "prose": {"type": "string", "minLength": 1},
+          "dialogue": {"type": "string", "minLength": 1},
+          "events": {"type": "string", "minLength": 1},
+          "taboo": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "switching": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "situation", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "situation": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

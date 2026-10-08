@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.session）",
+  "description": "导引者操作系统第三节：会话状态机（6 状态）与六种玩法模式（各含目标 / 默认动作 / 结束条件 / 陷阱）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "states", "modes", "announcement"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.session"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["states", "modes"],
+      "properties": {
+        "states": {"const": 6},
+        "modes": {"const": 6}
+      },
+      "additionalProperties": false
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "role", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "modes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "goal", "default_action", "advance", "end_condition", "pitfall", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "goal": {"type": "string", "minLength": 1},
+          "default_action": {"type": "string", "minLength": 1},
+          "advance": {"type": "string", "minLength": 1},
+          "end_condition": {"type": "string", "minLength": 1},
+          "pitfall": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "announcement": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

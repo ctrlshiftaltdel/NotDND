@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "kind": "system.tension",
+  "source": "docs/system/04-导引者操作系统.md:791",
+  "note": "张力曲线管理器：张力值五档、升温／降温信号、疲劳管理与高潮三要素。",
+  "declared": {
+    "bands": 5,
+    "heat_signals": 5,
+    "cool_signals": 5,
+    "fatigue_rules": 4,
+    "climax_elements": 3
+  },
+  "bands": [
+    {"id": "relaxed", "name": "松弛", "feeling": "0–2", "scene": "休整、日常、交易",
+     "source": "docs/system/04-导引者操作系统.md:801"},
+    {"id": "mild", "name": "温和", "feeling": "3–4", "scene": "探索、情报收集",
+     "source": "docs/system/04-导引者操作系统.md:802"},
+    {"id": "tense", "name": "紧绷", "feeling": "5–6", "scene": "潜入、交涉、追查",
+     "source": "docs/system/04-导引者操作系统.md:803"},
+    {"id": "high", "name": "高压", "feeling": "7–8", "scene": "火力战斗、限时拯救",
+     "source": "docs/system/04-导引者操作系统.md:804"},
+    {"id": "extreme", "name": "顶点", "feeling": "9–10", "scene": "生死抉择、核心揭示、Boss 决战",
+     "source": "docs/system/04-导引者操作系统.md:805"}
+  ],
+  "heat_signals": [
+    {"order": 1, "signal": "时间压力出现或收紧", "source": "docs/system/04-导引者操作系统.md:827"},
+    {"order": 2, "signal": "一个隐藏的威胁显形", "source": "docs/system/04-导引者操作系统.md:828"},
+    {"order": 3, "signal": "一个玩家在意的东西被夺走或损坏", "source": "docs/system/04-导引者操作系统.md:829"},
+    {"order": 4, "signal": "一个 NPC 受伤／死亡／背叛", "source": "docs/system/04-导引者操作系统.md:830"},
+    {"order": 5, "signal": "揭示一个改变格局的信息", "source": "docs/system/04-导引者操作系统.md:831"}
+  ],
+  "cool_signals": [
+    {"order": 1, "signal": "一个温暖的私人瞬间（哪怕只有两句）", "source": "docs/system/04-导引者操作系统.md:834"},
+    {"order": 2, "signal": "一次实质的收获（奖励、情报、安全据点）", "source": "docs/system/04-导引者操作系统.md:835"},
+    {"order": 3, "signal": "幽默：一个荒诞的细节，或一个 NPC 的怪癖", "source": "docs/system/04-导引者操作系统.md:836"},
+    {"order": 4, "signal": "一段风景或感官描写", "source": "docs/system/04-导引者操作系统.md:837"},
+    {"order": 5, "signal": "让某个 NPC 表达感谢或依赖", "source": "docs/system/04-导引者操作系统.md:838"}
+  ],
+  "fatigue": [
+    {"order": 1, "rule": "高潮场景后必须有一个降温场景（除非这是会话最后一幕）",
+     "source": "docs/system/04-导引者操作系统.md:846"},
+    {"order": 2, "rule": "连续三场景高强度后，强制插入休整或日常（哪怕只有一句话带过）",
+     "source": "docs/system/04-导引者操作系统.md:847"},
+    {"order": 3, "rule": "战斗场景之间至少间隔一个非战斗场景（除了刻意的连续遭遇设计）",
+     "source": "docs/system/04-导引者操作系统.md:848"},
+    {"order": 4, "rule": "会话结束时不留在高张力点，收尾要留白，让玩家想下次来",
+     "source": "docs/system/04-导引者操作系统.md:849"}
+  ],
+  "climax_elements": [
+    {"order": 1, "element": "代价的可能性——玩家真的可能输（或输掉重要的东西）",
+     "source": "docs/system/04-导引者操作系统.md:855"},
+    {"order": 2, "element": "知情的选择——玩家清楚自己为什么在这里，以及选项是什么",
+     "source": "docs/system/04-导引者操作系统.md:856"},
+    {"order": 3, "element": "无法回头——完成后有些东西永久改变了",
+     "source": "docs/system/04-导引者操作系统.md:857"}
+  ]
+}

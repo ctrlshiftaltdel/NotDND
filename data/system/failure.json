@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "kind": "system.failure",
+  "source": "docs/system/04-导引者操作系统.md:739",
+  "note": "失败推进：五重失败后果（Fivefold Fail）、保护角色能力感、句式库与连续失败救济。",
+  "declared": {
+    "outcomes": 5,
+    "patterns": 6,
+    "retry_steps": 3
+  },
+  "outcomes": [
+    {"no": 1, "name": "代价达成", "method": "目标达成了，但付出了资源／时间／暴露／人情",
+     "source": "docs/system/04-导引者操作系统.md:750"},
+    {"no": 2, "name": "引入麻烦", "method": "目标未达成，且出现一个新的问题（增援、警报、第三方介入）",
+     "source": "docs/system/04-导引者操作系统.md:751"},
+    {"no": 3, "name": "部分情报", "method": "目标未达成，但得到了一条信息（可能是部分的，甚至可能有误导）",
+     "source": "docs/system/04-导引者操作系统.md:752"},
+    {"no": 4, "name": "转移契机", "method": "目标未达成，但意外打开了一条新的路径",
+     "source": "docs/system/04-导引者操作系统.md:753"},
+    {"no": 5, "name": "他人受益", "method": "目标未达成，而某个 NPC（尤其是敌对者）因此获得了进展",
+     "source": "docs/system/04-导引者操作系统.md:754"}
+  ],
+  "priority": {
+    "rule": "永远优先第 1 项（代价达成）。让玩家的失败变成「达成了但更贵」，这在体验上远比单纯的失败好。",
+    "source": "docs/system/04-导引者操作系统.md:756"
+  },
+  "attribution": [
+    {"bad": "你的拳没打中，你没瞄好。", "good": "他侧身让过了这一拳——他的身手比你预想的好。",
+     "source": "docs/system/04-导引者操作系统.md:764"},
+    {"bad": "你撬锁失败，你不太擅长这个。", "good": "锁芯里有东西卡住了，这把锁被人做过手脚。",
+     "source": "docs/system/04-导引者操作系统.md:765"},
+    {"bad": "你说服失败，对方不信你。", "good": "他信了，但他更怕另一个人。",
+     "source": "docs/system/04-导引者操作系统.md:766"}
+  ],
+  "patterns": [
+    {"order": 1, "sentence": "没有成功 —— 但是 [ 另一个东西松动了 ]",
+     "source": "docs/system/04-导引者操作系统.md:773"},
+    {"order": 2, "sentence": "你没能阻止他 —— 不过他留下了一样东西",
+     "source": "docs/system/04-导引者操作系统.md:774"},
+    {"order": 3, "sentence": "对方不为所动 —— 但他身旁的那个人在听",
+     "source": "docs/system/04-导引者操作系统.md:775"},
+    {"order": 4, "sentence": "这一击偏了 —— 却正好砍断了悬挂重物的钢索",
+     "source": "docs/system/04-导引者操作系统.md:776"},
+    {"order": 5, "sentence": "你迟了一步 —— 但来得及看到他去了哪",
+     "source": "docs/system/04-导引者操作系统.md:777"},
+    {"order": 6, "sentence": "你的话没起作用 —— 可你自己说出口时，忽然意识到了一件事",
+     "source": "docs/system/04-导引者操作系统.md:778"}
+  ],
+  "retry": [
+    {"step": 1, "rule": "第三次尝试自动获得 1 枚助势骰，并允许换一种技能尝试",
+     "source": "docs/system/04-导引者操作系统.md:785"},
+    {"step": 2, "rule": "若仍失败，导引者应当直接提供一条替代路径",
+     "source": "docs/system/04-导引者操作系统.md:786"},
+    {"step": 3, "rule": "绝不允许玩家在同一件事上卡住超过三次",
+     "source": "docs/system/04-导引者操作系统.md:787"}
+  ]
+}

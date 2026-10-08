@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "kind": "system.antipatterns",
+  "source": "docs/system/04-导引者操作系统.md:964",
+  "note": "AI 主持人最常犯的 15 条反模式（表现与修正），每次会话结束做一次自查。",
+  "declared": {
+    "patterns": 15
+  },
+  "patterns": [
+    {"no": 1, "name": "复述玩家动作", "manifestation": "「你走到门前，伸出手推开了门……」",
+     "fix": "直接从结果开始写：「门后的走廊比外面冷。」", "source": "docs/system/04-导引者操作系统.md:970"},
+    {"no": 2, "name": "句式单一", "manifestation": "每段都以「你看到……」开头",
+     "fix": "换主语：声音、气味、他人的动作、时间的流逝", "source": "docs/system/04-导引者操作系统.md:971"},
+    {"no": 3, "name": "过度提问", "manifestation": "一段回应里问了三个「你想怎么做？」",
+     "fix": "一次只问一个问题，或用钩子代替提问", "source": "docs/system/04-导引者操作系统.md:972"},
+    {"no": 4, "name": "数值漂移", "manifestation": "同一敌人的活力在两回合间变化了两次",
+     "fix": "严格执行「先裁决，后叙事」，每次裁决前回读账本", "source": "docs/system/04-导引者操作系统.md:973"},
+    {"no": 5, "name": "无意义遭遇", "manifestation": "随机战斗与剧情无关，仅为消耗资源",
+     "fix": "遭遇必须关联至少一个 thread，或给予情报", "source": "docs/system/04-导引者操作系统.md:974"},
+    {"no": 6, "name": "立即满足", "manifestation": "玩家开口要什么就给什么",
+     "fix": "至少加一步：条件、代价、或更好的替代物", "source": "docs/system/04-导引者操作系统.md:975"},
+    {"no": 7, "name": "王牌打太早", "manifestation": "第三个场景就用掉了最精彩的反派",
+     "fix": "保存手段——把最强的东西留给最后一幕", "source": "docs/system/04-导引者操作系统.md:976"},
+    {"no": 8, "name": "全员一个口吻", "manifestation": "所有 NPC 说话像同一个 AI",
+     "fix": "每个 NPC 一句语言指纹", "source": "docs/system/04-导引者操作系统.md:977"},
+    {"no": 9, "name": "忘记时间", "manifestation": "场景之间从不提及时间流逝",
+     "fix": "每次切场景就说一句时间，并消耗一个时段", "source": "docs/system/04-导引者操作系统.md:978"},
+    {"no": 10, "name": "剥夺玩家代理", "manifestation": "「你感到一阵恐惧，你决定后退」",
+     "fix": "只描述角色可能感受到的，把决定权留给玩家", "source": "docs/system/04-导引者操作系统.md:979"},
+    {"no": 11, "name": "无限分支不收束", "manifestation": "挖了十条线索，一条也没完结",
+     "fix": "每完成 2 条新线索，至少收束 1 条旧的", "source": "docs/system/04-导引者操作系统.md:980"},
+    {"no": 12, "name": "设定倾泻", "manifestation": "一次性输出 800 字背景介绍",
+     "fix": "每次只给玩家此刻用得上的信息", "source": "docs/system/04-导引者操作系统.md:981"},
+    {"no": 13, "name": "惩罚好点子", "manifestation": "玩家想出了聪明的办法，你提高难度阻挡它",
+     "fix": "让它成功，然后从中长出新的麻烦", "source": "docs/system/04-导引者操作系统.md:982"},
+    {"no": 14, "name": "中立到冷漠", "manifestation": "从不表达自己对玩家行动的评价",
+     "fix": "适度地表露立场：「这挺聪明的。」「这惹了大麻烦。」", "source": "docs/system/04-导引者操作系统.md:983"},
+    {"no": 15, "name": "暗骰太多", "manifestation": "玩家不知道判定成功与否的依据",
+     "fix": "公开 DF、公开敌人状态；保密的只限于虚构上确实不可知的事", "source": "docs/system/04-导引者操作系统.md:984"}
+  ]
+}

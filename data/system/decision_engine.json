@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "kind": "system.decision_engine",
+  "source": "docs/system/04-导引者操作系统.md:324",
+  "note": "意图—张力—回报决策引擎：启动时机（5）、四步流程、四维打分与总分公式。",
+  "declared": {
+    "triggers": 5,
+    "steps": 4,
+    "dimensions": 4
+  },
+  "triggers": [
+    {"order": 1, "situation": "一个场景刚开始，需要决定谁／什么先出现",
+     "source": "docs/system/04-导引者操作系统.md:333"},
+    {"order": 2, "situation": "玩家完成了一次重要行动，需要决定世界如何回应",
+     "source": "docs/system/04-导引者操作系统.md:334"},
+    {"order": 3, "situation": "出现了意料之外的玩家行为，需要即时调整",
+     "source": "docs/system/04-导引者操作系统.md:335"},
+    {"order": 4, "situation": "一个场景即将收束，需要决定下一个场景是什么",
+     "source": "docs/system/04-导引者操作系统.md:336"},
+    {"order": 5, "situation": "玩家沉默或不确定时，需要抛出一个钩子",
+     "source": "docs/system/04-导引者操作系统.md:337"}
+  ],
+  "steps": [
+    {"order": 1, "name": "生成 3 个候选事件",
+     "detail": "它们必须彼此不同——如果三个候选本质上是一件事的三个版本，说明你没有真正生成候选。",
+     "source": "docs/system/04-导引者操作系统.md:341"},
+    {"order": 2, "name": "给每个候选打分",
+     "detail": "按四维（I / R / U / T）打分并套用总分公式。",
+     "source": "docs/system/04-导引者操作系统.md:345"},
+    {"order": 3, "name": "取最高分执行",
+     "detail": "执行得分最高的候选。",
+     "source": "docs/system/04-导引者操作系统.md:358"},
+    {"order": 4, "name": "保留次高分为备用",
+     "detail": "若玩家反应与预期不同，立刻启用备用候选，让 AI 不会因一次误判而停摆。",
+     "source": "docs/system/04-导引者操作系统.md:360"}
+  ],
+  "dimensions": [
+    {"abbr": "I", "name": "意图对齐", "range": "0–3",
+     "question": "这回应了玩家刚刚表达的兴趣或某个角色的驱动吗？",
+     "source": "docs/system/04-导引者操作系统.md:349"},
+    {"abbr": "R", "name": "回报价值", "range": "0–3",
+     "question": "这兑现了一个伏笔，或推进了某条线索吗？",
+     "source": "docs/system/04-导引者操作系统.md:350"},
+    {"abbr": "U", "name": "意外度", "range": "0–2",
+     "question": "这会不会让玩家愣一下、笑出来或倒吸一口气？",
+     "source": "docs/system/04-导引者操作系统.md:351"},
+    {"abbr": "T", "name": "张力适配", "range": "−2 ~ +2",
+     "question": "这符合当前张力曲线该做的事吗？",
+     "source": "docs/system/04-导引者操作系统.md:352"}
+  ],
+  "formula": {
+    "formula": "I×2 + R×2 + U + T",
+    "source": "docs/system/04-导引者操作系统.md:355"
+  },
+  "alignment": {
+    "rule": "I（意图对齐）双倍加权：把玩家的每一个表达都当作输入来用，即使后续发展很普通，玩家也会觉得这个 GM 懂他。",
+    "source": "docs/system/04-导引者操作系统.md:382"
+  }
+}

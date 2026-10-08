@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.clue_enforcement）",
+  "description": "导引者操作系统第十节：三线索法则的执行——准备四途径、途中三条救济手段与不要做的事。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "prep_example", "prep_rule", "relief", "relief_rule", "avoid"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.clue_enforcement"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["prep_paths", "relief_methods", "avoidances"],
+      "properties": {
+        "prep_paths": {"const": 4},
+        "relief_methods": {"const": 3},
+        "avoidances": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "prep_example": {
+      "type": "object",
+      "required": ["source", "goal", "paths"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "goal": {"type": "string", "minLength": 1},
+        "paths": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "path", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "path": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "prep_rule": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "relief": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "method", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "method": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "relief_rule": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "avoid": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

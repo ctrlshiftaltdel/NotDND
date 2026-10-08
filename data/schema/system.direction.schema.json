@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.direction）",
+  "description": "导引者操作系统第七节：导演剪接——三条基本准则、五种镜头、长度控制与收尾短句。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "principles", "shots", "length_control", "closing_lines"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.direction"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["principles", "shots", "lengths", "closing_lines"],
+      "properties": {
+        "principles": {"const": 3},
+        "shots": {"const": 5},
+        "lengths": {"const": 4},
+        "closing_lines": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "principles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "name", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "shots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "usage", "example", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "usage": {"type": "string", "minLength": 1},
+          "example": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "length_control": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["position", "length", "source"],
+        "properties": {
+          "position": {"type": "string", "minLength": 1},
+          "length": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "closing_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "line", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "line": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

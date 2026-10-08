@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.npc_drive）",
+  "description": "导引者操作系统第八节：NPC 驱动轴五字段、d12 原型速配表（12）与自主推进阶梯（6）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "fields", "archetypes", "progression"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.npc_drive"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["fields", "archetypes", "ladder_steps"],
+      "properties": {
+        "fields": {"const": 5},
+        "archetypes": {"const": 12},
+        "ladder_steps": {"const": 6}
+      },
+      "additionalProperties": false
+    },
+    "fields": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "question", "requirement", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "question": {"type": "string", "minLength": 1},
+          "requirement": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "archetypes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["roll", "name", "default_drive", "default_lever", "source"],
+        "properties": {
+          "roll": {"type": "integer", "minimum": 1, "maximum": 12},
+          "name": {"type": "string", "minLength": 1},
+          "default_drive": {"type": "string", "minLength": 1},
+          "default_lever": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "progression": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "label", "source"],
+        "properties": {
+          "step": {"type": "integer", "minimum": 1, "maximum": 6},
+          "label": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

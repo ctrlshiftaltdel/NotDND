@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.enemy_personas）",
+  "description": "导引者操作系统第九节：敌人战术人格六型与每型四张行为卡（共 24 张）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "personas", "cards", "mixing", "execution_notes"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.enemy_personas"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["personas", "cards", "cards_per_persona"],
+      "properties": {
+        "personas": {"const": 6},
+        "cards": {"const": 24},
+        "cards_per_persona": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "personas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "desire", "priority_target", "dying", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "desire": {"type": "string", "minLength": 1},
+          "priority_target": {"type": "string", "minLength": 1},
+          "dying": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "persona", "name", "behavior", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "persona": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "behavior": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "mixing": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "execution_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

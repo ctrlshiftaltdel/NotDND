@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "kind": "system.ledger_spec",
+  "source": "docs/system/04-导引者操作系统.md:214",
+  "note": "世界账本的更新规则与最小可行版本；账本字段骨架复用 common.schema.json 的 $defs.ledger，此处不重复定义。",
+  "declared": {
+    "rules": 3,
+    "min_fields": 5
+  },
+  "ledger_schema_ref": "common.schema.json#/$defs/ledger",
+  "rules": [
+    {"order": 1, "rule": "每场场景结束时，导引者必须输出更新后的完整账本（或仅输出变更部分）。",
+     "source": "docs/system/04-导引者操作系统.md:221"},
+    {"order": 2, "rule": "每次会话开始时，把上一版账本贴回上下文。",
+     "source": "docs/system/04-导引者操作系统.md:222"},
+    {"order": 3, "rule": "账本使用 JSON——结构约束本身就是一种纠错机制。",
+     "source": "docs/system/04-导引者操作系统.md:223"}
+  ],
+  "min_viable": {
+    "fields": ["clock", "threads", "facts", "npcs", "hooks"],
+    "rule": "上下文紧张时，至少保留这五个字段；只要有这五个，长程一致性就不会崩。",
+    "source": "docs/system/04-导引者操作系统.md:314"
+  }
+}

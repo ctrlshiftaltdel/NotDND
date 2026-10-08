@@ -509,6 +509,121 @@ data/
 > 货币层级 **3**、持有资金 **5**、物价 **7**、讨价还价 **5**、稀有度 **5**、收入来源 **4**；
 > 声望轴 **7**、Bond **5**、据点设施 **8**（上限 **5**）、据点事件 d20 **20**、间幕行动 **9**、分工动作 **7**。
 
+**`system.architecture`**（三层架构 / 输出结构 / 四条守则；`docs/system/04` 第一节）
+
+- `declared`：`{layers:3, rules:4, output_sections:3}`。
+- `layers[]`：`{id, name, en, responsibility, output, failure, source}`（叙事 Narration / 裁决 Adjudication / 模拟 Simulation）。
+- `output_structure`：`{source, sections[]}`，`sections[]` 为 `{order, label, purpose, source}`（裁决 / 叙事 / 钩子）。
+- `rules[]`：`{order, name, rule, source}`（4 条操作守则）。
+
+**`system.adjudication`**（裁决优先级堆栈 + 默认裁决表；第二节）
+
+- `declared`：`{stack_levels:6, default_rulings:7}`。
+- `stack[]`：`{level(1–6), name, question, source}`。
+- `default_table`：`{source, rows[]}`，`rows[]` 为 `{order, situation, default_rule, source}`（7 行）。
+- `principle`：`{rule, source}`。
+
+**`system.session`**（会话状态机 + 六种玩法模式；第三节）
+
+- `declared`：`{states:6, modes:6}`。
+- `states[]`：`{id, name, role, source}`（SESSION_BOOT … SESSION_WRAP）。
+- `modes[]`：`{id, name, en, goal, default_action, advance, end_condition, pitfall, source}`。
+- `announcement`：`{rule, source}`。
+
+**`system.ledger_spec`**（世界账本规则 + 最小可行版本；第四节）
+
+- `declared`：`{rules:3, min_fields:5}`。
+- `ledger_schema_ref`：固定 `common.schema.json#/$defs/ledger`（账本骨架复用，不重复定义）。
+- `rules[]`：`{order, rule, source}`（3 条）。
+- `min_viable`：`{fields[], rule, source}`，`fields` 固定 5 项 `clock | threads | facts | npcs | hooks`。
+
+**`system.decision_engine`**（意图—张力—回报决策引擎；第五节）
+
+- `declared`：`{triggers:5, steps:4, dimensions:4}`。
+- `triggers[]`：`{order, situation, source}`；`steps[]`：`{order, name, detail, source}`。
+- `dimensions[]`：`{abbr(I|R|U|T), name, range, question, source}`。
+- `formula`：`{formula, source}`，`formula` 固定 `I×2 + R×2 + U + T`；`alignment`：`{rule, source}`。
+
+**`system.branching`**（三条分支法 + 八种故事引擎；第六节）
+
+- `declared`：`{engines:8, routes_per_decision:3, pool_min:3, pool_max:5}`。
+- `engines[]`：`{no(1–8), name, en, feel, pattern, source}`。
+- `non_adjacent` / `unselected`：`{rule, source}`；`route_format`：`{fields[], source}`。
+- `consistency_questions[]`：`{order, question, source}`（3）；`pool_rules[]`：`{order, rule, source}`（4）。
+
+**`system.direction`**（导演剪接 / 镜头 / 长度；第七节）
+
+- `declared`：`{principles:3, shots:5, lengths:4, closing_lines:3}`。
+- `principles[]`：`{order, name, rule, source}`；`shots[]`：`{id, name, usage, example, source}`。
+- `length_control[]`：`{position, length, source}`；`closing_lines[]`：`{order, line, source}`。
+
+**`system.npc_drive`**（NPC 驱动轴 / d12 原型 / 推进阶梯；第八节）
+
+- `declared`：`{fields:5, archetypes:12, ladder_steps:6}`。
+- `fields[]`：`{id, name, question, requirement, source}`（Drive / Lever / Mask / Tell / Threshold）。
+- `archetypes[]`：`{roll(1–12), name, default_drive, default_lever, source}`。
+- `progression[]`：`{step(1–6), label, source}`。
+
+**`system.enemy_personas`**（敌人战术人格 + 行为卡；第九节）
+
+- `declared`：`{personas:6, cards:24, cards_per_persona:4}`。
+- `personas[]`：`{id, name, en, desire, priority_target, dying, source}`。
+- `cards[]`：`{id, persona, name, behavior, source}`（24 张，A1–F4）。
+- `mixing`：`{rule, source}`；`execution_notes[]`：`{order, rule, source}`（3）。
+
+**`system.clue_enforcement`**（三线索法则的执行；第十节）
+
+- `declared`：`{prep_paths:4, relief_methods:3, avoidances:4}`。
+- `prep_example`：`{source, goal, paths[]}`，`paths[]` 为 `{order, path, source}`（4）。
+- `prep_rule` / `relief_rule`：`{rule, source}`；`relief[]`：`{id, name, method, source}`（3）。
+- `avoid[]`：`{order, rule, source}`（4）。
+
+**`system.failure`**（失败推进 Fivefold Fail；第十一节）
+
+- `declared`：`{outcomes:5, patterns:6, retry_steps:3}`。
+- `outcomes[]`：`{no(1–5), name, method, source}`；`priority`：`{rule, source}`。
+- `attribution[]`：`{bad, good, source}`（3）；`patterns[]`：`{order, sentence, source}`（6）。
+- `retry[]`：`{step, rule, source}`（3）。
+
+**`system.tension`**（张力曲线管理器；第十二节）
+
+- `declared`：`{bands:5, heat_signals:5, cool_signals:5, fatigue_rules:4, climax_elements:3}`。
+- `bands[]`：`{id, name, feeling, scene, source}`（5 档，`feeling` 记 0–10 区间）。
+- `heat_signals[]` / `cool_signals[]`：`{order, signal, source}`（各 5）。
+- `fatigue[]`：`{order, rule, source}`（4）；`climax_elements[]`：`{order, element, source}`（3）。
+
+**`system.tone_packs`**（语气包；第十三节）
+
+- `declared`：`{packs:8, switch_triggers:3}`。
+- `usage`：`{rule, source}`。
+- `packs[]`：`{id, name, en, prose, dialogue, events, taboo, source}`（8 种）。
+- `switching[]`：`{order, situation, source}`（3）。
+
+**`system.guardrails`**（护栏与一致性校验；第十四节）
+
+- `declared`：`{boundary_items:5, termination_mechanisms:3, boundary_supplements:3, scene_self_checks:8, numeric_invariants:5}`。
+- `boundary_checklist[]`：`{order, item, source}`（5）；`termination[]`：`{id, name, usage, response, source}`（3）。
+- `boundary_supplements[]`：`{order, rule, source}`（3）；`scene_self_check[]`：`{order, check, source}`（8）。
+- `numeric_invariants[]`：`{order, invariant, meaning, source}`（5）。
+- `fact_invariant`：`{rule, example_bad, example_good, source}`；`npc_consistency`：`{rule, source}`。
+
+**`system.antipatterns`**（反模式清单；第十五节）
+
+- `declared`：`{patterns:15}`。
+- `patterns[]`：`{no(1–15), name, manifestation, fix, source}`。
+
+**世界账本（复用，不重复定义）**：第四节的世界账本字段骨架由
+`common.schema.json#/$defs/ledger` 承载；`system.ledger_spec` 只登记更新规则与最小可行版本，
+并以 `ledger_schema_ref` 指向该 `$defs`。
+
+> **计数核对**（M1.1e 逐条比对 `docs/system/04`）：三层架构 **3**；操作守则 **4**；输出结构 **3**；
+> 裁决堆栈 **6**；默认裁决 **7**；会话状态 **6**；玩法模式 **6**；账本规则 **3** / 最小字段 **5**；
+> 决策触发 **5** / 四步 **4** / 打分维度 **4**；故事引擎 **8**；路线池 **3–5**；
+> 镜头 **5**；长度 **4**；NPC 字段 **5**；NPC 原型 d12 **12**；推进阶梯 **6**；
+> 敌人人格 **6**（行为卡 **24**）；三线索准备途径 **4** / 救济 **3**；五重失败 **5**；
+> 句式库 **6**；张力档 **5**；升温 / 降温信号各 **5**；疲劳规则 **4**；高潮要素 **3**；
+> 语气包 **8**；终止机制 **3**；场景自检 **8**；数值不变式 **5**；反模式 **15**。
+
 
 ### 4.2 world 族
 

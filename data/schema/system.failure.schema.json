@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.failure）",
+  "description": "导引者操作系统第十一节：失败推进——五重失败后果、保护角色能力感、句式库与连续失败救济。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "outcomes", "priority", "attribution", "patterns", "retry"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.failure"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["outcomes", "patterns", "retry_steps"],
+      "properties": {
+        "outcomes": {"const": 5},
+        "patterns": {"const": 6},
+        "retry_steps": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["no", "name", "method", "source"],
+        "properties": {
+          "no": {"type": "integer", "minimum": 1, "maximum": 5},
+          "name": {"type": "string", "minLength": 1},
+          "method": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "priority": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "attribution": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["bad", "good", "source"],
+        "properties": {
+          "bad": {"type": "string", "minLength": 1},
+          "good": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "sentence", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "sentence": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "retry": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step", "rule", "source"],
+        "properties": {
+          "step": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
