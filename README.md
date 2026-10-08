@@ -23,6 +23,21 @@ bash tests/content_firewall.sh # 内容防火墙：禁止路径 / 品牌标识 /
 `tests/run_all.sh` 会逐个打印通过 / 失败行并汇总，有失败即返回非零。
 CI 另设语法门（`python3 -m py_compile`）与上述内容防火墙门，见 `.github/workflows/`。
 
+## 数据层
+
+`data/` 存放由 [`docs/`](docs/)（只读）整理出的 JSON 数据（「加文件即加内容」）：
+
+- 目录布局：`data/system/`（跨世界规则）、`data/worlds/`（世界模组）、
+  `data/scenarios/`（剧本 / 战役）、`data/random_tables/`（随机表）。
+- 统一格式、canonical 键与别名、`source` 溯源口径：见 [`data/FORMAT.md`](data/FORMAT.md)。
+- 校验（零依赖，仅 Python 3 标准库；没有数据文件时打印提示并跳过）：
+
+```bash
+python3 tests/validate_data.py
+```
+
+`tests/test_data.py` 会调用该校验器，并用 `tests/fixtures/` 证明坏数据会被拦下。
+
 ## 许可
 
 代码与规则内容均以 **MIT** 发布；许可与署名见 [`LICENSE`](LICENSE) 与 [`NOTICE`](NOTICE)。
