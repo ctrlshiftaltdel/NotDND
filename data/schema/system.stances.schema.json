@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.stances）",
+  "description": "态势 4（攻势 / 守势 / 游势 / 专注势）及切换代价；源自 docs/system/01-内核CORE.md 第七节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "switch_cost", "stances"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.stances"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "switch_cost": {"type": "string", "minLength": 1},
+    "stances": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "attack", "guard", "move", "note", "source"],
+        "properties": {
+          "id": {"enum": ["aggressive", "defensive", "mobile", "focused"]},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "attack": {"type": "string", "minLength": 1},
+          "guard": {"type": "string", "minLength": 1},
+          "move": {"type": "string", "minLength": 1},
+          "note": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

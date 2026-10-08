@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "kind": "system.stances",
+  "source": "docs/system/01-内核CORE.md:355",
+  "note": "态势是角色在战斗中采取的姿态。每回合可以免费切换一次，这让同一个角色能在不同回合扮演不同角色。",
+  "switch_cost": "0（每回合一次）",
+  "stances": [
+    {"id": "aggressive", "name": "攻势", "en": "Aggressive",
+     "attack": "+1 骰", "guard": "−2", "move": "—",
+     "note": "全力进攻，暴露自身", "source": "docs/system/01-内核CORE.md:361"},
+    {"id": "defensive", "name": "守势", "en": "Defensive",
+     "attack": "−1 骰", "guard": "+3", "move": "—",
+     "note": "警惕防御，牺牲输出", "source": "docs/system/01-内核CORE.md:362"},
+    {"id": "mobile", "name": "游势", "en": "Mobile",
+     "attack": "—", "guard": "+1", "move": "+3 米",
+     "note": "机动拉扯，适合吸引与牵制", "source": "docs/system/01-内核CORE.md:363"},
+    {"id": "focused", "name": "专注势", "en": "Focused",
+     "attack": "−1 骰", "guard": "—", "move": "—",
+     "note": "所有能力判定 DF 目标 −1（对自己而言是 −1 DF），但基础攻击 −1 骰",
+     "source": "docs/system/01-内核CORE.md:364"}
+  ]
+}

@@ -15,7 +15,8 @@ data/
 ├── schema/                   # JSON Schema（draft 2020-12）与登记表
 │   ├── common.schema.json    # 跨族共用 $defs
 │   ├── registry.json         # kind → schema 登记表
-│   ├── system.schema.json
+│   ├── system.schema.json    # 基线 system.attributes（历史文件名，见 4.1 裁定）
+│   ├── system.<name>.schema.json  # system 族各 kind 的平铺 schema（见 4.1）
 │   ├── world.schema.json
 │   ├── random_tables.schema.json
 │   └── scenario.schema.json
@@ -54,6 +55,12 @@ data/
 | `random_tables.catalog` | `random_tables.schema.json` |
 | `scenario.campaign` | `scenario.schema.json` |
 
+> M1.1a 起 `system` 族按来源文档切片拆为多个 kind（`system.derived`、`system.skills`、
+> `system.tags`、`system.conditions`、`system.stances`、`system.action_economy`、
+> `system.combat`、`system.damage`、`system.resources`、`system.growth`），
+> 每个 kind 一份平铺 schema，字段表见第 **4.1** 节。**权威登记表始终是
+> `data/schema/registry.json`**；本表只列基线示例，不再逐条复制。
+
 > 新增一类数据时，先在 `registry.json` 登记新的 `kind`，再在对应族 schema 中补
 > 约束。校验器遇到**未登记的 `kind`** 即报错。
 
@@ -79,6 +86,13 @@ data/
 
 ### 4.1 system 族
 
+> **裁定（随 M1.1a 落定）**：`kind` 一律用 `<family>.<name>`（族.名称）；
+> **每个 kind 一份平铺 schema**——文件名 `data/schema/<kind>.schema.json`
+> （即 `system.<name>.schema.json`），并在 `registry.json` 登记一条 `kind → schema`。
+> 基线 `system.attributes` 是**唯一例外**：它沿用 `system.schema.json`
+> （既有回归测试锁定该文件名），新 kind 一律不再并入该文件。
+> 每个新 schema 只使用第 7 节的关键字子集，共用结构 `$ref` 到 `common.schema.json`。
+
 **`system.attributes`**（六维属性 + 等级表 + 修正表）
 
 - `attributes[]`：`{id, name, en, question, source}`
@@ -87,6 +101,103 @@ data/
 - `levels[]`：`{value, label, example?, source}`，`value` 为 1–10。
 - `modifiers[]`：`{value, modifier, source}`，`value` 为 1–10，`modifier` 为 −2–3。
   属性修正换算：`1→−2｜2–3→−1｜4–5→0｜6–7→+1｜8–9→+2｜10→+3`。
+
+**`system.derived`**（派生值 + 负载标签；`docs/system/01` 第二节）
+
+- `formulas[]`：`{id, name, formula, note?, source}`，
+  `id` 枚举 `vitality | guard | move | carry | initiative`。
+- `load_labels[]`：字符串数组，取 `轻 | 中 | 重`。
+- `load_rules[]`：`{id, label, min_count?, condition, effect, source}`。
+- `note?`：字符串。
+
+**`system.skills`**（29 项技能 + 合并别名；`docs/system/01` 第三节）
+
+- `declared_total`：固定 `29`（自述计数，便于机器核对）。
+- `proficiency_note`：字符串。
+- `categories[]`：`{id, name, source}`，`id` 枚举
+  `physical | mobility | perception | knowledge | survival | social`。
+- `skills[]`：`{id, name, en, attributes[], category, use, source}`；
+  `attributes` 恰好 2 项，取值 `MGT|FIN|VIG|INS|MND|PRE`，判定取两者较高一项。
+- `aliases[]`：`{alias, target, source}`，记录合并项（察觉陷阱→察觉、荒野求生→生存）。
+
+**`system.tags`**（伤害标签 11 + 性质标签 33 + 交互原则；`docs/system/01` 第四节）
+
+- `note`：字符串。
+- `damage_tags[]`：`{id, name, en, meaning, source}`（11 条）。
+- `property_tags[]`：`{id, name, source}`（33 条）。
+- `interaction_principles[]`：`{order, name, rule, source}`。
+
+**`system.conditions`**（减益 11 + 增益 5 + 派生状态 2；`docs/system/01` 第五节）
+
+- `note`：字符串。
+- `debuffs[]`：`{id, name, en, effect, removal, source}`。
+- `buffs[]`：`{id, name, en, effect, source}`。
+- `derived[]`：`{id, name, trigger, effect, source}`（`weary` 疲惫、`overloading` 过载中）。
+- `stacking_rules[]`：`{order, rule, source}`。
+
+**`system.stances`**（态势 4；`docs/system/01` 第七节）
+
+- `note`、`switch_cost`：字符串。
+- `stances[]`：`{id, name, en, attack, guard, move, note, source}`，
+  `id` 枚举 `aggressive | defensive | mobile | focused`。
+
+**`system.action_economy`**（回合结构 / 动作价格 / 反应 / 过载 / 时间单位；第六节）
+
+- `note`、`reaction_note`：字符串。
+- `round`：`{ap_per_turn, carry_over_to_reaction, steps[], source}`。
+- `actions[]`：`{id, name, ap, ap_note?, note, source}`；
+  `ap` 为 ≥0 的整数或 `null`（反应动作用 `ap_note` 记「用保留的 AP」）。
+- `reactions[]`：`{id, name, en?, cost, effect, source}`。
+- `overload`：`{note, levels[], cost, cost_source}`，
+  `levels[]` 为 `{level, extra_ap, next_ap, note?, source}`。
+- `time_units[]`：`{id, name, en?, duration, use, source}`。
+
+**`system.combat`**（战斗支柱：韧性破韧 / 连携 / 场地要素；第八至十节）
+
+- `poise`：`{name, formula, note, body_sizes[], reduction[], reduction_caveat,
+  recovery, recovery_source, break, boss_shield}`；
+  `body_sizes[]` 为 `{id, name, bonus, extra?, source}`，体型加值 5 档（0/6/12/20/30）；
+  `reduction[]` 为 `{id, method, amount, source}`；`break.effects[]` 为
+  `{id, effect, value, source}`；`boss_shield` 为 `{layers, recover, note, phases[]}`。
+- `combo`：`{triggers[], limit, limit_source, responses[], chain, pursuit, pursuit_source}`；
+  `triggers[]` 6 条 `{order, name, description, source}`；
+  `responses[]` 3 条 `{id, name, en, effect, source}`。
+- `site_elements`：`{count_rule, count_source, adopt_conditions[], format, table[],
+  player_request}`；`table[]` 是通用 d20 表 20 行，`{roll, name, type, df, effect, source}`，
+  `type` 与 `df` 口径同 `common.site_element`（`类型` 取 `掩体 | 危险 | 机关 | 增幅 | 情绪 | 机动`，
+  `df` 可为 `null`）。
+
+**`system.damage`**（命中与抗性 / 濒危与创伤；第十一节）
+
+- `resolution_flow[]`：`{order, step, source}`。
+- `outcomes[]`：`{id, name, condition, effect, source}`（命中/暴击/擦过/严重失手）。
+- `relations[]`：`{id, name, en, effect, source}`（抗性/弱点/免疫/吸收）。
+- `downed` / `fade` / `trauma`：见 schema；各短文本字段成对带 `*_source`。
+
+**`system.resources`**（四大资源池 + 休息 + 医疗；第十二、十三节）
+
+- `pools`：固定键 `focus | tempo | strain | resolve`，各有 `name/en/role` 与池专属字段
+  （`focus.notes[]`、`tempo.spends[]` + `zero_rule`、`strain.levels[]` + `sources`、
+  `resolve.spends[]` + `recovery[]`）。
+- `rest[]`：`{id, name, en, duration, condition, recovery, source}`。
+- `medical[]`：`{id, rule, source}`。
+
+**`system.growth`**（十二级三层制 / 成长选择 6 类 / 通用专长 30；第十四节）
+
+- `declared`：`{tiers, proficiency_tiers, choice_categories, feats}`，自述计数便于机器核对。
+- `tiers[]`、`levelup[]`、`per_level[]`、`proficiency_bonus[]`。
+- `choices[]`：`{id, label, name, effect, source}`，`label` 枚举 `A–F`（6 类）。
+- `choice_restriction` / `choice_restriction_source`。
+- `feat_categories[]`：`{id, name, source}`，`id` 枚举
+  `combat | mobility | mind | social | resilience`。
+- `feats[]`：`{order, id, name, category, effect, source}`（30 项，`order` 1–30）。
+
+> **计数核对**（M1.1a 逐条比对 `docs/system/01`）：技能 29；伤害标签 11；性质标签 33；
+> 减益 11 / 增益 5 / 派生状态 2；态势 4；动作价格 **10**；反应 5；过载 3；体型加值 5；
+> 场地要素 d20 表 20 行；成长选择 6 类；通用专长 30。
+> ⚠️ 动作价格表以 `docs/system/01` 第六节为准为 **10 行**（移动/姿态切换/辅助动作/基础攻击/
+> 全额能力/快速能力/压制动作/巡查动作/协助/反应）；若别处记为「11」，以源文档为准。
+
 
 ### 4.2 world 族
 

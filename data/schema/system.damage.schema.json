@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.damage）",
+  "description": "伤害结算流程、命中判定（命中 / 擦过 / 暴击 / 严重失手）、抗性 / 弱点 / 免疫 / 吸收、濒危与挣扎、消亡与回光、创伤层；源自 docs/system/01-内核CORE.md 第十一节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "resolution_flow", "outcomes", "relations", "downed", "fade", "trauma"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.damage"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "resolution_flow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "step", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "step": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "outcomes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "condition", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "condition": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "downed": {
+      "type": "object",
+      "required": ["trigger", "effects", "struggle", "struggle_source", "success", "success_source", "failure", "failure_source", "damage_escalation", "damage_escalation_source", "rescue", "rescue_source"],
+      "properties": {
+        "trigger": {"type": "string", "minLength": 1},
+        "effects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "struggle": {"type": "string", "minLength": 1},
+        "struggle_source": {"$ref": "common.schema.json#/$defs/source"},
+        "success": {"type": "string", "minLength": 1},
+        "success_source": {"$ref": "common.schema.json#/$defs/source"},
+        "failure": {"type": "string", "minLength": 1},
+        "failure_source": {"$ref": "common.schema.json#/$defs/source"},
+        "damage_escalation": {"type": "string", "minLength": 1},
+        "damage_escalation_source": {"$ref": "common.schema.json#/$defs/source"},
+        "rescue": {"type": "string", "minLength": 1},
+        "rescue_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "fade": {
+      "type": "object",
+      "required": ["note", "note_source", "rules"],
+      "properties": {
+        "note": {"type": "string", "minLength": 1},
+        "note_source": {"$ref": "common.schema.json#/$defs/source"},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "trauma": {
+      "type": "object",
+      "required": ["note", "note_source", "levels", "recovery", "recovery_source"],
+      "properties": {
+        "note": {"type": "string", "minLength": 1},
+        "note_source": {"$ref": "common.schema.json#/$defs/source"},
+        "levels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["range", "effect", "source"],
+            "properties": {
+              "range": {"type": "string", "minLength": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "recovery": {"type": "string", "minLength": 1},
+        "recovery_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
