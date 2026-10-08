@@ -1,0 +1,29 @@
+# 行尾统一为 LF。
+#
+# 背景：PR #10 曾把 AGENTS.md 整文件从 LF 改成 CRLF，diff 呈现为全文重写、无法审查
+# （改动是经 API 直接提交的，绕过了 git 的行尾规范化）。
+# 有了本文件，git 在提交时统一规范化；Windows 上检出也不会再引入 CRLF。
+#
+# 注意：经 API 提交内容仍会绕过这里的规则——改仓库文件请走 git。
+
+*.md text eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+.gitignore text eol=lf
+.gitattributes text eol=lf
+
+# 例外：docs/ 排除出规范化。
+#
+# docs/ 是只读的 PRISM 原创内容（禁改），其中 docs/scenario/S3-*.md 是全库
+# 唯一以 CRLF 入库的已跟踪文件。若对它套用上面的 *.md 规则，它会在每次检出时
+# 被改写为 LF，导致**新检出 / 新建工作区后 git status 永久显示它「已修改」**
+# （仓库不再「检出即干净」）。设为 -text 即原样入库、原样检出。
+#
+# 若日后要让 docs/ 也统一为 LF，属内容变更，应另开一条 Issue 做仅行尾规范化，
+# 不在本 chore PR 里动 docs/ 的字节。
+docs/** -text
