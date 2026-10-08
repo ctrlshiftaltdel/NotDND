@@ -6,7 +6,9 @@
 import glob
 import json
 import os
+import subprocess
 import sys
+import tempfile
 
 TESTS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TESTS)
@@ -184,6 +186,58 @@ def check_family_schemas():
             "%s 未对缺 kind 报错" % filename
 
 
+FIXTURES = os.path.join(TESTS, "fixtures")
+
+
+def check_good_fixture_passes():
+    """最小合法 fixture 通过；真实 data/ 无错误。
+
+    真实 data/ 目前（试点数据之前）没有数据文件，故此处不断言文件数 ≥1；
+    Task 6 落试点数据后另测真实树。
+    """
+    assert not validate_data.validate_file(
+        os.path.join(FIXTURES, "good", "system_attributes_min.json"), SCHEMA_DIR, ROOT)
+    _checked, errors = validate_data.validate_tree(
+        os.path.join(ROOT, "data"), SCHEMA_DIR, ROOT)
+    assert not errors, "真实 data/ 校验失败: %s" % "; ".join(errors)
+
+
+BAD_FIXTURE_MARKERS = {
+    "unknown_kind.json": "kind",
+    "missing_required.json": "required",
+    "bad_enum.json": "enum",
+    "bad_type.json": "type",
+    "bad_source_format.json": "pattern",
+    "missing_source_file.json": "不存在",
+    "source_line_overflow.json": "行",
+    "duplicate_id.json": "重复",
+}
+
+
+def check_bad_fixtures_fail():
+    """每份坏数据都被点名报错。"""
+    problems = []
+    for name, marker in BAD_FIXTURE_MARKERS.items():
+        errors = validate_data.validate_file(
+            os.path.join(FIXTURES, "bad", name), SCHEMA_DIR, ROOT)
+        if not errors:
+            problems.append("%s: 未被判失败" % name)
+        elif not any(marker in e for e in errors):
+            problems.append("%s: 报错未含 %r（实为 %s）" % (name, marker, errors))
+    assert not problems, "; ".join(problems)
+
+
+def check_empty_data_dir_ok():
+    """空数据目录打印提示并 exit 0。"""
+    with tempfile.TemporaryDirectory() as tmp:
+        result = subprocess.run(
+            [sys.executable, os.path.join(TESTS, "validate_data.py"),
+             "--data-dir", tmp, "--schema-dir", SCHEMA_DIR, "--root", ROOT],
+            capture_output=True, text=True)
+    assert result.returncode == 0, "空数据目录应 exit 0，实为 %d" % result.returncode
+    assert "未发现数据文件" in result.stdout, "缺少空数据提示"
+
+
 def main():
     checks = (
         check_format_doc,
@@ -194,6 +248,9 @@ def main():
         check_registry,
         check_system_schema_validation,
         check_family_schemas,
+        check_good_fixture_passes,
+        check_bad_fixtures_fail,
+        check_empty_data_dir_ok,
     )
     failures = 0
     for check in checks:

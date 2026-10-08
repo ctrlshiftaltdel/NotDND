@@ -4,13 +4,19 @@
 只实现 `data/FORMAT.md` 第 7 节列出的**文档化关键字子集**；
 出现未支持的关键字即报错。零第三方依赖，仅 Python 3 标准库。
 
-引擎接口（供 tests/test_data.py 与后续树级逻辑使用）：
+引擎接口（供 tests/test_data.py 使用）：
     SUPPORTED_KEYWORDS / ANNOTATION_KEYWORDS
     collect_unsupported(schema) -> [(json-path, keyword)]
     check_schema(instance, schema, base_dir, path="$", cache=None) -> [error]
     load_json(path) -> object
+    validate_file(path, schema_dir, root) -> [error]
+    validate_tree(data_dir, schema_dir, root) -> (检查文件数, [error])
+
+命令行：
+    python3 tests/validate_data.py [--data-dir data] [--schema-dir data/schema] [--root .]
 """
 import argparse
+import glob
 import json
 import os
 import re
@@ -25,11 +31,14 @@ SUPPORTED_KEYWORDS = frozenset({
 # 仅允许的注解关键字（不做校验）。
 ANNOTATION_KEYWORDS = frozenset({"$schema", "$id", "title", "description"})
 _ALLOWED_KEYWORDS = SUPPORTED_KEYWORDS | ANNOTATION_KEYWORDS
-
-# 其值是「子 schema」的关键字（用于递归扫描）。
 _SCHEMA_MAP_KEYWORDS = ("properties", "$defs")
 _SCHEMA_ONE_KEYWORDS = ("additionalProperties", "items")
 _SCHEMA_LIST_KEYWORDS = ("anyOf", "oneOf")
+
+# `source` 允许的形式：docs/<system|scenario>/<文件>.md:<行号>
+_SOURCE_RE = re.compile(r"^docs/(system|scenario)/[^:]+\.md:[0-9]+$")
+
+_LINE_COUNT_CACHE = {}
 
 
 def load_json(path):
@@ -144,7 +153,7 @@ def _check(instance, schema, root, base_dir, path, cache):
         if isinstance(types, str):
             types = [types]
         if not any(_is_type(instance, name) for name in types):
-            errors.append("%s: 类型应为 %s，实为 %s"
+            errors.append("%s: 类型（type）应为 %s，实为 %s"
                           % (path, "/".join(types), _type_name(instance)))
 
     if "enum" in schema and not any(_json_equal(instance, v) for v in schema["enum"]):
@@ -181,7 +190,7 @@ def _check(instance, schema, root, base_dir, path, cache):
     if isinstance(instance, dict):
         for name in schema.get("required", []):
             if name not in instance:
-                errors.append("%s: 缺少必填字段 '%s'" % (path, name))
+                errors.append("%s: 缺少必填字段 '%s'（required）" % (path, name))
         properties = schema.get("properties", {})
         for name, sub in properties.items():
             if name in instance:
@@ -217,11 +226,131 @@ def check_schema(instance, schema, base_dir, path="$", cache=None):
     return _check(instance, schema, schema, base_dir, path, cache)
 
 
+# ── 树级校验 ────────────────────────────────────────────────────────────
+
+def _load_registry(schema_dir):
+    """读取 registry.json，返回 kind → schema 文件名映射。"""
+    return load_json(os.path.join(schema_dir, "registry.json"))["kinds"]
+
+
+def _iter_sources(node, json_path="$"):
+    """递归产出 (json-path, source 值)。"""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            child = "%s.%s" % (json_path, key)
+            if key == "source" and isinstance(value, str):
+                yield child, value
+            else:
+                yield from _iter_sources(value, child)
+    elif isinstance(node, list):
+        for index, item in enumerate(node):
+            yield from _iter_sources(item, "%s[%d]" % (json_path, index))
+
+
+def _file_line_count(path):
+    """文件总行数；文件不存在返回 None。带缓存。"""
+    if path not in _LINE_COUNT_CACHE:
+        try:
+            with open(path, encoding="utf-8") as handle:
+                _LINE_COUNT_CACHE[path] = sum(1 for _ in handle)
+        except OSError:
+            _LINE_COUNT_CACHE[path] = None
+    return _LINE_COUNT_CACHE[path]
+
+
+def _check_unique_ids(instance):
+    """同一顶层数组内，字符串 `id` 不得重复。"""
+    errors = []
+    for key, value in instance.items():
+        if not isinstance(value, list):
+            continue
+        seen = set()
+        for index, item in enumerate(value):
+            if isinstance(item, dict) and isinstance(item.get("id"), str):
+                ident = item["id"]
+                if ident in seen:
+                    errors.append("$.%s[%d]: 重复 id '%s'" % (key, index, ident))
+                else:
+                    seen.add(ident)
+    return errors
+
+
+def _check_sources(instance, root):
+    """`source` 指向的文件必须存在，行号不得超出文件行数。"""
+    errors = []
+    for json_path, source in _iter_sources(instance):
+        if not _SOURCE_RE.match(source):
+            continue  # 格式错误由 schema 的 pattern 负责
+        file_part, _, line_part = source.rpartition(":")
+        line_no = int(line_part)
+        total = _file_line_count(os.path.join(root, file_part))
+        if total is None:
+            errors.append("%s: source 指向的文件不存在: %s" % (json_path, source))
+        elif line_no > total:
+            errors.append("%s: source 行号超出文件行数（共 %d 行）: %s"
+                          % (json_path, total, source))
+    return errors
+
+
+def validate_file(path, schema_dir, root):
+    """校验单个数据文件；返回错误列表。"""
+    try:
+        instance = load_json(path)
+    except json.JSONDecodeError as exc:
+        return ["%s: JSON 解析失败: %s" % (path, exc)]
+    if not isinstance(instance, dict):
+        return ["%s: 顶层必须是对象（kind + 载荷）" % path]
+    kind = instance.get("kind")
+    if not isinstance(kind, str):
+        return ["%s: 缺少 kind（required）" % path]
+    registry = _load_registry(schema_dir)
+    if kind not in registry:
+        return ["%s: 未知 kind: %s" % (path, kind)]
+
+    schema_path = os.path.join(schema_dir, registry[kind])
+    schema = load_json(schema_path)
+    errors = []
+    for where, keyword in collect_unsupported(schema):
+        errors.append("%s: schema %s %s 使用了未支持的关键字 %s"
+                      % (path, os.path.basename(schema_path), where, keyword))
+    errors.extend(check_schema(instance, schema, schema_dir))
+    errors.extend(_check_unique_ids(instance))
+    errors.extend(_check_sources(instance, root))
+    return errors
+
+
+def validate_tree(data_dir, schema_dir, root):
+    """扫描 data_dir 下所有数据文件（排除 schema_dir），返回 (文件数, 错误列表)。"""
+    schema_abs = os.path.abspath(schema_dir)
+    files = []
+    for path in glob.glob(os.path.join(data_dir, "**", "*.json"), recursive=True):
+        abs_path = os.path.abspath(path)
+        if abs_path == schema_abs or abs_path.startswith(schema_abs + os.sep):
+            continue
+        files.append(path)
+    errors = []
+    for path in sorted(files):
+        errors.extend(validate_file(path, schema_dir, root))
+    return len(files), errors
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(
-        description="NotDND 数据层校验器（关键字子集；树级扫描见后续任务）")
-    parser.parse_args(argv)
-    # 树级扫描（data/ 分派、唯一 id、source 检查）在后续任务接入。
+    parser = argparse.ArgumentParser(description="NotDND 数据层校验器（关键字子集）")
+    parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--schema-dir", default="data/schema")
+    parser.add_argument("--root", default=".")
+    args = parser.parse_args(argv)
+
+    checked, errors = validate_tree(args.data_dir, args.schema_dir, args.root)
+    if checked == 0:
+        print("未发现数据文件，跳过校验。")
+        return 0
+    if errors:
+        for error in errors:
+            print("  ✗ %s" % error)
+        print("校验失败：%d 个文件，%d 处错误" % (checked, len(errors)))
+        return 1
+    print("校验通过：%d 个文件。" % checked)
     return 0
 
 
