@@ -145,8 +145,9 @@ def _check(instance, schema, root, base_dir, path, cache):
         return ["%s: 子 schema 不是对象" % path]
 
     if "$ref" in schema:
+        # draft 2020-12：$ref 的兄弟关键字同样生效，故校验引用目标后继续。
         node, target_root = _resolve_ref(schema["$ref"], root, base_dir, cache)
-        return _check(instance, node, target_root, base_dir, path, cache)
+        errors.extend(_check(instance, node, target_root, base_dir, path, cache))
 
     if "type" in schema:
         types = schema["type"]
@@ -311,12 +312,12 @@ def validate_file(path, schema_dir, root):
     schema = load_json(schema_path)
     errors = []
     for where, keyword in collect_unsupported(schema):
-        errors.append("%s: schema %s %s 使用了未支持的关键字 %s"
-                      % (path, os.path.basename(schema_path), where, keyword))
+        errors.append("schema %s %s 使用了未支持的关键字 %s"
+                      % (os.path.basename(schema_path), where, keyword))
     errors.extend(check_schema(instance, schema, schema_dir))
     errors.extend(_check_unique_ids(instance))
     errors.extend(_check_sources(instance, root))
-    return errors
+    return ["%s: %s" % (path, error) for error in errors]
 
 
 def validate_tree(data_dir, schema_dir, root):

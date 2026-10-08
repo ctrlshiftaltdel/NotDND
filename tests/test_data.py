@@ -67,6 +67,10 @@ KEYWORD_CASES = (
     ("anyOf", {"anyOf": [{"type": "integer"}, {"type": "null"}]}, None, "x"),
     # oneOf：恰好一个。good 只匹配 string；bad 两个都不匹配。
     ("oneOf", {"oneOf": [{"type": "string"}, {"type": "integer"}]}, "x", True),
+    # $ref 的兄弟关键字必须一并生效（draft 2020-12）。
+    ("$ref-with-sibling",
+     {"$defs": {"s": {"type": "string"}}, "$ref": "#/$defs/s", "minLength": 5},
+     "abcdef", "ab"),
 )
 
 
@@ -257,6 +261,46 @@ def check_pilot_attributes():
     assert sorted(l["value"] for l in data["levels"]) == list(range(1, 11)), "等级表应覆盖 1–10"
 
 
+def check_file_errors_attributed():
+    """validate_file 的每条错误都标注文件路径（多文件时不致混淆）。"""
+    path = os.path.join(FIXTURES, "bad", "bad_enum.json")
+    errors = validate_data.validate_file(path, SCHEMA_DIR, ROOT)
+    assert errors, "bad_enum 应报错"
+    assert all(e.startswith(path + ":") for e in errors), \
+        "错误未标注文件路径: %s" % errors
+
+
+def check_source_line_boundary():
+    """source 行号 == 文件总行数允许；> 总行数报错。"""
+    doc = os.path.join(ROOT, "docs", "system", "01-内核CORE.md")
+    with open(doc, encoding="utf-8") as handle:
+        total = sum(1 for _ in handle)
+    base = json.load(open(os.path.join(FIXTURES, "good", "system_attributes_min.json"),
+                          encoding="utf-8"))
+    with tempfile.TemporaryDirectory() as tmp:
+        cases = {}
+        for name, line in (("at", total), ("over", total + 1)):
+            data = json.loads(json.dumps(base))
+            data["attributes"][0]["source"] = "docs/system/01-内核CORE.md:%d" % line
+            cases[name] = os.path.join(tmp, "%s.json" % name)
+            with open(cases[name], "w", encoding="utf-8") as handle:
+                json.dump(data, handle, ensure_ascii=False)
+        assert not validate_data.validate_file(cases["at"], SCHEMA_DIR, ROOT), \
+            "行号 == 总行数应允许"
+        assert validate_data.validate_file(cases["over"], SCHEMA_DIR, ROOT), \
+            "行号 > 总行数应报错"
+
+
+def check_cli_bad_exit_nonzero():
+    """CLI 在坏数据目录上 exit 非零。"""
+    result = subprocess.run(
+        [sys.executable, os.path.join(TESTS, "validate_data.py"),
+         "--data-dir", os.path.join(FIXTURES, "bad"),
+         "--schema-dir", SCHEMA_DIR, "--root", ROOT],
+        capture_output=True, text=True)
+    assert result.returncode != 0, "坏数据目录应 exit 非零，实为 %d" % result.returncode
+
+
 def check_readme_data_section():
     """README 有数据层小节，且原有本机 / 局域网警告未被削弱。"""
     with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as handle:
@@ -281,6 +325,9 @@ def main():
         check_bad_fixtures_fail,
         check_empty_data_dir_ok,
         check_pilot_attributes,
+        check_file_errors_attributed,
+        check_source_line_boundary,
+        check_cli_bad_exit_nonzero,
         check_readme_data_section,
     )
     failures = 0
