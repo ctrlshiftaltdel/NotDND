@@ -257,6 +257,16 @@ def check_pilot_attributes():
     assert sorted(l["value"] for l in data["levels"]) == list(range(1, 11)), "等级表应覆盖 1–10"
 
 
+def check_readme_data_section():
+    """README 有数据层小节，且原有本机 / 局域网警告未被削弱。"""
+    with open(os.path.join(ROOT, "README.md"), encoding="utf-8") as handle:
+        text = handle.read()
+    for marker in ("数据层", "data/FORMAT.md", "tests/validate_data.py"):
+        assert marker in text, "README 缺少数据层标记: %s" % marker
+    for marker in ("仅限本机", "局域网", "请勿暴露到公网"):
+        assert marker in text, "README 警告被削弱: %s" % marker
+
+
 def main():
     checks = (
         check_format_doc,
@@ -271,6 +281,7 @@ def main():
         check_bad_fixtures_fail,
         check_empty_data_dir_ok,
         check_pilot_attributes,
+        check_readme_data_section,
     )
     failures = 0
     for check in checks:
