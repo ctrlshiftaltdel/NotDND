@@ -3,7 +3,9 @@
 # 内容防火墙（CI「内容防火墙门」）
 #
 # 对**已跟踪文件**扫描四类高风险内容，命中即非零退出：
-#   1. 禁止路径：reference/、corpus/，以及第三方数据的翻译 / 改名 / 微调派生文件名；
+#   1. 禁止路径：reference/、corpus/，已知第三方派生数据路径
+#      （data/{spells,monsters,species,backgrounds}*.json、data/campaigns/*），
+#      以及第三方数据的翻译 / 改名 / 微调派生文件名；
 #   2. 高风险第三方品牌标识：清单见 tests/content_firewall_terms.txt（可编辑）；
 #   3. 密钥：sk- / ghp_ / github_pat_ / AKIA / hf_ / AIza / PRIVATE KEY；
 #   4. 隐私：真实用户主目录路径、C:\Users\、内网 IP、真实邮箱（排除 GitHub noreply）。
@@ -56,14 +58,36 @@ grep_hits() {
 }
 
 # --- 1) 禁止路径 ---------------------------------------------------------
+# 全程只按**路径**判断、不读正文，因此 AGENTS.md / .gitignore 中作为反面示例出现的
+# `reference/`、`corpus/`、`data/monsters.json` 等字样不会被误伤。
+# 匹配统一走小写副本，避免 `data/Campaigns/...` 之类的大小写变体绕过。
 echo "· 禁止路径"
 for f in "${all_files[@]}"; do
-    case "/$f" in
+    lc="${f,,}"
+    # 1a) 目录型：任意层级的第三方参考目录（含 data/corpus/、data/reference/）
+    case "/$lc" in
         */reference/* | */corpus/*)
             note_hit "禁止路径" "$f（位于第三方参考目录）"
             continue
             ;;
     esac
+
+    # 1b) 已知第三方派生数据：AGENTS.md 铁律 1 点名的路径
+    #   data/{spells,monsters,species,backgrounds}*.json —— 点名文件及其改名 / 译文后缀变体
+    #   data/campaigns/*                                 —— 该目录下任意层级文件
+    # 仅限 data/ 顶层，故 NotDND 自己的 data/system/attributes.json、
+    # data/worlds/*.json、data/schema/*.schema.json 不受影响。
+    case "$lc" in
+        data/spells*.json | data/monsters*.json | data/species*.json | data/backgrounds*.json)
+            note_hit "禁止路径" "$f（已知第三方派生数据文件）"
+            continue
+            ;;
+        data/campaigns/*)
+            note_hit "禁止路径" "$f（已知第三方剧本数据目录）"
+            continue
+            ;;
+    esac
+
     base="${f##*/}"
     case "$base" in
         *翻译* | *译文* | *译本* | *改名* | *微调* | *派生* | *衍生* | *山寨* | *复刻* | \
