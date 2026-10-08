@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NotDND 数据层共用 $defs",
+  "description": "四族 schema 共用的子结构；只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "$defs": {
+    "source": {
+      "title": "溯源指针",
+      "type": "string",
+      "pattern": "^docs/(system|scenario)/[^:]+\\.md:[0-9]+$"
+    },
+    "entity_id": {
+      "title": "实体稳定 id",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "entity_base": {
+      "title": "实体基座",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": true
+    },
+    "cost": {
+      "title": "能力代价",
+      "type": "object",
+      "required": ["unit", "amount"],
+      "properties": {
+        "unit": {"type": "string", "minLength": 1},
+        "amount": {"type": "integer", "minimum": 0},
+        "raw": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "site_element": {
+      "title": "场地要素",
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "type": {"enum": ["掩体", "危险", "机关", "增幅", "情绪", "机动"]},
+        "position": {"type": "string"},
+        "df": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "effect": {"type": "string"},
+        "durability": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]}
+      },
+      "additionalProperties": false
+    },
+    "track": {
+      "title": "世界专属资源轨",
+      "type": "object",
+      "required": ["key", "name"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "range": {"type": "string"},
+        "effects": {"type": "array", "items": {"type": "string"}},
+        "recovery": {"type": "array", "items": {"type": "string"}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "random_table_row": {
+      "title": "随机表一行",
+      "type": "object",
+      "required": ["roll", "result"],
+      "properties": {
+        "roll": {"type": "integer", "minimum": 1},
+        "result": {"type": "string", "minLength": 1},
+        "example": {"type": "string"},
+        "tag": {"type": "string"},
+        "tier": {"type": "string"},
+        "effect": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "random_table": {
+      "title": "随机表",
+      "type": "object",
+      "required": ["id", "name", "die", "rows"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "purpose": {"type": "string"},
+        "hook_density": {"enum": ["low", "medium", "high"]},
+        "rows": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/random_table_row"}},
+        "use": {"type": "string"},
+        "on_repeat": {"type": "string"},
+        "interface": {"type": "object"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "random_generator": {
+      "title": "随机生成器",
+      "type": "object",
+      "required": ["id", "name", "steps"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "table"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "table": {"type": "string", "minLength": 1},
+              "role": {"type": "string"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "budget_ref": {"type": "string"},
+        "optional_flavor": {"type": "array", "items": {"type": "string"}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "ledger_meta": {
+      "title": "世界账本 meta",
+      "type": "object",
+      "required": ["world", "engine"],
+      "properties": {
+        "world": {"type": "string", "minLength": 1},
+        "engine": {"enum": ["tactics", "build"]},
+        "session": {"type": "integer", "minimum": 0},
+        "party_level": {"type": "integer", "minimum": 1, "maximum": 12},
+        "party_size": {"type": "integer", "minimum": 1},
+        "created": {"type": "string"},
+        "tone_pack": {"type": "string"},
+        "campaign": {"type": "string"},
+        "module": {"type": "string"},
+        "world_name": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "ledger_party": {
+      "title": "世界账本 party 条目",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string", "minLength": 1},
+        "role": {"type": "string"},
+        "career": {"type": "string"},
+        "vitality": {"type": "integer"},
+        "focus": {"type": "integer"},
+        "strain": {"type": "integer", "minimum": 0},
+        "resolve": {"type": "integer", "minimum": 0},
+        "trauma": {"type": "integer", "minimum": 0},
+        "drive": {"type": "string"},
+        "affinity": {"type": "object"},
+        "open_loops": {"type": "array", "items": {"type": "string"}},
+        "anchors": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "ledger_npc": {
+      "title": "世界账本 npcs 条目",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "id": {"type": "string"},
+        "name": {"type": "string", "minLength": 1},
+        "role": {"type": "string"},
+        "drive": {"type": "string"},
+        "lever": {"type": "string"},
+        "mask": {"type": "string"},
+        "tell": {"type": "string"},
+        "affinity": {"type": "integer"},
+        "awe": {"type": "integer"},
+        "location": {"type": "string"},
+        "status": {"type": "string"},
+        "knows": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "ledger_thread": {
+      "title": "世界账本 threads 条目",
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "state": {"type": "string"},
+        "progress": {"type": "integer", "minimum": 0},
+        "paths_resolved": {"type": "array", "items": {"type": "string"}},
+        "paths_remaining": {"type": "array", "items": {"type": "string"}},
+        "payoff": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "ledger_location": {
+      "title": "世界账本 locations 条目",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "state": {"type": "string"},
+        "site_elements": {"type": "array", "items": {"type": "string"}},
+        "changed": {"type": "boolean"},
+        "depth_p": {"type": "integer"},
+        "notes": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": true
+    },
+    "ledger_debt": {
+      "title": "世界账本 debts 条目",
+      "type": "object",
+      "required": ["from", "to", "nature"],
+      "properties": {
+        "from": {"type": "string", "minLength": 1},
+        "to": {"type": "string", "minLength": 1},
+        "nature": {"type": "string"},
+        "due": {"type": "string"},
+        "amount_silver": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "ledger_nemesis": {
+      "title": "世界账本 nemeses 条目",
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "level": {"type": "integer", "minimum": 0},
+        "plan": {"type": "string"},
+        "next_move": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "ledger": {
+      "title": "世界账本骨架",
+      "type": "object",
+      "required": ["meta", "clock", "party", "npcs", "threads", "facts", "hooks"],
+      "properties": {
+        "meta": {"$ref": "common.schema.json#/$defs/ledger_meta"},
+        "clock": {"type": "object"},
+        "party": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/ledger_party"}},
+        "npcs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/ledger_npc"}},
+        "threads": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/ledger_thread"}},
+        "locations": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/ledger_location"}},
+        "facts": {"type": "array", "items": {"type": "string"}},
+        "debts": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/ledger_debt"}},
+        "nemeses": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/ledger_nemesis"}},
+        "hooks": {"type": "array", "items": {"type": "string"}},
+        "flags": {"type": "object"},
+        "factions": {"type": "object"}
+      },
+      "additionalProperties": true
+    }
+  }
+}

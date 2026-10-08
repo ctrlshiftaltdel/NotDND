@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "random_tables 族（random_tables.catalog）",
+  "description": "随机表册基线；字段与 docs/scenario/S7 数字工具附录对齐。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "resource",
+               "tables", "generators", "ledger_bridge"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "random_tables.catalog"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "resource": {"const": "prism.random_tables"},
+    "tables": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/random_table"}},
+    "generators": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/random_generator"}},
+    "ledger_bridge": {"type": "object"}
+  },
+  "additionalProperties": false
+}

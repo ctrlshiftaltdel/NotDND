@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "scenario 族（scenario.campaign）",
+  "description": "剧本 / 战役基线；含世界账本模板，实体项 additionalProperties:true。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "meta", "acts", "threads", "ledger_template"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "scenario.campaign"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "meta": {"$ref": "common.schema.json#/$defs/ledger_meta"},
+    "acts": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "nodes": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "threads": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "npcs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "locations": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "endings": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "evidence": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "factions": {"type": "object"},
+    "flags": {"type": "object"},
+    "ledger_template": {"$ref": "common.schema.json#/$defs/ledger"}
+  },
+  "additionalProperties": false
+}
