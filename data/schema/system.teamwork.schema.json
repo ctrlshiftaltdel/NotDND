@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.teamwork）",
+  "description": "互动层第九节：协助链 4 条、集体检定 3 步 4 档、分工动作 7、情报共享机制。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "assist_chain", "collective_check", "division_actions", "info_sharing"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.teamwork"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["assist_rules", "assist_max", "collective_steps", "collective_bands", "division_actions"],
+      "properties": {
+        "assist_rules": {"const": 4},
+        "assist_max": {"const": 2},
+        "collective_steps": {"const": 3},
+        "collective_bands": {"const": 4},
+        "division_actions": {"const": 7}
+      },
+      "additionalProperties": false
+    },
+    "assist_chain": {
+      "type": "object",
+      "required": ["source", "rules", "note"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "object",
+          "required": ["rule", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "collective_check": {
+      "type": "object",
+      "required": ["source", "steps", "bands", "note"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "step", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "step": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "bands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "ratio", "result", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "ratio": {"type": "string", "minLength": 1},
+              "result": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "object",
+          "required": ["rule", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "division_actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "participants", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "participants": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "info_sharing": {
+      "type": "object",
+      "required": ["source", "default", "default_source", "exception", "exception_source", "note"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "default": {"type": "string", "minLength": 1},
+        "default_source": {"$ref": "common.schema.json#/$defs/source"},
+        "exception": {"type": "string", "minLength": 1},
+        "exception_source": {"$ref": "common.schema.json#/$defs/source"},
+        "note": {
+          "type": "object",
+          "required": ["rule", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

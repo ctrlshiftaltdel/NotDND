@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.risk_pool）",
+  "description": "互动层第一节：风险池机制（标记、触发骰、骰面调整、见闻回报）。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "steps", "trigger", "die_adjustment", "reward_rule"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.risk_pool"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["trigger_steps", "die_adjustments"],
+      "properties": {
+        "trigger_steps": {"const": 3},
+        "die_adjustments": {"const": 2}
+      },
+      "additionalProperties": false
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "step", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "step": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["die", "faces", "effect", "source"],
+      "properties": {
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "faces": {"type": "string", "minLength": 1},
+        "effect": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "die_adjustment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "zone", "die", "face", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "zone": {"type": "string", "minLength": 1},
+          "die": {"type": "string", "pattern": "^d[0-9]+$"},
+          "face": {"type": "integer", "minimum": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "reward_rule": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

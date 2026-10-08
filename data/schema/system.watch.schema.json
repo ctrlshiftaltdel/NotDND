@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.watch）",
+  "description": "互动层第一节：时段结构（4 时段）、每时段行动预算与会话节奏。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "watches", "budget", "pacing"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.watch"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["watches"],
+      "properties": {
+        "watches": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "watches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "hours", "features", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "hours": {"type": "string", "minLength": 1},
+          "features": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": ["source", "major_actions", "major_hours_min", "major_hours_max", "minor_minutes", "rule"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "major_actions": {"type": "integer", "minimum": 1},
+        "major_hours_min": {"type": "integer", "minimum": 1},
+        "major_hours_max": {"type": "integer", "minimum": 1},
+        "minor_minutes": {"type": "integer", "minimum": 1},
+        "rule": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "pacing": {
+      "type": "object",
+      "required": ["source", "session_watches_min", "session_watches_max", "rule"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "session_watches_min": {"type": "integer", "minimum": 1},
+        "session_watches_max": {"type": "integer", "minimum": 1},
+        "rule": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

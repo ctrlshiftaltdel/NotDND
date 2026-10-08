@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.economy）",
+  "description": "互动层第五节：货币层级 3、持有资金 5 级、物价参考 7、讨价还价 5、稀有度 5、债务、收入来源 4。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "currency_tiers", "wealth_levels", "price_reference", "haggle", "rarities", "debt", "income_sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.economy"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["currency_tiers", "wealth_levels", "price_rows", "haggle_outcomes", "rarities", "income_sources"],
+      "properties": {
+        "currency_tiers": {"const": 3},
+        "wealth_levels": {"const": 5},
+        "price_rows": {"const": 7},
+        "haggle_outcomes": {"const": 5},
+        "rarities": {"const": 5},
+        "income_sources": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "currency_tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "tier", "relative_value", "examples", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "tier": {"type": "integer", "minimum": 1},
+          "relative_value": {"type": "integer", "minimum": 1},
+          "examples": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "wealth_levels": {
+      "type": "object",
+      "required": ["levels", "rule", "source"],
+      "properties": {
+        "levels": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "price_reference": {
+      "type": "object",
+      "required": ["source", "note", "note_source", "rows"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "note": {"type": "string", "minLength": 1},
+        "note_source": {"$ref": "common.schema.json#/$defs/source"},
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "item", "tier", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "item": {"type": "string", "minLength": 1},
+              "tier": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "haggle": {
+      "type": "object",
+      "required": ["source", "check", "df", "outcomes", "restriction", "restriction_source"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "check": {"type": "string", "minLength": 1},
+        "df": {"type": "integer", "minimum": 1},
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "outcome", "effect", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "outcome": {"type": "string", "minLength": 1},
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "restriction": {"type": "string", "minLength": 1},
+        "restriction_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "rarities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "acquisition", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "acquisition": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "debt": {
+      "type": "object",
+      "required": ["source", "rules"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "income_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "income", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "income": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

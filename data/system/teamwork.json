@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "kind": "system.teamwork",
+  "source": "docs/system/03-互动层.md:576",
+  "note": "非战斗团队协作：协助链、集体检定、分工动作 7 与情报共享机制。",
+  "declared": {
+    "assist_rules": 4,
+    "assist_max": 2,
+    "collective_steps": 3,
+    "collective_bands": 4,
+    "division_actions": 7
+  },
+  "assist_chain": {
+    "source": "docs/system/03-互动层.md:582",
+    "rules": [
+      {"order": 1, "rule": "协助者必须描述具体的帮助方式（「我用手电帮他照亮」而不是「我帮他」）；", "source": "docs/system/03-互动层.md:584"},
+      {"order": 2, "rule": "一次任务最多接受 2 次协助；", "source": "docs/system/03-互动层.md:585"},
+      {"order": 3, "rule": "每次成功的协助提供 +1 枚助势骰（构建引擎：+1 枚骰）；", "source": "docs/system/03-互动层.md:586"},
+      {"order": 4, "rule": "协助也需要判定（DF 由协助的具体性质决定）：成功才提供增益，但失败不会连累主行动者。", "source": "docs/system/03-互动层.md:587"}
+    ],
+    "note": {
+      "rule": "协助失败不惩罚主行动者，这让协助始终是正期望的选择，鼓励团队合作。",
+      "source": "docs/system/03-互动层.md:589"
+    }
+  },
+  "collective_check": {
+    "source": "docs/system/03-互动层.md:593",
+    "steps": [
+      {"order": 1, "step": "每个人各自掷骰；", "source": "docs/system/03-互动层.md:596"},
+      {"order": 2, "step": "统计成功的人数占比；", "source": "docs/system/03-互动层.md:597"},
+      {"order": 3, "step": "占比 ≥ 2/3 → 团队级别的凯旋；≥ 1/2 → 成功；≥ 1/3 → 险成；低于 1/3 → 挫败。", "source": "docs/system/03-互动层.md:598"}
+    ],
+    "bands": [
+      {"id": "triumph", "ratio": "≥ 2/3", "result": "团队级别的凯旋", "source": "docs/system/03-互动层.md:598"},
+      {"id": "success", "ratio": "≥ 1/2", "result": "成功", "source": "docs/system/03-互动层.md:598"},
+      {"id": "narrow", "ratio": "≥ 1/3", "result": "险成", "source": "docs/system/03-互动层.md:598"},
+      {"id": "setback", "ratio": "低于 1/3", "result": "挫败", "source": "docs/system/03-互动层.md:598"}
+    ],
+    "note": {
+      "rule": "集体检定让每个角色都有参与感，也让「队伍里谁也帮不上忙」的尴尬场景消失。",
+      "source": "docs/system/03-互动层.md:601"
+    }
+  },
+  "division_actions": [
+    {"id": "diversion", "name": "声东击西", "participants": "2 人", "effect": "一人制造骚动，另一人的潜行判定获得 +2 骰", "source": "docs/system/03-互动层.md:609"},
+    {"id": "pincer", "name": "前后夹击", "participants": "2 人", "effect": "在探索时覆盖两条路线，发现事物的概率翻倍，且可以互相策应", "source": "docs/system/03-互动层.md:610"},
+    {"id": "good_cop_bad_cop", "name": "红白脸", "participants": "2 人", "effect": "在交涉中一人施压、一人安抚，对方立场额外削减 1d6", "source": "docs/system/03-互动层.md:611"},
+    {"id": "covering_retreat", "name": "掩护撤离", "participants": "全队", "effect": "撤退时不丢下任何人，且追击者的判定 −1 骰", "source": "docs/system/03-互动层.md:612"},
+    {"id": "tech_support", "name": "技术支援", "participants": "1 技术支持 + 1 行动者", "effect": "行动者每次尝试获得一次重掷机会", "source": "docs/system/03-互动层.md:613"},
+    {"id": "cross_check", "name": "交叉验证", "participants": "2 人（两名不同技能的知识角色）", "effect": "调查中的一条线索若两人都认可，则必定为真", "source": "docs/system/03-互动层.md:614"},
+    {"id": "mass_disguise", "name": "集体伪装", "participants": "全队", "effect": "一次欺骗判定可以覆盖所有成员，但任一成员的行为异常都会导致整体暴露", "source": "docs/system/03-互动层.md:615"}
+  ],
+  "info_sharing": {
+    "source": "docs/system/03-互动层.md:619",
+    "default": "角色之间会分享重要情报：发现线索的玩家不必「表演转述」，其他角色自动知晓。",
+    "default_source": "docs/system/03-互动层.md:621",
+    "exception": "当某个角色有明确的保密动机时（隐瞒真相、私下来往），可以要求私下交流；这需要在叙事上给出理由，而其他玩家应当乐意配合这段演出。",
+    "exception_source": "docs/system/03-互动层.md:622",
+    "note": {
+      "rule": "这条规则让桌面效率提高一倍。热衷秘密的团可以关闭这条默认，改为「必须明确告知」；但对于由 AI 主持的团，强烈建议开启默认共享。",
+      "source": "docs/system/03-互动层.md:624"
+    }
+  }
+}

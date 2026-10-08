@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "kind": "system.stronghold",
+  "source": "docs/system/03-互动层.md:453",
+  "note": "据点经营：取得据点、设施（最多 5）、维护成本与据点事件 d20 表。",
+  "declared": {
+    "facilities": 8,
+    "max_facilities": 5,
+    "maintenance_failures": 3,
+    "event_rows": 20
+  },
+  "acquisition": {
+    "examples": ["一间仓库", "一栋旧公寓", "一艘船", "一座废墟中的塔", "一个被遗忘的地铁站控制室"],
+    "examples_source": "docs/system/03-互动层.md:459",
+    "cost": "一次性的资金／人情支出 ＋ 一次清除或谈判的场景。",
+    "source": "docs/system/03-互动层.md:461"
+  },
+  "facility_limit": {
+    "max": 5,
+    "rule": "每个据点可以建设最多 5 个设施（受空间限制）。",
+    "source": "docs/system/03-互动层.md:465"
+  },
+  "facilities": [
+    {"id": "safehouse", "name": "安全居所", "cost": "贵重 ×2", "effect": "长歇效果提升；负担恢复 +1", "source": "docs/system/03-互动层.md:469"},
+    {"id": "workshop", "name": "工坊", "cost": "贵重 ×3", "effect": "精良及以下物品可在此制作；修理装备", "source": "docs/system/03-互动层.md:470"},
+    {"id": "intel", "name": "情报站", "cost": "贵重 ×4", "effect": "每次会话可免费获得一条传闻；数据的判定 +1 骰", "source": "docs/system/03-互动层.md:471"},
+    {"id": "clinic", "name": "医疗室", "cost": "贵重 ×3", "effect": "短歇恢复提升；可以移除一层创伤（每次会话一次）", "source": "docs/system/03-互动层.md:472"},
+    {"id": "storage", "name": "仓储", "cost": "标准 ×5", "effect": "存储物资；隐藏违禁品的能力提升", "source": "docs/system/03-互动层.md:473"},
+    {"id": "training", "name": "训练场", "cost": "贵重 ×3", "effect": "间幕训练效果翻倍；可以更快地学习机动", "source": "docs/system/03-互动层.md:474"},
+    {"id": "front", "name": "伪装门面", "cost": "贵重 ×2", "effect": "据点被发现的概率降低；提供合法收入", "source": "docs/system/03-互动层.md:475"},
+    {"id": "power", "name": "动力／供应系统", "cost": "贵重 ×5", "effect": "其他设施的效能 +1 档（最多 +1）", "source": "docs/system/03-互动层.md:476"}
+  ],
+  "maintenance": {
+    "cost": "每个据点每个章节需要支付维护费（通常贵重 ×1，视规模）。",
+    "source": "docs/system/03-互动层.md:480",
+    "failures": [
+      {"order": 1, "effect": "第一次：设施随机停用 1 个；", "source": "docs/system/03-互动层.md:482"},
+      {"order": 2, "effect": "第二次：据点声望下降，可能出现入侵者；", "source": "docs/system/03-互动层.md:483"},
+      {"order": 3, "effect": "第三次：据点被查封或被他人占据。", "source": "docs/system/03-互动层.md:484"}
+    ],
+    "note": {
+      "rule": "维护费是一个优秀的故事引擎：它逼迫队伍在「安定的后方」与「冒险赚钱」之间来回。",
+      "source": "docs/system/03-互动层.md:486"
+    }
+  },
+  "events": {
+    "die": "d20",
+    "timing": "每个章节开始时掷一次。",
+    "timing_source": "docs/system/03-互动层.md:490",
+    "source": "docs/system/03-互动层.md:488",
+    "rows": [
+      {"roll": 1, "event": "房东／债主找上门，要求补缴", "source": "docs/system/03-互动层.md:494"},
+      {"roll": 2, "event": "有人趁夜潜入，但未造成损失（留下线索）", "source": "docs/system/03-互动层.md:495"},
+      {"roll": 3, "event": "一位旧识前来投靠，请求庇护", "source": "docs/system/03-互动层.md:496"},
+      {"roll": 4, "event": "设施中的一个发生故障，需要修理（消耗材料）", "source": "docs/system/03-互动层.md:497"},
+      {"roll": 5, "event": "邻居开始对你们的活动产生怀疑", "source": "docs/system/03-互动层.md:498"},
+      {"roll": 6, "event": "一封匿名信件送到，内含一条重要情报", "source": "docs/system/03-互动层.md:499"},
+      {"roll": 7, "event": "某个势力提出收购据点，价格优厚", "source": "docs/system/03-互动层.md:500"},
+      {"roll": 8, "event": "发现了据点前任主人留下的隐藏隔间", "source": "docs/system/03-互动层.md:501"},
+      {"roll": 9, "event": "一次小规模冲突就在门口发生（你们被动卷入）", "source": "docs/system/03-互动层.md:502"},
+      {"roll": 10, "event": "有人在据点附近长期监视（可察觉 DF 15）", "source": "docs/system/03-互动层.md:503"},
+      {"roll": 11, "event": "资源价格上涨，维护费临时翻倍", "source": "docs/system/03-互动层.md:504"},
+      {"roll": 12, "event": "一名受伤的陌生人倒在门口", "source": "docs/system/03-互动层.md:505"},
+      {"roll": 13, "event": "某个派系主动示好，赠送礼物", "source": "docs/system/03-互动层.md:506"},
+      {"roll": 14, "event": "内部成员之间发生争执，需要调解", "source": "docs/system/03-互动层.md:507"},
+      {"roll": 15, "event": "据点被发现隐藏着违禁物（可能是栽赃）", "source": "docs/system/03-互动层.md:508"},
+      {"roll": 16, "event": "一个孩子／少年试图偷窃据点的东西", "source": "docs/system/03-互动层.md:509"},
+      {"roll": 17, "event": "政府／机构例行检查，需要应付", "source": "docs/system/03-互动层.md:510"},
+      {"roll": 18, "event": "一位专家愿意用服务换取在此工作的权利", "source": "docs/system/03-互动层.md:511"},
+      {"roll": 19, "event": "据点的某个设施意外升级（前任主人的遗留）", "source": "docs/system/03-互动层.md:512"},
+      {"roll": 20, "event": "一次意外的好运：发现了一大笔被遗忘的物资", "source": "docs/system/03-互动层.md:513"}
+    ]
+  }
+}

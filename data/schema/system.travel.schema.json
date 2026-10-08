@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.travel）",
+  "description": "互动层第一节：行程与移动裁定四档（短/中/远/危险穿越）与迷路规则。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "routes", "lost_rules"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.travel"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["routes"],
+      "properties": {
+        "routes": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "scope", "duration", "check", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "scope": {"type": "string", "minLength": 1},
+          "duration": {"type": "string", "minLength": 1},
+          "check": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "lost_rules": {
+      "type": "object",
+      "required": ["source", "rules"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

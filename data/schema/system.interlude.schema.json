@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.interlude）",
+  "description": "互动层第八节：间幕时机 3、间幕行动 9、行动预算、并行叙事 Vignette、时间跳跃 4 步与章节结构。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "timing", "action_budget", "actions", "personal_note", "vignette", "time_skip", "chapter_structure"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.interlude"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["timing_triggers", "actions", "vignette_examples", "time_skip_steps", "chapter_lines"],
+      "properties": {
+        "timing_triggers": {"const": 3},
+        "actions": {"const": 9},
+        "vignette_examples": {"const": 4},
+        "time_skip_steps": {"const": 4},
+        "chapter_lines": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "timing": {
+      "type": "object",
+      "required": ["source", "triggers"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "trigger", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "trigger": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "action_budget": {
+      "type": "object",
+      "required": ["per_interlude", "per_grand_interlude", "rule", "source"],
+      "properties": {
+        "per_interlude": {"type": "integer", "minimum": 0},
+        "per_grand_interlude": {"type": "integer", "minimum": 0},
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "personal_note": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "vignette": {
+      "type": "object",
+      "required": ["source", "length", "examples", "note"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "length": {"type": "string", "minLength": 1},
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "example", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "example": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "note": {
+          "type": "object",
+          "required": ["rule", "source"],
+          "properties": {
+            "rule": {"type": "string", "minLength": 1},
+            "source": {"$ref": "common.schema.json#/$defs/source"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "time_skip": {
+      "type": "object",
+      "required": ["source", "steps"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "step", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "step": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chapter_structure": {
+      "type": "object",
+      "required": ["source", "lines"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "line", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "line": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

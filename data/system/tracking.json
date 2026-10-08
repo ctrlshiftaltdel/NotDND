@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "kind": "system.tracking",
+  "source": "docs/system/03-互动层.md:76",
+  "note": "追与被追使用同样的规则：按线索新鲜度定追踪 DF。",
+  "declared": {"freshness_levels": 5},
+  "levels": [
+    {"id": "fresh", "freshness": "刚刚离开（数分钟内），留有清晰痕迹", "df": 10, "source": "docs/system/03-互动层.md:82"},
+    {"id": "one_hour", "freshness": "一小时前，痕迹被轻微破坏", "df": 13, "source": "docs/system/03-互动层.md:83"},
+    {"id": "one_day", "freshness": "一天前，痕迹混杂", "df": 16, "source": "docs/system/03-互动层.md:84"},
+    {"id": "days", "freshness": "数天前，仅有间接证据", "df": 19, "source": "docs/system/03-互动层.md:85"},
+    {"id": "rumor", "freshness": "只有传闻与二手信息化", "df": 22, "note": "应当改为调查而非追踪", "source": "docs/system/03-互动层.md:86"}
+  ],
+  "consequences": {
+    "success": "成功的追踪会缩短距离。",
+    "failure": "失败的追踪会让对方增加一个时段的领先。",
+    "source": "docs/system/03-互动层.md:88"
+  }
+}

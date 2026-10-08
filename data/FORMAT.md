@@ -390,6 +390,125 @@ data/
 > 溢出购买 **4**；超载连锁选项 **4**；插槽来源 **5**；构建点花费项 **12**；符纹 **28**（六类）；
 > 迁移五步 **5**；混用限制 **3**。
 
+**`system.watch`**（互动层第一节：时段结构；`docs/system/03`）
+
+- `note`：字符串。
+- `declared`：`{watches:4}`。
+- `watches[]`：`{id, name, hours, features, source}`（晨/昼/昏/夜 4 时段）。
+- `budget`：`{source, major_actions, major_hours_min, major_hours_max, minor_minutes, rule}`。
+- `pacing`：`{source, session_watches_min, session_watches_max, rule}`。
+
+**`system.travel`**（行程与移动裁定 + 迷路；第一节）
+
+- `note`；`declared`：`{routes:4}`。
+- `routes[]`：`{id, name, scope, duration, check, source}`（短/中/远/危险穿越 4 档）。
+- `lost_rules`：`{source, rules[]}`，`rules[]` 为 `{order, rule, source}`（迷路 3 条）。
+
+**`system.risk_pool`**（风险池机制；第一节）
+
+- `note`；`declared`：`{trigger_steps:3, die_adjustments:2}`。
+- `steps[]`：`{order, step, source}`（3 步）。
+- `trigger`：`{die, faces, effect, source}`。
+- `die_adjustment[]`：`{id, zone, die, face, source}`（安全 d8 / 危险 d4）。
+- `reward_rule`：`{rule, source}`。
+
+**`system.tracking`**（追踪 DF 表；第一节）
+
+- `note`；`declared`：`{freshness_levels:5}`。
+- `levels[]`：`{id, freshness, df, note?, source}`（5 级，DF 10/13/16/19/22）。
+- `consequences`：`{success, failure, source}`。
+
+**`system.camping`**（扎营与安全；第一节）
+
+- `note`；`declared`：`{camps:4}`。
+- `camps[]`：`{id, name, effect, source}`（4 种营地）。
+
+**`system.social`**（交涉论战；第二节）
+
+- `note`；`declared`：`{use_conditions:3, player_actions:6, npc_responses:5, relation_meters:2, argument_paths:4, light_outcomes:4}`。
+- `use_rule`：`{source, threshold, conditions[]}`，`conditions[]` 为 `{order, condition, source}`（3 条）。
+- `setup`：`{source, stance_formula, persuasion_points_start}`。
+- `player_actions[]`：`{id, name, cost, effect, source}`（6）；`npc_responses[]`：`{id, name, condition, effect, source}`（5）。
+- `zero_stance`：`{source, rule, effects[]}`。
+- `relation_meters[]`：`{id, name, en, range, meaning, source}`（好感 / 敬畏）。
+- `relation_effects[]`：`{order, effect, source}`（4）。
+- `argument_paths[]`：`{id, name, skills, effective_on, ineffective_on, source}`（利益/道义/恐惧/情感 4）。
+- `gm_duty`：`{rule, source}`。
+- `light_version`：`{source, check, outcomes[], recommendation, recommendation_source}`，`outcomes[]` 为 `{band, result, source}`（4）。
+
+**`system.investigation`**（调查与线索；第三节）
+
+- `note`；`declared`：`{rule_of_three_paths:3, actions:4, board_responses:3, pressure_types:4}`。
+- `three_clue_rule`：`{source, statement, why, why_source, prep, prep_source, example}`。
+- `clue_principle`、`scene_hint`：`{rule, source}`。
+- `actions[]`：`{id, name, skills, gains, source}`（4）。
+- `board`：`{source, steps[], responses[], note}`，`responses[]` 为 `{id, name, effect, source}`（3）。
+- `misdirection`：`{source, rules[]}`（3 条）。
+- `time_pressure[]`：`{id, name, mechanic, source}`（4）。
+
+**`system.crafting`**（工艺与制造；第四节）
+
+- `note`；`declared`：`{components:3, item_tiers:4, quality_grades:5, modifications:5, world_flavors:3, max_mods_per_item:3}`。
+- `components`：`{source, items[], blueprint_rarities[], blueprint_rarity_source, material_qualities[], material_quality_source}`。
+- `tiers[]`：`{id, name, examples, worktime, craft_df, requirement, source}`（4）。
+- `quality_grades[]`：`{id, outcome, name, effect, source}`（5）。
+- `modifications[]`：`{id, name, df, effect, source}`（5）。
+- `mod_limit`：`{max:3, rule, source}`。
+- `world_flavors[]`：`{world, craft_name, trait, source}`（3）。
+
+**`system.economy`**（经济与物价；第五节）
+
+- `note`；`declared`：`{currency_tiers:3, wealth_levels:5, price_rows:7, haggle_outcomes:5, rarities:5, income_sources:4}`。
+- `currency_tiers[]`：`{id, name, tier, relative_value, examples, source}`（3）。
+- `wealth_levels`：`{levels[], rule, source}`（赤贫/拮据/普通/宽裕/富有 5 档）。
+- `price_reference`：`{source, note, note_source, rows[]}`，`rows[]` 为 `{id, item, tier, source}`（7）。
+- `haggle`：`{source, check, df, outcomes[], restriction, restriction_source}`，`outcomes[]` 为 `{id, outcome, effect, source}`（5）。
+- `rarities[]`：`{id, name, acquisition, source}`（5）。
+- `debt`：`{source, rules[]}`（4 条）。
+- `income_sources[]`：`{id, name, income, source}`（4）。
+
+**`system.reputation`**（声望与关系网；第六节）
+
+- `note`；`declared`：`{reputation_axis:7, bond_levels:5, bond_rulings:3, nemesis_duties:3}`。
+- `reputation[]`：`{value(−3–+3), label, expression, source}`（7 档）。
+- `reputation_note`：`{rule, source}`。
+- `bonds[]`：`{level(1–5), name, request, source}`（5）。
+- `bond_rulings[]`：`{order, case, ruling, source}`（3）。
+- `bond_decay`：`{rule, source}`；`bond_rupture`：`{causes[], rule, source}`。
+- `nemesis`：`{trigger, trigger_source, duties[], ai_note}`。
+
+**`system.stronghold`**（据点经营；第七节）
+
+- `note`；`declared`：`{facilities:8, max_facilities:5, maintenance_failures:3, event_rows:20}`。
+- `acquisition`：`{examples[], examples_source, cost, source}`。
+- `facility_limit`：`{max:5, rule, source}`。
+- `facilities[]`：`{id, name, cost, effect, source}`（8）。
+- `maintenance`：`{cost, source, failures[], note}`（未缴 3 级恶化）。
+- `events`：`{die:"d20", timing, timing_source, source, rows[]}`（20 行）。
+
+**`system.interlude`**（休整与间幕；第八节）
+
+- `note`；`declared`：`{timing_triggers:3, actions:9, vignette_examples:4, time_skip_steps:4, chapter_lines:4}`。
+- `timing`：`{source, triggers[]}`（3）；`action_budget`：`{per_interlude:1, per_grand_interlude:2, rule, source}`。
+- `actions[]`：`{id, name, effect, source}`（9）。
+- `personal_note`：`{rule, source}`。
+- `vignette`：`{source, length, examples[], note}`（4）。
+- `time_skip`：`{source, steps[]}`（4 步）；`chapter_structure`：`{source, lines[]}`（4 行）。
+
+**`system.teamwork`**（非战斗团队协作；第九节）
+
+- `note`；`declared`：`{assist_rules:4, assist_max:2, collective_steps:3, collective_bands:4, division_actions:7}`。
+- `assist_chain`：`{source, rules[]（4）, note}`。
+- `collective_check`：`{source, steps[]（3）, bands[]（4）, note}`。
+- `division_actions[]`：`{id, name, participants, effect, source}`（7）。
+- `info_sharing`：`{source, default, default_source, exception, exception_source, note}`。
+
+> **计数核对**（M1.1d 逐条比对 `docs/system/03`）：时段 **4**；行程 **4**；风险池触发步骤 **3**、骰面调整 **2**；
+> 追踪 DF **5**；扎营 **4**；论战玩家行动 **6** / NPC 应对 **5**；论证路径 **4**；轻量版结果 **4**；好感/敬畏 **2**；
+> 调查动作 **4**、推理板回应 **3**、时间压力 **4**；物品等级 **4**、品质 **5**、改造 **5**、世界风味 **3**、改造上限 **3**；
+> 货币层级 **3**、持有资金 **5**、物价 **7**、讨价还价 **5**、稀有度 **5**、收入来源 **4**；
+> 声望轴 **7**、Bond **5**、据点设施 **8**（上限 **5**）、据点事件 d20 **20**、间幕行动 **9**、分工动作 **7**。
+
 
 ### 4.2 world 族
 

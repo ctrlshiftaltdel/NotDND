@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.camping）",
+  "description": "互动层第一节：扎营与安全（4 种营地选择）。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "camps"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.camping"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["camps"],
+      "properties": {
+        "camps": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "camps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "effect", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
