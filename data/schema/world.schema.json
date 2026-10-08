@@ -57,6 +57,7 @@
         "name": {"type": "string", "minLength": 1},
         "alignment": {"type": "string", "minLength": 1},
         "summary": {"type": "string", "minLength": 1},
+        "note": {"type": "string", "minLength": 1},
         "source": {"$ref": "common.schema.json#/$defs/source"}
       },
       "additionalProperties": false
@@ -86,6 +87,7 @@
         "year": {"type": "string", "minLength": 1},
         "name": {"type": "string", "minLength": 1},
         "detail": {"type": "string", "minLength": 1},
+        "note": {"type": "string", "minLength": 1},
         "source": {"$ref": "common.schema.json#/$defs/source"}
       },
       "additionalProperties": false
@@ -130,7 +132,8 @@
         "name": {"type": "string", "minLength": 1},
         "category": {"type": "string", "minLength": 1},
         "tier": {"enum": ["轻", "中", "重"]},
-        "ap": {"type": "integer", "minimum": 0},
+        "ap": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "ap_note": {"type": "string", "minLength": 1},
         "costs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/cost"}},
         "effect": {"type": "string", "minLength": 1},
         "source": {"$ref": "common.schema.json#/$defs/source"}
