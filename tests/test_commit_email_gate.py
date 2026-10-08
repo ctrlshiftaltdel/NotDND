@@ -8,7 +8,11 @@
   3. committer 为真实邮箱 → 同样失败（author 合规也救不了）；
   4. `noreply@github.com`（GitHub 网页 / API 合并提交）在允许集合内 → 通过；
   5. **旧历史里的真实邮箱不误红**：真实邮箱只在范围之外，范围内全 noreply → 通过；
-  6. 大小写变体（`Noreply@Users.Noreply.GitHub.com`）不得绕过 → 通过。
+  6. 大小写变体（`Noreply@Users.Noreply.GitHub.com`）不得绕过 → 通过；
+  7. **新分支首推（BEFORE 全 0）覆盖全部新增提交**：该次首推含 `[gmail, noreply]` 两个提交，
+     前序的真实邮箱也须被查 → 门红；
+  8. **新分支首推的旧债仍在范围外**（反向对照）：基线（远端跟踪）里的真实邮箱不计入范围，
+     新增提交全 noreply → 门绿。
 
 零依赖：仅 Python 3 标准库 + git。直接 `python3 tests/test_commit_email_gate.py` 运行。
 """
@@ -21,6 +25,7 @@ import tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GATE = os.path.join(ROOT, "tests", "commit_email_gate.sh")
 
+ZERO_SHA = "0" * 40                                     # push 事件「新分支首推」时 BEFORE 的全 0 形状
 NOREPLY = "123456+bot@users.noreply.github.com"        # 本地实现 Agent 应配的形状
 NOREPLY_MIXED = "123456+Bot@Users.Noreply.GitHub.com"  # 大小写变体
 WEB_MERGE = "noreply@github.com"                       # GitHub 网页 / API 合并
@@ -64,6 +69,17 @@ def _gate(repo, rev_range):
     env = dict(os.environ)
     env["GATE_REPO"] = repo.replace("\\", "/")   # Windows 反斜杠路径交给 git -C 不稳妥
     return _run(["bash", GATE, rev_range], repo, env)
+
+
+def _gate_event(repo, **event_env):
+    """不给显式 range，改用环境变量模拟 CI 事件（push：BEFORE/AFTER；PR：BASE/HEAD）。"""
+    env = dict(os.environ)
+    env["GATE_REPO"] = repo.replace("\\", "/")
+    env.update(event_env)
+    # 清掉可能从外层继承、会抢在事件分支之前的显式 range。
+    for stale in ("GATE_RANGE",):
+        env.pop(stale, None)
+    return _run(["bash", GATE], repo, env)
 
 
 def _repo():
@@ -142,6 +158,37 @@ def check_old_history_not_reviewed():
         assert result2.returncode != 0, "纳入范围后应红灯（证明门不是恒绿）\n%s" % result2.stdout
 
 
+def check_first_push_covers_all_commits():
+    """新分支首推（BEFORE 全 0）：首推含 [gmail, noreply] 两提交，前序提交的真实邮箱也须被查 → 红。"""
+    with _repo() as d:
+        _init(d)
+        base = _commit(d, "base", NOREPLY, NOREPLY)
+        # 模拟「远端跟踪」基线停在 base：它是 tip 之外的唯一 ref，故应作为排除基线。
+        _git(d, "update-ref", "refs/remotes/origin/master", base)
+        _commit(d, "first-bad", REAL, NOREPLY)          # 前序提交：真实邮箱（旧实现会漏查）
+        tip = _commit(d, "second-good", NOREPLY, NOREPLY)
+        # push 事件：BEFORE 全 0（新分支首推），AFTER = tip；不给显式 range。
+        result = _gate_event(d, BEFORE_SHA=ZERO_SHA, AFTER_SHA=tip)
+        assert result.returncode != 0, (
+            "新分支首推含真实邮箱应红灯（前序提交也须被查），实际 rc=%d\n%s%s" % (
+                result.returncode, result.stdout, result.stderr))
+        assert REAL in result.stdout, "失败信息应点名前序提交的 %s\n%s" % (REAL, result.stdout)
+
+
+def check_first_push_keeps_old_debt_out():
+    """新分支首推：基线（远端跟踪）里的旧真实邮箱在范围外，新增提交全 noreply → 仍绿灯。"""
+    with _repo() as d:
+        _init(d)
+        base = _commit(d, "legacy-real-email", REAL, REAL)   # 旧债：位于基线，应在范围外
+        _git(d, "update-ref", "refs/remotes/origin/master", base)
+        _commit(d, "new-1", NOREPLY, NOREPLY)
+        tip = _commit(d, "new-2", NOREPLY, NOREPLY)
+        result = _gate_event(d, BEFORE_SHA=ZERO_SHA, AFTER_SHA=tip)
+        assert result.returncode == 0, (
+            "新分支首推的旧债不应误红，实际 rc=%d\n%s%s" % (
+                result.returncode, result.stdout, result.stderr))
+
+
 CHECKS = (
     check_pass_for_noreply,
     check_fail_for_real_author,
@@ -149,6 +196,8 @@ CHECKS = (
     check_web_merge_allowed,
     check_case_variant_allowed,
     check_old_history_not_reviewed,
+    check_first_push_covers_all_commits,
+    check_first_push_keeps_old_debt_out,
 )
 
 

@@ -15,7 +15,10 @@
 # 范围推断优先级（前者优先）：
 #   1. 命令行参数 $1（显式 range，如 `origin/master..HEAD`）
 #   2. 环境变量 GATE_RANGE
-#   3. 推送事件：BEFORE_SHA..AFTER_SHA；before 为全 0（新分支首推）时只看 AFTER_SHA 这一个提交
+#   3. 推送事件：BEFORE_SHA..AFTER_SHA
+#      · before 非 0：只验本次新推的提交（BEFORE_SHA..AFTER_SHA）
+#      · before 全 0（新分支首推）：取该分支相对其它分支 / 远端跟踪的**全部新增提交**，
+#        而非只看 tip——见下方「新分支首推」说明
 #   4. PR 事件：BASE_SHA..HEAD_SHA（PR 自己的提交，不含 CI 的临时合并提交）
 #   5. 本地回退：origin/master..HEAD
 # 推断不出范围时 **fail-closed**（非零退出），不静默放行。
@@ -39,29 +42,53 @@ git_in() { git -C "$REPO" "$@"; }
 have_commit() { git_in rev-parse --verify --quiet "${1}^{commit}" >/dev/null 2>&1; }
 
 # --- 1) 推断提交范围 ------------------------------------------------------
-range=""
+# range_args 可能不止一个 token（如 `AFTER --not B C`），故用数组承载；range_label 仅供打印。
+range_args=()
+range_label=""
 if [ "$#" -ge 1 ] && [ -n "${1:-}" ]; then
-    range="$1"
+    range_args=("$1")
+    range_label="$1"
 elif [ -n "${GATE_RANGE:-}" ]; then
-    range="$GATE_RANGE"
+    range_args=("$GATE_RANGE")
+    range_label="$GATE_RANGE"
 fi
 
-if [ -z "$range" ]; then
+if [ "${#range_args[@]}" -eq 0 ]; then
     if [ -n "${BEFORE_SHA:-}" ] && [ -n "${AFTER_SHA:-}" ] && have_commit "$AFTER_SHA"; then
         if [ "$BEFORE_SHA" != "$ZERO_SHA" ] && have_commit "$BEFORE_SHA"; then
-            range="${BEFORE_SHA}..${AFTER_SHA}"     # 推送：只验本次新推的提交
+            range_args=("${BEFORE_SHA}..${AFTER_SHA}")     # 推送：只验本次新推的提交
+            range_label="${BEFORE_SHA}..${AFTER_SHA}"
         else
-            range="${AFTER_SHA}^!"                  # 新分支首推（before 全 0）：只看这一个提交
+            # 新分支首推（BEFORE 全 0）。旧实现取 `AFTER^!`，**只验 tip 提交**；
+            # 若这次首推含多个提交，前序提交会被漏查（fail-open）。
+            # 改为覆盖「该分支相对其它分支 / 远端跟踪的**全部新增提交**」：
+            #   以仓库内所有 ref（本地分支 + 远端跟踪 + 标签）中 **tip 不等于 AFTER** 的为基线，
+            #   取 `AFTER --not <这些基线>`——凡不被任何既有基线覆盖的提交都纳入，tip 亦不例外。
+            # 找不到任何可用基线（例如浅克隆里只有 AFTER 一个 ref）时，退化为 `AFTER` 的
+            # 整段可达历史——宁可多查（fail-closed），不可漏查。
+            excludes="$(git_in for-each-ref --format='%(objectname)' \
+                            refs/heads refs/remotes refs/tags 2>/dev/null \
+                        | grep -vx -- "$AFTER_SHA" || true)"
+            if [ -n "$excludes" ]; then
+                # 故意不加引号：excludes 是换行分隔的 SHA 列表，需按空白拆分。
+                range_args=("$AFTER_SHA" --not $excludes)
+                range_label="${AFTER_SHA} --not <其它 ref 基线>"
+            else
+                range_args=("$AFTER_SHA")
+                range_label="${AFTER_SHA}（无可用基线，退化为整段历史）"
+            fi
         fi
     elif [ -n "${BASE_SHA:-}" ] && [ -n "${HEAD_SHA:-}" ] \
         && have_commit "$BASE_SHA" && have_commit "$HEAD_SHA"; then
-        range="${BASE_SHA}..${HEAD_SHA}"            # PR：只验 PR 自己的提交，不含 CI 临时合并提交
+        range_args=("${BASE_SHA}..${HEAD_SHA}")            # PR：只验 PR 自己的提交，不含 CI 临时合并提交
+        range_label="${BASE_SHA}..${HEAD_SHA}"
     elif have_commit "origin/master" && have_commit "HEAD"; then
-        range="origin/master..HEAD"                 # 本地 / 兜底
+        range_args=("origin/master..HEAD")                 # 本地 / 兜底
+        range_label="origin/master..HEAD"
     fi
 fi
 
-if [ -z "$range" ]; then
+if [ "${#range_args[@]}" -eq 0 ]; then
     echo "提交邮箱门：无法推断提交范围（fail-closed）。" >&2
     echo "  请在 CI 中提供事件 SHA 环境变量，或显式传入 range，例如：" >&2
     echo "    bash tests/commit_email_gate.sh origin/master..HEAD" >&2
@@ -69,8 +96,8 @@ if [ -z "$range" ]; then
 fi
 
 # --- 2) 展开范围内的提交 --------------------------------------------------
-if ! log_out="$(git_in log --no-color --format='%H%x09%ae%x09%ce' "$range")"; then
-    echo "提交邮箱门：无法解析提交范围 '$range'（fail-closed，git 报错见上）。" >&2
+if ! log_out="$(git_in log --no-color --format='%H%x09%ae%x09%ce' "${range_args[@]}")"; then
+    echo "提交邮箱门：无法解析提交范围 '$range_label'（fail-closed，git 报错见上）。" >&2
     exit 2
 fi
 
@@ -91,7 +118,7 @@ note_hit() {
     hits=$((hits + 1))
 }
 
-echo "提交邮箱门：范围 '$range'（仓库 ${REPO}）"
+echo "提交邮箱门：范围 '$range_label'（仓库 ${REPO}）"
 while IFS=$'\t' read -r sha ae ce; do
     [ -z "${sha:-}" ] && continue
     checked=$((checked + 1))
