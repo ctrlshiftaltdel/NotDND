@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.decision_engine）",
+  "description": "导引者操作系统第五节：意图—张力—回报决策引擎的触发时机、四步流程、四维打分与总分公式。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "triggers", "steps", "dimensions", "formula", "alignment"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.decision_engine"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["triggers", "steps", "dimensions"],
+      "properties": {
+        "triggers": {"const": 5},
+        "steps": {"const": 4},
+        "dimensions": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "triggers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "situation", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "situation": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "name", "detail", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "detail": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["abbr", "name", "range", "question", "source"],
+        "properties": {
+          "abbr": {"enum": ["I", "R", "U", "T"]},
+          "name": {"type": "string", "minLength": 1},
+          "range": {"type": "string", "minLength": 1},
+          "question": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "formula": {
+      "type": "object",
+      "required": ["formula", "source"],
+      "properties": {
+        "formula": {"const": "I×2 + R×2 + U + T"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "alignment": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

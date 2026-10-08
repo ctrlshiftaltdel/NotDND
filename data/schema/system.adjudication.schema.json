@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.adjudication）",
+  "description": "导引者操作系统第二节：裁决优先级堆栈（自上而下 6 级）与默认裁决表（7 行）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "stack", "default_table", "principle"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.adjudication"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["stack_levels", "default_rulings"],
+      "properties": {
+        "stack_levels": {"const": 6},
+        "default_rulings": {"const": 7}
+      },
+      "additionalProperties": false
+    },
+    "stack": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level", "name", "question", "source"],
+        "properties": {
+          "level": {"type": "integer", "minimum": 1, "maximum": 6},
+          "name": {"type": "string", "minLength": 1},
+          "question": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "default_table": {
+      "type": "object",
+      "required": ["source", "rows"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "situation", "default_rule", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "situation": {"type": "string", "minLength": 1},
+              "default_rule": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "principle": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

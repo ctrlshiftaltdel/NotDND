@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "kind": "system.branching",
+  "source": "docs/system/04-导引者操作系统.md:392",
+  "note": "三条分支法：八种故事引擎、三条路线格式、未选路线管理与路线池。",
+  "declared": {
+    "engines": 8,
+    "routes_per_decision": 3,
+    "pool_min": 3,
+    "pool_max": 5
+  },
+  "engines": [
+    {"no": 1, "name": "揭露", "en": "Reversal", "feel": "原来如此",
+     "pattern": "你一直以为的 X，其实是 Y", "source": "docs/system/04-导引者操作系统.md:403"},
+    {"no": 2, "name": "代价", "en": "Price", "feel": "没有白来的东西",
+     "pattern": "他答应了，但条件是……", "source": "docs/system/04-导引者操作系统.md:404"},
+    {"no": 3, "name": "牵连", "en": "Complication", "feel": "计划赶不上变化",
+     "pattern": "就在你们行动时，第三方出现了", "source": "docs/system/04-导引者操作系统.md:405"},
+    {"no": 4, "name": "抉择", "en": "Choice", "feel": "两难",
+     "pattern": "你可以救他，也可以拿下证据，但不能两者兼得", "source": "docs/system/04-导引者操作系统.md:406"},
+    {"no": 5, "name": "回响", "en": "Echo", "feel": "因果不虚",
+     "pattern": "三个月前你放过的那个人，现在站在你面前", "source": "docs/system/04-导引者操作系统.md:407"},
+    {"no": 6, "name": "升级", "en": "Escalation", "feel": "更糟了",
+     "pattern": "不只是这样，他还派人去了你们的安全屋", "source": "docs/system/04-导引者操作系统.md:408"},
+    {"no": 7, "name": "启示", "en": "Insight", "feel": "格局改变",
+     "pattern": "你突然意识到，这些东西连起来是另一个意思", "source": "docs/system/04-导引者操作系统.md:409"},
+    {"no": 8, "name": "收敛", "en": "Convergence", "feel": "全都连在一起",
+     "pattern": "这三件事，其实是同一件事的三个部分", "source": "docs/system/04-导引者操作系统.md:410"}
+  ],
+  "non_adjacent": {
+    "rule": "不要同时使用「回响」和「收敛」（它们都指向过去），也不要同时使用「代价」和「升级」（它们都指向恶化）。跳着选，多样性自然出现。",
+    "source": "docs/system/04-导引者操作系统.md:412"
+  },
+  "route_format": {
+    "fields": ["engine", "trigger", "short_term", "long_term", "thread"],
+    "source": "docs/system/04-导引者操作系统.md:418"
+  },
+  "unselected": {
+    "rule": "未被选择的路线不会消失：玩家选择路线 A 后，路线 B 有 50% 概率在 1–3 个场景后以「变形回响」的形式出现（同一事件动力，不同外衣）；路线 C 存入未使用钩子池，可在之后任何合适时刻重新抽出。",
+    "source": "docs/system/04-导引者操作系统.md:458"
+  },
+  "consistency_questions": [
+    {"order": 1, "question": "它是从已经发生的事里长出来的吗？（不能凭空出现）",
+     "source": "docs/system/04-导引者操作系统.md:468"},
+    {"order": 2, "question": "世界里的其他人有足够的动机这么做吗？（NPC 要为自己而行动，不是为剧情服务）",
+     "source": "docs/system/04-导引者操作系统.md:470"},
+    {"order": 3, "question": "玩家可以察觉到线索吗？（真相在揭晓前必须隐约可见）",
+     "source": "docs/system/04-导引者操作系统.md:472"}
+  ],
+  "pool_rules": [
+    {"order": 1, "rule": "至少有 1 条与某个角色的个人驱动相关",
+     "source": "docs/system/04-导引者操作系统.md:480"},
+    {"order": 2, "rule": "至少有 1 条来自敌对者的主动计划（不是玩家的行动引起的）",
+     "source": "docs/system/04-导引者操作系统.md:481"},
+    {"order": 3, "rule": "至少有 1 条是纯粹的伏笔（暂时看不出意义）",
+     "source": "docs/system/04-导引者操作系统.md:482"},
+    {"order": 4, "rule": "每次会话至少让 2 条路线产生可见进展",
+     "source": "docs/system/04-导引者操作系统.md:483"}
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.branching）",
+  "description": "导引者操作系统第六节：三条分支法——八种故事引擎、三条路线格式、未选路线管理与路线池。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "engines", "non_adjacent", "route_format", "unselected", "consistency_questions", "pool_rules"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.branching"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["engines", "routes_per_decision", "pool_min", "pool_max"],
+      "properties": {
+        "engines": {"const": 8},
+        "routes_per_decision": {"const": 3},
+        "pool_min": {"const": 3},
+        "pool_max": {"const": 5}
+      },
+      "additionalProperties": false
+    },
+    "engines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["no", "name", "en", "feel", "pattern", "source"],
+        "properties": {
+          "no": {"type": "integer", "minimum": 1, "maximum": 8},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "feel": {"type": "string", "minLength": 1},
+          "pattern": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "non_adjacent": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "route_format": {
+      "type": "object",
+      "required": ["fields", "source"],
+      "properties": {
+        "fields": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "unselected": {
+      "type": "object",
+      "required": ["rule", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "consistency_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "question", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "question": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "pool_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

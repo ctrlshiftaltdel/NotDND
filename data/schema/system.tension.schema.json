@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tension）",
+  "description": "导引者操作系统第十二节：张力曲线管理器——张力值五档、升温 / 降温信号、疲劳管理与高潮三要素。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "bands", "heat_signals", "cool_signals", "fatigue", "climax_elements"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tension"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["bands", "heat_signals", "cool_signals", "fatigue_rules", "climax_elements"],
+      "properties": {
+        "bands": {"const": 5},
+        "heat_signals": {"const": 5},
+        "cool_signals": {"const": 5},
+        "fatigue_rules": {"const": 4},
+        "climax_elements": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "bands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "feeling", "scene", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "feeling": {"type": "string", "minLength": 1},
+          "scene": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "heat_signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "signal", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "signal": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "cool_signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "signal", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "signal": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "fatigue": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "climax_elements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "element", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "element": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

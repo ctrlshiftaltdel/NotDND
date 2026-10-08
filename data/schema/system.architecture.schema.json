@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.architecture）",
+  "description": "导引者操作系统第一节：三层架构（叙事 / 裁决 / 模拟）、四条操作守则与三段输出结构。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "declared", "layers", "output_structure", "rules"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.architecture"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["layers", "rules", "output_sections"],
+      "properties": {
+        "layers": {"const": 3},
+        "rules": {"const": 4},
+        "output_sections": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "responsibility", "output", "failure", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "responsibility": {"type": "string", "minLength": 1},
+          "output": {"type": "string", "minLength": 1},
+          "failure": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "output_structure": {
+      "type": "object",
+      "required": ["source", "sections"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "sections": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "label", "purpose", "source"],
+            "properties": {
+              "order": {"type": "integer", "minimum": 1},
+              "label": {"type": "string", "minLength": 1},
+              "purpose": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "name", "rule", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "name": {"type": "string", "minLength": 1},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
