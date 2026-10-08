@@ -1,6 +1,6 @@
 name: CI
 
-# 三道独立 gate：任一失败，该 PR / master 推送即为红。
+# 四道独立 gate：任一失败，该 PR / master 推送即为红。
 # 只读权限、不引用任何 secrets、不使用第三方 marketplace action（官方 actions/* 除外）。
 on:
   push:
@@ -45,3 +45,22 @@ jobs:
       - name: 内容防火墙
         shell: bash
         run: bash tests/content_firewall.sh
+
+  commit-email:
+    name: 提交邮箱门
+    runs-on: ubuntu-latest
+    steps:
+      # 需要完整历史：PR 取 base..head，master 推送取 before..after，均为历史中的提交。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 提交邮箱门（铁律 3：作者邮箱一律 GitHub noreply）
+        shell: bash
+        env:
+          # 事件 SHA 交给脚本自行挑用：PR 事件只有 BASE/HEAD，
+          # push 事件只有 BEFORE/AFTER；都为空时脚本回退 origin/master..HEAD。
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.event.after }}
+        run: bash tests/commit_email_gate.sh

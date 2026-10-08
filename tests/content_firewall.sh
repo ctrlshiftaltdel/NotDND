@@ -141,7 +141,9 @@ grep_hits "隐私" -E -e '(^|[^0-9])10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}([^0-9
 grep_hits "隐私" -E -e '(^|[^0-9])192\.168\.[0-9]{1,3}\.[0-9]{1,3}([^0-9]|$)'
 grep_hits "隐私" -E -e '(^|[^0-9])172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}([^0-9]|$)'
 
-# 真实邮箱（排除 GitHub 的 *.users.noreply.github.com）
+# 真实邮箱（排除 GitHub noreply：*.users.noreply.github.com、noreply@github.com）
+# 白名单与 CI「提交邮箱门」（tests/commit_email_gate.sh，铁律 3）保持同一口径：
+# 统一小写后比对，避免 User@Users.Noreply.GitHub.com 之类大小写变体绕过或误判。
 email_re='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
 if out="$(git_grep -n -iE "$email_re" -- "${scan_files[@]}" 2>/dev/null)"; then
     while IFS= read -r line; do
@@ -150,8 +152,9 @@ if out="$(git_grep -n -iE "$email_re" -- "${scan_files[@]}" 2>/dev/null)"; then
         bad=0
         while IFS= read -r mail; do
             [ -z "$mail" ] && continue
-            case "$mail" in
+            case "${mail,,}" in
                 *@users.noreply.github.com) ;;
+                noreply@github.com) ;;
                 *) bad=1 ;;
             esac
         done <<< "$emails"
