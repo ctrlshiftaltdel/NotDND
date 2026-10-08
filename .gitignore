@@ -18,6 +18,9 @@ tests/shots/
 .codegraph/
 .opencode/
 
+# Agent 记忆目录（项目约定与工作日志，仅本地保留）
+.workbuddy/
+
 # 第三方参考产物（若本地存在，永不入库）
 reference/
 corpus/
