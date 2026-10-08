@@ -1,6 +1,9 @@
 {
   "schema_version": 1,
   "kinds": {
-    "system.attributes": "system.schema.json"
+    "system.attributes": "system.schema.json",
+    "world.module": "world.schema.json",
+    "random_tables.catalog": "random_tables.schema.json",
+    "scenario.campaign": "scenario.schema.json"
   }
 }

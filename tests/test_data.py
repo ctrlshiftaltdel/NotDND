@@ -111,14 +111,12 @@ def check_schemas_keyword_clean():
 
 
 def check_registry():
-    """登记表登记 system 族，且指向存在的 schema 文件。
-
-    world / random_tables / scenario 三族在后续任务补全。
-    """
+    """登记表覆盖四族，且指向存在的 schema 文件。"""
     with open(os.path.join(SCHEMA_DIR, "registry.json"), encoding="utf-8") as handle:
         registry = json.load(handle)
     kinds = registry["kinds"]
-    for expected in ("system.attributes",):
+    for expected in ("system.attributes", "world.module",
+                     "random_tables.catalog", "scenario.campaign"):
         assert expected in kinds, "registry 缺少 kind: %s" % expected
         assert os.path.isfile(os.path.join(SCHEMA_DIR, kinds[expected])), \
             "registry 指向不存在的 schema: %s" % kinds[expected]
@@ -147,6 +145,45 @@ def check_system_schema_validation():
         "非法属性 id 未被判失败"
 
 
+def check_family_schemas():
+    """world / random_tables / scenario 三族：最小样本过，缺 kind 红。"""
+    samples = {
+        "world.schema.json": {
+            "schema_version": 1, "kind": "world.module",
+            "source": "docs/scenario/05-世界模组I-阈界都市.md:27",
+            "world": {"key": "threshold", "name": "阈界都市", "engine": "tactics"},
+            "factions": [], "tracks": [], "careers": [], "abilities": [],
+            "equipment": [], "enemies": [], "random_tables": [],
+        },
+        "random_tables.schema.json": {
+            "schema_version": 1, "kind": "random_tables.catalog",
+            "source": "docs/scenario/S7-随机生成器.md:2702",
+            "resource": "prism.random_tables", "tables": [], "generators": [],
+            "ledger_bridge": {},
+        },
+        "scenario.schema.json": {
+            "schema_version": 1, "kind": "scenario.campaign",
+            "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2423",
+            "meta": {"world": "foundered-strata", "engine": "tactics"},
+            "acts": [], "threads": [],
+            "ledger_template": {
+                "meta": {"world": "foundered-strata", "engine": "tactics"},
+                "clock": {}, "party": [], "npcs": [], "threads": [],
+                "facts": [], "hooks": [],
+            },
+        },
+    }
+    for filename, sample in samples.items():
+        with open(os.path.join(SCHEMA_DIR, filename), encoding="utf-8") as handle:
+            schema = json.load(handle)
+        assert not validate_data.check_schema(sample, schema, SCHEMA_DIR), \
+            "%s 拒绝了合法样本" % filename
+        broken = json.loads(json.dumps(sample))
+        del broken["kind"]
+        assert validate_data.check_schema(broken, schema, SCHEMA_DIR), \
+            "%s 未对缺 kind 报错" % filename
+
+
 def main():
     checks = (
         check_format_doc,
@@ -156,6 +193,7 @@ def main():
         check_schemas_keyword_clean,
         check_registry,
         check_system_schema_validation,
+        check_family_schemas,
     )
     failures = 0
     for check in checks:

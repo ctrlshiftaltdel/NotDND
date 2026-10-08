@@ -73,6 +73,10 @@ data/
 
 ## 4. 各实体族字段表与枚举清单
 
+> 基线口径：`system` 族已由试点数据落定，schema 用 `additionalProperties: false` 严格约束；
+> `world` / `random_tables` / `scenario` 三族的**实体项**当前 `additionalProperties: true`
+> 作为基线（容纳各世界差异），M1.1–M1.4 落数据时在各自 PR 内逐项收紧。
+
 ### 4.1 system 族
 
 **`system.attributes`**（六维属性 + 等级表 + 修正表）

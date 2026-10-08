@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "world 族（world.module）",
+  "description": "世界模组基线；实体项 additionalProperties:true，M1.2 落数据时收紧。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "world", "factions",
+               "tracks", "careers", "abilities", "equipment", "enemies", "random_tables"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "world.module"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "world": {
+      "type": "object",
+      "required": ["key", "name", "engine"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "engine": {"enum": ["tactics", "build"]},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": true
+    },
+    "factions": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "tracks": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/track"}},
+    "careers": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "abilities": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "equipment": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "enemies": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "random_tables": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/random_table"}}
+  },
+  "additionalProperties": false
+}
