@@ -2,6 +2,16 @@
   "schema_version": 1,
   "kinds": {
     "system.attributes": "system.schema.json",
+    "system.derived": "system.derived.schema.json",
+    "system.skills": "system.skills.schema.json",
+    "system.tags": "system.tags.schema.json",
+    "system.conditions": "system.conditions.schema.json",
+    "system.stances": "system.stances.schema.json",
+    "system.action_economy": "system.action_economy.schema.json",
+    "system.combat": "system.combat.schema.json",
+    "system.damage": "system.damage.schema.json",
+    "system.resources": "system.resources.schema.json",
+    "system.growth": "system.growth.schema.json",
     "world.module": "world.schema.json",
     "random_tables.catalog": "random_tables.schema.json",
     "scenario.campaign": "scenario.schema.json"
