@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_combat）",
+  "description": "构建引擎第六节：构建引擎的攻击结算（5 步流程）、目标闪避需求表（5 档）、掩体/态势加成、命中次数与伤害（D = 成功数 − 闪避需求，5 档结果）、溢出成功购买附加效果（4 项）。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "note", "note_source", "attack_flow", "dodge", "hit_results", "overflow"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_combat"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["attack_flow_steps", "dodge_needs", "hit_results", "overflow_options"],
+      "properties": {
+        "attack_flow_steps": {"const": 5},
+        "dodge_needs": {"const": 5},
+        "hit_results": {"const": 5},
+        "overflow_options": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "note": {"type": "string", "minLength": 1},
+    "note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "attack_flow": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "step", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "step": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "dodge": {
+      "type": "object",
+      "required": ["formula", "formula_source", "modifier_note", "modifier_source", "table"],
+      "properties": {
+        "formula": {"type": "string", "minLength": 1},
+        "formula_source": {"$ref": "common.schema.json#/$defs/source"},
+        "modifier_note": {"type": "string", "minLength": 1},
+        "modifier_source": {"$ref": "common.schema.json#/$defs/source"},
+        "table": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["target_type", "need", "source"],
+            "properties": {
+              "target_type": {"type": "string", "minLength": 1},
+              "need": {"type": "integer", "minimum": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "hit_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["band", "name", "effect", "source"],
+        "properties": {
+          "band": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "overflow": {
+      "type": "object",
+      "required": ["condition", "rule", "options"],
+      "properties": {
+        "condition": {"type": "string", "minLength": 1},
+        "rule": {"type": "string", "minLength": 1},
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["effect", "source"],
+            "properties": {
+              "effect": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -286,6 +286,110 @@ data/
 > DF 阶梯 **10**；按等级设 DF 3；攻击结果 **5**；掩体 **4**；严重失手 d6 **6**；伤口 d12 **12**；
 > 优势来源 **9** / 劣势来源 **7**；五档结果 **5**；灾难 d20 **20**。
 
+**`system.build_pool`**（骰池与成功；`docs/system/02B` 第一节）
+
+- `declared`：`{pool_parts:4, die_rates:4, required_successes:8}`。
+- `pool`：`{formula, parts[], note}`，`parts[]` 为 `{name, detail, source}`
+  （主属性枚数 / 熟练枚数 / 专精 / 临时加成，共 4 条）。
+- `success_threshold`：`{rule, threshold:5, default_die:"d10", die_rates[]}`，
+  `die_rates[]` 为 `{die, rate, source}`（d6 33% / d8 50% / d10 60% / d12 67%）。
+- `required_successes[]`：`{need, name, tactics_df, source}`（8 档；`need` 取 1/2/3/4/5/6/8/10）。
+- `resolution_steps[]`：`{order, step, source}`（判定四步）。
+
+**`system.build_outcomes`**（构建结果梯度；第二节）
+
+- `declared`：`{grades:5, special_cases:2}`。
+- `formula`：结果公式字符串（成功数 S − 需求成功数 N）。
+- `grades[]`：`{id, band, name, en, consequence, momentum, source}`（凯旋/成功/险成/挫败/灾难）。
+- `design_note` / `design_note_source?`：动量反向补偿的设计说明。
+- `special_cases[]`：`{id, name, rule, source}`（全骰皆负、最大值爆发）。
+
+**`system.build_die_ranks`**（骰阶与专精；第三节）
+
+- `declared`：`{die_ranks:5, expected_rows:8}`。
+- `ranks[]`：`{rank(I–V), die, unlock, source}`（骰阶 5，d6/d8/d10/d12/d20）。
+- `starting` / `starting_source?`：起始骰阶 d8。
+- `expected_dice[]`：列头（d8/d10/d12）。
+- `expected_successes[]`：`{pool, d8, d10, d12, source}`（骰池 2–10 枚，8 行）。
+- `advice` / `advice_source?`：配装建议。
+
+**`system.build_momentum`**（动量；第四节）
+
+- `declared`：`{gain_sources:7, spends:7}`。
+- `pool`：`{rule, shared_start:0, shared_cap:10, per_person_cap:5, source}`。
+- `timing` / `timing_source?`：任意时刻可花费（含他人回合）。
+- `gain[]`：`{source_label, amount, note?, source}`（7 条）。
+- `spends[]`：`{id, cost, name, effect, source}`（7 条）。
+- `clear`：`{rule, source}`（每场景清零）。
+
+**`system.build_stress`**（应力与超载；第五节）
+
+- `declared`：`{gain_sources:5, penalty_bands:4, reduction_methods:4, overload_steps:4}`。
+- `cap`：`{formula, typical_range, source}`（体魄 + 心智 + 5）。
+- `gain[]`：`{behaviour, amount, source}`（5 条）。
+- `penalty_bands[]`：`{band, effect, source}`（4 段）。
+- `overload_event`：`{trigger, trigger_source?, steps[]}`，`steps[]` 为 `{order, step, source}`（4 步）。
+- `reduction[]`：`{method, amount, note?, source}`（4 条；`amount` 可空）。
+
+**`system.build_combat`**（攻击结算 / 闪避需求 / 命中次数 / 溢出；第六节）
+
+- `declared`：`{attack_flow_steps:5, dodge_needs:5, hit_results:5, overflow_options:4}`。
+- `note` / `note_source?`。
+- `attack_flow[]`：`{order, step, source}`（5 步）。
+- `dodge`：`{formula, formula_source?, modifier_note, modifier_source?, table[]}`，
+  `table[]` 为 `{target_type, need, source}`（5 档）。
+- `hit_results[]`：`{band, name, effect, source}`（5 档）。
+- `overflow`：`{condition, rule, options[]}`，`options[]` 为 `{effect, source}`（4 项）。
+
+**`system.build_overload_chain`**（超载连锁；第七节）
+
+- `declared`：`{options:4, per_scene_limit:1}`。
+- `trigger` / `trigger_source?`；`rule` / `rule_source?`。
+- `options[]`：`{order, option, source}`（4 项）。
+- `limit`：`{per_scene:1, rule, source}`。
+
+**`system.build_glyph_slots`**（符纹插槽；第八节）
+
+- `declared`：`{max_slots_per_faculty:3, slot_sources:5, glyph_sources:3}`。
+- `concept`：`{basis, basis_source?, max_slots:3, max_slots_rule, swap_rule, source}`。
+- `slot_sources[]`：`{origin, slots, source}`（5 源）。
+- `slot_note` / `slot_note_source?`。
+- `glyph_sources[]`：`{origin, detail, source}`（3 源）。
+- `structure`：`{template, template_source?, note, note_source?}`。
+
+**`system.build_growth`**（构建点与成长；第九节）
+
+- `declared`：`{bp_per_level:2, spend_items:12, starting_items:6, routes:3}`。
+- `bp_per_level`：固定 `2`；`bp_rule` / `bp_rule_source?`。
+- `spend[]`：`{id, name, bp, note?, source}`（12 项）。
+- `starting[]`：`{order, item, source}`（6 项）。
+- `routes[]`：`{name, description, risk, source}`（3 路线）。
+
+**`system.build_glyphs`**（符纹库；第十节）
+
+- `declared`：`{glyphs:28, categories:6}`。
+- `note` / `note_source?`。
+- `categories[]`：字符串数组，取 `增幅类 | 效率类 | 转化类 | 触发类 | 连锁类 | 代价类`。
+- `glyphs[]`：`{no(1–28), id, name, category, level(I|II|III), effect, cost, source}`（28 枚）。
+- `level_limits[]`：`{level, min_character_level, rule, source}`（I 任意 / II ≥4 / III ≥7）。
+- `install_limit` / `install_limit_source?`：同能力同名同类不可叠装。
+
+**`system.build_conversion`**（双引擎互转对照；第十一节）
+
+- `declared`：`{switch_scenarios:5, attribute_rows:5, proficiency_rows:4, difficulty_rows:8,
+  edge_rows:4, enemy_defense_rows:5, damage_rows:5, migration_steps:5, mixing_limits:3}`。
+- `note` / `note_source?`。
+- `when_to_switch[]`、`attribute_conversion[]`、`proficiency_conversion[]`、
+  `difficulty_conversion[]`、`edge_conversion[]`、`enemy_defense_conversion[]`、
+  `damage_conversion[]`：各为对照表行（字段见 schema）。
+- `difficulty_note` / `difficulty_note_source?`；`migration_steps[]`（5 步）；`mixing_limits[]`（3 条）。
+
+> **计数核对**（M1.1c 逐条比对 `docs/system/02B`）：骰阶 **5**（I–V）；需求成功数 **8**；
+> 单骰成功率 **4**（d6/d8/d10/d12）；构建结果梯度 **5**（＋特例 2）；动量获取 **7** / 花费 **7**；
+> 应力获取 **5** / 惩罚段 **4** / 降低手段 **4**；闪避需求 **5**；攻击流程 **5**；命中次数 **5**；
+> 溢出购买 **4**；超载连锁选项 **4**；插槽来源 **5**；构建点花费项 **12**；符纹 **28**（六类）；
+> 迁移五步 **5**；混用限制 **3**。
+
 
 ### 4.2 world 族
 

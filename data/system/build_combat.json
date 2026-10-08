@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "kind": "system.build_combat",
+  "source": "docs/system/02B-构建引擎.md:237",
+  "declared": {"attack_flow_steps": 5, "dodge_needs": 5, "hit_results": 5, "overflow_options": 4},
+  "note": "构建引擎的战斗流程与内核一致（AP、破韧、连携、场地要素全部保留），只有攻击如何结算不同。",
+  "note_source": "docs/system/02B-构建引擎.md:239",
+  "attack_flow": [
+    {"order": 1, "step": "选择目标，支付 AP", "source": "docs/system/02B-构建引擎.md:244"},
+    {"order": 2, "step": "掷攻击骰池 vs 目标的「闪避需求」", "source": "docs/system/02B-构建引擎.md:245"},
+    {"order": 3, "step": "依据成功数之差，确定命中的次数，而非简单的命中/落空", "source": "docs/system/02B-构建引擎.md:246"},
+    {"order": 4, "step": "每次命中造成基础伤害", "source": "docs/system/02B-构建引擎.md:247"},
+    {"order": 5, "step": "追加效果由「成功数溢出」提供", "source": "docs/system/02B-构建引擎.md:248"}
+  ],
+  "dodge": {
+    "formula": "D = 成功数 − 闪避需求",
+    "formula_source": "docs/system/02B-构建引擎.md:265",
+    "modifier_note": "目标的掩体、态势与其他位置优势会增加这个需求成功数（每项 +1，最多 +2）。",
+    "modifier_source": "docs/system/02B-构建引擎.md:261",
+    "table": [
+      {"target_type": "静止／无防备", "need": 2, "source": "docs/system/02B-构建引擎.md:255"},
+      {"target_type": "标准敌人", "need": 3, "source": "docs/system/02B-构建引擎.md:256"},
+      {"target_type": "灵活／远程专长", "need": 4, "source": "docs/system/02B-构建引擎.md:257"},
+      {"target_type": "高防护目标", "need": 5, "source": "docs/system/02B-构建引擎.md:258"},
+      {"target_type": "重甲单位", "need": 6, "source": "docs/system/02B-构建引擎.md:259"}
+    ]
+  },
+  "hit_results": [
+    {"band": "≥ +4", "name": "贯穿打击", "effect": "造成 3 次基础伤害；目标获得 3 层【失衡】", "source": "docs/system/02B-构建引擎.md:269"},
+    {"band": "+2 ~ +3", "name": "多重命中", "effect": "造成 2 次基础伤害", "source": "docs/system/02B-构建引擎.md:270"},
+    {"band": "0 ~ +1", "name": "命中", "effect": "造成 1 次基础伤害", "source": "docs/system/02B-构建引擎.md:271"},
+    {"band": "−1", "name": "擦过", "effect": "造成一半伤害（向下取整）", "source": "docs/system/02B-构建引擎.md:272"},
+    {"band": "≤ −2", "name": "落空", "effect": "无伤害", "source": "docs/system/02B-构建引擎.md:273"}
+  ],
+  "overflow": {
+    "condition": "一次攻击的 D ≥ +2",
+    "rule": "玩家可以将多余的成功用于购买附加效果，每 +1 次成功换取下列一项。",
+    "options": [
+      {"effect": "削减目标 3 点韧性", "source": "docs/system/02B-构建引擎.md:281"},
+      {"effect": "对目标施加一个 1 层状态", "source": "docs/system/02B-构建引擎.md:282"},
+      {"effect": "把这次攻击的伤害类型临时转换（例如转为另一个标签以针对弱点）", "source": "docs/system/02B-构建引擎.md:283"},
+      {"effect": "命中一个相邻的第二目标（造成一半伤害）", "source": "docs/system/02B-构建引擎.md:284"}
+    ]
+  }
+}

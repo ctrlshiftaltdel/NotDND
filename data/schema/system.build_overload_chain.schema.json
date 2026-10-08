@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_overload_chain）",
+  "description": "构建引擎第七节：超载连锁的触发条件（成功数达需求两倍且盈余 ≥3）、四选一的免费选项、每角色每场景限一次。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "trigger", "trigger_source", "rule", "rule_source", "options", "limit"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_overload_chain"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["options", "per_scene_limit"],
+      "properties": {
+        "options": {"const": 4},
+        "per_scene_limit": {"const": 1}
+      },
+      "additionalProperties": false
+    },
+    "trigger": {"type": "string", "minLength": 1},
+    "trigger_source": {"$ref": "common.schema.json#/$defs/source"},
+    "rule": {"type": "string", "minLength": 1},
+    "rule_source": {"$ref": "common.schema.json#/$defs/source"},
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "option", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "option": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "limit": {
+      "type": "object",
+      "required": ["per_scene", "rule", "source"],
+      "properties": {
+        "per_scene": {"const": 1},
+        "rule": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

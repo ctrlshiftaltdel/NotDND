@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "kind": "system.build_glyph_slots",
+  "source": "docs/system/02B-构建引擎.md:305",
+  "declared": {"max_slots_per_faculty": 3, "slot_sources": 5, "glyph_sources": 3},
+  "concept": {
+    "basis": "角色的每一个能力（Faculty）都是一个基底，基底本身的效果是固定的；把符纹（Glyph）嵌入它的插槽，从而改变这个能力的行为。",
+    "basis_source": "docs/system/02B-构建引擎.md:311",
+    "max_slots": 3,
+    "max_slots_rule": "一个能力最多拥有 3 个插槽。",
+    "swap_rule": "同一枚符纹可以安装在一个能力上，也可以被拆下装到另一个能力上（每个场景开始时可以调整一次）。",
+    "source": "docs/system/02B-构建引擎.md:313"
+  },
+  "slot_sources": [
+    {"origin": "起始", "slots": 1, "source": "docs/system/02B-构建引擎.md:319"},
+    {"origin": "等级 4", "slots": 1, "source": "docs/system/02B-构建引擎.md:320"},
+    {"origin": "等级 7", "slots": 1, "source": "docs/system/02B-构建引擎.md:321"},
+    {"origin": "等级 10", "slots": 1, "source": "docs/system/02B-构建引擎.md:322"},
+    {"origin": "用构建点购买（每个 3 BP，上限 2 个）", "slots": 1, "source": "docs/system/02B-构建引擎.md:323"}
+  ],
+  "slot_note": "插槽的总数决定了你能同时「激活」多少枚符纹；插槽不足时，玩家必须做出取舍——这正是构建的乐趣。",
+  "slot_note_source": "docs/system/02B-构建引擎.md:325",
+  "glyph_sources": [
+    {"origin": "起始", "detail": "起始角色得 2 枚（自选）", "source": "docs/system/02B-构建引擎.md:329"},
+    {"origin": "升级", "detail": "每次升级可获得 1 枚新符纹（消耗 2 BP）", "source": "docs/system/02B-构建引擎.md:330"},
+    {"origin": "世界模组", "detail": "世界模组中的特定地点、导师与任务奖励会提供稀有符纹", "source": "docs/system/02B-构建引擎.md:331"}
+  ],
+  "structure": {
+    "template": "【符纹名】（等级 N）／效果：<改变能力的行为>／代价：<嵌入后这个能力带来的副作用>",
+    "template_source": "docs/system/02B-构建引擎.md:336",
+    "note": "每条符纹都有代价。真正的构筑艺术在于：找到那些对你的构筑而言代价几乎不痛的符纹。",
+    "note_source": "docs/system/02B-构建引擎.md:341"
+  }
+}

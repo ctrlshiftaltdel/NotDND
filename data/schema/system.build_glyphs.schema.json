@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.build_glyphs）",
+  "description": "构建引擎第十节：通用符纹库 28 枚（分类 / 等级 I–III / 效果 / 代价，六类：增幅/效率/转化/触发/连锁/代价）、符纹等级限制（I 任意 / II 需 4 级 / III 需 7 级）、同能力同名同类不可叠装。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "note", "note_source", "categories", "glyphs", "level_limits", "install_limit", "install_limit_source"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.build_glyphs"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["glyphs", "categories"],
+      "properties": {
+        "glyphs": {"const": 28},
+        "categories": {"const": 6}
+      },
+      "additionalProperties": false
+    },
+    "note": {"type": "string", "minLength": 1},
+    "note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "categories": {
+      "type": "array",
+      "items": {"enum": ["增幅类", "效率类", "转化类", "触发类", "连锁类", "代价类"]}
+    },
+    "glyphs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["no", "id", "name", "category", "level", "effect", "cost", "source"],
+        "properties": {
+          "no": {"type": "integer", "minimum": 1, "maximum": 28},
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "category": {"enum": ["增幅类", "效率类", "转化类", "触发类", "连锁类", "代价类"]},
+          "level": {"enum": ["I", "II", "III"]},
+          "effect": {"type": "string", "minLength": 1},
+          "cost": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "level_limits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level", "min_character_level", "rule", "source"],
+        "properties": {
+          "level": {"enum": ["I", "II", "III"]},
+          "min_character_level": {"type": "integer", "minimum": 1, "maximum": 12},
+          "rule": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "install_limit": {"type": "string", "minLength": 1},
+    "install_limit_source": {"$ref": "common.schema.json#/$defs/source"}
+  },
+  "additionalProperties": false
+}

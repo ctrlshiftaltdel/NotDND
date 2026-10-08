@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "kind": "system.build_overload_chain",
+  "source": "docs/system/02B-构建引擎.md:288",
+  "declared": {"options": 4, "per_scene_limit": 1},
+  "trigger": "当一次判定的成功数达到需求成功数的两倍（且至少盈余 3 枚）时，触发超载连锁。",
+  "trigger_source": "docs/system/02B-构建引擎.md:290",
+  "rule": "超载连锁时，玩家可以立即选择下列一项，不消耗任何资源：",
+  "rule_source": "docs/system/02B-构建引擎.md:292",
+  "options": [
+    {"order": 1, "option": "立即追加一个 1 AP 的动作", "source": "docs/system/02B-构建引擎.md:294"},
+    {"order": 2, "option": "刷新一项本场景已消耗的能力", "source": "docs/system/02B-构建引擎.md:295"},
+    {"order": 3, "option": "把这次判定的结果向上升一档（险成 → 成功 → 凯旋）", "source": "docs/system/02B-构建引擎.md:296"},
+    {"order": 4, "option": "为团队共享池注入 2 点动量", "source": "docs/system/02B-构建引擎.md:297"}
+  ],
+  "limit": {
+    "per_scene": 1,
+    "rule": "超载连锁每名角色每个场景限一次。它是奖励「把一套构筑推到极致」的机制，也是构建引擎玩家的爽点来源。",
+    "source": "docs/system/02B-构建引擎.md:299"
+  }
+}
