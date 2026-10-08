@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_optional_rules）",
+  "description": "战术引擎第十一节：默认关闭的可选规则——伤口 d12 表 12、弹药消耗、士气检定、追击与逃脱、玩家掷所有骰、战术地图 vs 心象剧场、一次会话一个敌方骰。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "note", "wound_table", "ammo", "morale", "chase", "players_roll_all", "theater_vs_map", "single_enemy_die"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_optional_rules"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "declared": {
+      "type": "object",
+      "required": ["wound_rows"],
+      "properties": {
+        "wound_rows": {"const": 12}
+      },
+      "additionalProperties": false
+    },
+    "wound_table": {
+      "type": "object",
+      "required": ["die", "trigger", "rows", "source"],
+      "properties": {
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "trigger": {"type": "string", "minLength": 1},
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["roll", "wound", "source"],
+            "properties": {
+              "roll": {"type": "integer", "minimum": 1},
+              "wound": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "ammo": {
+      "type": "object",
+      "required": ["rules", "source"],
+      "properties": {
+        "rules": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "morale": {
+      "type": "object",
+      "required": ["formula", "triggers", "failure_outcome", "source"],
+      "properties": {
+        "formula": {"type": "string", "minLength": 1},
+        "triggers": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "failure_outcome": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "chase": {
+      "type": "object",
+      "required": ["policies", "win_condition", "round_note", "source"],
+      "properties": {
+        "policies": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "win_condition": {"type": "string", "minLength": 1},
+        "round_note": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "players_roll_all": {
+      "type": "object",
+      "required": ["formula", "note", "source"],
+      "properties": {
+        "formula": {"type": "string", "minLength": 1},
+        "note": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "theater_vs_map": {
+      "type": "object",
+      "required": ["modes", "source"],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "description", "source"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "name": {"type": "string", "minLength": 1},
+              "description": {"type": "string", "minLength": 1},
+              "recommended": {"type": "boolean"},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "single_enemy_die": {
+      "type": "object",
+      "required": ["rule", "note", "source"],
+      "properties": {
+        "rule": {"type": "string", "minLength": 1},
+        "note": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

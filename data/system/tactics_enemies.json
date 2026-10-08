@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactics_enemies",
+  "source": "docs/system/02A-战术引擎.md:475",
+  "declared": {
+    "tiers": 4,
+    "affixes": 14,
+    "affix_limit": 4
+  },
+  "tiers": [
+    {"id": "minion", "name": "杂兵 Minion", "vitality": 12, "guard": 12, "poise": "8", "attack_bonus": "+3", "damage": "1d6+1", "ap": 3, "df": 10, "budget": 1, "source": "docs/system/02A-战术引擎.md:483"},
+    {"id": "standard", "name": "标准 Standard", "vitality": 26, "guard": 14, "poise": "14", "attack_bonus": "+5", "damage": "1d8+2", "ap": 3, "df": 12, "budget": 3, "source": "docs/system/02A-战术引擎.md:483"},
+    {"id": "elite", "name": "精锐 Elite", "vitality": 48, "guard": 16, "poise": "24", "attack_bonus": "+7", "damage": "2d8+3", "ap": 3, "df": 14, "budget": 7, "source": "docs/system/02A-战术引擎.md:483"},
+    {"id": "boss", "name": "首领 Boss", "vitality": 110, "guard": 18, "poise": "40 + 3 层护盾", "attack_bonus": "+9", "damage": "3d8+4", "ap": 4, "df": 17, "budget": 20, "source": "docs/system/02A-战术引擎.md:483"}
+  ],
+  "scaling": [
+    {"level_range": "1", "vitality": "+0", "guard": "+0", "attack_bonus": "+0", "damage": "+0", "source": "docs/system/02A-战术引擎.md:498"},
+    {"level_range": "2–3", "vitality": "+6", "guard": "+0", "attack_bonus": "+1", "damage": "+1", "source": "docs/system/02A-战术引擎.md:499"},
+    {"level_range": "4–5", "vitality": "+14", "guard": "+1", "attack_bonus": "+2", "damage": "+2", "source": "docs/system/02A-战术引擎.md:500"},
+    {"level_range": "6–7", "vitality": "+24", "guard": "+2", "attack_bonus": "+3", "damage": "+4", "source": "docs/system/02A-战术引擎.md:501"},
+    {"level_range": "8–9", "vitality": "+38", "guard": "+3", "attack_bonus": "+5", "damage": "+6", "source": "docs/system/02A-战术引擎.md:502"},
+    {"level_range": "10–12", "vitality": "+55", "guard": "+4", "attack_bonus": "+7", "damage": "+9", "source": "docs/system/02A-战术引擎.md:503"}
+  ],
+  "scaling_note": "给 AI 的提示：不要给敌人叠加太多数值修正。更好的做法是改变敌人的行为与组成，而不是让它变得血厚而笨。",
+  "scaling_note_source": "docs/system/02A-战术引擎.md:505",
+  "affixes": [
+    {"name": "迅捷", "effect": "移动 +3 米，先攻 +3，可采用游势", "budget": 1, "source": "docs/system/02A-战术引擎.md:515"},
+    {"name": "装甲", "effect": "防护 +3，移动 −1 米；获得【装甲】标签", "budget": 1, "source": "docs/system/02A-战术引擎.md:516"},
+    {"name": "狂暴", "effect": "伤害 +3，防护 −2；生命低于一半时攻击 +1 骰", "budget": 1, "source": "docs/system/02A-战术引擎.md:517"},
+    {"name": "远程", "effect": "获得一种射程 15 米的攻击方式", "budget": 1, "source": "docs/system/02A-战术引擎.md:518"},
+    {"name": "再生", "effect": "每回合开始恢复 3 点活力（火焰伤害可抑制）", "budget": 2, "source": "docs/system/02A-战术引擎.md:519"},
+    {"name": "控场", "effect": "每场 2 次，可对范围施加一个状态", "budget": 2, "source": "docs/system/02A-战术引擎.md:520"},
+    {"name": "召唤", "effect": "每场 2 次，可召唤 1d4 个杂兵", "budget": 3, "source": "docs/system/02A-战术引擎.md:521"},
+    {"name": "隐伏", "effect": "起始处于隐匿状态，首轮攻击必定视为偷袭", "budget": 2, "source": "docs/system/02A-战术引擎.md:522"},
+    {"name": "分身", "effect": "生命值降到一半时分裂为两个半血个体", "budget": 2, "source": "docs/system/02A-战术引擎.md:523"},
+    {"name": "反伤", "effect": "近战攻击者受到 1d6 反伤", "budget": 1, "source": "docs/system/02A-战术引擎.md:524"},
+    {"name": "护主", "effect": "会替相邻的同伴承受伤害", "budget": 1, "source": "docs/system/02A-战术引擎.md:525"},
+    {"name": "恐惧光环", "effect": "相邻敌人每回合开始需进行恐惧豁免（DF 13）", "budget": 2, "source": "docs/system/02A-战术引擎.md:526"},
+    {"name": "适应", "effect": "受到某类伤害后，获得对该类型的抗性（每场一次）", "budget": 2, "source": "docs/system/02A-战术引擎.md:527"},
+    {"name": "巨型", "effect": "体型提升一级，活力翻倍，移动 −2 米", "budget": 5, "source": "docs/system/02A-战术引擎.md:528"}
+  ],
+  "affix_limit": {
+    "max": 4,
+    "reason": "词缀叠加不得超过 4 个。一个具有 5 个词缀的敌人会让玩家无法在战斗中读懂它，这与“玩家应当能看见系统状态”的信念冲突。",
+    "source": "docs/system/02A-战术引擎.md:530"
+  },
+  "assembly_example": {
+    "description": "一个 5 级小队遭遇的敌人：一只“被共鸣扭曲的地铁检修虫群母体”。",
+    "base": "精锐：活力 48 + 14 = 62，防护 16 + 1 = 17，攻击 +7 + 2 = +9，伤害 2d8+3+2",
+    "affixes": ["召唤", "再生", "适应"],
+    "budget": 14,
+    "source": "docs/system/02A-战术引擎.md:534"
+  }
+}

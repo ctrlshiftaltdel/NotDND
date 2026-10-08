@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_resolution）",
+  "description": "战术引擎第一至三节：判定公式、跳过掷骰情形、助势骰（优势层数 1–3 / 超 3 层改固定加值 / 劣势 / 抵消 / 同来源不叠加）、优势来源 9、劣势来源 7、五档结果梯度、灾难后果 d20 表。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "resolution", "skip_roll", "edge_dice", "advantage_sources", "disadvantage_sources", "outcome_grades", "catastrophe_table"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_resolution"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["advantage_sources", "disadvantage_sources", "outcome_grades", "catastrophe_rows", "max_edge_layers"],
+      "properties": {
+        "advantage_sources": {"const": 9},
+        "disadvantage_sources": {"const": 7},
+        "outcome_grades": {"const": 5},
+        "catastrophe_rows": {"const": 20},
+        "max_edge_layers": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "resolution": {
+      "type": "object",
+      "required": ["formula", "components", "play_principle"],
+      "properties": {
+        "formula": {"type": "string", "minLength": 1},
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "detail", "source"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "detail": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "df_compare": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["relation", "outcome", "source"],
+            "properties": {
+              "relation": {"enum": ["gt", "eq", "lt"]},
+              "outcome": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "play_principle": {"type": "string", "minLength": 1},
+        "play_principle_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "skip_roll": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["order", "situation", "source"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "situation": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "edge_dice": {
+      "type": "object",
+      "required": ["die", "rule", "tiers", "max_layers", "beyond_max", "disadvantage", "cancellation", "same_source_rule"],
+      "properties": {
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "rule": {"type": "string", "minLength": 1},
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["layer", "name", "dice", "expectation", "source"],
+            "properties": {
+              "layer": {"type": "integer", "minimum": 1, "maximum": 3},
+              "name": {"type": "string", "minLength": 1},
+              "dice": {"type": "string", "minLength": 1},
+              "expectation": {"type": "number"},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "max_layers": {"type": "integer", "minimum": 1},
+        "beyond_max": {"type": "string", "minLength": 1},
+        "beyond_max_source": {"$ref": "common.schema.json#/$defs/source"},
+        "disadvantage": {"type": "string", "minLength": 1},
+        "disadvantage_source": {"$ref": "common.schema.json#/$defs/source"},
+        "cancellation": {"type": "string", "minLength": 1},
+        "cancellation_source": {"$ref": "common.schema.json#/$defs/source"},
+        "same_source_rule": {"type": "string", "minLength": 1},
+        "same_source_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "advantage_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "layers", "source"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "layers": {"type": "array", "items": {"type": "integer", "minimum": 1, "maximum": 3}},
+          "note": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "disadvantage_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "layers", "source"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "layers": {"type": "array", "items": {"type": "integer", "minimum": -3, "maximum": -1}},
+          "note": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "outcome_formula": {"type": "string", "minLength": 1},
+    "outcome_grades": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "band", "name", "en", "meaning", "consequence", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "band": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "meaning": {"type": "string", "minLength": 1},
+          "consequence": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "catastrophe_table": {
+      "type": "object",
+      "required": ["die", "rows", "source"],
+      "properties": {
+        "die": {"type": "string", "pattern": "^d[0-9]+$"},
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["roll", "result", "source"],
+            "properties": {
+              "roll": {"type": "integer", "minimum": 1},
+              "result": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

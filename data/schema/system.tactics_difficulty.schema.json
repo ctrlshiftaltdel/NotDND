@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_difficulty）",
+  "description": "战术引擎第四节：即兴 DF 向导、标准 DF 阶梯 10 行、按队伍等级设 DF 3 行、大目标拆分规则。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "improvised", "ladder", "by_party_level", "split_rule"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_difficulty"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["ladder_rows", "party_level_rows"],
+      "properties": {
+        "ladder_rows": {"const": 10},
+        "party_level_rows": {"const": 3}
+      },
+      "additionalProperties": false
+    },
+    "improvised": {
+      "type": "object",
+      "required": ["baseline", "adjustments"],
+      "properties": {
+        "baseline": {"type": "integer", "minimum": 0},
+        "adjustments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["question", "delta", "source"],
+            "properties": {
+              "question": {"type": "string", "minLength": 1},
+              "delta": {"type": "string", "minLength": 1},
+              "source": {"$ref": "common.schema.json#/$defs/source"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ladder": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["df", "name", "analogy", "source"],
+        "properties": {
+          "df": {"type": "integer", "minimum": 0},
+          "name": {"type": "string", "minLength": 1},
+          "analogy": {"type": "string", "minLength": 1},
+          "open_ended": {"type": "boolean"},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "by_party_level": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level_range", "typical_bonus", "target_df", "source"],
+        "properties": {
+          "level_range": {"type": "string", "minLength": 1},
+          "typical_bonus": {"type": "string", "minLength": 1},
+          "target_df": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "split_rule": {
+      "type": "object",
+      "required": ["threshold", "rule", "example", "source"],
+      "properties": {
+        "threshold": {"type": "integer", "minimum": 0},
+        "rule": {"type": "string", "minLength": 1},
+        "example": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_enemies）",
+  "description": "战术引擎第九节：敌人快速生成——四档基础模板（杂兵 / 标准 / 精锐 / 首领）、按队伍等级缩放表 6 行、修饰词缀 14（含预算与叠加上限 4）、组装示例。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "tiers", "scaling", "affixes", "affix_limit"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_enemies"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["tiers", "affixes", "affix_limit"],
+      "properties": {
+        "tiers": {"const": 4},
+        "affixes": {"const": 14},
+        "affix_limit": {"const": 4}
+      },
+      "additionalProperties": false
+    },
+    "tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "vitality", "guard", "poise", "attack_bonus", "damage", "ap", "df", "budget", "source"],
+        "properties": {
+          "id": {"enum": ["minion", "standard", "elite", "boss"]},
+          "name": {"type": "string", "minLength": 1},
+          "vitality": {"type": "integer", "minimum": 1},
+          "guard": {"type": "integer", "minimum": 0},
+          "poise": {"type": "string", "minLength": 1},
+          "attack_bonus": {"type": "string", "minLength": 1},
+          "damage": {"type": "string", "minLength": 1},
+          "ap": {"type": "integer", "minimum": 0},
+          "df": {"type": "integer", "minimum": 0},
+          "budget": {"type": "integer", "minimum": 0},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "scaling": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["level_range", "vitality", "guard", "attack_bonus", "damage", "source"],
+        "properties": {
+          "level_range": {"type": "string", "minLength": 1},
+          "vitality": {"type": "string", "minLength": 1},
+          "guard": {"type": "string", "minLength": 1},
+          "attack_bonus": {"type": "string", "minLength": 1},
+          "damage": {"type": "string", "minLength": 1},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "scaling_note": {"type": "string", "minLength": 1},
+    "scaling_note_source": {"$ref": "common.schema.json#/$defs/source"},
+    "affixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "effect", "budget", "source"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "budget": {"type": "integer", "minimum": 0},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "affix_limit": {
+      "type": "object",
+      "required": ["max", "reason", "source"],
+      "properties": {
+        "max": {"const": 4},
+        "reason": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "assembly_example": {
+      "type": "object",
+      "required": ["description", "base", "affixes", "budget", "source"],
+      "properties": {
+        "description": {"type": "string", "minLength": 1},
+        "base": {"type": "string", "minLength": 1},
+        "affixes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "budget": {"type": "integer", "minimum": 0},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

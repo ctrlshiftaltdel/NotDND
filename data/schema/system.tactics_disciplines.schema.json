@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_disciplines）",
+  "description": "战术引擎第八节：六大战术流派（锋刃 / 铁壁 / 游猎 / 秘法 / 诡道 / 统帅）与能力树（6×5×2 = 60 项，含终结技等标记）。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "rules", "disciplines"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_disciplines"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["disciplines", "layers", "abilities_per_layer", "abilities"],
+      "properties": {
+        "disciplines": {"const": 6},
+        "layers": {"const": 5},
+        "abilities_per_layer": {"const": 2},
+        "abilities": {"const": 60}
+      },
+      "additionalProperties": false
+    },
+    "rules": {
+      "type": "object",
+      "required": ["layers", "per_layer", "unlock", "cross_branch", "source"],
+      "properties": {
+        "layers": {"type": "integer", "minimum": 1},
+        "per_layer": {"type": "integer", "minimum": 1},
+        "unlock": {"type": "string", "minLength": 1},
+        "cross_branch": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "disciplines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "en", "role", "feel", "abilities", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1},
+          "en": {"type": "string", "minLength": 1},
+          "role": {"type": "string", "minLength": 1},
+          "feel": {"type": "string", "minLength": 1},
+          "note": {"type": "string", "minLength": 1},
+          "abilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["layer", "name", "effect", "capstone", "source"],
+              "properties": {
+                "layer": {"type": "integer", "minimum": 1, "maximum": 5},
+                "name": {"type": "string", "minLength": 1},
+                "effect": {"type": "string", "minLength": 1},
+                "capstone": {"type": "boolean"},
+                "source": {"$ref": "common.schema.json#/$defs/source"}
+              },
+              "additionalProperties": false
+            }
+          },
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

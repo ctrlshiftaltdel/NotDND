@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactics_encounter",
+  "source": "docs/system/02A-战术引擎.md:543",
+  "declared": {
+    "strength_tiers": 4,
+    "composition_limits": 4
+  },
+  "formula": "遭遇预算上限 = 队伍人数 × (队伍平均等级 + 2)",
+  "formula_source": "docs/system/02A-战术引擎.md:550",
+  "budget_cells": [
+    {"party_size": 2, "level": 1, "budget": 6, "source": "docs/system/02A-战术引擎.md:555"},
+    {"party_size": 2, "level": 3, "budget": 10, "source": "docs/system/02A-战术引擎.md:555"},
+    {"party_size": 2, "level": 5, "budget": 14, "source": "docs/system/02A-战术引擎.md:555"},
+    {"party_size": 2, "level": 7, "budget": 18, "source": "docs/system/02A-战术引擎.md:555"},
+    {"party_size": 2, "level": 9, "budget": 22, "source": "docs/system/02A-战术引擎.md:555"},
+    {"party_size": 2, "level": 12, "budget": 28, "source": "docs/system/02A-战术引擎.md:555"},
+    {"party_size": 3, "level": 1, "budget": 9, "source": "docs/system/02A-战术引擎.md:556"},
+    {"party_size": 3, "level": 3, "budget": 15, "source": "docs/system/02A-战术引擎.md:556"},
+    {"party_size": 3, "level": 5, "budget": 21, "source": "docs/system/02A-战术引擎.md:556"},
+    {"party_size": 3, "level": 7, "budget": 27, "source": "docs/system/02A-战术引擎.md:556"},
+    {"party_size": 3, "level": 9, "budget": 33, "source": "docs/system/02A-战术引擎.md:556"},
+    {"party_size": 3, "level": 12, "budget": 42, "source": "docs/system/02A-战术引擎.md:556"},
+    {"party_size": 4, "level": 1, "budget": 12, "source": "docs/system/02A-战术引擎.md:557"},
+    {"party_size": 4, "level": 3, "budget": 20, "source": "docs/system/02A-战术引擎.md:557"},
+    {"party_size": 4, "level": 5, "budget": 28, "source": "docs/system/02A-战术引擎.md:557"},
+    {"party_size": 4, "level": 7, "budget": 36, "source": "docs/system/02A-战术引擎.md:557"},
+    {"party_size": 4, "level": 9, "budget": 44, "source": "docs/system/02A-战术引擎.md:557"},
+    {"party_size": 4, "level": 12, "budget": 56, "source": "docs/system/02A-战术引擎.md:557"},
+    {"party_size": 5, "level": 1, "budget": 15, "source": "docs/system/02A-战术引擎.md:558"},
+    {"party_size": 5, "level": 3, "budget": 25, "source": "docs/system/02A-战术引擎.md:558"},
+    {"party_size": 5, "level": 5, "budget": 35, "source": "docs/system/02A-战术引擎.md:558"},
+    {"party_size": 5, "level": 7, "budget": 45, "source": "docs/system/02A-战术引擎.md:558"},
+    {"party_size": 5, "level": 9, "budget": 55, "source": "docs/system/02A-战术引擎.md:558"},
+    {"party_size": 5, "level": 12, "budget": 70, "source": "docs/system/02A-战术引擎.md:558"},
+    {"party_size": 6, "level": 1, "budget": 18, "source": "docs/system/02A-战术引擎.md:559"},
+    {"party_size": 6, "level": 3, "budget": 30, "source": "docs/system/02A-战术引擎.md:559"},
+    {"party_size": 6, "level": 5, "budget": 42, "source": "docs/system/02A-战术引擎.md:559"},
+    {"party_size": 6, "level": 7, "budget": 54, "source": "docs/system/02A-战术引擎.md:559"},
+    {"party_size": 6, "level": 9, "budget": 66, "source": "docs/system/02A-战术引擎.md:559"},
+    {"party_size": 6, "level": 12, "budget": 84, "source": "docs/system/02A-战术引擎.md:559"}
+  ],
+  "strength": [
+    {"id": "entangled", "name": "纠缠", "ratio": "40%", "experience": "应该很轻松，但会消耗一点资源", "timing": "日常摩擦、建立自信", "source": "docs/system/02A-战术引擎.md:565"},
+    {"id": "standard", "name": "标准", "ratio": "70%", "experience": "需要认真对待，会消耗约 1/3 资源", "timing": "常规遭遇，大多数场景", "source": "docs/system/02A-战术引擎.md:566"},
+    {"id": "harsh", "name": "严酷", "ratio": "100%", "experience": "有可能出现濒危，会消耗大量资源", "timing": "每 2–3 场一次的高潮", "source": "docs/system/02A-战术引擎.md:567"},
+    {"id": "deadly", "name": "致命", "ratio": "140%+", "experience": "团灭是真实可能的结果", "timing": "战略性失误的后果，或终局决战", "source": "docs/system/02A-战术引擎.md:568"}
+  ],
+  "composition_limits": [
+    {"order": 1, "rule": "同类敌人的数量不得超过 队伍人数 × 1.5（向下取整，最低 2）。", "source": "docs/system/02A-战术引擎.md:574"},
+    {"order": 2, "rule": "单个首领的预算消耗不得超过本场总预算的 60%。", "source": "docs/system/02A-战术引擎.md:575"},
+    {"order": 3, "rule": "每场遭遇至少要有两类不同的敌人（或至少一个带词缀的个体），以保证战术多样性。", "source": "docs/system/02A-战术引擎.md:576"},
+    {"order": 4, "rule": "杂兵数量建议控制在 6 个以内，超过则使用群战处理。", "source": "docs/system/02A-战术引擎.md:577"}
+  ],
+  "mass_combat": {
+    "threshold": "当杂兵数量超过 4 个时，使用下列简化。",
+    "source": "docs/system/02A-战术引擎.md:581",
+    "rules": [
+      {"order": 1, "name": "杂兵共享活力池", "effect": "每 2–3 个杂兵共用一份活力，打空这份活力即可清理整组。", "source": "docs/system/02A-战术引擎.md:583"},
+      {"order": 2, "name": "一组杂兵只掷一次骰", "effect": "一组杂兵的攻击合并为一次群体攻击，对同一目标造成叠加伤害，而非逐个掷骰。", "source": "docs/system/02A-战术引擎.md:584"},
+      {"order": 3, "name": "过杀转移", "effect": "对杂兵造成的超出伤害可以转移到同组的其他杂兵身上。", "source": "docs/system/02A-战术引擎.md:585"}
+    ]
+  }
+}

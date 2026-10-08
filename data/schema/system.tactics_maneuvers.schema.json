@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactics_maneuvers）",
+  "description": "战术引擎第七节：学习机动的规则、通用机动库 30 项（近战 / 远程 / 移动与位置 / 控制与辅助四类）、核心九式标记。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "declared", "learning", "maneuvers", "core_nine"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactics_maneuvers"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "declared": {
+      "type": "object",
+      "required": ["maneuvers", "core_nine"],
+      "properties": {
+        "maneuvers": {"const": 30},
+        "core_nine": {"const": 9}
+      },
+      "additionalProperties": false
+    },
+    "learning": {
+      "type": "object",
+      "required": ["starting_common", "starting_discipline", "per_level", "teaching", "source"],
+      "properties": {
+        "starting_common": {"type": "integer", "minimum": 0},
+        "starting_discipline": {"type": "integer", "minimum": 0},
+        "per_level": {"type": "string", "minLength": 1},
+        "teaching": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "categories": {
+      "type": "array",
+      "items": {"enum": ["近战类", "远程类", "移动与位置类", "控制与辅助类"]},
+      "uniqueItems": true
+    },
+    "maneuvers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "no", "name", "category", "ap", "contest", "effect", "core", "source"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "no": {"type": "integer", "minimum": 1, "maximum": 30},
+          "name": {"type": "string", "minLength": 1},
+          "category": {"enum": ["近战类", "远程类", "移动与位置类", "控制与辅助类"]},
+          "ap": {"type": "string", "minLength": 1},
+          "contest": {"type": "string", "minLength": 1},
+          "effect": {"type": "string", "minLength": 1},
+          "core": {"type": "boolean"},
+          "source": {"$ref": "common.schema.json#/$defs/source"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "core_nine": {
+      "type": "object",
+      "required": ["count", "numbers", "source"],
+      "properties": {
+        "count": {"const": 9},
+        "numbers": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 1, "maximum": 30},
+          "uniqueItems": true
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
