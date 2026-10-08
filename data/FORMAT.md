@@ -81,8 +81,9 @@ data/
 ## 4. 各实体族字段表与枚举清单
 
 > 基线口径：`system` 族已由试点数据落定，schema 用 `additionalProperties: false` 严格约束；
-> `world` / `random_tables` / `scenario` 三族的**实体项**当前 `additionalProperties: true`
-> 作为基线（容纳各世界差异），M1.1–M1.4 落数据时在各自 PR 内逐项收紧。
+> `world` 族的**实体项**已随 M1.2a（`docs/scenario/05` 阈界都市）落数据收紧为
+> `additionalProperties: false`；`random_tables` / `scenario` 两族的实体项当前仍为
+> `additionalProperties: true` 基线，待 M1.2–M1.4 落数据时在各自 PR 内逐项收紧。
 
 ### 4.1 system 族
 
@@ -627,15 +628,35 @@ data/
 
 ### 4.2 world 族
 
-**`world.module`**（世界模组；族载荷允许后续 M1.2 收紧）
+**`world.module`**（世界模组；源自 `docs/scenario/05`、`06`、`07`；三册共享同一机械语法、仅名称不同，
+故 `world.schema.json` 覆盖其**公共字段集**，实体项均为 `additionalProperties: false`）
 
-- `world`：`{key, name, engine}`，`engine` 枚举 `tactics | build`。
-- `factions[]`、`careers[]`、`abilities[]`、`equipment[]`、`enemies[]`：
-  每项至少 `{id, name, source}`（实体基座）。
-- `equipment[]` 的 `kind` 枚举：`weapon | armor | gear`；`load` 枚举 `轻 | 中 | 重`；
-  `price_tier` 枚举 `碎银 | 标准 | 贵重`。
-- `tracks[]`（世界专属资源，见 4.4 的 `world_rules.tracks`）。
+族载荷（顶层）：
+
+- `world`：`{key, name, engine, source?}`；`engine` 枚举 `tactics | build`。
+- `glossary[]`：术语表，`{term, meaning, source}`。
+- `factions[]`：`{id, name, alignment?, summary, source}`；`alignment` 为阵营分组
+  （`官方 | 半民间 | 反体制 | 资本 | 其他`）。
+- `regions[]`：地理区域，`{id, name, summary?, atmosphere?, key_places[]?, powers[]?, events[]?, source}`。
+- `history[]`：历史事件，`{id, year?, name, detail, source}`。
+- `tracks[]`（世界专属资源轨，见 4.4 的 `world_rules.tracks`；如 05 的「阈丝度」）。
+- `careers[]`：职途，`{id, name, role, focus[], vitality_bonus, skills[], gear[],
+  abilities[{name, cost?, effect}], specializations[], note?, source}`。
+- `abilities[]`：能力（共鸣式 / 秘仪 / 协议），`{id, name, category, tier, ap, costs[], effect, source}`；
+  `tier` 枚举 `轻 | 中 | 重`；`ap` 为非负整数；`costs[]` 用通用**能力代价**结构（见 4.4）
+  表达各世界不同的施法资源（05 专注 / 阈丝、06 烬、07 同步）。
+- `equipment[]`：`{id, name, kind, damage?, ap?, range?, tags[]?, guard?, load?, restriction?, effect?, price_tier, source}`；
+  `kind` 枚举 `weapon | armor | gear`；`price_tier` 为**开放字符串**——基础档 `碎银 | 标准 | 贵重`，
+  允许带修饰（如 `贵重 ×2`、`标准（黑市）`、`标准～贵重`）；`load` 为开放字符串（`轻 | 中 | 重`，可空 `—`）。
+- `enemies[]`：敌体，`{id, name, tier, vitality, guard, poise, attack_bonus, damage, persona, trait, source}`；
+  `tier` 枚举 `杂兵 | 杂兵（群） | 标准 | 精锐 | 首领`；`persona` 为**战术人格六型**
+  （见 `docs/system/04` 第九节）`狡诈 | 猛攻 | 召唤 | 守护 | 控场 | 领袖`。
+- `world_rules`：对象，容纳各世界独有的特则（05 阈丝度 / 回声 / 薄处 / 抑噪器；
+  06 烬值 / 燃痕 / 月相 / 根系 / 奉献；07 同步率 / 纯度 / 义体 / 网潜），**允许各世界自定义键**。
 - `random_tables[]`（见 4.3 的 `random_table`）。
+
+> 实体项的 `id` 用稳定 slug（如 `career-01`、`resonance-001`、`enemy-a01`）；同一顶层数组内
+> `id` 不得重复。长文（世界观描述、十条信条、朗读段）留在 `docs/`，JSON 只留机制与短文本（见第 5 节）。
 
 ### 4.3 random_tables 族
 
