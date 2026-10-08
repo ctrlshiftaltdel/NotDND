@@ -1,0 +1,47 @@
+name: CI
+
+# 三道独立 gate：任一失败，该 PR / master 推送即为红。
+# 只读权限、不引用任何 secrets、不使用第三方 marketplace action（官方 actions/* 除外）。
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: 语法门
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 编译后端 *.py 与 tests/*.py
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=( *.py tests/*.py )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "没有 Python 文件，跳过语法检查。"
+            exit 0
+          fi
+          python3 -m py_compile "${files[@]}"
+          echo "语法检查通过：${#files[@]} 个文件。"
+
+  regression:
+    name: 回归门
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 一键回归
+        shell: bash
+        run: bash tests/run_all.sh
+
+  firewall:
+    name: 内容防火墙门
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 内容防火墙
+        shell: bash
+        run: bash tests/content_firewall.sh
