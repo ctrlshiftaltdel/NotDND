@@ -71,7 +71,8 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 - 同一条 Issue **只派一个**实现 Agent。无关任务可以并行，各用一条 Issue、一个分支。
 - 同一目录已有开放 PR 时，**不另派 Agent 改该目录**（避免互相冲突）。
 - `master` 为**受保护分支**：**禁止直接 push，禁止 force push**，必须经 PR，CI 通过后合并。
-  > ⚠️ GitHub 分支保护是否开启见第 10 节「待确认」；公开库建议开启。
+  > 分支保护已开启，见第 10 节「已确认」：`master` 须经 PR 合并且 CI 三道门通过。
+  > 具体生效的规则组合以 GitHub 设置页为准，本文件不假定单项规则的开闭。
 
 ## 5. 一次任务的循环
 
@@ -118,7 +119,7 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 | `README.md`、`HANDOVER.md` | 文档 |
 | `AGENTS.md`、`CONTRIBUTING.md` | 协作契约 |
 | `docs/` | PRISM 原创规则与剧本，**只读**，不许改 |
-| `save/`、`web-saves/`、`screenshots/`、`tests/shots/`、`.worktrees/`、`.codegraph/`、`.opencode/`、`.env` | 本地运行物 / 本地索引 / 密钥，**禁入库** |
+| `save/`、`web-saves/`、`screenshots/`、`tests/shots/`、`.worktrees/`、`.workbuddy/`、`.codegraph/`、`.opencode/`、`.env` | 本地运行物 / 本地索引 / 密钥，**禁入库** |
 
 每条 Issue 必须写明**可改路径**与**禁改路径**；实现 Agent **只改允许的路径**。
 
@@ -126,7 +127,7 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 
 - 不顺手重构、不格式化无关文件、不升级无关依赖；只改 Issue 允许的路径。
 - 依赖与 lockfile 变更**单独开 PR**。
-- 生成物不入库（存档、截图、构建产物、`.codegraph/`、`.worktrees/`、`.opencode/`）。
+- 生成物不入库（存档、截图、构建产物、`.codegraph/`、`.worktrees/`、`.opencode/`、`.workbuddy/`）。
 - 密钥、令牌、`.env`、本地数据库**不入库**；需要时用 `.env.example` 只列变量名。
   **不把有写权限的 PAT 写进仓库。**
 - 不直接改 `master`；不改仓库保护规则（主管 Agent 也一样）。
@@ -143,10 +144,13 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 - **工具入口**：根 `AGENTS.md` 即入口。
 - **代码复用**：允许复用参考项目 **DNDWeb** 的**代码与工程做法**；禁止其**内容与数据**（含翻译 / 改名 / 微调派生）入库。
 - **六维命名**：产品层统一 PRISM 名 **力道 MGT / 灵巧 FIN / 体魄 VIG / 洞察 INS / 心智 MND / 气场 PRE**；D&D 通用属性名仅为**同义词**，内容防火墙不得列为侵权标识。
+- GitHub **分支保护**已开启（2026-10-08 核实）：ruleset「master」为 **active**，含 `deletion`、
+  `non_fast_forward`、`pull_request`，并附 required status checks（语法门 / 回归门 / 内容防火墙门）。
+  规则组合仍**以 GitHub 设置页为准**；也不因保护已开而放宽第 4 节的 PR 要求。
 
 **待确认**：
 
-- GitHub **分支保护**是否开启（公开库建议开启；需人在 GitHub 设置中操作）。
+- 无。（原「分支保护是否开启」已于 2026-10-08 确认开启，移入上方「已确认」。）
 
 ---
 
