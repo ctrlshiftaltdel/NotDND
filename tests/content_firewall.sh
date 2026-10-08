@@ -14,6 +14,11 @@
 # 避免「扫描规则命中自己」。禁止路径按**路径**判断而非正文，
 # 以免 AGENTS.md 中作为反面示例的 `reference/` / `corpus/` 字样被误判。
 #
+# 文件列表一律走 `git ls-files -z`、正文检索一律走 `core.quotepath=false`：
+# git 默认会把中文等路径转义成 `"docs/05-\344\270\226....md"` 的形式，若把转义串
+# 当 pathspec 回传 git grep，匹配不到即「没命中」——中文名文件（本仓库 `docs/` 全是）
+# 会被静默跳过，属于 fail-open。
+#
 # 用法：bash tests/content_firewall.sh
 set -u
 
@@ -22,13 +27,19 @@ cd "$(dirname "$0")/.." || exit 2
 TERMS_FILE="tests/content_firewall_terms.txt"
 SELF="tests/content_firewall.sh"
 
+# 不转义路径的 git grep（命中信息里也能看到真实文件名）
+git_grep() {
+    git -c core.quotepath=false grep "$@"
+}
+
 hits=0
 note_hit() {
     printf '  ✗ [%s] %s\n' "$1" "$2"
     hits=$((hits + 1))
 }
 
-mapfile -t all_files < <(git ls-files)
+# -z：NUL 分隔、不做任何转义，中文 / 空格 / 引号文件名都能原样拿到
+mapfile -d '' -t all_files < <(git ls-files -z)
 if [ "${#all_files[@]}" -eq 0 ]; then
     echo "内容防火墙：没有已跟踪文件，跳过。"
     exit 0
@@ -50,7 +61,7 @@ grep_hits() {
     local category="$1"
     shift
     local out
-    if out="$(git grep -n -i "$@" -- "${scan_files[@]}" 2>/dev/null)"; then
+    if out="$(git_grep -n -i "$@" -- "${scan_files[@]}" 2>/dev/null)"; then
         while IFS= read -r line; do
             [ -n "$line" ] && note_hit "$category" "$line"
         done <<< "$out"
@@ -132,7 +143,7 @@ grep_hits "隐私" -E -e '(^|[^0-9])172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9
 
 # 真实邮箱（排除 GitHub 的 *.users.noreply.github.com）
 email_re='[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
-if out="$(git grep -n -iE "$email_re" -- "${scan_files[@]}" 2>/dev/null)"; then
+if out="$(git_grep -n -iE "$email_re" -- "${scan_files[@]}" 2>/dev/null)"; then
     while IFS= read -r line; do
         [ -z "$line" ] && continue
         emails="$(grep -oE "$email_re" <<< "$line")"
