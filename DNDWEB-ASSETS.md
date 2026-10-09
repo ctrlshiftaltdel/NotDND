@@ -26,32 +26,32 @@
 
 | 资产 | 位置（DNDWeb） | 价值 | 复用方式 | 剥离红线 | 状态 |
 |---|---|---|---|---|---|
-| 单类路径链路由（GET 读 / POST 写，无框架） | `dnd_web.py` `Handler.do_GET/do_POST` | 高 | 照搬「helper + 路径 if 链」骨架，换路径名 | 路由里的 D&D 专名 | ⬜ |
-| 响应 helper（`_send/_json/_err/_body/_sess`） | 同上 | 高 | 照搬：`Content-Length`/`no-store`/吞 `BrokenPipe`；`≤2MB` body；`X-Session` 头 | 无 | ⬜ |
-| 静态资源 + 目录穿越防护 | `_static` | 高 | 照搬 `(DIR/rel).resolve()` 前缀校验 + MIME | 无 | ⬜ |
-| 监听与端口约定（双环境变量 + 局域网 IP） | `HOST/PORT/lan_ip()` | 高 | 照搬「品牌端口优先 / 通用 `PORT` 回退」；保留局域网提示 | `DND_WEB_*` 前缀 | ⬜ |
+| 单类路径链路由（GET 读 / POST 写，无框架） | `dnd_web.py` `Handler.do_GET/do_POST` | 高 | 照搬「helper + 路径 if 链」骨架，换路径名 | 路由里的 D&D 专名 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 响应 helper（`_send/_json/_err/_body/_sess`） | 同上 | 高 | 照搬：`Content-Length`/`no-store`/吞 `BrokenPipe`；`≤2MB` body；`X-Session` 头 | 无 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 静态资源 + 目录穿越防护 | `_static` | 高 | 照搬 `(DIR/rel).resolve()` 前缀校验 + MIME | 无 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 监听与端口约定（双环境变量 + 局域网 IP） | `HOST/PORT/lan_ip()` | 高 | 照搬「品牌端口优先 / 通用 `PORT` 回退」；保留局域网提示 | `DND_WEB_*` 前缀 | ✅ 落 `notdnd_web.py`（PR #48） |
 
 ## 2. 后端 · 会话 / 存档（→ M3）
 
 | 资产 | 位置 | 价值 | 复用方式 | 剥离红线 | 状态 |
 |---|---|---|---|---|---|
-| `Session` 对象 + `to_dict` 白名单序列化 + 日志 `seq` 增量拉取 | `Session` 类 | 高 | 移植模型骨架；字段改 PRISM | D&D 字段语义 | ⬜ |
-| 原子写落盘（`.tmp` + `os.replace`）+ 写后回查 | `Session.save` | 高 | 直接复用 | 无 | ⬜ |
-| 加载 + **惰性迁移**（缺字段 `setdefault`，不写迁移脚本）+ 脏值降级 | `Session.load` | 高 | 照搬范式 | 缺省难度等业务语义 | ⬜ |
-| 内存缓存 + 锁 + 惰性加载 | `get_session` | 高 | 照搬 | 无 | ⬜ |
-| 存档列表：摘要行 + `total/truncated` 分离 + 上限 | `list_saves` | 高 | 移植「摘要 + 截断 + total」 | 战役/角色命名语义 | ⬜ |
-| 存档改名/删除边界（不改 sid、不删当前档、`save_dir` 回传） | `do_POST /api/save/*` | 高 | 照搬边界 + `save_dir` 回传（供子进程测试） | 接口名 | ⬜ |
+| `Session` 对象 + `to_dict` 白名单序列化 + 日志 `seq` 增量拉取 | `Session` 类 | 高 | 移植模型骨架；字段改 PRISM | D&D 字段语义 | ✅ 落 `notdnd_web.py`（PR #48）；规则快照接线见 #54 |
+| 原子写落盘（`.tmp` + `os.replace`）+ 写后回查 | `Session.save` | 高 | 直接复用 | 无 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 加载 + **惰性迁移**（缺字段 `setdefault`，不写迁移脚本）+ 脏值降级 | `Session.load` | 高 | 照搬范式 | 缺省难度等业务语义 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 内存缓存 + 锁 + 惰性加载 | `get_session` | 高 | 照搬 | 无 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 存档列表：摘要行 + `total/truncated` 分离 + 上限 | `list_saves` | 高 | 移植「摘要 + 截断 + total」 | 战役/角色命名语义 | ✅ 落 `notdnd_web.py`（PR #48） |
+| 存档改名/删除边界（不改 sid、不删当前档、`save_dir` 回传） | `do_POST /api/save/*` | 高 | 照搬边界 + `save_dir` 回传（供子进程测试） | 接口名 | ✅ 落 `notdnd_web.py`（PR #48） |
 
 ## 3. 后端 · 规则组织（→ M2；**只搬组织，不搬数值**）
 
 | 资产 | 位置 | 价值 | 复用方式 | 剥离红线 | 状态 |
 |---|---|---|---|---|---|
-| 掷骰器：白名单正则 + 规模上限 + 结构化返回 | `roll` / `roll_with_advantage` | 高（结构） | 移植结构；记法/暴击阈值按 PRISM 重写 | `d20`、优劣势 5e 语义 | ⬜ |
-| **「一次调用完成全部结算」+ 权限边界宪法** | `perform_action` + 文件头注释 | 高 | **优先照搬**：玩家只传意图、服务端权威结算、显式能力清单 | PHB 引用 | ⬜ |
-| 失败代价 / 资源经济集中结算 + 单一进出口 | `apply_failure/deal_damage/heal_pc/tick_clock` | 高（组织） | 移植「函数收敛 + 禁旁路」；数值按 PRISM | 力竭/焦点/take-20 | ⬜ |
-| 战斗状态机（落盘 + 跳过无行动力 + 卡死兜底 + 去重表） | `start_combat/_advance/_current_unit` | 高（状态机） | 移植骨架；先攻/命中/AC 重写 | 5e 数值、职业特性 | ⬜ |
-| 装备/防护派生值：分类器 + 统一重算 + breakdown | `compute_ac/ac_breakdown` | 中 | 移植「重算 + breakdown」；目录全换 | 护甲类别等 5e | ⬜ |
-| 成长：查表 + 派生值重算 + 服务端发放点数 | `award_xp/recompute_pc/assign_ability` | 高（组织） | 移植组织；XP 表/熟练公式换 PRISM | 5e XP/熟练公式 | ⬜ |
+| 掷骰器：白名单正则 + 规模上限 + 结构化返回 | `roll` / `roll_with_advantage` | 高（结构） | 移植结构；记法/暴击阈值按 PRISM 重写 | `d20`、优劣势 5e 语义 | 🟡 结构落 `prism_core.py`（PR #49）；数值待 M2a（#53） |
+| **「一次调用完成全部结算」+ 权限边界宪法** | `perform_action` + 文件头注释 | 高 | **优先照搬**：玩家只传意图、服务端权威结算、显式能力清单 | PHB 引用 | 🟡 结构落 `prism_core.py`（PR #49）；结算数值待 M2a（#53） |
+| 失败代价 / 资源经济集中结算 + 单一进出口 | `apply_failure/deal_damage/heal_pc/tick_clock` | 高（组织） | 移植「函数收敛 + 禁旁路」；数值按 PRISM | 力竭/焦点/take-20 | 🟡 结构落 `prism_core.py`（PR #49）；代价曲线待 M2a（#53） |
+| 战斗状态机（落盘 + 跳过无行动力 + 卡死兜底 + 去重表） | `start_combat/_advance/_current_unit` | 高（状态机） | 移植骨架；先攻/命中/AC 重写 | 5e 数值、职业特性 | 🟡 结构落 `prism_core.py`（PR #49）；战斗数值待 M2b |
+| 装备/防护派生值：分类器 + 统一重算 + breakdown | `compute_ac/ac_breakdown` | 中 | 移植「重算 + breakdown」；目录全换 | 护甲类别等 5e | 🟡 结构落 `prism_core.py`（PR #49）；目录接线待 M2b |
+| 成长：查表 + 派生值重算 + 服务端发放点数 | `award_xp/recompute_pc/assign_ability` | 高（组织） | 移植组织；XP 表/熟练公式换 PRISM | 5e XP/熟练公式 | 🟡 结构落 `prism_core.py`（PR #49）；XP/成长表待 M2b |
 
 ## 4. 后端 · AI 导引者模块（→ M5）
 
