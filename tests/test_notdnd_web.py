@@ -21,6 +21,10 @@
   6. 导引者朗读（G3）：`turn` 切出的节拍写进 `last_beats`；`POST /api/guide/speak`
      的长度 / 会话 / 速率 / 语音可用 / 全文匹配，以及 HTTP/1.1 分块音频流
      （24 kHz + pcm16 头、无 Content-Length、每个音频 delta 单独 base64 解码后拼接）。
+  7. 导引者工具环（G4）：`查规则` 那三句整句才开预通行；预通行是**唯一**一个
+     思考开且 `stream` 为 false 的调用，叙事请求保持思考关并重拼 L0–L4（无
+     `role: tool` / 无 `reasoning_content`）；工具里的 `ValueError` 只变成固定
+     短语，不产生第二行 HTTP 状态；叙事带 `tool_calls` 不再开一轮。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -1162,6 +1166,215 @@ def check_guide_speak_stream():
     assert _dechunk(raw_http) == pcm_a + pcm_b, "分块体还原后仍是 PCM 相接"
 
 
+# --------------------------------------------------------------------------
+# 导引者工具环（G4，§5.2 / §5.5 / §5.6）
+# --------------------------------------------------------------------------
+
+
+def _tool_call(name: str, arguments: dict, call_id: str = "call-1") -> dict:
+    return {"id": call_id, "type": "function",
+            "function": {"name": name,
+                         "arguments": json.dumps(arguments, ensure_ascii=False)}}
+
+
+def _thinking_open_calls(fake) -> list:
+    """「思考开且 stream 为 false」的调用——按 §5.5 只允许是工具预通行。"""
+    return [call for call in fake.calls
+            if call["payload"].get("stream") is False
+            and (call["payload"].get("thinking") or {}).get("type") == "enabled"]
+
+
+def _narrative_calls(fake) -> list:
+    return [call for call in fake.calls if call["payload"].get("stream") is True]
+
+
+def check_guide_tool_prepass_requests():
+    """`查规则` 开一次预通行；`我想查规则` 不开。叙事请求保持思考关、无 role: tool。"""
+    sid = "g4-prepass"
+    _guide_session(sid)
+    # 脚本：预通行第 1 轮要一只工具 → 第 2 轮不要 → 叙事。
+    fake = _FakeTransport([
+        {"content": "", "tool_calls": [_tool_call("lookup_rule",
+                                                  {"kind": "system.guardrails"})],
+         "usage": {}, "reasoning": "先查护栏"},
+        {"content": "", "tool_calls": [], "usage": {}},
+    ])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn", {"text": "查规则"}, sid=sid)
+            assert status == 200, status
+            assert dict(_parse_sse(raw))["narration"]["text"].startswith("【裁决】")
+
+            assert len(fake.calls) == 3, [c["payload"].get("stream")
+                                          for c in fake.calls]
+            # 「思考开且 stream 为 false」的调用**全部**属于预通行：这里是它的
+            # 两轮（第 1 轮要工具、第 2 轮收口），叙事请求在最后、思考是关的。
+            opens = _thinking_open_calls(fake)
+            assert opens == fake.calls[:2], [c["payload"].get("stream")
+                                             for c in fake.calls]
+            assert all(call["payload"]["tools"] == prism_guide.TOOLS
+                       for call in opens)
+            # 预通行请求体（§5.5 表）：思考开、无 temperature、1024、非流式、带工具。
+            head = fake.calls[0]["payload"]
+            assert head["thinking"] == {"type": "enabled"}
+            assert "temperature" not in head
+            assert head["max_completion_tokens"] == 1024
+            assert head["stream"] is False
+            assert head["tools"] == prism_guide.TOOLS
+            assert head["model"] == "mm"
+            assert fake.calls[0]["headers"] == {prism_guide.KEY_HEADER: "secret123"}
+            # 第 2 轮的往返：助手消息带 reasoning_content，工具正文是规则摘要。
+            round2 = fake.calls[1]["payload"]["messages"]
+            assert round2[-2]["role"] == "assistant"
+            assert round2[-2]["reasoning_content"] == "先查护栏"
+            assert round2[-1]["role"] == "tool"
+            assert round2[-1]["tool_call_id"] == "call-1"
+            # 工具正文是那只 kind 的规则摘要（文件自己的 note 打头），且已截到上限。
+            tool_text = round2[-1]["content"]
+            assert tool_text.startswith("内容护栏"), tool_text[:40]
+            assert len(tool_text) <= prism_guide.LOOKUP_RULE_LIMIT
+
+            # 叙事请求：思考关、流式、重拼 L0–L4（无 role: tool、无 reasoning_content）。
+            narrative = _narrative_calls(fake)
+            assert len(narrative) == 1
+            # 预通行确实挂在**叙事消息数组**上（两边逐条相同）。
+            assert opens[0]["payload"]["messages"] == narrative[0]["payload"]["messages"]
+            payload = narrative[0]["payload"]
+            assert payload["thinking"] == {"type": "disabled"}
+            assert payload["stream"] is True and payload["temperature"] == 0.7
+            blob = json.dumps(payload, ensure_ascii=False)
+            assert "先查护栏" not in blob and "reasoning_content" not in blob
+            assert not any(msg.get("role") == "tool" for msg in payload["messages"])
+            assert not any("tool_calls" in msg for msg in payload["messages"])
+
+            # `我想查规则` 不是整句 → 不开预通行（只有叙事那一次调用）。
+            fake.calls.clear()
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn", {"text": "我想查规则"}, sid=sid)
+            assert status == 200, status
+            assert len(fake.calls) == 1, [c["payload"].get("stream")
+                                          for c in fake.calls]
+            assert fake.calls[0]["payload"]["thinking"] == {"type": "disabled"}
+            assert _thinking_open_calls(fake) == []
+
+            # 本回合已经有机械结果（带 action_id）→ 也不开预通行。
+            # （`a-lock` 是 auto_pass，免骰，叙事里没有新掷骰。）
+            fake.calls.clear()
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "查规则", "action_id": "a-lock"}, sid=sid)
+            assert status == 200, status
+            assert len(fake.calls) == 1, [c["payload"].get("stream")
+                                          for c in fake.calls]
+            assert _thinking_open_calls(fake) == []
+
+
+def check_guide_tool_error_never_new_status():
+    """工具里的 `ValueError` 变成固定短语回给模型，**不**产生第二行 HTTP 状态。"""
+    sid = "g4-tool-error"
+    _guide_session(sid)
+    fake = _FakeTransport([
+        {"content": "", "tool_calls": [_tool_call("request_check",
+                                                  {"action_id": "nope"})],
+         "usage": {}},
+        {"content": "", "tool_calls": [], "usage": {}},
+    ])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            raw = _raw_http(server.port, "/api/guide/turn", {"text": "查规则"},
+                            sid=sid)
+    assert _status_lines(raw) == 1, "工具失败不得再写一行 HTTP 状态"
+    assert b"event-stream" in raw.split(b"\r\n\r\n", 1)[0]
+    events = _parse_sse(_dechunk(raw))
+    assert [name for name, _ in events] == ["narration", "usage", "done"], events
+    # 工具正文就是那三种固定短语之一（与网页层的映射同文）。
+    assert len(fake.calls) == 3, fake.calls
+    tool_msg = fake.calls[1]["payload"]["messages"][-1]
+    assert tool_msg["role"] == "tool"
+    assert tool_msg["content"] == "没有这个行动", tool_msg
+    assert tool_msg["tool_call_id"] == "call-1"
+
+    # 战斗没结束 → 「战斗还没结束」（同一张固定短语表）。
+    sid2 = "g4-tool-error-combat"
+    _guide_session(sid2, auto_pass=True, combat=True)
+    fake2 = _FakeTransport([
+        {"content": "", "tool_calls": [_tool_call("request_check",
+                                                  {"action_id": "a-lock"})],
+         "usage": {}},
+        {"content": "", "tool_calls": [], "usage": {}},
+    ])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake2):
+            status, _body, raw2, _heads = server.post(
+                "/api/guide/turn", {"text": "查规则"}, sid=sid2)
+    assert status == 200, status
+    assert fake2.calls[1]["payload"]["messages"][-1]["content"] == "战斗还没结束"
+
+
+def check_guide_tool_prepass_rebuilds_l4():
+    """§5.4：预通行里又 `settle` 了，叙事用的 L4 必须用**写回之后**的快照重拼。"""
+    sid = "g4-rebuild"
+    _guide_session(sid)
+    fake = _FakeTransport([
+        {"content": "", "tool_calls": [_tool_call("request_check",
+                                                  {"action_id": "a-lock"})],
+         "usage": {}},
+        {"content": "", "tool_calls": [], "usage": {}},
+    ])
+    built = []
+    saved = prism_guide.build_narrative_messages
+
+    def counting(*args, **kwargs):
+        built.append(args)
+        return saved(*args, **kwargs)
+
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            prism_guide.build_narrative_messages = counting
+            try:
+                status, _body, _raw, _heads = server.post(
+                    "/api/guide/turn", {"text": "查规则"}, sid=sid)
+            finally:
+                prism_guide.build_narrative_messages = saved
+    assert status == 200, status
+    # 开预通行的那一回合构建两次 L0–L4：一次给预通行，一次是 settle 之后的重拼。
+    assert len(built) == 2, "预通行 settle 之后必须重拼一次（§5.4）"
+    # 工具里的结算真的落盘了（同一个 settle）。
+    reloaded = notdnd_web.Session.load(sid)
+    assert "a-lock" in reloaded.rules["done_actions"], "工具里的 request_check 要落盘"
+    # 且没有因此多开一轮预通行（每回合最多一次）。
+    assert len(_thinking_open_calls(fake)) == 2
+
+
+def check_guide_narrative_tool_calls_no_second_round():
+    """叙事完成带 `tool_calls` → 算叙事失败，**不再开一轮**（§5.2）。"""
+    sid = "g4-narr-tool"
+    _guide_session(sid)
+    fake = _FakeTransport([
+        {"content": "", "tool_calls": [_tool_call("lookup_rule",
+                                                  {"kind": "system.adjudication"})],
+         "usage": {}},
+        {"content": "", "tool_calls": [], "usage": {}},
+        # 叙事那一次带着 tool_calls 回来：只兜底，不再请求。
+        {"content": "【叙事】风停了。",
+         "tool_calls": [_tool_call("lookup_rule", {"kind": "system.tone_packs"})],
+         "usage": {}},
+    ])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn", {"text": "查规则"}, sid=sid)
+    assert status == 200, status
+    events = _parse_sse(raw)
+    assert [name for name, _ in events] == ["fallback", "done"], events
+    assert prism_guide.FALLBACK_NARRATION in events[0][1]["text"]
+    assert len(fake.calls) == 3, "叙事带 tool_calls 不得再开一轮"
+    # 兜底文本不进 L3。
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded.guide["transcript"] == []
+
+
 def check_guide_speak_rate_limit():
     """每会话每 60 秒最多 30 次 `speak`，第 31 次 429「太频繁」（§5.10）。"""
     sid = "g3-speak-rate"
@@ -1199,6 +1412,10 @@ CHECKS = (
     check_guide_turn_review_failure_keeps_verdict,
     check_guide_turn_settle_errors_before_stream,
     check_guide_missing_module,
+    check_guide_tool_prepass_requests,
+    check_guide_tool_prepass_rebuilds_l4,
+    check_guide_tool_error_never_new_status,
+    check_guide_narrative_tool_calls_no_second_round,
     check_guide_turn_writes_beats,
     check_guide_speak_validation,
     check_guide_speak_stream,
