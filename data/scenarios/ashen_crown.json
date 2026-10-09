@@ -1,0 +1,2433 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S1-灰冕-诅咒领地.md:1",
+  "meta": {
+    "world": "ashen-crown",
+    "engine": "tactics",
+    "campaign": "灰冠无晓",
+    "party_level": 1,
+    "tone_pack": "悲剧英雄"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕：雾把路弯回",
+      "level_range": "1–3",
+      "summary": "确认无法用常规方式离谷；建立一个安全点；让玩家第一次与亡者谈判而非只战斗；认识忆晶经济。",
+      "nodes": [
+        "N00",
+        "N01",
+        "N02",
+        "N10",
+        "N11",
+        "N12"
+      ],
+      "tasks": [
+        "Q-00",
+        "Q-04"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2270"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕：每份力量都有债主",
+      "level_range": "3–5",
+      "summary": "取得至少两项冠证；揭示伊蕾芙自愿戴冠但被隐瞒代价；让三个势力的目标发生冲突。",
+      "nodes": [
+        "N20",
+        "N21",
+        "N22",
+        "N23",
+        "N24"
+      ],
+      "tasks": [
+        "Q-01",
+        "Q-02",
+        "Q-06"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2300"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕：冠里的十二个人",
+      "level_range": "5–8",
+      "summary": "进入冠内空间，恢复伊蕾芙跨轮记忆；固定真出口；把领主从“Boss”改写为可能的合作者、牺牲者或交易方。",
+      "nodes": [
+        "N30",
+        "N31",
+        "N32",
+        "N33",
+        "N34",
+        "N35"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2340"
+    },
+    {
+      "id": "act-4",
+      "name": "第四幕：谁愿承担谷地",
+      "level_range": "8–10",
+      "summary": "让玩家为方案组织真实资源与同意，而非只在终局按按钮；至少举行一次势力公议。",
+      "nodes": [
+        "N40",
+        "N41",
+        "N42",
+        "N43",
+        "N44"
+      ],
+      "tasks": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2375"
+    },
+    {
+      "id": "act-5",
+      "name": "第五幕：第十三响",
+      "level_range": "10–12",
+      "summary": "先阻止自动重置，再执行知情选择；让此前势力关系成为战术资源。",
+      "nodes": [
+        "N50",
+        "N51",
+        "N52",
+        "N53"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2413"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N00",
+      "name": "雾中归返",
+      "act": "act-1",
+      "next": [
+        "N01"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2241"
+    },
+    {
+      "id": "N01",
+      "name": "讣告墙",
+      "act": "act-1",
+      "next": [
+        "N02"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2241"
+    },
+    {
+      "id": "N02",
+      "name": "三条去路",
+      "act": "act-1",
+      "next": [
+        "N10",
+        "N11",
+        "N12"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2241"
+    },
+    {
+      "id": "N10",
+      "name": "留名院（名字）",
+      "act": "act-1",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2242"
+    },
+    {
+      "id": "N11",
+      "name": "哀市（价格）",
+      "act": "act-1",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2243"
+    },
+    {
+      "id": "N12",
+      "name": "白穗乡（生活）",
+      "act": "act-1",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2244"
+    },
+    {
+      "id": "N20",
+      "name": "百喉酒窖",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "unlock": "任两线完成",
+      "marks": [
+        "母忆"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2247"
+    },
+    {
+      "id": "N21",
+      "name": "哭矿倒计时",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "marks": [
+        "冠脉"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2248"
+    },
+    {
+      "id": "N22",
+      "name": "修院空白日",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "marks": [
+        "钟序"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2249"
+    },
+    {
+      "id": "N23",
+      "name": "无名库",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "marks": [
+        "万人名册"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2250"
+    },
+    {
+      "id": "N24",
+      "name": "第一场城堡宴",
+      "act": "act-2",
+      "next": [],
+      "unlock": "冠证≥2",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2248"
+    },
+    {
+      "id": "N30",
+      "name": "逆流沼",
+      "act": "act-3",
+      "next": [
+        "N31",
+        "N34"
+      ],
+      "unlock": "冠证≥2",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2253"
+    },
+    {
+      "id": "N31",
+      "name": "十一旗",
+      "act": "act-3",
+      "next": [
+        "N32"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2253"
+    },
+    {
+      "id": "N32",
+      "name": "镜水眼",
+      "act": "act-3",
+      "next": [
+        "N33"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2253"
+    },
+    {
+      "id": "N33",
+      "name": "十二轮集合相",
+      "act": "act-3",
+      "next": [],
+      "unlock": "冠证≥3",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2253"
+    },
+    {
+      "id": "N34",
+      "name": "雾岬三坐标",
+      "act": "act-3",
+      "next": [
+        "N35"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2254"
+    },
+    {
+      "id": "N35",
+      "name": "界墙心室",
+      "act": "act-3",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2254"
+    },
+    {
+      "id": "N40",
+      "name": "势力公议",
+      "act": "act-4",
+      "next": [
+        "N41",
+        "N42",
+        "N43",
+        "N44"
+      ],
+      "unlock": "冠证≥3",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2257"
+    },
+    {
+      "id": "N41",
+      "name": "断脉楔",
+      "act": "act-4",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2258"
+    },
+    {
+      "id": "N42",
+      "name": "分冠环",
+      "act": "act-4",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2259"
+    },
+    {
+      "id": "N43",
+      "name": "自愿候选",
+      "act": "act-4",
+      "next": [],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2260"
+    },
+    {
+      "id": "N44",
+      "name": "月度开门契约",
+      "act": "act-4",
+      "next": [],
+      "unlock": "五证或接受缺证代价",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2261"
+    },
+    {
+      "id": "N50",
+      "name": "灰席重开",
+      "act": "act-5",
+      "next": [
+        "N51"
+      ],
+      "unlock": "五证或接受缺证代价",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2263"
+    },
+    {
+      "id": "N51",
+      "name": "多区域危机",
+      "act": "act-5",
+      "next": [
+        "N52"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2263"
+    },
+    {
+      "id": "N52",
+      "name": "无晓改日",
+      "act": "act-5",
+      "next": [
+        "N53"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2263"
+    },
+    {
+      "id": "N53",
+      "name": "冠炉终局",
+      "act": "act-5",
+      "next": [],
+      "marks": [
+        "杀死",
+        "取代",
+        "解放",
+        "交易"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2263"
+    },
+    {
+      "id": "Q-00",
+      "type": "task",
+      "name": "灰冠无晓",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.entered_vale == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受伊蕾芙邀请，或读到讣告背面信息"
+        },
+        {
+          "from": "active",
+          "to": "crownproof_3",
+          "condition": "evidence.crownproof_count >= 3"
+        },
+        {
+          "from": "crownproof_3",
+          "to": "exposed_early",
+          "condition": "玩家公开挑战冠主且 clock.bell <= 9"
+        },
+        {
+          "from": "crownproof_3",
+          "to": "crownproof_5",
+          "condition": "evidence.crownproof_count >= 5"
+        },
+        {
+          "from": "任意 active 状态",
+          "to": "reset",
+          "condition": "clock.bell >= 13 且 flag.no_dawn_rite == false"
+        },
+        {
+          "from": "crownproof_5",
+          "to": "kill",
+          "condition": "flag.vein_wedge && flag.border_receipt && 终局选择杀冠"
+        },
+        {
+          "from": "crownproof_5",
+          "to": "replace",
+          "condition": "flag.volunteer_crown && 终局选择取代"
+        },
+        {
+          "from": "crownproof_5",
+          "to": "liberate",
+          "condition": "flag.shared_oath && flag.factions_at_plus2 >= 3"
+        },
+        {
+          "from": "crownproof_3",
+          "to": "bargain",
+          "condition": "flag.wall_parley && flag.ilev_consent"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1513"
+    },
+    {
+      "id": "Q-01",
+      "type": "task",
+      "name": "第五份冠证",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "collecting",
+          "condition": "取得任一冠证线索"
+        },
+        {
+          "from": "collecting",
+          "to": "verified",
+          "condition": "通过三线索交叉或辨忆 DF 16"
+        },
+        {
+          "from": "collecting",
+          "to": "forged",
+          "condition": "接受钟烬庭提供的伪证"
+        },
+        {
+          "from": "verified",
+          "to": "delivered",
+          "condition": "向伊蕾芙/无名团/公议任一方展示"
+        },
+        {
+          "from": "forged",
+          "to": "delivered",
+          "condition": "仍可展示，但终局对应检定 DF +2，直至发现矛盾"
+        },
+        {
+          "from": "collecting",
+          "to": "lost",
+          "condition": "载体被清证官摧毁且未锚定"
+        },
+        {
+          "from": "lost",
+          "to": "verified",
+          "condition": "启动继承路径（遗物回声/NPC/环境），耗时 +2 时段"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1533"
+    },
+    {
+      "id": "Q-02",
+      "type": "task",
+      "name": "四十七与另外四人",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "rep.工盟 >= 0 或进入第四竖井"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家承诺处理自动爆破与死亡账"
+        },
+        {
+          "from": "active",
+          "to": "rescued_clean",
+          "condition": "flag.mine_evacuated && flag.four_names_found && !flag.mine_detonated"
+        },
+        {
+          "from": "active",
+          "to": "exposed_dirty",
+          "condition": "flag.four_names_found && flag.mine_detonated && 平民伤亡为0"
+        },
+        {
+          "from": "active",
+          "to": "detonated",
+          "condition": "clock.mine == 0 且未拆引信"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.ledger_destroyed && 赫辛死亡且其尸体回声被净化"
+        }
+      ],
+      "rewards": "clean 获断脉楔蓝图、工盟 rep +2；dirty 获蓝图、rep +1、哭矿设施停用；detonated 仍暴露冠脉但全谷忆晶失效 1 日。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1546"
+    },
+    {
+      "id": "Q-03",
+      "type": "task",
+      "name": "十一面路旗",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "tracking",
+          "condition": "与欧梵谈及失踪团员"
+        },
+        {
+          "from": "tracking",
+          "to": "found_3",
+          "condition": "flag.flags_found >= 3"
+        },
+        {
+          "from": "found_3",
+          "to": "entered_crownspace",
+          "condition": "在镜水眼按三旗顺序排列"
+        },
+        {
+          "from": "entered_crownspace",
+          "to": "returned",
+          "condition": "救回至少 6 名团员记忆，击破/归名十一旗回返队"
+        },
+        {
+          "from": "entered_crownspace",
+          "to": "abandoned",
+          "condition": "玩家带坐标离开，未救团员"
+        },
+        {
+          "from": "entered_crownspace",
+          "to": "assimilated",
+          "condition": "场景失败且无人支付锚定代价；队伍被送回返途驿，灰化各+1"
+        }
+      ],
+      "rewards": "returned 获旅团 rep +2 与一次强闯豁免；abandoned 获真坐标但 rep −1。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1559"
+    },
+    {
+      "id": "Q-04",
+      "type": "task",
+      "name": "把名字带回来",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "返途驿被毁或遇到错名寡魂"
+        },
+        {
+          "from": "offered",
+          "to": "collecting_truths",
+          "condition": "获得姓名、遗物、三件真事中的任一"
+        },
+        {
+          "from": "collecting_truths",
+          "to": "rite",
+          "condition": "三项齐全，举行三真留名"
+        },
+        {
+          "from": "rite",
+          "to": "named",
+          "condition": "三项均经交叉验证"
+        },
+        {
+          "from": "rite",
+          "to": "misnamed",
+          "condition": "至少一项来自未识破剪忆"
+        },
+        {
+          "from": "rite",
+          "to": "refused",
+          "condition": "玩家要求亡者接受与自身不符的名字"
+        }
+      ],
+      "rewards": "named 修复驿站/亡者；misnamed 生成错名寡魂但显出矛盾；refused 亡者离开并投向阿弥莎，不封锁主线。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1572"
+    },
+    {
+      "id": "Q-05",
+      "type": "task",
+      "name": "灰席重开",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "invited",
+          "condition": "evidence.crownproof_count >= 2 或维萨主动邀请"
+        },
+        {
+          "from": "invited",
+          "to": "seated",
+          "condition": "玩家遵守座次/成功伪装进入"
+        },
+        {
+          "from": "seated",
+          "to": "reveal",
+          "condition": "展示议会密账、母忆或第八签名任一"
+        },
+        {
+          "from": "reveal",
+          "to": "truce",
+          "condition": "与伊蕾芙共同保护宴厅回声"
+        },
+        {
+          "from": "reveal",
+          "to": "duel",
+          "condition": "公开挑战伊蕾芙，进入暴相战但可中途论战"
+        },
+        {
+          "from": "reveal",
+          "to": "exposed",
+          "condition": "让灰席总宾逐一作证，钟烬庭 rep = -3"
+        },
+        {
+          "from": "reveal",
+          "to": "burned",
+          "condition": "维萨计划成功；女儿回声毁灭，仍留下灰烬证词"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1585"
+    },
+    {
+      "id": "Q-06",
+      "type": "task",
+      "name": "钟声没有第十三下",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "learn_silence",
+          "condition": "从索弥安得知第十三音为空拍"
+        },
+        {
+          "from": "learn_silence",
+          "to": "assemble_forks",
+          "condition": "flag.forks >= 5"
+        },
+        {
+          "from": "assemble_forks",
+          "to": "rehearsal",
+          "condition": "在钟井完成三轮技能挑战"
+        },
+        {
+          "from": "rehearsal",
+          "to": "silent_success",
+          "condition": "3成功且0灾难，clock.bell −2"
+        },
+        {
+          "from": "rehearsal",
+          "to": "costly_success",
+          "condition": "3成功但有险成/挫败，clock.bell −1且一人灰化+1"
+        },
+        {
+          "from": "rehearsal",
+          "to": "shattered",
+          "condition": "灾难累计2；clock.bell +2，但得到“无晓改日”禁式"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:1598"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "冠主无法自行摘冠，冠冕只认「被推上者」",
+      "carrier": "证据：守冠誓第七条款",
+      "npcs": [
+        "伊蕾芙·烬冕"
+      ],
+      "flags": [
+        "flag.oath_tablet"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "王座下层的加冕记录石板",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2497"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "守冠誓第七条款",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2480"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "伊蕾芙主动演示冠痕",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2497"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由历代冠主的加冕程序反推",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2497"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2480"
+    },
+    {
+      "id": "C-02",
+      "name": "灰冕原为分责制度，一人多签，非一人独戴",
+      "carrier": "证据：初代名册、修院壁画反层",
+      "npcs": [
+        "玛铎恩",
+        "索弥安"
+      ],
+      "flags": [
+        "flag.oath_tablet"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "分冠环的旧榫位",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2500"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "初代名册的多人签名",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2500"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "修院壁画反层",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2481"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "玛铎恩论战中的承认",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2500"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2481"
+    },
+    {
+      "id": "C-03",
+      "name": "分冠需要「自愿退出权」，第八签名条款是其缺口",
+      "carrier": "证据：第八签名条款、反写灰律",
+      "npcs": [
+        "阿弥莎",
+        "伊蕾芙·烬冕"
+      ],
+      "flags": [
+        "flag.volunteer_crown"
+      ],
+      "note": "解放结局",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2482"
+    },
+    {
+      "id": "C-04",
+      "name": "刺杀冠主会迁冠到最近的在场者",
+      "carrier": "场景：折首回廊；证据：刺客头骨",
+      "npcs": [
+        "赫铎",
+        "塞芙兰"
+      ],
+      "flags": [
+        "flag.helto_testimony"
+      ],
+      "note": "杀冠路线",
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "折首回廊的迁冠记录",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2498"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "刺客头骨上的旧伤痕",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2498"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "赫铎的证词",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2498"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由刺客尸体的锚点痕迹推出",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2498"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2483"
+    },
+    {
+      "id": "C-05",
+      "name": "伊蕾芙当年自愿戴冠，但加冕时被隐瞒真相",
+      "carrier": "证据：莱娅净忆、王座抓痕",
+      "npcs": [
+        "莱娅·温烛"
+      ],
+      "flags": [
+        "flag.laiya_memory",
+        "flag.ilev_consent"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "王座下的抓痕",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2499"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "莱娅的净忆晶片",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2499"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "母忆中的加冕前对话",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2499"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由加冕仪式流程与她的权限推出",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2499"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2484"
+    },
+    {
+      "id": "C-06",
+      "name": "王座下埋着第一轮循环的记忆",
+      "carrier": "场景：王座下层",
+      "npcs": [
+        "伊蕾芙·烬冕"
+      ],
+      "flags": [
+        "flag.mother_memory"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2485"
+    },
+    {
+      "id": "C-07",
+      "name": "第十三音是「遗忘」，不是死亡",
+      "carrier": "NPC：侍钟官索弥安",
+      "npcs": [
+        "索弥安"
+      ],
+      "flags": [
+        "flag.bell_sequence"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "第十三响时全体跪伏",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2501"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "音叉空拍记录",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2501"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "索弥安本人",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2501"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "儿童跳格游戏的规则",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2501"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2486"
+    },
+    {
+      "id": "C-08",
+      "name": "十三音叉能控制第十三响的落点",
+      "carrier": "场景：钟井",
+      "npcs": [
+        "索弥安"
+      ],
+      "flags": [
+        "flag.forks"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2487"
+    },
+    {
+      "id": "C-09",
+      "name": "界墙之外的世界仍然存在",
+      "carrier": "证据：山外信鸦、赛莘刺图",
+      "npcs": [
+        "赛莘",
+        "苔灯旅团"
+      ],
+      "flags": [
+        "flag.true_exit"
+      ],
+      "note": "雾岬",
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "雾岬的强闯路线 DF 20",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2502"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "界墙交换物清单",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2502"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "新来者携报纸进入",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2502"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由信鸦的往返周期推出",
+          "source": "docs/scenario/S1-灰冕-诅咒领地.md:2502"
+        }
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2488"
+    },
+    {
+      "id": "C-10",
+      "name": "界墙心室能给出永久开门的坐标",
+      "carrier": "场景：界墙心室",
+      "npcs": [
+        "苔灯旅团向导"
+      ],
+      "flags": [
+        "flag.border_receipt"
+      ],
+      "note": "交易结局",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2489"
+    },
+    {
+      "id": "C-11",
+      "name": "矿难的童工姓名被从账上抹去",
+      "carrier": "证据：四竖井账册、名册",
+      "npcs": [
+        "赫辛",
+        "苔灯旅团"
+      ],
+      "flags": [
+        "flag.four_names_found"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2490"
+    },
+    {
+      "id": "C-12",
+      "name": "万人名册记着历次戴冠者的真名，是「归册」的凭据",
+      "carrier": "证据：无名库万人名册",
+      "npcs": [
+        "无名合唱团"
+      ],
+      "flags": [
+        "flag.name_ledger"
+      ],
+      "note": "万人归册",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2491"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "伊蕾芙·烬冕",
+      "alias": "灰冠者",
+      "role": "缄钟谷领主",
+      "faction": "守冠庭",
+      "drive": "在不把灰冕转嫁给无辜者的前提下结束自己的统治。",
+      "lever": "谷中平民的具体姓名；证明有人愿意知情承担责任，也能使她动摇。",
+      "mask": "冷静、精确、近乎无情的行政者。",
+      "tell": "听见“黎明”时会下意识摸向窗边，却从不看窗外。",
+      "threshold": "可以处决叛军、征用记忆、欺骗来客；不能主动让儿童或无知者戴冠。",
+      "secret": "她已在不同循环中写过七封退位书，其中一封正是当前主线邀请。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 1,
+        "note": "保护平民 +1，毁坏留名册 −2，公开把她只称作怪物 −1。"
+      },
+      "knows": [
+        "C-01",
+        "C-04",
+        "C-06"
+      ],
+      "if_dead_or_betrayed": "杀死她的角色立刻进行气场 DF 18；失败成为临时冠主，成功则灰冕选择现场回声债最高者。她会在第十三响后以冠主身份归来，但记得背叛，终局论战立场 +4。故事继续，并明确展示“击杀不是答案”。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:391"
+    },
+    {
+      "id": "npc-02",
+      "name": "莱娅·温烛",
+      "alias": "无眠医师",
+      "role": "宫廷医师",
+      "faction": "守冠庭/退冠派",
+      "drive": "让伊蕾芙获得一次不以重置抹除的完整睡眠。",
+      "lever": "医者誓言与封存的病人名单。",
+      "mask": "温和而疲惫，凡事先问伤处。",
+      "tell": "说谎时会把药匙在杯沿敲两次。",
+      "threshold": "会偷取宫廷忆晶、伪造诊断；不会用未同意者做拆冠实验。",
+      "secret": "她保存了伊蕾芙加冕前最后一夜的净忆。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "救治陌生人 +1，使用强迫取忆 −2。"
+      },
+      "knows": [
+        "C-02",
+        "C-08"
+      ],
+      "knows_unresolved": [
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "净忆自动由药柜投递给留名院，但失去安全解读者；伊蕾芙态度 −2，所有宫廷治疗关闭。可由无名团的妲芮接续解读，DF +2。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:404"
+    },
+    {
+      "id": "npc-03",
+      "name": "赫铎·三钥",
+      "alias": "内堡总管",
+      "role": "城堡行政首脑",
+      "faction": "守冠庭/续冠派",
+      "drive": "让城堡在任何冠主之下继续运转。",
+      "lever": "仆从的生计与流程连续性。",
+      "mask": "礼貌得像一扇上锁的门。",
+      "tell": "遇到无法归档的事会反复整理袖扣。",
+      "threshold": "会囚禁、删档与投毒；不会摧毁户册或粮仓。",
+      "secret": "第二次杀冠时他曾帮助刺客，却亲眼看见迁冠。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "遵守承诺 +1，公开羞辱仆人 −1。"
+      },
+      "knows": [
+        "C-04",
+        "C-09"
+      ],
+      "knows_unresolved": [
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "城堡行政混乱，三处门锁永久开放但粮食配给停摆；其义齿钥匙落入最近仆从手中，玩家仍可追踪。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:417"
+    },
+    {
+      "id": "npc-04",
+      "name": "塞芙兰·铜誓",
+      "alias": "守冠队长",
+      "role": "军务官",
+      "faction": "守冠庭",
+      "drive": "在钟烬庭煽动全面内战前维持治安。",
+      "lever": "士兵能否活着回家。",
+      "mask": "言语短、命令清楚、拒绝讨论玄学。",
+      "tell": "听见部下伤亡数字时会改用姓名复述。",
+      "threshold": "会镇压暴乱；拒绝向留名院与白穗乡无差别攻击。",
+      "secret": "她准备在伊蕾芙失控时带全队倒戈。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 1,
+        "note": "避免无谓伤亡 +1，杀投降者 −2。"
+      },
+      "knows": [
+        "C-06"
+      ],
+      "knows_unresolved": [
+        "C-13",
+        "C-22"
+      ],
+      "if_dead_or_betrayed": "副官执行更残酷的封城令，巡逻遭遇预算 +3；她的名甲可作为说服守冠卫的关键物证，使一次论战自动发现软肋。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:430"
+    },
+    {
+      "id": "npc-05",
+      "name": "玛铎恩长老",
+      "alias": "灰舌",
+      "role": "修会主持",
+      "faction": "灰砾修会",
+      "drive": "维持循环直到有人证明亡者潮能被别的方法承接。",
+      "lever": "可重复验证的方案，而非道德指责。",
+      "mask": "像石墙般不带情绪的学者。",
+      "tell": "提及封雾四年的空白日时编号会重复。",
+      "threshold": "允许剪忆、监禁与牺牲少数；不允许毁灭全部名字。",
+      "secret": "他主持了封雾四年的集体删忆，并保留自己的副本。",
+      "attitude": {
+        "affinity": -1,
+        "awe": 1,
+        "note": "提交净忆证据 +1，破坏钟井 −3。"
+      },
+      "knows": [
+        "C-03",
+        "C-07"
+      ],
+      "knows_unresolved": [
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "改革派与强硬派分裂，修院发生一场标准遭遇；副本从其舌骨析出，仍可读取，但修会声望立即 −2。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:443"
+    },
+    {
+      "id": "npc-06",
+      "name": "斐罗·碎钟",
+      "alias": "年轻抄士",
+      "role": "灰律导师",
+      "faction": "灰砾修会/改革派",
+      "drive": "把修会垄断的灰律抄本全部公开。",
+      "lever": "同门安全与“知识公开后会不会害人”的疑问。",
+      "mask": "冒失、爱炫学问的年轻人。",
+      "tell": "真正害怕时会开始纠正别人发音。",
+      "threshold": "愿意偷书、开门、伪造圣谕；不会释放埋钟窟中明显敌对的亡者。",
+      "secret": "他已偷出十三音叉之一，却不知道如何安全使用。",
+      "attitude": {
+        "affinity": 1,
+        "awe": -1,
+        "note": "分享知识 +1，把他当工具 −1。"
+      },
+      "knows": [
+        "C-05",
+        "C-11"
+      ],
+      "knows_unresolved": [
+        "C-19"
+      ],
+      "if_dead_or_betrayed": "音叉藏图寄给苔灯旅团，三时段后送达；修会改革线失去和平路径，但玩家仍可从他的补丁衣读出灰律反写法。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:456"
+    },
+    {
+      "id": "npc-07",
+      "name": "索弥安·听骨",
+      "alias": "失踪侍钟官",
+      "role": "钟序专家",
+      "faction": "中立囚犯",
+      "drive": "阻止任何人再次完整敲出第十三音序。",
+      "lever": "证明静默本身也能构成一种钟序。",
+      "mask": "偏执地毁坏所有乐器。",
+      "tell": "撒谎时手指会少敲一拍。",
+      "threshold": "会杀死掌握音序者，也愿自毁听觉；不伤害无知听众。",
+      "secret": "第十三音并非声音，而是全谷同时遗忘一个名字。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "以触觉交流 +1，强迫他听钟 −2。"
+      },
+      "knows": [
+        "C-05",
+        "C-10"
+      ],
+      "knows_unresolved": [
+        "C-24"
+      ],
+      "if_dead_or_betrayed": "他的肋骨成为十三音叉最后一件共鸣体；可继续解谜，但任何使用者立即承担 2 点回声债。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:469"
+    },
+    {
+      "id": "npc-08",
+      "name": "娜柯·量忆",
+      "alias": "首席估价师",
+      "role": "行栈管理者",
+      "faction": "记忆行栈",
+      "drive": "在即将发生的挤兑前把行栈资产转成可携带净忆。",
+      "lever": "她出售过的弟弟童年与可靠逃生承诺。",
+      "mask": "任何悲剧都能快速换算成价格。",
+      "tell": "遇到无法定价之物会摘下晶片擦拭。",
+      "threshold": "会操纵价格、催债与销赃；不会卖掉自己的真名。",
+      "secret": "晶库最深处存有旧王伪造山外战争的整段会议忆晶。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "带来高品质净忆 +1，公开质疑其鉴定 −1。"
+      },
+      "knows_unresolved": [
+        "C-14",
+        "C-20",
+        "C-28"
+      ],
+      "if_dead_or_betrayed": "晶眼自动记录凶手最后一分钟并被行栈取回；她的助理继续交易但价格 +20%，深库钥匙可从债契编号推导。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:482"
+    },
+    {
+      "id": "npc-09",
+      "name": "缪岑·空袋",
+      "alias": "债契掮客",
+      "role": "黑市商人",
+      "faction": "记忆行栈/钟烬庭",
+      "drive": "收齐七家欠下的私人债契，换取贵族身份。",
+      "lever": "他真正出身无名库，害怕自己的名字不存在。",
+      "mask": "亲切、好说话、永远愿意延期。",
+      "tell": "听见真名时会立刻检查内袋。",
+      "threshold": "会诱骗、伪造、出卖债务人；不亲手取忆。",
+      "secret": "他持有一份能把回声债转给签字者的空白契。",
+      "attitude": {
+        "affinity": 0,
+        "awe": -1,
+        "note": "承认其新身份 +1，称其“无名者” −2。"
+      },
+      "knows_unresolved": [
+        "C-17",
+        "C-28",
+        "C-30"
+      ],
+      "if_dead_or_betrayed": "空白契随机绑定最后触碰其尸体者；他的债务人名单流入哀市，触发三条救援支线，不阻断主线。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:495"
+    },
+    {
+      "id": "npc-10",
+      "name": "奥妲·剪灯",
+      "alias": "剪忆师",
+      "role": "非法记忆工匠",
+      "faction": "记忆行栈外围",
+      "drive": "剪掉自己曾替钟烬庭处理证据的那一年。",
+      "lever": "承诺她的罪行会被记住但不只由罪行定义。",
+      "mask": "把一切当作精密手术。",
+      "tell": "每剪一段记忆就会说出一个陌生人的生日。",
+      "threshold": "可剪创伤、伪证与忠诚；拒绝剪除亲子关系。",
+      "secret": "灰冕是一段可被剪接的集体指令。",
+      "attitude": {
+        "affinity": -1,
+        "awe": 0,
+        "note": "带来新工具 +1，强迫取忆 −2。"
+      },
+      "knows_unresolved": [
+        "C-19",
+        "C-21",
+        "C-27"
+      ],
+      "if_dead_or_betrayed": "蓝灯储存她最后十二次手术，可由手艺＋辨忆 DF 16复原；拆冠仍可进行，但风险表增加一项“随机失忆”。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:508"
+    },
+    {
+      "id": "npc-11",
+      "name": "托朗·铁肺",
+      "alias": "炉房代表",
+      "role": "矿工领袖",
+      "faction": "灰脊工盟",
+      "drive": "夺回第四竖井并公开四十七名矿工的工钱账。",
+      "lever": "工盟年轻成员的生还率。",
+      "mask": "粗硬、决不妥协的煽动者。",
+      "tell": "谈到牺牲时会避开最年轻的人目光。",
+      "threshold": "愿意炸矿、扣押商队；不接受以无名矿工为“必要损失”。",
+      "secret": "裂岩脂已埋好，再过两个无晓日自动引爆。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 1,
+        "note": "劳动支援 +1，替行栈催债 −2。"
+      },
+      "knows_unresolved": [
+        "C-23",
+        "C-25",
+        "C-31"
+      ],
+      "if_dead_or_betrayed": "激进派提前引爆计时减 1 日；其风箱内藏完整疏散图，玩家可交给温和派阻止平民伤亡。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:521"
+    },
+    {
+      "id": "npc-12",
+      "name": "米薇·炉花",
+      "alias": "年轻锻工",
+      "role": "工盟工匠",
+      "faction": "灰脊工盟",
+      "drive": "造出能切断冠脉而不引发忆晶反涌的工具。",
+      "lever": "认可她不是“领袖的女儿”，而是独立工匠。",
+      "mask": "爱开过火玩笑的天才学徒。",
+      "tell": "设计没有把握时会把炭笔咬断。",
+      "threshold": "会偷材料、试验危险原型；不交付明知只会屠杀平民的武器。",
+      "secret": "她需要冠炉底渣完成断脉楔。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "让她署名 +1，把成品归功他人 −2。"
+      },
+      "knows": [
+        "C-09"
+      ],
+      "knows_unresolved": [
+        "C-25",
+        "C-32"
+      ],
+      "if_dead_or_betrayed": "蓝图留在炉壁内，手艺 DF 18 可完成；成品品质上限降一档，托朗对玩家好感 −2。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:534"
+    },
+    {
+      "id": "npc-13",
+      "name": "赫辛·旧账",
+      "alias": "前矿监",
+      "role": "证人",
+      "faction": "灰脊工盟敌对/中立",
+      "drive": "用完整账本换取无名合唱团替他保留姓名。",
+      "lever": "他害怕死后只被记作“矿监”。",
+      "mask": "自怜的老人，总说自己只是奉命。",
+      "tell": "少报人数时左眼会流泪。",
+      "threshold": "会告密与甩责；在死亡名单上不再造假。",
+      "secret": "四十七人其实是五十一人，四名童工被从账上删去。",
+      "attitude": {
+        "affinity": -1,
+        "awe": 0,
+        "note": "允许作证 +1，私刑威胁 +1 敬畏但 −1 好感。"
+      },
+      "knows_unresolved": [
+        "C-26",
+        "C-28",
+        "C-33"
+      ],
+      "if_dead_or_betrayed": "黑账自动显出四名童工指印；工盟失去公开审判路线但证据仍在，无名团谴责私刑使声望 −1。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:547"
+    },
+    {
+      "id": "npc-14",
+      "name": "妲芮·百名",
+      "alias": "领唱者",
+      "role": "留名院主持",
+      "faction": "无名合唱团",
+      "drive": "找回初代留名册缺失的第八签名。",
+      "lever": "任何被认真记住的无名者小事。",
+      "mask": "庄严而疏离，似乎代表许多人说话。",
+      "tell": "只有说自己的真名时声音会变得很轻。",
+      "threshold": "会召来亡者围城；不烧毁任何真实记忆。",
+      "secret": "她是第八家族最后直系后裔，也是守冠誓合法承担者。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 1,
+        "note": "完成留名礼 +1，交易来历不明忆晶 −1。"
+      },
+      "knows": [
+        "C-03"
+      ],
+      "knows_unresolved": [
+        "C-18",
+        "C-34"
+      ],
+      "if_dead_or_betrayed": "百块名牌组成交互回声继续领唱，但无法自愿承担冠责；解放结局需要改由全谷公投分担，难度提高。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:560"
+    },
+    {
+      "id": "npc-15",
+      "name": "祈默",
+      "alias": "纸舟童",
+      "role": "信使",
+      "faction": "无名合唱团",
+      "drive": "把一封没有收件人的信送到正确死者手中。",
+      "lever": "有人愿意陪他确认收件者而非替他拆信。",
+      "mask": "沉默、警觉、只用纸上短句交流。",
+      "tell": "接近写信者时纸舟会逆流而上。",
+      "threshold": "会潜入、偷钥匙、隐瞒；不会读别人的信。",
+      "secret": "信由上一轮的伊蕾芙写给当前伊蕾芙。",
+      "attitude": {
+        "affinity": 1,
+        "awe": -1,
+        "note": "保护通信秘密 +1，强拆信 −2。"
+      },
+      "knows": [
+        "C-12"
+      ],
+      "knows_unresolved": [
+        "C-24",
+        "C-35"
+      ],
+      "if_dead_or_betrayed": "纸舟自行沿渠前进，玩家可追踪；信仍能送达，但无名团声望 −2，留名院不再是安全据点。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:573"
+    },
+    {
+      "id": "npc-16",
+      "name": "阿弥莎·无姓",
+      "alias": "亡者代表",
+      "role": "无名亡魂",
+      "faction": "无名合唱团",
+      "drive": "让冠冕归还所有用于维持循环的私人记忆。",
+      "lever": "有人承认部分记忆已无法原样归还，但可留下公开见证。",
+      "mask": "以“我们”说话的冷峻审判者。",
+      "tell": "提到个人愿望时会短暂说“我”。",
+      "threshold": "可令亡者停工、停战或围城；不会夺取活人的未自愿记忆。",
+      "secret": "灰冕中的亡者并不一致，有一部分愿继续守谷换取后代安全。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 2,
+        "note": "归还忆晶 +1，献祭回声 −2。"
+      },
+      "knows_unresolved": [
+        "C-15",
+        "C-29",
+        "C-36"
+      ],
+      "if_dead_or_betrayed": "她在下一个有无名墓的区域重组，好感降至 −2；若用留名礼“杀死”其集体形态，她会分成七名可分别论战的个体。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:586"
+    },
+    {
+      "id": "npc-17",
+      "name": "欧梵·苔盏",
+      "alias": "团长",
+      "role": "雾行者",
+      "faction": "苔灯旅团",
+      "drive": "带至少一名雾返者真正看见山外日出。",
+      "lever": "旅团十一名失踪者仍可能活在冠内空间。",
+      "mask": "乐观、可靠、路线总有备选。",
+      "tell": "其实迷路时会把苔灯藏到身后。",
+      "threshold": "会抛弃物资与地图；不抛弃还能回应姓名的人。",
+      "secret": "他已忘记自己的山外故乡，只靠别人描述坚持目标。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "救雾返者 +1，把同伴当路标牺牲 −2。"
+      },
+      "knows_unresolved": [
+        "C-16",
+        "C-37",
+        "C-40"
+      ],
+      "if_dead_or_betrayed": "帽苔指向其十一名团员而非出口；副团长继续引路但只接受先救团员的条件。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:599"
+    },
+    {
+      "id": "npc-18",
+      "name": "赛莘·返针",
+      "alias": "雾返者",
+      "role": "界墙测绘师",
+      "faction": "苔灯旅团",
+      "drive": "绘出一张不会随自己遗忘而改变的地图。",
+      "lever": "把路线交给多人分别记忆，减轻她独自承担的恐惧。",
+      "mask": "冷淡，只信测量数字。",
+      "tell": "看见故乡意象会摸向一块已被刮掉的刺青。",
+      "threshold": "可拿自己做雾试验；不再允许别人未经同意跟随。",
+      "secret": "她曾到过界墙外一瞬，外界时间只过了十二天。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "记录可复核数据 +1，诉诸“凭感觉” −1。"
+      },
+      "knows_unresolved": [
+        "C-38",
+        "C-39",
+        "C-41"
+      ],
+      "if_dead_or_betrayed": "尸体刺青在雾中显出最后一段坐标；地图可完成，但旅团失去一次强闯失败豁免。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:612"
+    },
+    {
+      "id": "npc-19",
+      "name": "涅朵婆婆",
+      "alias": "逆流船家",
+      "role": "摆渡者",
+      "faction": "苔灯旅团盟友",
+      "drive": "找到一个从未对她撒谎的乘客，把船交给对方。",
+      "lever": "诚实承认“不愿讲”的人比漂亮故事更能取信她。",
+      "mask": "爱听闲话、收取古怪船费的老妇。",
+      "tell": "听到真话时会停止划船，让逆流自行送行。",
+      "threshold": "会把骗子丢在浅滩；不把任何人交给雾母。",
+      "secret": "她是第一次山洪归来的亡者，身体由水维持。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 1,
+        "note": "自愿讲述真实记忆 +1，使用剪忆故事 −2。"
+      },
+      "knows": [
+        "C-01"
+      ],
+      "knows_unresolved": [
+        "C-37",
+        "C-42"
+      ],
+      "if_dead_or_betrayed": "身体化水，船桨成为摆渡工具；任何新船家每次渡河需付 1 点回声债，直到完成她的留名礼。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:625"
+    },
+    {
+      "id": "npc-20",
+      "name": "维萨·第七席",
+      "alias": "贵族寡妇",
+      "role": "钟烬庭发言人",
+      "faction": "钟烬庭",
+      "drive": "让自己的家族成为下一任冠主的唯一摄政者。",
+      "lever": "她已死的女儿仍困在灰席宴厅回声中。",
+      "mask": "周到、哀伤、愿意赞助改革。",
+      "tell": "有人提“第七席”时会看向空椅。",
+      "threshold": "会刺杀、煽乱、让别人戴冠；不愿亲手毁掉女儿回声。",
+      "secret": "她资助了索弥安失踪，却不知道钟烬庭最强硬者准备烧掉宴厅。",
+      "attitude": {
+        "affinity": -1,
+        "awe": 0,
+        "note": "承诺救女儿 +1，威胁回声 +1 敬畏但 −2 好感。"
+      },
+      "knows": [
+        "C-06"
+      ],
+      "knows_unresolved": [
+        "C-28",
+        "C-43"
+      ],
+      "if_dead_or_betrayed": "女儿回声公开她全部密谈，钟烬庭分裂；另一家族接手暗杀，但失去统一指挥，遭遇预算 −2。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:638"
+    },
+    {
+      "id": "npc-21",
+      "name": "卡铎·燃谱",
+      "alias": "家谱官",
+      "role": "伪史专家",
+      "faction": "钟烬庭",
+      "drive": "烧掉所有证明第八家族存在的记录。",
+      "lever": "他自己的母系正来自第八家族旁支。",
+      "mask": "热情过度的地方史学者。",
+      "tell": "伪造谱系时会不自觉留下八瓣花符号。",
+      "threshold": "可纵火、杀证人；不肯烧自己母亲的信。",
+      "secret": "第八签名缺角藏在其母亲墓碑夹层。",
+      "attitude": {
+        "affinity": 0,
+        "awe": -1,
+        "note": "谈家史 +1，出示八瓣花 +1 敬畏。"
+      },
+      "knows": [
+        "C-03"
+      ],
+      "knows_unresolved": [
+        "C-18",
+        "C-44"
+      ],
+      "if_dead_or_betrayed": "他预设的焚谱机关启动，玩家有 3 回合救三份档案；至少一份必可救出，关键线索不会锁死。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:651"
+    },
+    {
+      "id": "npc-22",
+      "name": "素莱·轻灰",
+      "alias": "密探首领",
+      "role": "清证人",
+      "faction": "钟烬庭",
+      "drive": "在第十三响前清除五项冠证及其持有人。",
+      "lever": "她每次任务后必须把被害者一件小事写入私人册，害怕自己也成为无名者。",
+      "mask": "可扮演成任何普通服务者。",
+      "tell": "不管身份如何，都会把杯柄转向右边。",
+      "threshold": "会绑架、剪忆、杀人；不毁留名册，认为那会让自己罪行失去见证。",
+      "secret": "私人册记录了钟烬庭十二年全部命令链。",
+      "attitude": {
+        "affinity": -2,
+        "awe": 0,
+        "note": "看穿伪装 +1 敬畏，保护其记录 +1 好感。"
+      },
+      "knows": [
+        "C-06"
+      ],
+      "knows_unresolved": [
+        "C-28",
+        "C-45"
+      ],
+      "if_dead_or_betrayed": "私人册寄给其预定下一目标，玩家两时段后收到求救；钟烬庭改用较笨拙的私兵，潜伏遭遇减少。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:664"
+    },
+    {
+      "id": "npc-23",
+      "name": "蒂宛·七户",
+      "alias": "乡议长",
+      "role": "农户代表",
+      "faction": "白穗乡",
+      "drive": "让白穗乡在下一次断粮时无需向行栈卖记忆。",
+      "lever": "可持续的真粮与七户共同决策权。",
+      "mask": "务实、不谈宏大理想。",
+      "tell": "说到重复谷仓时会把自己的面包推远。",
+      "threshold": "会藏粮、拒税、扣押官员；不毒害城民。",
+      "secret": "重复谷仓每次复原都抽走食用者一段味觉记忆。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "带来种子 +1，强征粮 −2。"
+      },
+      "knows_unresolved": [
+        "C-14",
+        "C-30",
+        "C-46"
+      ],
+      "if_dead_or_betrayed": "七户各自为政但仍能提供线索；守冠庭趁机征粮，玩家可扶持任一农户或召集公开议会恢复秩序。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:677"
+    },
+    {
+      "id": "npc-24",
+      "name": "伊诺·空铃",
+      "alias": "讣告匠",
+      "role": "返途驿殓师",
+      "faction": "中立",
+      "drive": "写出一张最终不会成真的讣告。",
+      "lever": "玩家主动补写死者生前小事，而非只改死期。",
+      "mask": "阴沉、像早已知道每个人结局。",
+      "tell": "讣告能被改变时空铃会轻响。",
+      "threshold": "会隐瞒预言换取行动；不伪造死者名字。",
+      "secret": "讣告纸来自退位书房，能承载跨循环文字。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 1,
+        "note": "完成一张讣告 +1，撕毁讣告 −1。"
+      },
+      "knows_unresolved": [
+        "C-35",
+        "C-47",
+        "C-48"
+      ],
+      "if_dead_or_betrayed": "空铃自动为他写讣告，并在背面给出玩家下一条死亡提示；讣告墙继续运作，但不再解释改变死期的方法。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:690"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "返途驿",
+      "atmosphere": "所有进入谷地的人都会经过这座只有一条街的驿镇，即使他们选择了别的路。湿木招牌永远朝来客方向转动；每户窗内都多摆一套餐具。",
+      "unlock": "开局可用。",
+      "key_places": [
+        "折路碑，刻痕会随来客记忆变化，可互动读取失去的第一段回忆",
+        "无马车店，店主收留雾返者，地窖藏有归路图",
+        "四碗客栈，第四碗永远盛给尚未抵达的人",
+        "讣告墙，能提前三日生成死亡提示",
+        "旧关卡，废弃印章可伪造通行凭证"
+      ],
+      "encounters": "1–3 级纠缠或标准，预算上限的 40%–70%；典型为雾啮犬×2＋失名旅客×2，或一名雾返猎手带路税吏。",
+      "resources": "雾盐、谷地基础地图、外来者名单、音叉匣线索、可作为据点的客栈阁楼。",
+      "if_botched": "若烧毁驿镇或使居民敌对，返途驿仍会在每次穿雾后出现，但所有服务关闭；风险池每次移动额外 +1，讣告墙改为发布玩家盟友的死期。修复需完成 Q-04《把名字带回来》。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:182"
+    },
+    {
+      "id": "loc-02",
+      "name": "寂葡园",
+      "atmosphere": "黑葡萄在没有阳光的坡地成熟，果皮下能看见细小人影。风吹过藤架时，整片园子像有人压低声音背诵家谱。",
+      "unlock": "开局可用；酒窖深层需 `flag.cellar_key=true` 或寂葡园声望 +1。",
+      "key_places": [
+        "寡酿庄园，主人以记忆年份给酒定价",
+        "百喉酒窖，每桶酒封着一段集体回忆",
+        "藤骨礼拜亭，祭台能净化一枚剪忆",
+        "无日坡，可观测活雾潮汐",
+        "枯井，通向留名院地下渠"
+      ],
+      "encounters": "2–4 级标准；醉忆藤×3＋剪忆盗，或酒窖守桶人＋瓶中哭群。场地要素为易燃酒沟、坠桶架与窄梯。",
+      "resources": "悼酒、醉忆藤芯、七姓家谱片段、冠证“母忆”、进入城堡宴会的贡酒凭证。",
+      "if_botched": "若百喉酒窖破裂，所有封存回忆同时逸出，区域变为污染回声场三日；寂葡园粮酒供应停止，哀市物价提升一层，且伊蕾芙派守冠卫封锁此区。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:192"
+    },
+    {
+      "id": "loc-03",
+      "name": "烬冠堡",
+      "atmosphere": "城堡外墙不是黑，而是被擦洗过无数次的灰。每扇高窗都映出不同天气；宴厅地板下偶尔传来整齐拖椅声。",
+      "unlock": "外庭开局可达；内堡需邀请函、守冠庭声望 +1、伪装 DF 16，或从旧水渠潜入；王座下层需三项冠证。",
+      "key_places": [
+        "灰席宴厅，加冕夜每逢昏时重演",
+        "不眠王座，冠主离开超过一个时段便触发钟声",
+        "折首回廊，陈列历次刺杀者身份而非首级",
+        "退位书房，所有写成的退位令会在黎明变空白",
+        "冠炉，拆冠与取代结局的终局场"
+      ],
+      "encounters": "3–12 级动态缩放；低层为守冠卫巡逻＋灰烛侍从，高层为冠契骑士、席下哀群和伊蕾芙的阶段化身。重要场景固定 3–4 个场地要素。",
+      "resources": "王室档案、冠炉底渣、灰冕碎屑、伊蕾芙的直接证词、最高等级工坊与终局入口。",
+      "if_botched": "若公开屠杀仆从或毁坏不眠王座，`clock.bell` 立即 +2，城堡转为敌对警戒，伊蕾芙仍提供一次停战谈判；若拒绝，王座用附近最近的活人暂代锚点，造成全城灰化 +1。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:202"
+    },
+    {
+      "id": "loc-04",
+      "name": "留名院",
+      "atmosphere": "白石长廊挂满木牌，每块写着一个名字与三件小事。这里很安静，却不是死寂；成千上万的人在纸页翻动声里保持存在。",
+      "unlock": "开局可用；无名库需完成一次留名礼或悼仪熟练。",
+      "key_places": [
+        "三真堂，举行留名礼",
+        "无名库，存放来源不明的忆晶",
+        "洗晶池，可验证净忆",
+        "纸舟渠，把偿愿文书送入地下",
+        "封页室，保存被权力命令删除的名字"
+      ],
+      "encounters": "1–6 级，以调查与交涉为主；战斗多为失名哀魂＋夺页虫，或灰砾修士试图销毁证据。",
+      "resources": "净忆鉴定、丧葬许可、无名合唱团信任、冠证“万人名册”、安全长歇据点。",
+      "if_botched": "烧毁名册会让每百页生成一个失名哀群；全谷亡者敌意 +1，所有悼仪 DF +2，直到玩家从至少三个区域重新收集名字并举办公开留名礼。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:212"
+    },
+    {
+      "id": "loc-05",
+      "name": "哀市",
+      "atmosphere": "市场搭在旧刑场周围，摊灯由低价值忆晶照亮。叫卖声里最常见的量词不是斤两，而是“一个下午”“一张脸”“七岁那年”。",
+      "unlock": "开局可用；夜市需人脉 DF 12 或记忆行栈声望 +1；地底晶库需 `flag.market_vault=true`。",
+      "key_places": [
+        "记忆行栈，官方兑换与鉴定",
+        "剪忆巷，违法改写记忆",
+        "空碗棚，提供免费粥也招募耳目",
+        "旧刑台，午夜会复演无记录的处决",
+        "背债门，债务人必须从此门进入"
+      ],
+      "encounters": "1–8 级；偷忆童＋债钩客、行栈护秤人＋晶嗅兽，或钟烬密探与无名团争夺证据。",
+      "resources": "大多数常见装备、剪忆工具、势力传闻、伪造身份、可交易忆晶和晶库账本。",
+      "if_botched": "若劫掠公开市场，六个势力对玩家声望各 −1；黑市转移到逆流沼，物价提升一层。若揭露行栈剥削并保护商贩，市场改为合作社，短期发生三时段骚乱但长期经济改善。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:222"
+    },
+    {
+      "id": "loc-06",
+      "name": "白穗乡",
+      "atmosphere": "灰白麦穗终年弯向烬冠堡，稻草人胸腔塞着写有死者名字的纸。村中每晚都有人为“还没死的祖先”留门。",
+      "unlock": "开局可用；地下粮窖需乡民信任 +1 或追踪 DF 14。",
+      "key_places": [
+        "倒穗田，埋着饥年税秤",
+        "重复谷仓，粮食每日复原却无营养",
+        "守夜磨坊，磨盘会说出欠债者名字",
+        "七户长桌，乡民议事据点",
+        "焦麦神龛，藏有第八家族印记"
+      ],
+      "encounters": "1–5 级；麦壳尸群＋守田草偶，或征粮吏与饥忆兽。雨天出现泥泞、旋转磨翼、粉尘爆燃等要素。",
+      "resources": "正常粮食、草药、饥年账册、农具武器、稳固后方与乡民支援。",
+      "if_botched": "若毁田或夺粮，返途驿与哀市补给价格 +1 层，白穗乡加入钟烬庭；若重复谷仓被错误开启，全乡三日内停止进食却不觉饥饿，第四日集体获得 2 点灰化度。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:232"
+    },
+    {
+      "id": "loc-07",
+      "name": "钟骨修院",
+      "atmosphere": "修院以巨大兽骨作梁，每条走廊都轻微倾向中央钟井。修士说话前先敲一下牙齿，确认自己的声音仍属于自己。",
+      "unlock": "需任一音叉匣、灰砾修会声望 0 以上，或从纸舟渠潜入。",
+      "key_places": [
+        "十三音井，钟声源头之一",
+        "灰律抄室，能力导师所在",
+        "冠式壁画，展示被篡改的制冠史",
+        "无舌膳堂，沉默用餐可降低灰化",
+        "埋钟窟，索弥安被囚之处"
+      ],
+      "encounters": "4–8 级标准至严酷；灰砾执律者＋舌铃群、钟骨巨侍＋悔誓修士，或修会内部论战。",
+      "resources": "十三音叉、灰律蓝图、冠证“钟序”、降低灰化的设施、修会秘档。",
+      "if_botched": "钟井受损会使第十三响提前一个无晓日，`clock.bell +3`；修士幸存者带走知识并加入伊蕾芙，终局拆冠 DF +2。若只揭露而不屠杀，改革派可接管修院。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:242"
+    },
+    {
+      "id": "loc-08",
+      "name": "灰脊哭矿",
+      "atmosphere": "矿壁像结霜的肺，凿击后会先渗出一句话，再落下晶体。升降笼每次下行都多经过一个不存在的层级。",
+      "unlock": "矿区地表开局可达；第三层需工盟声望 +1；第四竖井需 `flag.mine_seal_broken=true`。",
+      "key_places": [
+        "工盟炉房，武器与劳工议会",
+        "哭壁，天然净忆矿脉",
+        "第四竖井，四十七矿工回声",
+        "黑肺疗棚，治疗矿尘与灰化",
+        "冠脉断层，与王座地底相连"
+      ],
+      "encounters": "3–9 级；晶背掘尸＋债灯虫、矿监傀儡＋塌方哀群，深层可见冠脉巨蠕。标准预算 70%，第四层严酷 100%。",
+      "resources": "忆晶原矿、重型工具、炸药替代物“裂岩脂”、工盟兵力、冠证“冠脉样本”。",
+      "if_botched": "无计划炸矿会令冠脉反涌，所有区域忆晶暂时失效一个无晓日，医疗与照明崩溃；正确疏散后爆破则削弱终局首领一层韧性护盾。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:252"
+    },
+    {
+      "id": "loc-09",
+      "name": "逆流沼",
+      "atmosphere": "水向坡上流，芦苇把靠近者的名字一节节传远。沼中倒映的不是天空，而是每个人最不愿遗忘的房间。",
+      "unlock": "需雾行熟练、苔灯旅团向导，或 `flag.swamp_causeway=true`。",
+      "key_places": [
+        "倒流渡，船费是一段自愿讲述的回忆",
+        "苔灯营地，移动据点",
+        "沉婚屋，保存一次被取消的政治婚约",
+        "镜水眼，可进入冠内记忆空间",
+        "雾母滩，活雾在谷内的“呼吸器官”"
+      ],
+      "encounters": "4–10 级；芦语溺客＋沼灯诱者、镜皮兽＋逆水舟骸，深处遭遇雾母触须。环境每回合改变水流方向。",
+      "resources": "雾灯、稀有药材、进入冠内空间的方法、伊蕾芙母亲的净忆、离谷假路线的真相。",
+      "if_botched": "焚烧芦海会让雾母向内收缩，三条道路封闭、风险骰降为 d4；但也会暴露一条直达雾岬的焦路，形成“捷径换灾害”的脏成功。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:262"
+    },
+    {
+      "id": "loc-10",
+      "name": "雾岬界墙",
+      "atmosphere": "谷地尽头是一面没有高度的雾。靠近时能听见山外晴日、集市与亲人的声音；退后再听，会发现每句话都只由自己记忆里的词组成。",
+      "unlock": "一般路径需三项冠证和一枚雾钥；强闯随时可尝试，雾行 DF 20，多阶段处理。",
+      "key_places": [
+        "归身石，记录每位强闯者返回次数",
+        "无外门，一扇只从谷内看得见的门",
+        "旅团十一旗，标出通往冠内空间的错路",
+        "界墙心室，活雾的逻辑节点",
+        "山外影台，可短暂与外界交换物品但不能交换活人"
+      ],
+      "encounters": "5–12 级严酷；雾返骑手＋归路吞噬者，或界墙拟亲者模拟玩家关系。终局前可与“雾本身”进行论战，立场 22。",
+      "resources": "雾钥、外界物资、冠证“边界回执”、杀死/解放结局所需出口坐标。",
+      "if_botched": "灾难失败会随机失去一段角色自定的“归家记忆”（写入账本，不替玩家定义情绪），灰化 +2；全队仍被送至返途驿，并获得界墙内部结构的一条真实线索，失败继续推进。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:272"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-a",
+      "name": "断冠之晨",
+      "type": "杀死",
+      "requirements": "断脉楔、边界回执、冠主第三次破韧；最好有万人名册以安抚释放亡者。",
+      "result": "伊蕾芙真正死亡，灰冕无法迁移；活雾在一个时段内崩散，山外日光进入。",
+      "cost": "未自愿留下的亡者必须在七日内安息；未归名者会彻底消散。忆晶失去大部分能量，医疗、照明与市场骤停；若未提前准备真粮/替代设施，出现一章人道危机。",
+      "epilogue": "无名团高声望时形成七日大留名；低声望时谷民庆祝自由却遗失大量历史。伊蕾芙墓碑只写她加冕前自己选择的名字。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2441"
+    },
+    {
+      "id": "ending-b",
+      "name": "下一位守夜人",
+      "type": "取代",
+      "requirements": "知情自愿候选、至少三项冠证、迁冠偏折或伊蕾芙同意。",
+      "result": "伊蕾芙脱冠成为会衰老的活人/亡者边缘者；新冠主可立刻打开界墙一个时段并重写三条统治灰律。",
+      "cost": "冠制仍在。新冠主不能离谷，每章需做一次 Drive 检定：若连续忽视其自定驱动，保护冲动会极端化，形成后续战役威胁。玩家取代时角色可转为共同掌控的关键 NPC，或继续扮演但行动受地域约束。",
+      "epilogue": "候选若是妲芮，亡者权利优先；守冠卫候选则秩序优先；玩家候选由其写三条新灰律。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2448"
+    },
+    {
+      "id": "ending-c",
+      "name": "众人无冠",
+      "type": "解放",
+      "requirements": "分冠环、万人名册、守冠誓、至少三势力 +2、伊蕾芙同意或成功迁冠偏折。",
+      "result": "冠冕拆为数百枚可自愿退出的“守夜环”，边界与亡者照料由轮值公议承担；伊蕾芙卸任，活雾变为可预测季候，每七日开放一次。",
+      "cost": "没有单一强者能快速压制危机。每个势力都必须承担维护费与夜班，政治冲突成为新常态；任何三方同时退出会令某一区域亡者失控。自由不是永久胜利，而是持续工作。",
+      "epilogue": "参与势力决定新公议文化；钟烬庭若被和平分裂，旧贵族也须轮值；若被清洗，其资源缺口由工盟/旅团填补。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2455"
+    },
+    {
+      "id": "ending-d",
+      "name": "有门的囚笼",
+      "type": "交易",
+      "requirements": "界墙论战成功、伊蕾芙同意、至少三项冠证；无需摧毁灰冕。",
+      "result": "伊蕾芙继续戴冠，界墙每月开放一日，活人可登记迁出，山外物资进入；玩家可选择成为契约监察者或离谷。",
+      "cost": "记忆税降为自愿公共供忆但冠制仍存在，伊蕾芙仍是囚徒；外界势力可能在开放日介入。此结局救当代生活最快，却把根本问题留给下一代。",
+      "variants": [
+        "脏交易变体：若用“全谷共同记忆”换永久开门，所有人忘记封雾十二年；门开了，但功罪、债务与死者姓名同时模糊。账本保留事实，世界中无人再能自然作证。"
+      ],
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2462"
+    },
+    {
+      "id": "ending-e",
+      "name": "又一次明天",
+      "type": "未能选择",
+      "result": "若队伍拒绝所有方案或冠证不足且不愿承担风险，第十三响完成重置。等级、锚定事实与一封讣告纸保留。下一轮从城堡邀请直接开始，伊蕾芙说：“这是你们第二次来。我们不要再浪费第一次留下的东西。”这是继续战役的失败推进，不是坏结局惩罚。",
+      "source": "docs/scenario/S1-灰冕-诅咒领地.md:2469"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S1-灰冕-诅咒领地.md:1610",
+    "declared_flag_count": 44,
+    "actual_flag_count": 44,
+    "flag": [
+      {
+        "id": "flag.chapter",
+        "type": "int",
+        "initial": 0,
+        "write": "每完成一个主节点 +1",
+        "readers": "全部任务状态机",
+        "effect": "当前幕次（跨册通用，见 S0 §7.2）",
+        "universal": true,
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1616"
+      },
+      {
+        "id": "flag.entered_vale",
+        "type": "bool",
+        "initial": false,
+        "write": "首次到返途驿",
+        "readers": "Q-00",
+        "effect": "开启主线",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1617"
+      },
+      {
+        "id": "flag.ilev_invitation",
+        "type": "bool",
+        "initial": false,
+        "write": "收到黑马车请柬",
+        "readers": "Q-00/城堡门卫",
+        "effect": "内堡合法入口",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1618"
+      },
+      {
+        "id": "flag.read_obituary",
+        "type": "bool",
+        "initial": false,
+        "write": "读取讣告背面",
+        "readers": "伊诺/Q-00",
+        "effect": "备用主线入口",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1619"
+      },
+      {
+        "id": "flag.cellar_key",
+        "type": "bool",
+        "initial": false,
+        "write": "寡酿/偷忆盗处取得",
+        "readers": "寂葡园",
+        "effect": "开百喉酒窖",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1620"
+      },
+      {
+        "id": "flag.mother_memory",
+        "type": "bool",
+        "initial": false,
+        "write": "取得摇篮晶/沼中净忆",
+        "readers": "伊蕾芙对白",
+        "effect": "冠证：母忆",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1621"
+      },
+      {
+        "id": "flag.oath_tablet",
+        "type": "bool",
+        "initial": false,
+        "write": "拼合守冠誓",
+        "readers": "分冠仪式",
+        "effect": "冠证：古约",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1622"
+      },
+      {
+        "id": "flag.name_ledger",
+        "type": "bool",
+        "initial": false,
+        "write": "无名库取得万人名册",
+        "readers": "万人归册/终局",
+        "effect": "冠证：名册",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1623"
+      },
+      {
+        "id": "flag.bell_sequence",
+        "type": "bool",
+        "initial": false,
+        "write": "解出空拍音序",
+        "readers": "Q-06/终局",
+        "effect": "冠证：钟序",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1624"
+      },
+      {
+        "id": "flag.border_receipt",
+        "type": "bool",
+        "initial": false,
+        "write": "界墙心室固定三坐标",
+        "readers": "杀冠/交易结局",
+        "effect": "冠证：回执",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1625"
+      },
+      {
+        "id": "flag.crownproof_verified",
+        "type": "bool",
+        "initial": false,
+        "write": "五证至少三证验真",
+        "readers": "Q-00",
+        "effect": "进入第四幕",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1626"
+      },
+      {
+        "id": "flag.forged_proof_seen",
+        "type": "bool",
+        "initial": false,
+        "write": "接受/识破伪冠证",
+        "readers": "终局 DF",
+        "effect": "未识破则 +2 DF",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1627"
+      },
+      {
+        "id": "flag.ilev_consent",
+        "type": "bool",
+        "initial": false,
+        "write": "伊蕾芙同意方案",
+        "readers": "交易/解放",
+        "effect": "避免宫廷内战",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1628"
+      },
+      {
+        "id": "flag.ilev_full_memory",
+        "type": "bool",
+        "initial": false,
+        "write": "击破十二轮集合相",
+        "readers": "伊蕾芙 Drive",
+        "effect": "论战立场 −4",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1629"
+      },
+      {
+        "id": "flag.laiya_memory",
+        "type": "bool",
+        "initial": false,
+        "write": "莱娅交出加冕净忆",
+        "readers": "Q-05",
+        "effect": "证明自愿但被骗",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1630"
+      },
+      {
+        "id": "flag.helto_testimony",
+        "type": "bool",
+        "initial": false,
+        "write": "赫铎说明迁冠",
+        "readers": "杀冠路线",
+        "effect": "公开迁冠机制",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1631"
+      },
+      {
+        "id": "flag.captain_defects",
+        "type": "bool",
+        "initial": false,
+        "write": "塞芙兰倒戈",
+        "readers": "城堡遭遇",
+        "effect": "守卫转友军",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1632"
+      },
+      {
+        "id": "flag.reform_monastery",
+        "type": "bool",
+        "initial": false,
+        "write": "改革派接管",
+        "readers": "灰律获取",
+        "effect": "修院成为安全点",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1633"
+      },
+      {
+        "id": "flag.simeon_freed",
+        "type": "bool",
+        "initial": false,
+        "write": "救出索弥安",
+        "readers": "Q-06",
+        "effect": "真音序导师",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1634"
+      },
+      {
+        "id": "flag.forks",
+        "type": "int",
+        "initial": 0,
+        "write": "每得一音叉 +1",
+        "readers": "Q-06",
+        "effect": "5 开启排练",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1635"
+      },
+      {
+        "id": "flag.market_vault",
+        "type": "bool",
+        "initial": false,
+        "write": "获取深库编号",
+        "readers": "哀市",
+        "effect": "开深库首领",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1636"
+      },
+      {
+        "id": "flag.market_coop",
+        "type": "bool",
+        "initial": false,
+        "write": "行栈倒台后保护商贩",
+        "readers": "经济",
+        "effect": "物价回落",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1637"
+      },
+      {
+        "id": "flag.blank_contract",
+        "type": "bool",
+        "initial": false,
+        "write": "缪岑处取得",
+        "readers": "回声债",
+        "effect": "允许自愿转债",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1638"
+      },
+      {
+        "id": "flag.ledger_exposed",
+        "type": "bool",
+        "initial": false,
+        "write": "公布行栈/议会账",
+        "readers": "势力声望",
+        "effect": "行栈−2、工盟+1",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1639"
+      },
+      {
+        "id": "flag.mine_seal_broken",
+        "type": "bool",
+        "initial": false,
+        "write": "开第四竖井",
+        "readers": "Q-02",
+        "effect": "深矿开放",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1640"
+      },
+      {
+        "id": "flag.mine_evacuated",
+        "type": "bool",
+        "initial": false,
+        "write": "疏散完成",
+        "readers": "Q-02",
+        "effect": "避免伤亡",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1641"
+      },
+      {
+        "id": "flag.mine_detonated",
+        "type": "bool",
+        "initial": false,
+        "write": "引爆发生",
+        "readers": "全局资源",
+        "effect": "忆晶失效",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1642"
+      },
+      {
+        "id": "flag.four_names_found",
+        "type": "bool",
+        "initial": false,
+        "write": "找齐童工姓名",
+        "readers": "Q-02/无名团",
+        "effect": "账目真相",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1643"
+      },
+      {
+        "id": "flag.vein_wedge",
+        "type": "bool",
+        "initial": false,
+        "write": "完成断脉楔",
+        "readers": "杀冠",
+        "effect": "移除冠脉",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1644"
+      },
+      {
+        "id": "flag.shared_oath",
+        "type": "bool",
+        "initial": false,
+        "write": "完成分冠环并征得三势力",
+        "readers": "解放",
+        "effect": "开启分冠仪式",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1645"
+      },
+      {
+        "id": "flag.flags_found",
+        "type": "int",
+        "initial": 0,
+        "write": "每获旅团旗 +1",
+        "readers": "Q-03",
+        "effect": "3 开镜水眼",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1646"
+      },
+      {
+        "id": "flag.crownspace_entered",
+        "type": "bool",
+        "initial": false,
+        "write": "进入冠内",
+        "readers": "Q-03/第四幕",
+        "effect": "解锁集合相",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1647"
+      },
+      {
+        "id": "flag.true_exit",
+        "type": "bool",
+        "initial": false,
+        "write": "完成赛莘坐标",
+        "readers": "雾岬",
+        "effect": "强闯 DF −3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1648"
+      },
+      {
+        "id": "flag.swamp_causeway",
+        "type": "bool",
+        "initial": false,
+        "write": "修筑沼路",
+        "readers": "旅行",
+        "effect": "沼泽风险骰 d6",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1649"
+      },
+      {
+        "id": "flag.fog_mother_spared",
+        "type": "bool",
+        "initial": false,
+        "write": "与雾母交易",
+        "readers": "界墙论战",
+        "effect": "立场 −3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1650"
+      },
+      {
+        "id": "flag.wall_parley",
+        "type": "bool",
+        "initial": false,
+        "write": "与界墙心室论战",
+        "readers": "交易结局",
+        "effect": "开启边界契约",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1651"
+      },
+      {
+        "id": "flag.no_dawn_rite",
+        "type": "bool",
+        "initial": false,
+        "write": "施放无晓改日成功",
+        "readers": "Q-00",
+        "effect": "阻止本轮重置",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1652"
+      },
+      {
+        "id": "flag.obituary_anchored",
+        "type": "bool",
+        "initial": false,
+        "write": "用讣告纸记录账本事实",
+        "readers": "reset",
+        "effect": "保留指定事实",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1653"
+      },
+      {
+        "id": "flag.banquet_saved",
+        "type": "bool",
+        "initial": false,
+        "write": "保护灰席回声",
+        "readers": "Q-05",
+        "effect": "七家证词完整",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1654"
+      },
+      {
+        "id": "flag.banquet_burned",
+        "type": "bool",
+        "initial": false,
+        "write": "灰席被焚",
+        "readers": "维萨/终局",
+        "effect": "和平论战 DF +2",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1655"
+      },
+      {
+        "id": "flag.vesa_daughter_saved",
+        "type": "bool",
+        "initial": false,
+        "write": "归名女儿回声",
+        "readers": "维萨",
+        "effect": "可令钟烬分裂",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1656"
+      },
+      {
+        "id": "flag.chime_court_split",
+        "type": "bool",
+        "initial": false,
+        "write": "公布命令链/救女儿",
+        "readers": "钟烬遭遇",
+        "effect": "预算 −2",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1657"
+      },
+      {
+        "id": "flag.volunteer_crown",
+        "type": "bool",
+        "initial": false,
+        "write": "知情角色/NPC自愿",
+        "readers": "取代结局",
+        "effect": "候选合法",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1658"
+      },
+      {
+        "id": "flag.factions_at_plus2",
+        "type": "int",
+        "initial": 0,
+        "write": "每有一势力声望达 +2 时 +1",
+        "readers": "解放结局状态机",
+        "effect": "≥3 时分冠环合法",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1659"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.守冠庭",
+        "type": "int",
+        "initial": 0,
+        "write": "任务/公开行为",
+        "readers": "通行/伊蕾芙",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1664"
+      },
+      {
+        "id": "rep.灰砾修会",
+        "type": "int",
+        "initial": 0,
+        "write": "钟井/知识选择",
+        "readers": "灰律/疗愈",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1665"
+      },
+      {
+        "id": "rep.记忆行栈",
+        "type": "int",
+        "initial": 0,
+        "write": "交易/曝光",
+        "readers": "价格/债钩",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1666"
+      },
+      {
+        "id": "rep.灰脊工盟",
+        "type": "int",
+        "initial": 0,
+        "write": "矿难/劳工选择",
+        "readers": "工坊/援军",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1667"
+      },
+      {
+        "id": "rep.无名合唱团",
+        "type": "int",
+        "initial": 0,
+        "write": "归名/忆晶伦理",
+        "readers": "亡者情报",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1668"
+      },
+      {
+        "id": "rep.苔灯旅团",
+        "type": "int",
+        "initial": 1,
+        "write": "救团员/抢地图",
+        "readers": "导航/雾岬",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1669"
+      },
+      {
+        "id": "rep.钟烬庭",
+        "type": "int",
+        "initial": -1,
+        "write": "贵族交易/曝光",
+        "readers": "刺杀/贵族门路",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1670"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.bell",
+        "type": "int",
+        "initial": 1,
+        "write": "每重大拖延/修院事故 +1",
+        "readers": "全局",
+        "effect": "13 时重置",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1660"
+      },
+      {
+        "id": "clock.mine",
+        "type": "int",
+        "initial": 6,
+        "write": "Q-02 激活后每时段 −1",
+        "readers": "Q-02",
+        "effect": "0 自动爆破",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1661"
+      },
+      {
+        "id": "clock.assassination",
+        "type": "int",
+        "initial": 4,
+        "write": "素莱锁定目标后 −1",
+        "readers": "NPC 生存",
+        "effect": "0 清证行动",
+        "source": "docs/scenario/S1-灰冕-诅咒领地.md:1662"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "ashen-crown",
+      "engine": "tactics",
+      "campaign": "灰冠无晓",
+      "session": 1,
+      "party_level": 1,
+      "tone_pack": "悲剧英雄",
+      "safety_boundaries": []
+    },
+    "clock": {
+      "day": 1,
+      "watch": "昏",
+      "bell": 1,
+      "mine": null,
+      "assassination": null,
+      "active_pressure": "第十三响尚余十二格"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "vitality": 20,
+        "focus": 8,
+        "strain": 0,
+        "resolve": 3,
+        "ashen": 0,
+        "drive": "我一定要……",
+        "anchors": [],
+        "echo_debts": [],
+        "open_loops": []
+      }
+    ],
+    "npcs": [
+      {
+        "name": "伊蕾芙·烬冕",
+        "drive": "在不转嫁给无辜者的前提下结束统治",
+        "lever": "谷民的具体姓名与知情承担",
+        "mask": "冷静精确的行政者",
+        "tell": "听见黎明时会摸向窗边",
+        "threshold": "不让无知者戴冠",
+        "affinity": 0,
+        "awe": 1,
+        "location": "烬冠堡",
+        "status": "alive-crowned",
+        "knows": [
+          "C-01",
+          "C-04",
+          "C-12"
+        ]
+      }
+    ],
+    "factions": {
+      "守冠庭": 0,
+      "灰砾修会": 0,
+      "记忆行栈": 0,
+      "灰脊工盟": 0,
+      "无名合唱团": 0,
+      "苔灯旅团": 1,
+      "钟烬庭": -1
+    },
+    "threads": [
+      {
+        "id": "Q-00",
+        "name": "灰冠无晓",
+        "state": "dormant",
+        "progress": 0,
+        "paths_resolved": [],
+        "paths_remaining": [
+          "取得冠证",
+          "理解迁冠",
+          "决定冠冕命运"
+        ],
+        "payoff": "四种终局选择"
+      }
+    ],
+    "locations": [
+      {
+        "name": "返途驿",
+        "state": "未探明",
+        "site_elements": [
+          "折路碑",
+          "讣告墙",
+          "四碗客栈"
+        ],
+        "changed": false,
+        "notes": []
+      }
+    ],
+    "flags": {
+      "entered_vale": false,
+      "ilev_invitation": false,
+      "read_obituary": false,
+      "mother_memory": false,
+      "oath_tablet": false,
+      "name_ledger": false,
+      "bell_sequence": false,
+      "border_receipt": false,
+      "ilev_consent": false,
+      "vein_wedge": false,
+      "shared_oath": false,
+      "volunteer_crown": false,
+      "wall_parley": false,
+      "no_dawn_rite": false
+    },
+    "evidence": {
+      "crownproof_count": 0,
+      "verified": [],
+      "contested": [],
+      "destroyed_with_backup": []
+    },
+    "debts": [],
+    "facts": [],
+    "nemeses": [
+      {
+        "name": "素莱·轻灰",
+        "level": 1,
+        "plan": "确认新来者是否持有冠证",
+        "next_move": "在哀市混入追踪晶"
+      }
+    ],
+    "unused_routes": [],
+    "hooks": [
+      "讣告墙将在三日后写出死因",
+      "伊蕾芙有一封自己不记得写过的退位书",
+      "哭矿自动爆破尚未启动"
+    ],
+    "source": "docs/scenario/S1-灰冕-诅咒领地.md:2509"
+  }
+}

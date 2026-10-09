@@ -1,0 +1,3039 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S6-断线-战争前线.md:1",
+  "meta": {
+    "world": "broken_line",
+    "engine": "tactics",
+    "campaign": "断线",
+    "party_level": 1,
+    "party_size": 5,
+    "tone_pack": "tragic_hero"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 等待",
+      "level_range": "1",
+      "summary": "真正消耗你们的不是敌人。旱季静态对峙，修复哑塔，接下第一道命令。",
+      "tasks": [
+        "Q-01",
+        "Q-04",
+        "Q-11",
+        "Q-12"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3800",
+      "scenes": [
+        "1-1",
+        "1-2",
+        "1-3",
+        "1-4"
+      ]
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 推进",
+      "level_range": "2",
+      "summary": "你能决定一次局部战斗的胜负。晨线行动第二阶段：测绘 114、穿越碎镜滩、接触河民、夺取磨石岗西坡。",
+      "tasks": [
+        "Q-02",
+        "Q-03",
+        "Q-04",
+        "Q-05",
+        "Q-07",
+        "Q-11",
+        "Q-12"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3821",
+      "scenes": [
+        "2-1",
+        "2-2",
+        "2-3",
+        "2-4",
+        "2-5"
+      ]
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 反击",
+      "level_range": "3",
+      "summary": "上级的命令基于过时的地图。雨季渭军反扑，中站成为新焦点，命令 331 号的抗命交涉是本册核心场景。",
+      "tasks": [
+        "Q-04",
+        "Q-05",
+        "Q-06",
+        "Q-11",
+        "Q-12"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3844",
+      "scenes": [
+        "3-1",
+        "3-2",
+        "3-3",
+        "3-4",
+        "3-5"
+      ]
+    },
+    {
+      "id": "act-4",
+      "name": "第四幕 · 敌后",
+      "level_range": "4",
+      "summary": "决定不了战争，但能决定它慢一点。战线冻结（双方在等谈判），夜渡渭河渗透后仓岭，夺取岑砚的作战计划。",
+      "tasks": [
+        "Q-07",
+        "Q-08",
+        "Q-11",
+        "Q-12"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3867",
+      "scenes": [
+        "4-1",
+        "4-2",
+        "4-3",
+        "4-4",
+        "4-5"
+      ]
+    },
+    {
+      "id": "act-5",
+      "name": "第五幕 · 断线",
+      "level_range": "5",
+      "summary": "战争不写成爽文。打赢之后，导引者立刻递上下一张纸。冬季终局：听证会、冬季攻防、缝合点决战与谈判桌外的交易。",
+      "tasks": [
+        "Q-09",
+        "Q-10",
+        "Q-11",
+        "Q-12"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3890",
+      "scenes": [
+        "5-1",
+        "5-2",
+        "5-3",
+        "5-4",
+        "5-5"
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "camp-act-1",
+      "name": "第一幕 · 等待",
+      "act": "act-1",
+      "next": [
+        "camp-act-2"
+      ],
+      "marks": [
+        "旱季 · H-7 哨线 · 静态对峙",
+        "Q-01 哑塔"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3757"
+    },
+    {
+      "id": "camp-act-2",
+      "name": "第二幕 · 推进",
+      "act": "act-2",
+      "unlock": "flag.tower_fixed ／ 或 命令链延迟",
+      "next": [
+        "camp-frontier-advance",
+        "camp-frontier-retreat"
+      ],
+      "marks": [
+        "晨线行动第二阶段",
+        "Q-02 测绘 114 → Q-03 磨石岗西坡"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3763"
+    },
+    {
+      "id": "camp-frontier-advance",
+      "name": "战线东移 D–E",
+      "act": "act-2",
+      "unlock": "夺取成功",
+      "next": [
+        "camp-act-3"
+      ],
+      "marks": [
+        "士气 +2"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3770"
+    },
+    {
+      "id": "camp-frontier-retreat",
+      "name": "战线东退一格",
+      "act": "act-2",
+      "unlock": "夺取失败",
+      "next": [
+        "camp-act-3"
+      ],
+      "marks": [
+        "纪律 −2 士气 −2"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3770"
+    },
+    {
+      "id": "camp-act-3",
+      "name": "第三幕 · 反击",
+      "act": "act-3",
+      "next": [
+        "camp-act-4"
+      ],
+      "marks": [
+        "雨季 · 渭军反扑",
+        "Q-06 中站存根 · Q-05 河民 · 抗命交涉（D-01）",
+        "flag.heiyang_rivalry ≥ 2 ──> 柏岩抢功分支",
+        "flag.river_crossing ──> 敌后路线开启"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3775"
+    },
+    {
+      "id": "camp-act-4",
+      "name": "第四幕 · 敌后",
+      "act": "act-4",
+      "next": [
+        "camp-act-5"
+      ],
+      "marks": [
+        "战线冻结",
+        "Q-08 后仓岭 → 岑砚作战计划（C-22）",
+        "flag.captured ──> 俘虏分支（结局 C 前置）"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3782"
+    },
+    {
+      "id": "camp-act-5",
+      "name": "第五幕 · 断线",
+      "act": "act-5",
+      "next": [
+        "camp-ending-a",
+        "camp-ending-b",
+        "camp-ending-c",
+        "camp-ending-d",
+        "camp-ending-e"
+      ],
+      "marks": [
+        "冬季 · 终局",
+        "Q-10 缝合 · Q-09 听证会（条件分支）",
+        "五种结局（见 12.7）"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3788"
+    },
+    {
+      "id": "camp-ending-a",
+      "name": "结局 A",
+      "act": "act-5",
+      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+    },
+    {
+      "id": "camp-ending-b",
+      "name": "结局 B",
+      "act": "act-5",
+      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+    },
+    {
+      "id": "camp-ending-c",
+      "name": "结局 C",
+      "act": "act-5",
+      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+    },
+    {
+      "id": "camp-ending-d",
+      "name": "结局 D",
+      "act": "act-5",
+      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+    },
+    {
+      "id": "camp-ending-e",
+      "name": "结局 E",
+      "act": "act-5",
+      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+    },
+    {
+      "id": "unl-01",
+      "name": "开局 H-7 哨线",
+      "next": [
+        "unl-02",
+        "unl-04",
+        "unl-09",
+        "unl-14",
+        "unl-17",
+        "unl-20",
+        "unl-22",
+        "unl-25"
+      ],
+      "marks": [
+        "flag.tower_fixed──> [哑塔]",
+        "flag.chapter>=1────> [洄城]",
+        "flag.chapter>=2────> [碎镜滩]",
+        "flag.river_people_contact>=0──> [渭渡]",
+        "flag.chapter>=3────> [中站废墟]",
+        "flag.chapter>=2 且 季节=雨──> [泥沼段]",
+        "flag.chapter>=4 且 flag.river_crossing──> [后仓岭]",
+        "[任一队员濒危]────> [白棚]"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2965"
+    },
+    {
+      "id": "unl-02",
+      "name": "哑塔",
+      "next": [
+        "unl-03"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2966"
+    },
+    {
+      "id": "unl-03",
+      "name": "命令链延迟分支",
+      "unlock": "flag.battery_diverted",
+      "source": "docs/scenario/S6-断线-战争前线.md:2966"
+    },
+    {
+      "id": "unl-04",
+      "name": "洄城",
+      "next": [
+        "unl-05",
+        "unl-07",
+        "unl-28"
+      ],
+      "marks": [
+        "rep.logistics>=0──> [转运棚]",
+        "人脉 DF14──> [洄城档案馆]",
+        "flag.investigation──> [听证会]（见 unl-28 边）"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2967"
+    },
+    {
+      "id": "unl-05",
+      "name": "转运棚",
+      "unlock": "rep.logistics>=0",
+      "next": [
+        "unl-06"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2967"
+    },
+    {
+      "id": "unl-06",
+      "name": "补给 +2",
+      "unlock": "flag.railmap",
+      "source": "docs/scenario/S6-断线-战争前线.md:2967"
+    },
+    {
+      "id": "unl-07",
+      "name": "洄城档案馆",
+      "unlock": "人脉 DF14",
+      "next": [
+        "unl-08"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2968"
+    },
+    {
+      "id": "unl-08",
+      "name": "C-05/C-11",
+      "source": "docs/scenario/S6-断线-战争前线.md:2968"
+    },
+    {
+      "id": "unl-09",
+      "name": "碎镜滩",
+      "next": [
+        "unl-10",
+        "unl-12"
+      ],
+      "marks": [
+        "潜行 DF14──> [磨石岗 114]"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2969"
+    },
+    {
+      "id": "unl-10",
+      "name": "磨石岗 114",
+      "unlock": "潜行 DF14",
+      "next": [
+        "unl-11"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2969"
+    },
+    {
+      "id": "unl-11",
+      "name": "岗顶",
+      "unlock": "flag.ms_gang_owner=L",
+      "next": [
+        "unl-33"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2969"
+    },
+    {
+      "id": "unl-12",
+      "name": "铁丝网缺口 E3",
+      "next": [
+        "unl-13"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2970"
+    },
+    {
+      "id": "unl-13",
+      "name": "渭军前沿 铁砧棱线",
+      "source": "docs/scenario/S6-断线-战争前线.md:2970"
+    },
+    {
+      "id": "unl-14",
+      "name": "渭渡",
+      "unlock": "flag.river_people_contact>=0",
+      "next": [
+        "unl-15"
+      ],
+      "marks": [
+        "柳阿婆──> [河湾浅滩]"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2971"
+    },
+    {
+      "id": "unl-15",
+      "name": "河湾浅滩",
+      "unlock": "柳阿婆",
+      "next": [
+        "unl-16"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2971"
+    },
+    {
+      "id": "unl-16",
+      "name": "flag.river_crossing",
+      "unlock": "rep.riverfolk>=+2",
+      "source": "docs/scenario/S6-断线-战争前线.md:2972"
+    },
+    {
+      "id": "unl-17",
+      "name": "中站废墟",
+      "unlock": "flag.chapter>=3",
+      "next": [
+        "unl-18"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2973"
+    },
+    {
+      "id": "unl-18",
+      "name": "下层调度室",
+      "unlock": "flag.mid_station_lead",
+      "next": [
+        "unl-19"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2973"
+    },
+    {
+      "id": "unl-19",
+      "name": "C-01 存根",
+      "source": "docs/scenario/S6-断线-战争前线.md:2973"
+    },
+    {
+      "id": "unl-20",
+      "name": "泥沼段",
+      "unlock": "flag.chapter>=2 且 季节=雨",
+      "next": [
+        "unl-21"
+      ],
+      "marks": [
+        "工兵排水──> [1192 输送车残骸]"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2974"
+    },
+    {
+      "id": "unl-21",
+      "name": "1192 输送车残骸",
+      "unlock": "工兵排水",
+      "source": "docs/scenario/S6-断线-战争前线.md:2974"
+    },
+    {
+      "id": "unl-22",
+      "name": "后仓岭",
+      "unlock": "flag.chapter>=4 且 flag.river_crossing",
+      "next": [
+        "unl-23"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2975"
+    },
+    {
+      "id": "unl-23",
+      "name": "岑砚指挥所",
+      "next": [
+        "unl-24"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2975"
+    },
+    {
+      "id": "unl-24",
+      "name": "Q-08",
+      "source": "docs/scenario/S6-断线-战争前线.md:2975"
+    },
+    {
+      "id": "unl-25",
+      "name": "白棚",
+      "unlock": "任一队员濒危",
+      "next": [
+        "unl-26"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2976"
+    },
+    {
+      "id": "unl-26",
+      "name": "白旗会记录簿",
+      "unlock": "rep.whiteflag>=0",
+      "next": [
+        "unl-27"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2976"
+    },
+    {
+      "id": "unl-27",
+      "name": "C-18/C-34",
+      "source": "docs/scenario/S6-断线-战争前线.md:2976"
+    },
+    {
+      "id": "unl-28",
+      "name": "听证会",
+      "unlock": "flag.investigation",
+      "next": [
+        "unl-29"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2978"
+    },
+    {
+      "id": "unl-29",
+      "name": "结局 B / C",
+      "source": "docs/scenario/S6-断线-战争前线.md:2978"
+    },
+    {
+      "id": "unl-30",
+      "name": "中站",
+      "next": [
+        "unl-31"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2979"
+    },
+    {
+      "id": "unl-31",
+      "name": "铁路接通",
+      "unlock": "flag.rail_progress>=60",
+      "next": [
+        "unl-32"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2979"
+    },
+    {
+      "id": "unl-32",
+      "name": "结局 D",
+      "source": "docs/scenario/S6-断线-战争前线.md:2979"
+    },
+    {
+      "id": "unl-33",
+      "name": "铁盒",
+      "unlock": "L-06 破韧三次",
+      "next": [
+        "unl-34"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2980"
+    },
+    {
+      "id": "unl-34",
+      "name": "flag.command_1192",
+      "source": "docs/scenario/S6-断线-战争前线.md:2980"
+    },
+    {
+      "id": "unl-35",
+      "name": "结局 A",
+      "unlock": "flag.command_1192",
+      "source": "docs/scenario/S6-断线-战争前线.md:2980"
+    },
+    {
+      "id": "order-chain",
+      "type": "task",
+      "name": "命令链状态机",
+      "transitions": [
+        {
+          "from": "RECEIVED",
+          "to": "EXECUTING",
+          "condition": "玩家宣布执行（或在一场景内未表态，默认执行）"
+        },
+        {
+          "from": "RECEIVED",
+          "to": "DEFYING",
+          "condition": "玩家宣布抗命（公开）或采取与命令相反的行动"
+        },
+        {
+          "from": "RECEIVED",
+          "to": "DELAYING",
+          "condition": "玩家宣布阳奉阴违（需队伍中有通信兵或政治干事，否则不可用）"
+        },
+        {
+          "from": "EXECUTING",
+          "to": "succeeded_clean",
+          "condition": "目标达成 且 flag.dirty_hands 未增加 且 无己方减员"
+        },
+        {
+          "from": "EXECUTING",
+          "to": "succeeded_dirty",
+          "condition": "目标达成 且（flag.dirty_hands 增加 或 己方减员 ≥ 1）"
+        },
+        {
+          "from": "EXECUTING",
+          "to": "failed",
+          "condition": "目标未达成（含因补给断绝而无法执行）"
+        },
+        {
+          "from": "EXECUTING",
+          "to": "aborted",
+          "condition": "执行途中接到更高优先级命令，或战场形势使命令失去意义"
+        },
+        {
+          "from": "DEFYING",
+          "to": "success（抗命判定通过）",
+          "condition": "纪律 −1（阳奉阴违）或 −2（公开）；士气 +2；命令不执行"
+        },
+        {
+          "from": "DEFYING",
+          "to": "failure（抗命判定失败）",
+          "condition": "纪律 −3；强制回到 EXECUTING；士气 −1"
+        },
+        {
+          "from": "DEFYING",
+          "to": "catastrophe",
+          "condition": "纪律 −4；flag.unreliable_unit = true；郗鹤年启动调查"
+        },
+        {
+          "from": "DELAYING",
+          "to": "部分执行",
+          "condition": "完成命令的一半（导引者裁定）；纪律 −1；士气 +1"
+        },
+        {
+          "from": "DELAYING",
+          "to": "伪造完成",
+          "condition": "欺骗判定 DF 14，成功则记为 succeeded（假），失败则 flag.defiance_record = true"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2754",
+      "note": "标题原文：命令链状态机（本册最重要的一台机器）；括注为状态序列说明"
+    },
+    {
+      "id": "Q-01",
+      "type": "task",
+      "name": "哑塔",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "开局自动"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接令（这是命令链的第一道命令，荒谬度 +0）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "哑塔恢复通信 且 未挪用电池"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "哑塔恢复 但 挪用了电池（燃料轨 −2），或伪造了恢复报告"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "塔被毁 或 电池被劫"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "进入第二幕未完成 → 命令链在第二幕全程走\"延迟\"分支"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2815"
+    },
+    {
+      "id": "Q-02",
+      "type": "task",
+      "name": "测绘 114",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.chapter >= 1 且 队员中有测绘员（否则改为\"借调苏勉\"，DF +2）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded",
+          "condition": "完成实测绘图并上交（真图）→ 命令荒谬度 −2，持续一幕"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "完成实测但未上交（私藏）→ 全队获得地形优势但 rep.command −1"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "测绘被俘或被毁 → 第二幕所有导航判定 DF +3"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2825"
+    },
+    {
+      "id": "Q-03",
+      "type": "task",
+      "name": "磨石岗西坡",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.chapter >= 2 且 士气 >= 2"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "夺取西坡 且 己方无阵亡 且 未掠夺"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "夺取西坡 但 有阵亡／掠夺／违令"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "未能夺取 或 全队被击退 → 战线向东移动一格"
+        },
+        {
+          "from": "active",
+          "to": "aborted",
+          "condition": "接到\"立即撤回\"的更高优先级命令（第三幕的黑杨抢功分支）"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2832"
+    },
+    {
+      "id": "Q-04",
+      "type": "task",
+      "name": "米线",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "每幕开始，四轨任一 ≤ 2 时触发（recurring，每幕重置）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded",
+          "condition": "补给到达表掷骰结果 ≥ 12"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "补给未到达 → 该幕四轨继续下降，负担 +1"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2840"
+    },
+    {
+      "id": "Q-05",
+      "type": "task",
+      "name": "河民",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.chapter >= 2"
+        },
+        {
+          "from": "active",
+          "to": "allied",
+          "condition": "rep.riverfolk >= +2 → 解锁浅滩路线（敌后路径）"
+        },
+        {
+          "from": "active",
+          "to": "neutral",
+          "condition": "rep.riverfolk == 0 或 +1 → 可摆渡，不给向导"
+        },
+        {
+          "from": "active",
+          "to": "hostile",
+          "condition": "rep.riverfolk <= −1 → 河民向渭军通报，穿越判定 DF +4"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2846"
+    },
+    {
+      "id": "Q-06",
+      "type": "task",
+      "name": "中站存根",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.chapter >= 3 或 flag.mid_station_lead == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded",
+          "condition": "取得 1183 年煤车事件的货运单存根（即 C-01）→ 解锁谈判支线"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "存根被毁 或 落入黑杨支队之手"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "第四幕开始未完成 → 谈判筹码归零"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2853"
+    },
+    {
+      "id": "Q-07",
+      "type": "task",
+      "name": "俘虏",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "第二幕起，随时"
+        },
+        {
+          "from": "active",
+          "to": "released",
+          "condition": "释放俘虏 → rep.whiteflag +1，士气 +0，渭军可能回报（回响）"
+        },
+        {
+          "from": "active",
+          "to": "handed_over",
+          "condition": "上交营部 → 纪律 +1，士气 −1"
+        },
+        {
+          "from": "active",
+          "to": "executed",
+          "condition": "处决 → 士气 −2，flag.dirty_hands +1，蔺禾记录一行"
+        },
+        {
+          "from": "active",
+          "to": "recruited",
+          "condition": "转化（祁五支线）→ 获得一名 NPC，纪律 −1（私藏敌方人员）"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2860"
+    },
+    {
+      "id": "Q-08",
+      "type": "task",
+      "name": "敌后：后仓岭",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.chapter >= 4 且 rep.riverfolk >= +2 且 flag.river_crossing == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "取得岑砚的作战计划 且 未伤平民"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "取得计划 但 伤及平民／烧毁邮局"
+        },
+        {
+          "from": "active",
+          "to": "captured",
+          "condition": "被俘 → 进入第 12 节第四幕俘虏分支"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "空手而归 → 第五幕失去谈判筹码"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2867"
+    },
+    {
+      "id": "Q-09",
+      "type": "task",
+      "name": "听证会",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "第五幕分支，仅当 flag.investigation == true"
+        },
+        {
+          "from": "active",
+          "to": "cleared",
+          "condition": "论战胜利 → 灰鸢技术性解散，成员活下来"
+        },
+        {
+          "from": "active",
+          "to": "dissolved",
+          "condition": "论战失败 且 rep.command <= −2 → 结局 C（前哨突击队）"
+        },
+        {
+          "from": "active",
+          "to": "reassigned",
+          "condition": "论战失败但 rep.whiteflag >= +2 → 结局 B（代价惨重）"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2875"
+    },
+    {
+      "id": "Q-10",
+      "type": "task",
+      "name": "缝合",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "第五幕终局"
+        },
+        {
+          "from": "active",
+          "to": "stopped",
+          "condition": "摧毁工程队且卫铮被击败 → 渭军缝合失败 → 结局 A/B"
+        },
+        {
+          "from": "active",
+          "to": "delayed",
+          "condition": "拖延到冬季 → 结局 B（代价惨重）"
+        },
+        {
+          "from": "active",
+          "to": "completed",
+          "condition": "铁路接通 → 结局 D（活下来但输了）"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2881"
+    },
+    {
+      "id": "Q-11",
+      "type": "task",
+      "name": "减员与补兵",
+      "transitions": [
+        {
+          "from": "自动触发",
+          "to": "replaced_well",
+          "condition": "掷 R-03 减员表后，玩家为新人完成一次命名场景 → 士气 +0"
+        },
+        {
+          "from": "自动触发",
+          "to": "replaced_poorly",
+          "condition": "补兵到位但无场景 → 士气 −1，新人在下幕有 30% 概率临阵脱逃"
+        },
+        {
+          "from": "自动触发",
+          "to": "not_replaced",
+          "condition": "编制缺口保留 → 所有战斗遭遇预算上限 −10%"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2887"
+    },
+    {
+      "id": "Q-12",
+      "type": "task",
+      "name": "纪念",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "任意时刻，可重复"
+        },
+        {
+          "from": "active",
+          "to": "completed",
+          "condition": "玩家为一名死者举行纪念并说出具体细节 → 士气 +1，全队负担 −1"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:2893"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "1183 年煤车事件是有人设计的，不是意外",
+      "carrier": "证据：中站下层调度室的货运单存根",
+      "npcs": [
+        "麻姑",
+        "老卓"
+      ],
+      "flags": [
+        "flag.mid_station_lead"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "中站下层调度室挖出货运单存根",
+          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "洄城档案馆调阅 1183 年运输记录",
+          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "麻姑／老卓口述",
+          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由通达行的账目与渭军换防时间推出",
+          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3701"
+    },
+    {
+      "id": "C-02",
+      "name": "晨线行动原始方案被删掉的第三条是「必要时放弃 D–F 段」",
+      "carrier": "证据：编号缺口、苏勉的真图背面",
+      "npcs": [
+        "温书迟",
+        "苏勉"
+      ],
+      "flags": [
+        "flag.command_1192"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "温书迟的废纸篓",
+          "source": "docs/scenario/S6-断线-战争前线.md:3744"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "331 号之前的编号缺口",
+          "source": "docs/scenario/S6-断线-战争前线.md:3744"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "苏勉的真图背面",
+          "source": "docs/scenario/S6-断线-战争前线.md:3702"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由三道命令的时间与兵力矛盾推出",
+          "source": "docs/scenario/S6-断线-战争前线.md:3744"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3702"
+    },
+    {
+      "id": "C-03",
+      "name": "黑杨支队的抢功计划是把友军的推进算成自己的战果",
+      "carrier": "NPC：黑杨军官",
+      "npcs": [
+        "柏岩",
+        "黑杨军官"
+      ],
+      "flags": [
+        "flag.heiyang_rivalry",
+        "flag.heiyang_evidence"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "黑杨军官的私下通话",
+          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "战果申报口径差异",
+          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "柏岩的抱怨",
+          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由两次推进的时间重合推出",
+          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3703"
+    },
+    {
+      "id": "C-04",
+      "name": "通达行与辎重序列之间有一条看不见的利益链",
+      "carrier": "证据：辎重序列账目",
+      "npcs": [
+        "蔺禾",
+        "通达行"
+      ],
+      "flags": [
+        "flag.tongda_debt"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3704"
+    },
+    {
+      "id": "C-05",
+      "name": "1193 年口粮削减的签字链上有窦长山",
+      "carrier": "证据：C 柜签批链、乔万石账本",
+      "npcs": [
+        "窦长山",
+        "乔万石"
+      ],
+      "flags": [
+        "flag.command_1192"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3705"
+    },
+    {
+      "id": "C-06",
+      "name": "补兵的真实来源不是征召，是拆散后的渭军战俘",
+      "carrier": "证据：补兵名册",
+      "npcs": [
+        "卫铮",
+        "柏岩"
+      ],
+      "flags": [
+        "flag.qiwu_recruited"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3706"
+    },
+    {
+      "id": "C-07",
+      "name": "哑塔的真实故障原因不是炮击，是内部误操作",
+      "carrier": "证据：故障记录",
+      "npcs": [
+        "哑塔值机员"
+      ],
+      "flags": [
+        "flag.tower_fixed"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3707"
+    },
+    {
+      "id": "C-08",
+      "name": "1192 年输送车失踪的货，是本应送到磨石岗的军粮",
+      "carrier": "证据：货运单",
+      "npcs": [
+        "乔万石"
+      ],
+      "flags": [
+        "flag.supply_cut_days"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3708"
+    },
+    {
+      "id": "C-09",
+      "name": "谈判代表的真实底线从未写进任何一份文件",
+      "carrier": "NPC：谈判代表",
+      "npcs": [
+        "蔺禾"
+      ],
+      "flags": [
+        "flag.whiteflag_record"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3709"
+    },
+    {
+      "id": "C-10",
+      "name": "灰鸢名册上有假名字",
+      "carrier": "证据：名册比对",
+      "npcs": [
+        "柏岩"
+      ],
+      "flags": [
+        "flag.unreliable_unit"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3710"
+    },
+    {
+      "id": "C-11",
+      "name": "1192 年磨石岗失守，是因为一道未上报的撤退命令",
+      "carrier": "证据：岗顶铁盒、两层守备日志、烈士名册划痕",
+      "npcs": [
+        "费岭",
+        "柏岩"
+      ],
+      "flags": [
+        "flag.command_1192"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "岗顶铁盒（L-06 掉落）",
+          "source": "docs/scenario/S6-断线-战争前线.md:3235"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "1186／1192 两层守备日志",
+          "source": "docs/scenario/S6-断线-战争前线.md:3746"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "费岭的弟弟、柏岩的调令",
+          "source": "docs/scenario/S6-断线-战争前线.md:3746"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由烈士名册上被划掉的两个名字推出",
+          "source": "docs/scenario/S6-断线-战争前线.md:3746"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3711"
+    },
+    {
+      "id": "C-12",
+      "name": "渭军换防的时间表是公开的，可提前推算",
+      "carrier": "证据：换防表",
+      "npcs": [
+        "温书迟"
+      ],
+      "flags": [
+        "flag.frontline_col"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3712"
+    },
+    {
+      "id": "C-13",
+      "name": "伤亡数字被系统性少报，报上去的与实际的差着一截",
+      "carrier": "证据：伤亡申报表",
+      "npcs": [
+        "乔万石",
+        "蔺禾"
+      ],
+      "flags": [
+        "flag.broken_spirit"
+      ],
+      "tasks": [
+        "Q-06"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3713"
+    },
+    {
+      "id": "C-14",
+      "name": "米线上有人在做手脚，货被拦在本地就转卖",
+      "carrier": "证据：米线过货记录",
+      "npcs": [
+        "通达行",
+        "脚夫"
+      ],
+      "flags": [
+        "flag.looting_done"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3714"
+    },
+    {
+      "id": "C-15",
+      "name": "米线第九公里弯道是被人改过的标定",
+      "carrier": "场景：第九公里弯道",
+      "npcs": [
+        "卫铮",
+        "脚夫"
+      ],
+      "flags": [
+        "flag.supply_route_known"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3715"
+    },
+    {
+      "id": "C-16",
+      "name": "1192 年输送车的货单有两份，编号相同",
+      "carrier": "证据：两份货单",
+      "npcs": [
+        "乔万石"
+      ],
+      "flags": [
+        "flag.stash_discovered"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3716"
+    },
+    {
+      "id": "C-17",
+      "name": "哑塔值机员是谁，可从换班记录倒查",
+      "carrier": "证据：换班记录",
+      "npcs": [
+        "哑塔值机员"
+      ],
+      "flags": [
+        "flag.tower_fixed"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3717"
+    },
+    {
+      "id": "C-18",
+      "name": "白旗会的记录簿里记着两边私下接触的全部内容",
+      "carrier": "证据：白旗会记录簿",
+      "npcs": [
+        "白旗会代表"
+      ],
+      "flags": [
+        "flag.whiteflag_record"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3718"
+    },
+    {
+      "id": "C-19",
+      "name": "渭军药品的来源不是官方配给，是外部采购",
+      "carrier": "证据：药品来源单",
+      "npcs": [
+        "卫铮"
+      ],
+      "flags": [
+        "flag.weijun_adaptation"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3719"
+    },
+    {
+      "id": "C-20",
+      "name": "高地失守当日的真实经过，与官方战报不符",
+      "carrier": "NPC：幸存者",
+      "npcs": [
+        "幸存者"
+      ],
+      "flags": [
+        "flag.witness_massacre"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3720"
+    },
+    {
+      "id": "C-21",
+      "name": "渭军俘虏里有一个知道 1192 年真相的人",
+      "carrier": "NPC：被俘尉官",
+      "npcs": [
+        "被俘尉官"
+      ],
+      "flags": [
+        "flag.captured"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3721"
+    },
+    {
+      "id": "C-22",
+      "name": "断线缝合计划的完整版，规定必须在第一场雪前完成",
+      "carrier": "证据：岑砚作战计划",
+      "npcs": [
+        "卫铮",
+        "岑砚"
+      ],
+      "flags": [
+        "flag.rail_progress"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "岑砚指挥所的作战计划",
+          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "后仓岭工程进度表",
+          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "卫铮的口头透露",
+          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由渭军冬装与工程物资的到货时间推出",
+          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3722"
+    },
+    {
+      "id": "C-23",
+      "name": "渭军内部存在反战派，且不只一人",
+      "carrier": "NPC：渭军俘虏",
+      "npcs": [
+        "被俘尉官"
+      ],
+      "flags": [
+        "flag.weijun_adaptation"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3723"
+    },
+    {
+      "id": "C-24",
+      "name": "谈判的真实底线比任何一方公开声称的都更靠后",
+      "carrier": "NPC：谈判代表",
+      "npcs": [
+        "蔺禾"
+      ],
+      "flags": [
+        "flag.whiteflag_record"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3724"
+    },
+    {
+      "id": "C-25",
+      "name": "渭军自动化平台的部署位置已被标定",
+      "carrier": "证据：工程进度表",
+      "npcs": [
+        "卫铮"
+      ],
+      "flags": [
+        "flag.behind_lines"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3725"
+    },
+    {
+      "id": "C-26",
+      "name": "渭军征召兵的士气状况，可由其装束与行军状态判断",
+      "carrier": "场景：渭军营地",
+      "npcs": [
+        "卫铮",
+        "小队成员"
+      ],
+      "flags": [
+        "flag.weijun_adaptation"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3726"
+    },
+    {
+      "id": "C-27",
+      "name": "渭军征召兵中有一个反战组织，在私下串联",
+      "carrier": "NPC：被俘征召兵",
+      "npcs": [
+        "被俘征召兵"
+      ],
+      "flags": [
+        "flag.weijun_adaptation"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3727"
+    },
+    {
+      "id": "C-28",
+      "name": "河湾浅滩的位置可作为渡河点",
+      "carrier": "场景：河湾浅滩",
+      "npcs": [
+        "河民"
+      ],
+      "flags": [
+        "flag.river_crossing"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3728"
+    },
+    {
+      "id": "C-29",
+      "name": "有人在给渭军通报，泄密点在后仓岭一侧",
+      "carrier": "证据：泄露的时间线",
+      "npcs": [
+        "温书迟"
+      ],
+      "flags": [
+        "flag.investigation"
+      ],
+      "tasks": [
+        "Q-07"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3729"
+    },
+    {
+      "id": "C-30",
+      "name": "河民里有一个告密者",
+      "carrier": "NPC：河民",
+      "npcs": [
+        "河民"
+      ],
+      "flags": [
+        "flag.investigation"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3730"
+    },
+    {
+      "id": "C-31",
+      "name": "后仓岭有一条不在图上的小路",
+      "carrier": "场景：后仓岭小路",
+      "npcs": [
+        "卫铮"
+      ],
+      "flags": [
+        "flag.behind_lines"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3731"
+    },
+    {
+      "id": "C-32",
+      "name": "谈判代表里有人收过钱",
+      "carrier": "证据：白楼入住登记、蔺禾记录簿",
+      "npcs": [
+        "蔺禾",
+        "殷其雷"
+      ],
+      "flags": [
+        "flag.whiteflag_record"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3732"
+    },
+    {
+      "id": "C-33",
+      "name": "米线上被劫的货最终流进了敌后",
+      "carrier": "证据：过货流向",
+      "npcs": [
+        "通达行"
+      ],
+      "flags": [
+        "flag.stash_discovered"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3733"
+    },
+    {
+      "id": "C-34",
+      "name": "谈判将在第一场雪后第七日开始",
+      "carrier": "证据：双方炮击频率、住宿登记",
+      "npcs": [
+        "蔺禾",
+        "殷其雷"
+      ],
+      "flags": [
+        "flag.winter"
+      ],
+      "tasks": [
+        "Q-08"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "蔺禾的记录簿",
+          "source": "docs/scenario/S6-断线-战争前线.md:952"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "洄城白楼的入住登记",
+          "source": "docs/scenario/S6-断线-战争前线.md:3748"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "殷其雷知道的\"谁收过钱\"",
+          "source": "docs/scenario/S6-断线-战争前线.md:3748"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由双方同时减少炮击频率推出",
+          "source": "docs/scenario/S6-断线-战争前线.md:3748"
+        }
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3734"
+    },
+    {
+      "id": "C-35",
+      "name": "1184 年中站炮击的死亡数字，远高于公布值",
+      "carrier": "证据：中站炮击伤亡册",
+      "npcs": [
+        "窦长山"
+      ],
+      "flags": [
+        "flag.broken_spirit"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3735"
+    },
+    {
+      "id": "C-36",
+      "name": "1193 年粮荒的真实死亡数字，可由户口与口粮账倒推",
+      "carrier": "证据：户口册、口粮账",
+      "npcs": [
+        "乔万石",
+        "饶三娘"
+      ],
+      "flags": [
+        "flag.supply_cut_days"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3736"
+    },
+    {
+      "id": "C-37",
+      "name": "灰鸢的组建名册是假的，真名从未入册",
+      "carrier": "证据：麻姑的老名单、组建名册原件",
+      "npcs": [
+        "麻姑",
+        "柏岩"
+      ],
+      "flags": [
+        "flag.heiyang_evidence"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S6-断线-战争前线.md:3737"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "窦长山",
+      "alias": "钢笔",
+      "role": "第七战区参谋长，少将",
+      "faction": "己方上级",
+      "drive": "在谈判开始前，让\"晨线行动\"在地图上产生一段可以拿去谈判的推进。",
+      "lever": "他签过 1193 年削减口粮配额的文件——这份文件上有他的字，也有别人的字。",
+      "mask": "温和、讲道理、会称呼下属\"同志\"。",
+      "tell": "每次说\"按计划执行\"之后，会停半秒再补一句理由——那半秒是他自己也不信的时候。",
+      "threshold": "可以牺牲一个营，但不能让\"晨线行动\"在谈判开始前被叫停。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：完成命令、提供准确的前沿情报、在洄城替他说话。下降：抗命、公开质疑、与白旗会合作发表战地记录。"
+      },
+      "knows": [
+        "C-02",
+        "C-05",
+        "C-09"
+      ],
+      "if_dead_or_betrayed": "参谋派群龙无首，前线派的骆敬接管命令链；灰鸢从此收到的命令会变得更保守但更送死（因为前线派需要用战果证明自己），且 C-05 线索永久关闭。",
+      "source": "docs/scenario/S6-断线-战争前线.md:362"
+    },
+    {
+      "id": "npc-02",
+      "name": "骆敬",
+      "alias": "钉子",
+      "role": "第七战区前线督导，上校",
+      "faction": "己方上级",
+      "drive": "在下一轮裁编中保住第九混成旅的番号。",
+      "lever": "他自己的儿子在三营二排。",
+      "mask": "粗暴、只问结果、说话像在吵架。",
+      "tell": "提到自己儿子时会改用第三人称\"那个二排的小子\"。",
+      "threshold": "可以把灰鸢派去填线，但会以个人名义给他们的家属写信。",
+      "attitude": {
+        "affinity": -1,
+        "note": "初始 −1。上升：在战场上顶住、不丢阵地、给他能拿去汇报的战果。下降：丢阵地、抗命、与督战队冲突。"
+      },
+      "knows": [
+        "C-03",
+        "C-06",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "第九混成旅失去在战区的唯一辩护人，第三幕起旅部被拆编并入黑杨支队，玩家编制归属改变，所有\"三营\"相关 flag 重新结算。",
+      "source": "docs/scenario/S6-断线-战争前线.md:373"
+    },
+    {
+      "id": "npc-03",
+      "name": "温书迟",
+      "role": "第七战区作战参谋，中尉（命令的实际撰写者）",
+      "faction": "己方上级",
+      "drive": "证明自己写的方案是对的。",
+      "lever": "他从未去过前沿；一次前沿之行会改变他所有的判断。",
+      "mask": "精确、引经据典、用图纸说话。",
+      "tell": "被当面质疑时会重复对方的最后一个词，然后停顿很久。",
+      "threshold": "可以篡改伤亡数字，但不能承认自己的图纸是错的。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1（他把灰鸢当作自己方案的验证器）。上升：按他的方案打赢。下降：当面指出图纸过时。"
+      },
+      "knows": [
+        "C-02",
+        "C-07",
+        "C-12"
+      ],
+      "if_dead_or_betrayed": "命令链失去唯一会解释理由的人，此后所有命令只给时间与坐标，不给理由；但也意味着玩家可以更容易伪造命令（技术/欺骗 DF −4）。",
+      "source": "docs/scenario/S6-断线-战争前线.md:384"
+    },
+    {
+      "id": "npc-04",
+      "name": "郗鹤年",
+      "role": "督战序列派驻三营的军法官，上尉",
+      "faction": "己方上级",
+      "drive": "把本年度的\"纪律事件\"数字控制在配额以内。",
+      "lever": "他自己有一份没上报的、关于督战队第一次处决的记录。",
+      "mask": "程序正义的执行者，永远先问\"有没有文件\"。",
+      "tell": "记录时会用舌尖顶一下腮，那是他在判断这件事值不值得记。",
+      "threshold": "可以放过一次抗命，只要它没被写进报告。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：主动提交书面报告、配合流程。下降：抗命、威胁、在白旗会面前谈论督战队。"
+      },
+      "knows": [
+        "C-05",
+        "C-10",
+        "C-13"
+      ],
+      "if_dead_or_betrayed": "督战队换一名更年轻、更想立功的继任者，第三幕起所有抗命判定 DF +4，且纪律轴每月自动 −1。",
+      "source": "docs/scenario/S6-断线-战争前线.md:395"
+    },
+    {
+      "id": "npc-05",
+      "name": "乔万石",
+      "role": "辎重序列驻三营的配给官，准尉",
+      "faction": "己方后勤",
+      "drive": "在下次审计到来前，把账面缺口补上。",
+      "lever": "他的账本里有一页不是他的字。",
+      "mask": "大方、好说话、\"兄弟你先拿去用\"。",
+      "tell": "每次给出少于配额的东西之前，会先夸你一句。",
+      "threshold": "可以克扣口粮，但不会克扣药品——他自己的兄弟死在缺药上。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：替他跑腿、给他能入账的东西、不举报。下降：举报、抢他的车、公开质问配额。"
+      },
+      "knows": [
+        "C-04",
+        "C-08",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "配给改为由营部直接发放，数量更准确但频率减半；且配给四轨的\"私储\"判定 DF +4（新配给官不收贿赂，也不通融）。",
+      "source": "docs/scenario/S6-断线-战争前线.md:410"
+    },
+    {
+      "id": "npc-06",
+      "name": "饶三娘",
+      "role": "转运棚的管库女工，四十二岁",
+      "faction": "己方后勤／中立",
+      "drive": "让转运棚的两个孩子活到战争结束。",
+      "lever": "她知道每一批货的真实去向，包括不该知道的那些。",
+      "mask": "粗鲁、什么都不在乎。",
+      "tell": "真正紧张时会把手插进围裙口袋，因为那里藏着账。",
+      "threshold": "可以作伪证，但不肯说出是谁指使她的。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：给她药品、帮她藏东西、不把她推出去。下降：让她在调查中被点名。"
+      },
+      "knows": [
+        "C-04",
+        "C-08",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "转运棚关闭三日，四轨全部 −2；且她藏的那本副账会在三日后出现在郗鹤年手上，C-04 永久关闭但玩家的\"知情\"事实被记录（纪律 −1）。",
+      "source": "docs/scenario/S6-断线-战争前线.md:421"
+    },
+    {
+      "id": "npc-07",
+      "name": "韩熠",
+      "alias": "灰鸢",
+      "role": "三营第七勤务分队队长，上士",
+      "faction": "己方",
+      "drive": "把分队里还活着的人带到换防日。",
+      "lever": "他签过一份\"自愿\"执行晨线行动第三阶段的文件——那不是他自愿的。",
+      "mask": "平静、话少、永远先分配任务再解释。",
+      "tell": "数人数时会用手指点自己的膝盖，点到第七个会停一下。",
+      "threshold": "可以执行送死的命令，但不会让自己的兵去做督战队的活。",
+      "attitude": {
+        "affinity": 2,
+        "note": "初始 +2。上升：保住阵地、带回人、不让他做选择。下降：抗命、让分队减员过半、在上级面前抢他的话。"
+      },
+      "knows": [
+        "C-37",
+        "C-06",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "分队指挥权转入玩家手中（或由补兵秦九思接任，见下），士气轴 −2，纪律轴 +1（上级认为新的指挥更听话）；C-37 的一半内容随他下葬，需从洄城档案馆重建。",
+      "source": "docs/scenario/S6-断线-战争前线.md:436"
+    },
+    {
+      "id": "npc-08",
+      "name": "秦九思",
+      "role": "补兵，列兵（第二幕后可能接任班长）",
+      "faction": "己方",
+      "drive": "弄清楚自己哥哥到底死在哪一年哪一天。",
+      "lever": "他哥哥的名字在 1192 年的烈士名册上被划掉了。",
+      "mask": "听话、勤快、什么都答应。",
+      "tell": "被问到家世时会说\"我家就我一个\"。",
+      "threshold": "可以替任何人挡枪，但一旦发现真相会先去找证据而不是找人。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：告诉他真相、带他去磨石岗、为他说话。下降：隐瞒、把他当消耗品。"
+      },
+      "knows": [
+        "C-11",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "C-11 与 C-16 线索全部关闭；若玩家隐瞒真相而他还活着，第四幕他会私自前往中站，成为一次必须去救的支线（且他会带走分队的一份配给）。",
+      "source": "docs/scenario/S6-断线-战争前线.md:447"
+    },
+    {
+      "id": "npc-09",
+      "name": "柳冬",
+      "role": "分队里的老兵，下士（第三幕起成为减员表的主要对象）",
+      "faction": "己方",
+      "drive": "撑到能领到那笔\"十一年服役金\"。",
+      "lever": "他还有一年零两个月。",
+      "mask": "油滑、爱抱怨、什么都懂一点。",
+      "tell": "真正害怕时会开始讲十一年前的笑话，一个接一个不停。",
+      "threshold": "可以装病、可以偷、但不会在阵地上后退一步。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：听他讲、给他留一份口粮、让他守在熟悉的位置。下降：让他去最前面、嘲笑他、动他的服役金。"
+      },
+      "knows": [
+        "C-03",
+        "C-11",
+        "C-17"
+      ],
+      "if_dead_or_betrayed": "士气轴 −2（他是分队里唯一会讲笑话的人）；他的服役金单据会寄到洄城的一个地址，那里住着一个不姓柳的女人——这是一条纯叙事支线。",
+      "source": "docs/scenario/S6-断线-战争前线.md:458"
+    },
+    {
+      "id": "npc-10",
+      "name": "桑白",
+      "role": "分队的战地医护，列兵",
+      "faction": "己方",
+      "drive": "让\"分类台\"上的第四类少一个人。",
+      "lever": "她曾在一个不该救的人身上用掉了最后一份药品。",
+      "mask": "冷静、按程序、不给希望也不给绝望。",
+      "tell": "救不回来的人，她会记住对方的鞋。",
+      "threshold": "可以违反分类规则救人，只救一次。",
+      "attitude": {
+        "affinity": 2,
+        "note": "初始 +2。上升：帮她抢药品、替她做决定、不让伤员被后送队丢下。下降：让她做分类官、抢她的药品去卖。"
+      },
+      "knows": [
+        "C-09",
+        "C-18",
+        "C-19"
+      ],
+      "if_dead_or_betrayed": "全队医疗判定 DF +4，且每次濒危稳定判定失败计数 +1；C-19 关闭；白旗会的蔺禾（见下）会主动找上玩家并给出一次无偿帮助。",
+      "source": "docs/scenario/S6-断线-战争前线.md:469"
+    },
+    {
+      "id": "npc-11",
+      "name": "柏岩",
+      "role": "黑杨支队支队长，少校",
+      "faction": "己方友军（竞争性）",
+      "drive": "在谈判桌上拿到\"收复磨石岗\"的那一份功劳。",
+      "lever": "他的支队在 1192 年高地失守时不在应该的位置上。",
+      "mask": "豪爽、讲义气、\"有困难找我\"。",
+      "tell": "承诺时用的是\"一定\"，那意味着他会先看值不值。",
+      "threshold": "可以让灰鸢去打前哨，但不会让他们活到能作证。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：把战果让给他、替他掩护。下降：抢他的功劳、向上级报告他的位置问题。"
+      },
+      "knows": [
+        "C-03",
+        "C-11",
+        "C-20"
+      ],
+      "if_dead_or_betrayed": "黑杨支队由一个更愿意合作的上尉接管，第三幕起玩家可获得一次真实的友军支援；但柏岩手里那份关于 1192 年的材料会被公开，导致骆敬的仕途崩塌（连带影响命令链）。",
+      "source": "docs/scenario/S6-断线-战争前线.md:484"
+    },
+    {
+      "id": "npc-12",
+      "name": "费岭",
+      "role": "黑杨支队的侦察班长，中士",
+      "faction": "己方友军",
+      "drive": "找到 1192 年把他弟弟留在高地上的人。",
+      "lever": "他知道柏岩那天在哪，但他要的是那个下令的人。",
+      "mask": "职业、可靠、借东西一定还。",
+      "tell": "提到\"高地\"两个字时会看一眼磨石岗的方向，只看一眼。",
+      "threshold": "可以帮玩家抗命，条件是他要拿到那份材料。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：共享情报、一起上磨石岗、不提他弟弟。下降：拿他弟弟做筹码。"
+      },
+      "knows": [
+        "C-20",
+        "C-11",
+        "C-21"
+      ],
+      "if_dead_or_betrayed": "C-20 关闭；他随身的那份材料会在下一次战斗中出现在渭军手里（被拾获），导致第四幕的谈判筹码归零。",
+      "source": "docs/scenario/S6-断线-战争前线.md:495"
+    },
+    {
+      "id": "npc-13",
+      "name": "岑砚",
+      "role": "铁渭同盟第三集群指挥官，中将",
+      "faction": "敌对",
+      "drive": "在冬天来临前把断线\"缝合\"——让铁路重新通到中站以东。",
+      "lever": "他的计划里有一个必须赶在雨季前完成的时间窗，一旦错过，他会被召回。",
+      "mask": "礼貌、会写便条、对战俘按条例处理。",
+      "tell": "下达会造成重大伤亡的命令时，会先问一句对方的编制人数，而不是位置。",
+      "threshold": "可以牺牲一个团，但不允许在自己防区出现冻死的征召兵。",
+      "attitude": {
+        "affinity": -3,
+        "note": "初始 −3（敌对）。上升：展现职业水准、不虐待俘虏、在敌后不伤平民。下降：屠杀、破坏医疗、杀他的人。"
+      },
+      "knows": [
+        "C-22",
+        "C-23",
+        "C-24"
+      ],
+      "if_dead_or_betrayed": "渭军第三集群陷入三天的指挥混乱，玩家获得一次宝贵的窗口（战役级）；但岑砚的副手卫铮接管后会执行更激进的方案，第五幕难度上调一档。",
+      "source": "docs/scenario/S6-断线-战争前线.md:512"
+    },
+    {
+      "id": "npc-14",
+      "name": "卫铮",
+      "role": "岑砚的副手，上校",
+      "faction": "敌对",
+      "drive": "证明\"缝合\"计划不需要等雨季。",
+      "lever": "他被召回过一次，档案上写的是\"健康原因\"。",
+      "mask": "简洁、效率、不喜欢解释。",
+      "tell": "不同意时会说\"明白\"，然后按自己的意思做。",
+      "threshold": "可以执行任何命令，只要命令是书面的。",
+      "attitude": {
+        "affinity": -2,
+        "note": "初始 −2。上升：给他一个书面命令（哪怕是伪造的）。下降：羞辱他、杀他的传令兵。"
+      },
+      "knows": [
+        "C-22",
+        "C-25"
+      ],
+      "if_dead_or_betrayed": "渭军在走廊中段的协调下降一档（所有协同判定 −1 骰），但三天后由一名更年轻的参谋接管，自动化平台的使用频率翻倍。",
+      "source": "docs/scenario/S6-断线-战争前线.md:523"
+    },
+    {
+      "id": "npc-15",
+      "name": "祁五",
+      "role": "渭军征召兵，二十岁（第二幕的俘虏／可转化角色）",
+      "faction": "敌对→可转化",
+      "drive": "活到他妹妹的生日（还有四个月）。",
+      "lever": "他妹妹住在洄城——他被征走之前住在那里。",
+      "mask": "凶、喊得比谁都响。",
+      "tell": "被问到家乡时会说一个不存在的地名。",
+      "threshold": "可以告密、可以做诱饵，但不会指认平民。",
+      "attitude": {
+        "affinity": -3,
+        "note": "初始 −3。上升：给他食物、不羞辱他、让他写信。下降：把他当人盾、交给督战队。"
+      },
+      "knows": [
+        "C-25",
+        "C-26",
+        "C-21"
+      ],
+      "if_dead_or_betrayed": "C-21 关闭；若他曾被玩家善待而后被己方处决，士气轴 −2（分队里有人会记住这件事），并在第五幕以\"变形回响\"的形式出现。",
+      "source": "docs/scenario/S6-断线-战争前线.md:534"
+    },
+    {
+      "id": "npc-16",
+      "name": "胡兰亭",
+      "role": "渭军的队列纠察官，上尉（督战队的对等角色）",
+      "faction": "敌对",
+      "drive": "把本季度的\"队列事件\"控制在三起以内。",
+      "lever": "他自己签发的处决令有一起是错的，那个人的兄弟还在渭军服役。",
+      "mask": "文雅、爱谈条例、会说\"这是为你们好\"。",
+      "tell": "念名字时会在最后一个名字前停顿，因为那是他自己加的。",
+      "threshold": "可以处决任何人，只要有名册。",
+      "attitude": {
+        "affinity": -3,
+        "note": "初始 −3。上升：无（他不会对己方产生正面态度）。下降：破坏他的名册。"
+      },
+      "knows": [
+        "C-23",
+        "C-25",
+        "C-27"
+      ],
+      "if_dead_or_betrayed": "渭军前沿出现一次短暂的军纪松弛（征召兵士气 +1 档，部分单位会投降而非死战）；但胡兰亭的名册落入玩家手中后，郗鹤年会要求\"按同样标准处理己方人员\"，触发一次道德抉择。",
+      "source": "docs/scenario/S6-断线-战争前线.md:545"
+    },
+    {
+      "id": "npc-17",
+      "name": "柳阿婆",
+      "role": "渭渡的摆渡人，年纪不明",
+      "faction": "中立",
+      "drive": "让河两岸还活着的人都还在河两岸。",
+      "lever": "她有两个儿子，一个在南，一个在北。",
+      "mask": "糊涂、耳背、只会说\"给点什么\"。",
+      "tell": "真正愿意帮你时，她会告诉你水有多深——这是她唯一不收费的信息。",
+      "threshold": "可以摆渡任何人，但不渡带着武器去杀人的。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：不带武器过河、给她药品、帮她找人。下降：在她船上开枪、威胁她。"
+      },
+      "knows": [
+        "C-28",
+        "C-29",
+        "C-30"
+      ],
+      "if_dead_or_betrayed": "渭渡关闭，河民全部撤入地下；穿越无人区的判定 DF +4 且失去唯一的安全路线；C-28 关闭。",
+      "source": "docs/scenario/S6-断线-战争前线.md:560"
+    },
+    {
+      "id": "npc-18",
+      "name": "莫老七",
+      "role": "渭渡自卫团的团长，四十岁",
+      "faction": "中立",
+      "drive": "让自卫团在下一任占领者到来时还能存在。",
+      "lever": "他手上有三十条枪和三十个人，双方都想买。",
+      "mask": "实在、爱讲条件、永远先谈价。",
+      "tell": "真正生气时会用木腿碾地上的石子，一下一下。",
+      "threshold": "可以卖任何人，但会提前告诉被卖的人。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：公平交易、替他挡一次渭军的勒索、不杀他的人。下降：白拿、失信、把自卫团卷进战斗。"
+      },
+      "knows": [
+        "C-28",
+        "C-29",
+        "C-31"
+      ],
+      "if_dead_or_betrayed": "自卫团分裂，一半投渭军，一半散伙；C-31 关闭，敌后路线（第 12 节第四幕）需要重新规划，难度上调。",
+      "source": "docs/scenario/S6-断线-战争前线.md:571"
+    },
+    {
+      "id": "npc-19",
+      "name": "殷其雷",
+      "role": "通达行驻洄城的总管",
+      "faction": "中立／唯利",
+      "drive": "在战争结束前把通达行的车队做到三百辆。",
+      "lever": "他同时卖给渭军的辎重官——这件事一旦被任何一方知道，他就完了。",
+      "mask": "客气、讲信用、\"生意归生意\"。",
+      "tell": "报价之后会补一句\"这个价只到月底\"——月底越近，他越急。",
+      "threshold": "可以卖任何东西，除了能证明他通敌的文件。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：付现金、不赊账、给他能转卖的货。下降：抢、威胁、把他的名字写进报告。"
+      },
+      "knows": [
+        "C-04",
+        "C-08",
+        "C-32"
+      ],
+      "if_dead_or_betrayed": "通达行撤出走廊，黑市补给全部中断（配给四轨只能靠正式配额）；且他手上的那份\"通敌证据\"会在第三幕寄给郗鹤年，指向玩家。",
+      "source": "docs/scenario/S6-断线-战争前线.md:586"
+    },
+    {
+      "id": "npc-20",
+      "name": "邵平",
+      "role": "通达行的车队押运，二十四岁",
+      "faction": "中立／唯利",
+      "drive": "攒够钱离开砚洲。",
+      "lever": "他有一个在渭军服役的兄弟，靠通达行的渠道通信。",
+      "mask": "热情、话多、什么都答应。",
+      "tell": "撒谎时会提到他兄弟，说一个具体的、对不上的细节。",
+      "threshold": "可以做走私、可以做向导，但不肯开枪。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：给小费、帮他带私货、不问他的兄弟。下降：举报他、让他上前沿。"
+      },
+      "knows": [
+        "C-08",
+        "C-29",
+        "C-33"
+      ],
+      "if_dead_or_betrayed": "通达行停止向灰鸢出售任何非配额物资；C-33 关闭；他的兄弟会在第四幕以敌体\"渭军辎重官\"的身份出现，且带着一张玩家的照片。",
+      "source": "docs/scenario/S6-断线-战争前线.md:597"
+    },
+    {
+      "id": "npc-21",
+      "name": "蔺禾",
+      "role": "白旗会驻走廊的专员",
+      "faction": "中立",
+      "drive": "把这场战争的每一天都记下来，好让将来有人能查。",
+      "lever": "她的册子上有双方的名字，包括该为某些事负责的人。",
+      "mask": "克制、中立、不评价任何一方。",
+      "tell": "听到不真实的伤亡数字时，会重复一遍那个数字——只重复数字，不说话。",
+      "threshold": "可以隐瞒一件事，只为换另一件事被记录。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：提供真实信息、保护伤员、允许她记录。下降：伪造、阻止她记录、在她的帐篷里动手。"
+      },
+      "knows": [
+        "C-18",
+        "C-09",
+        "C-34",
+        "C-35"
+      ],
+      "if_dead_or_betrayed": "白旗会撤出走廊，所有中立救护停止；她的册子会由另一名专员带走，第五幕以\"外部证据\"的形式出现——如果玩家做过脏事，那本册子会成为结局判定的关键。",
+      "source": "docs/scenario/S6-断线-战争前线.md:612"
+    },
+    {
+      "id": "npc-22",
+      "name": "傅明夷",
+      "role": "白旗会的分类官（驻白棚）",
+      "faction": "中立",
+      "drive": "让有限的座位去到最可能被救活的人身上。",
+      "lever": "他曾经把一位军官的亲属分进了\"马上\"这一类。",
+      "mask": "冷酷、机械、不给解释。",
+      "tell": "做出让他自己不安的决定后，会去停尸棚站一分钟。",
+      "threshold": "可以违反自己的标准一次，只要有人替他签字。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：替他签字、不闹事、理解他的工作。下降：威胁他、抢床位、当众质疑。"
+      },
+      "knows": [
+        "C-09",
+        "C-18",
+        "C-36"
+      ],
+      "if_dead_or_betrayed": "白棚改用纯资历排序，玩家队伍的伤员后送优先级降到最后；C-36 关闭，且\"晨线行动\"的政治正当性无法被质疑。",
+      "source": "docs/scenario/S6-断线-战争前线.md:623"
+    },
+    {
+      "id": "npc-23",
+      "name": "老卓",
+      "role": "哑塔值机员，独守两年",
+      "faction": "己方",
+      "drive": "让塔再响一次",
+      "lever": "他私藏了一组新电池",
+      "tell": "听到电流声时会跟着哼",
+      "if_dead_or_betrayed": "哑塔彻底失效，命令链第三幕强制走\"延迟\"分支",
+      "source": "docs/scenario/S6-断线-战争前线.md:642"
+    },
+    {
+      "id": "npc-24",
+      "name": "苏勉",
+      "role": "战区测绘组，少尉",
+      "faction": "己方",
+      "drive": "画一张真的地图",
+      "lever": "他画了，但不敢交",
+      "tell": "交图时手指会压住某个坐标",
+      "if_dead_or_betrayed": "真图失踪，玩家需自己测绘（DF +2）",
+      "source": "docs/scenario/S6-断线-战争前线.md:643"
+    },
+    {
+      "id": "npc-25",
+      "name": "郑四",
+      "role": "辎重队司机",
+      "faction": "己方",
+      "drive": "把车开到第九公里不陷",
+      "lever": "他欠通达行一笔钱",
+      "tell": "每次过弯都骂同一句话",
+      "if_dead_or_betrayed": "补给到达表权重恶化，四轨 −1",
+      "source": "docs/scenario/S6-断线-战争前线.md:644"
+    },
+    {
+      "id": "npc-26",
+      "name": "卜岸",
+      "role": "铁砧棱线 K-4 塔观测员",
+      "faction": "敌对",
+      "drive": "活到换防日",
+      "lever": "他的观测记录是己方最想要的东西",
+      "tell": "换班时会数自己的子弹",
+      "if_dead_or_betrayed": "渭军前沿观测失效一幕，炮击频率减半",
+      "source": "docs/scenario/S6-断线-战争前线.md:645"
+    },
+    {
+      "id": "npc-27",
+      "name": "麻姑",
+      "role": "碎镜滩上的拾荒老人",
+      "faction": "中立",
+      "drive": "每天捡够一顿饭的铁",
+      "lever": "她知道滩上哪里埋着什么",
+      "tell": "说谎时会报一个太大的数字",
+      "if_dead_or_betrayed": "碎镜滩的战壕发现表结果降级一档",
+      "source": "docs/scenario/S6-断线-战争前线.md:646"
+    },
+    {
+      "id": "npc-28",
+      "name": "谢六",
+      "role": "己方逃兵，藏在骡道",
+      "faction": "己方（脱队）",
+      "drive": "去洄城，别被抓到",
+      "lever": "他见过 1192 年那辆车",
+      "tell": "每次说\"我不是逃兵\"",
+      "if_dead_or_betrayed": "C-08 关闭；督战队会在骡道设卡，玩家后续穿越 DF +3",
+      "source": "docs/scenario/S6-断线-战争前线.md:647"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "灰鸢哨线 · 第七支撑点（H-7）",
+      "atmosphere": "土是黄的，闻起来有石灰和尿味。掩体壁上钉着四任班长留下的东西：一枚钉子、一张照片、一道刻痕、一个谁也不敢动的铁盒。夜里风从北面来，把碎镜滩的焦味送进来。",
+      "unlock": "开局可用",
+      "key_places": [
+        "一号机枪位（朝东北，射界覆盖 C3 的旧弹坑群；枪位下方埋着 1192 年的弹药箱，可挖，DF 12）",
+        "班用掩体（\"老鼠洞\"）（六人容量，顶板是铁轨；天花板上有前任班长用炭写的字，只认得出\"别上 114\"）",
+        "前沿观察缝（可观察 D3/E3 的磨石岗西坡；观测判定 +1 骰，但暴露后会被敌方狙击组标定）",
+        "后侧弹药窖（配给轨的物理载体；上锁，钥匙在辎重官手上——也在班长手上）",
+        "水点（一条从北面渗下来的地下水线，每天能接两壶；水里有铁锈味，长期饮用需要耐受 DF 12）"
+      ],
+      "encounters": "纠缠 40%（夜间渗透组 d20=5–6 时）、标准 70%（敌方巡逻接触）、严酷 100%（磨石岗反击的余波）",
+      "resources": "配给发放点（每幕一次）、营部命令投递、班用物资、前任班长遗留物",
+      "if_botched": "支撑点被放弃后，整条 H-7 哨线后撤至 2 带以南，米线终点暴露在直射火力下，第三幕起所有补给到达判定 DF +4",
+      "source": "docs/scenario/S6-断线-战争前线.md:171"
+    },
+    {
+      "id": "loc-02",
+      "name": "碎镜滩（无人区）",
+      "atmosphere": "十一年炮击把地表烧成了一层玻璃状的熔渣壳，踩上去会碎，声音很脆。这里的声音传得特别远，所以所有人到这里都会不自觉地压低嗓子——虽然没人规定要这么做。",
+      "unlock": "需穿越，潜行/生存 DF 14；夜间 −2 DF，但照明劣势 −1 骰",
+      "key_places": [
+        "旧弹坑群 C3（直径十二米，边缘堆着双方尸体；坑底有 1192 年的装备，可搜；坑内是唯一在白天也不被观测到的地方）",
+        "铁丝网缺口 E3（己方工兵留的\"后门\"，渭军也知道；双方都在这里设过伏击）",
+        "熔渣高地 G3（一小块凸起的黑玻璃壳，视野好，但站上去会反光——察觉判定对己方 +1 骰，对敌方同样）",
+        "\"白树\"（一棵被剥了皮的死树，是双方心照不宣的分界标记；树上钉着白旗会的标牌）"
+      ],
+      "encounters": "巡逻遭遇（标准 70%）、敌方渗透组（纠缠 40%）、自动化平台（随机）",
+      "resources": "双方阵亡者的遗物、未爆弹药（可做爆破材料）、尸体上的身份牌（情报）",
+      "if_botched": "若在此地被俘或留下明显痕迹，渭军会修正对 H-7 的火力标定，第二幕起哨线每日遭受一次额外炮击（负担 +1/日）",
+      "source": "docs/scenario/S6-断线-战争前线.md:185"
+    },
+    {
+      "id": "loc-03",
+      "name": "磨石岗 · 114 高地",
+      "atmosphere": "一座不高的石岗，顶上什么也没长。风大，云影跑得很快。从顶上能看见中站的断口，能看见米线的车灯，也能看见渭军后仓岭的炊烟——所以双方都想要它，所以双方都上不去太久。",
+      "unlock": "flag.chapter >= 2（第一幕只能远观与测绘）",
+      "key_places": [
+        "西坡旧掩体群（1186 年与 1192 年两层工事叠在一起；内有两任守军的遗物与一份被烧了一半的守备日志）",
+        "顶部观测位（占领后：己方炮兵观测 DF −4，且可呼叫火力支援；失去后：渭军获得同等优势）",
+        "东坡反斜面（渭军的进攻集结地；有他们的掩体、热水桶、以及一封没寄出的家信）",
+        "岗下的石缝泉（唯一的水源，两方都在里面下过东西）"
+      ],
+      "encounters": "严酷 100%（争夺战）、致命 140%（渭军投入装甲时）",
+      "resources": "观测权（战役级收益）、1186/1192 年守备日志（三条主线线索之一）、渭军丢弃的装备",
+      "if_botched": "若高地丢失且玩家未能撤回，整个第二幕的战线判定向东移动一格，晨线行动第二阶段失败，第三幕起己方上级对灰鸢的信任（= 纪律）−2",
+      "source": "docs/scenario/S6-断线-战争前线.md:198"
+    },
+    {
+      "id": "loc-04",
+      "name": "中站废墟（断口）",
+      "atmosphere": "一整座编组站被压平成一层铁皮和枕木的混合物。铁轨在断口处向外翻，像被掰断的骨头。风穿过空车厢的骨架时会响，声音很像汽笛——新兵经常听错。",
+      "unlock": "flag.chapter >= 3 或 flag.mid_station_lead == true",
+      "key_places": [
+        "断口本体（两截铁轨相距 4 米；这里是\"断线\"这个名字的来源，也是谈判代表最想在地图上画清楚的地方）",
+        "下层调度室（被埋，入口在一节翻倒的守车下；调度板还在，上面的指示灯 1184 年秋天全部变成红色后就没再变过）",
+        "编组场金库（传说中站被疏散前，员工的工资与一批货单锁在这里；技术开锁 DF 18，爆破 DF 14 但有塌方风险）",
+        "守车残骸（白旗会曾在这里设过一个临时救护点；墙上有血手印）"
+      ],
+      "encounters": "标准 70%（渭军警戒分队）、纠缠 40%（拾荒者）",
+      "resources": "1183 年煤车事件的货运单存根（主线关键线索）、战前铁路图纸（可使米线的补给到达 +1）、废铁（工兵材料）",
+      "if_botched": "若在此引发大规模交火，白旗会宣布该区域不再是中立救护点，第四幕起所有己方伤员后送 DF +4",
+      "source": "docs/scenario/S6-断线-战争前线.md:211"
+    },
+    {
+      "id": "loc-05",
+      "name": "米线 · 三号土路",
+      "atmosphere": "晴天是灰，雨天是浆。路两边每隔两百米有一个被翻倒的车厢壳，那是给司机在炮击时躲的。司机们管这条路叫\"米线\"，因为最早运的是米；现在运的还是米，只是更少了。",
+      "unlock": "第一幕即可使用，但需 flag.supply_route_known",
+      "key_places": [
+        "第九公里弯道（著名的陷车点；渭军炮兵标定过这里，通过时每车需一次 DF 14 的操舵或运气判定）",
+        "转运棚（辎重序列的中转站；辎重官在这里做账，也是贪污发生的地方）",
+        "骡道入口（1191 年之前的旧路，走私者与逃兵在用；潜行 DF 10）",
+        "通达行的车场（民间商会的车队停在这里，他们有通行证，你们没有）"
+      ],
+      "encounters": "纠缠 40%（劫道的逃兵）、标准 70%（炮击封锁）",
+      "resources": "补给（四轨的主要来源）、通达行的黑市、逃兵情报",
+      "if_botched": "若米线被切断超过 3 日，四轨全部每日 −1，且士气每日 −1；若玩家抢劫通达行车队，声望（通达行）−3，此后所有补给需额外 DF",
+      "source": "docs/scenario/S6-断线-战争前线.md:224"
+    },
+    {
+      "id": "loc-06",
+      "name": "洄城（后方城镇）",
+      "atmosphere": "距离前线七十公里，所以在城里能买到热的东西。城里有咖啡替代品、有洗衣房、有还在营业的照相馆、有一整条街的酒馆。也有宪兵、有征兵站、有从前方送回来的、盖着白布的东西。",
+      "unlock": "flag.chapter >= 1（换防、休整、送伤员、受审都会来）",
+      "key_places": [
+        "联防议会大厦（白楼，谈判代表住在这里；第七战区司令部在地下二层）",
+        "旧粮仓区（黑市与通达行总部；什么都卖，包括命令）",
+        "洄城档案馆（C 柜有战前铁路图纸与 1187 年的处决记录；调阅需人脉 DF 14）",
+        "后方医院（\"两千人医院\"）（床位 2,000，常满；这里有本册最好的医疗资源与最糟的消息）",
+        "车站广场（复员兵与伤兵聚集；也是谣言与真相混杂最厉害的地方）"
+      ],
+      "encounters": "无战斗遭遇；交涉论战为主（`03` 第二节）",
+      "resources": "休整（负担 −2）、情报、补给采购、命令的上游来源、政治支线",
+      "if_botched": "若在洄城造成公开丑闻，纪律 −2，且第七战区会把灰鸢\"借调\"给最危险的任务（第 10 节命令表的权重改变）",
+      "source": "docs/scenario/S6-断线-战争前线.md:237"
+    },
+    {
+      "id": "loc-07",
+      "name": "渭渡 · 河谷地带",
+      "atmosphere": "渭河在这里拐了个弯，冲出一片淤积地。芦苇长得比人高。河两岸的人都还住在这里——他们不属于任何一方，或者说他们先后属于过两方。",
+      "unlock": "flag.river_people_contact >= 0（需先与河民接触）",
+      "key_places": [
+        "渡口（老船）（一个姓柳的老人摆渡，收费方式是\"你有什么\"）",
+        "河民聚落（半地下）（三十户人家，屋顶上种菜，地下藏粮）",
+        "自卫团的哨棚（地方武装，旗帜是灰的，因为他们不想被任何一方认出来）",
+        "河湾浅滩（可涉渡，水深及腰；渭军装甲无法通过——这是本册唯一一条不用打就能过去的路）"
+      ],
+      "encounters": "纠缠 40%（自卫团的盘查）、标准 70%（渭军巡逻艇）",
+      "resources": "河民的向导（穿越无人区 DF −4）、地方情报、一条不被双方记录的路线（战役级）",
+      "if_botched": "若对河民使用暴力，声望（河民）−3，此后所有穿越无人区的判定 DF +4，且河民会向渭军通报玩家的行踪",
+      "source": "docs/scenario/S6-断线-战争前线.md:251"
+    },
+    {
+      "id": "loc-08",
+      "name": "铁砧棱线（敌前沿）",
+      "atmosphere": "渭军的前沿是一道人工削出来的土棱，像一道横在地面上的疤。棱线后面有热食的味道飘过来——这是最让人难以忍受的部分。",
+      "unlock": "flag.chapter >= 3 或 flag.behind_lines == true",
+      "key_places": [
+        "观察塔（编号 K-4）（渭军的观测位；塔上有他们的观测员与一套比己方好的光学设备）",
+        "前沿堑壕 A 段（标准渭军步兵班的配置；内有他们的班用物资、家信、以及一台还能用的热食炉）",
+        "火力点（编号 灰七）（机枪掩体，射界覆盖 E3 的铁丝网缺口）",
+        "纠察队哨位（督战队的对等单位；这里关押过自己人）"
+      ],
+      "encounters": "严酷 100%、致命 140%（若触发警报）",
+      "resources": "渭军部署图（主线关键）、渭军装备（可逆向）、俘虏",
+      "if_botched": "若在此被俘且未逃脱，进入\"俘虏\"支线（见第 12 节第四幕分支），战线推进图对玩家不可见",
+      "source": "docs/scenario/S6-断线-战争前线.md:264"
+    },
+    {
+      "id": "loc-09",
+      "name": "后仓岭（敌后）",
+      "atmosphere": "渭军的后勤地带。有仓库、有车场、有野战邮局、有一座没被炸的桥。这里的人走路比前沿慢，因为他们不着急。",
+      "unlock": "flag.chapter >= 4 且 flag.river_people_contact >= 2",
+      "key_places": [
+        "三号仓库群（弹药囤积点；爆破它等于替己方打掉一次炮击）",
+        "野战邮局（渭军的信件在这里分拣——本册最好的情报来源，也是最好的道德困境来源）",
+        "车场与修理所（装甲单位的维护点；有一辆正在修的指挥车）",
+        "岑砚的前进指挥所（一座砖房，外表是学校）"
+      ],
+      "encounters": "标准 70%（后方警卫）、严酷 100%（若被发现）",
+      "resources": "岑砚的作战计划（主线终局线索）、爆破机会、渭军的药品（己方最缺的东西）",
+      "if_botched": "若在敌后被俘，直接进入第 12 节的灰色结局分支之一",
+      "source": "docs/scenario/S6-断线-战争前线.md:277"
+    },
+    {
+      "id": "loc-10",
+      "name": "哑塔（通信中继站）",
+      "atmosphere": "一座四十米高的铁架，上面全是天线。它一半的时间是坏的。通信兵管它叫\"哑塔\"，因为它不说话，只发出一种让人牙酸的电流声。",
+      "unlock": "flag.chapter >= 1（第一幕主线场景之一）",
+      "key_places": [
+        "值机房（三台机器，两台坏的；值机员一个人守了两年）",
+        "电缆沟（被炮击切断过七次，接了七次；接头是工兵的手艺）",
+        "塔顶（视野覆盖整个走廊西段；爬上去 DF 12，但也会被渭军观测到）",
+        "地下电池室（供电靠一组老化的蓄电池；这是哑塔真正的瓶颈）"
+      ],
+      "encounters": "纠缠 40%（敌方渗透组专门来剪线）",
+      "resources": "通信权（= 命令链的\"执行\"分支能否成功的关键）、敌方通信监听（情报）、电池（可挪用为其他用途——这是第 5 节的经典道德困境）",
+      "if_botched": "若电池被挪用或塔被炸，命令链状态机在接下来一幕内强制走\"执行失败\"分支，且营部会派一名联络官来\"协助\"（实际上监视）",
+      "source": "docs/scenario/S6-断线-战争前线.md:290"
+    },
+    {
+      "id": "loc-11",
+      "name": "白棚（野战医院与后送链）",
+      "atmosphere": "一排白帆布棚子，从远处看像晾着很多床单。棚子里很亮，因为要做手术。棚子外面很暗，因为等的人太多。医生们说话都很短。",
+      "unlock": "第一次有队员濒危后自动解锁",
+      "key_places": [
+        "分类台（伤员在这里被分成四类：能走、等着、马上、不用等了）",
+        "手术棚（两台手术台；一台是白旗会的，一台是己方的）",
+        "白旗会的帐篷（中立区；渭军伤员也在里面——这是本册最不舒服的场景）",
+        "后送车队（每天一班，去洄城；座位有限，谁上谁不上由分类官决定）",
+        "停尸棚（编号从 1 开始，现在到 4,000 多）"
+      ],
+      "encounters": "无战斗；交涉与道德抉择为主",
+      "resources": "医疗（负担 −1、创伤 −1）、白旗会的记录簿（情报）、与渭军伤员的接触（分支来源）",
+      "if_botched": "若强行抢夺后送席位或袭击白旗会，声望（白旗会）−3，此后所有己方伤员不再被中立区接收",
+      "source": "docs/scenario/S6-断线-战争前线.md:303"
+    },
+    {
+      "id": "loc-12",
+      "name": "泥沼段（季节性地带）",
+      "atmosphere": "每年秋雨之后，走廊中段会化开一片长约三公里的稀泥。骡子陷进去要两个人拉。装甲车陷进去就留在那里。泥里有很多东西。",
+      "unlock": "flag.chapter >= 2 且 季节 == 雨（第一幕为旱季，不可进入）",
+      "key_places": [
+        "陷车场（七辆车的残骸，其中一辆是己方 1192 年的输送车，车里还有货）",
+        "泥下工事（渭军曾试图在这里修工事，放弃了；留下半完工的掩体与一批材料）",
+        "排水沟（被堵塞）（工兵疏通它可以让泥沼段在一幕内变为可通行，也可以用它放水淹掉渭军的一段堑壕）",
+        "\"漂着的\"（泥里时不时会浮出东西：尸体、箱子、以及不该在这里出现的文件）"
+      ],
+      "encounters": "标准 70%（陷车时被巡逻发现）",
+      "resources": "1192 年输送车的货（配给四轨的大额补给）、工兵材料、随机情报",
+      "if_botched": "若在泥沼段被围困超过 4 小时，全员获得 1 层【疲惫】与 +1 负担，且装备损坏风险判定（每次移动一次）",
+      "source": "docs/scenario/S6-断线-战争前线.md:317"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-a",
+      "name": "A · 活着，并且赢了这一次",
+      "type": "最好结局",
+      "requirements": "阻止缝合 且 flag.command_1192 = true（取得 1192 年撤退命令） 且 减员 ≤ 1/3 且 flag.dirty_hands ≤ 1 且 flag.whiteflag_record ≥ 2",
+      "result": "铁路没接上。撤退命令被交到了谈判代表手上——它不是用来定罪的，是用来证明\"这段战线从来不是被攻下来的\"。谈判在雪后第七日开始，D–F 段被划为非军事区。灰鸢分队被解散，成员分别复员。他们在洄城车站分别，谁也没说\"再见\"，因为这个词在十一年里已经被用坏了。这是本册最好的结局，而它依然不是胜利——它只是：你们活下来了，而且还是你们自己。",
+      "source": "docs/scenario/S6-断线-战争前线.md:3916"
+    },
+    {
+      "id": "ending-b",
+      "name": "B · 赢了但代价惨重",
+      "type": "惨胜",
+      "requirements": "阻止了缝合（或拖延到冬天）但：己方减员 ≥ 半数，或 flag.dirty_hands ≥ 3，或 flag.witness_massacre = true",
+      "result": "铁路没接上。第一场雪下了，工程停了。你们守住了 D–E 段，代价是分队从十二人变成五人。韩熠在报告上签字时手是抖的。桑白把最后一个药品包留给了别人。第二年，有人在磨石岗的西坡立了一块木牌，上面刻着七个名字，其中两个是错的——因为没人记得清。你们改变了战线，但再也变不回自己。",
+      "source": "docs/scenario/S6-断线-战争前线.md:3915"
+    },
+    {
+      "id": "ending-c",
+      "name": "C · 抗命后被迫逃亡",
+      "type": "灰色结局",
+      "requirements": "flag.defiance_record = true 且 flag.investigation = true 且 Q-09 失败，或 flag.captured 后逃脱且拒绝归队",
+      "result": "你们没有叛国，你们只是没有执行一道命令。但文件上不是这么写的。灰鸢分队被撤销，成员被分别调往不同的前哨——有些人去了。有些人没有。没有去的那些，在洄城的旧粮仓区有一个共同的住处，用假名字。战争结束那天，他们的名字不在任何一份名单上。他们赢了那一次战斗，也失去了自己的名字。",
+      "source": "docs/scenario/S6-断线-战争前线.md:3914"
+    },
+    {
+      "id": "ending-d",
+      "name": "D · 活下来但输了",
+      "type": "失败存活",
+      "requirements": "flag.rail_sewn = true",
+      "result": "铁路接通了。渭军的重载列车第一次开过中站。你们被撤回二线，活了下来，编制完整，甚至补了新兵。第二年春天，上级发给你们一份嘉奖，理由是\"在困难条件下维持了阵地\"。你们谁也没把那份嘉奖挂在墙上。你们活着，但那条线不再断着——这是你们没能阻止的事。",
+      "source": "docs/scenario/S6-断线-战争前线.md:3913"
+    },
+    {
+      "id": "ending-e",
+      "name": "E · 瓦解",
+      "type": "彻底失败",
+      "requirements": "士气 = 0 且 统率 DF 18 失败，或全队覆灭",
+      "result": "灰鸢分队从编制上被划掉。名字出现在洄城的一面墙上，与另外 4,000 多个名字在一起。没有人为他们说话，除了蔺禾——她在册子上为他们写了一整页，但那一页上没有战果，只有名字。这是本册唯一的\"彻底失败\"结局。",
+      "source": "docs/scenario/S6-断线-战争前线.md:3912"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S6-断线-战争前线.md:2899",
+    "declared_flag_count": 36,
+    "actual_flag_count": 36,
+    "flag": [
+      {
+        "id": "flag.chapter",
+        "type": "int",
+        "initial": 1,
+        "write": "每幕结束",
+        "readers": "全部任务状态机、区域解锁",
+        "effect": "幕次主控",
+        "universal": true,
+        "source": "docs/scenario/S6-断线-战争前线.md:2905"
+      },
+      {
+        "id": "flag.day",
+        "type": "int",
+        "initial": 1,
+        "write": "每个\"日\"结束",
+        "readers": "配给四轨结算",
+        "effect": "断供天数",
+        "source": "docs/scenario/S6-断线-战争前线.md:2906"
+      },
+      {
+        "id": "flag.frontline_col",
+        "type": "str",
+        "initial": "F",
+        "write": "每幕战线结算",
+        "readers": "战线推进图、区域解锁",
+        "effect": "玩家所在地段",
+        "source": "docs/scenario/S6-断线-战争前线.md:2907"
+      },
+      {
+        "id": "flag.ms_gang_owner",
+        "type": "str",
+        "initial": "W",
+        "write": "磨石岗争夺结算",
+        "readers": "Q-03、观测判定",
+        "effect": "高地归属",
+        "source": "docs/scenario/S6-断线-战争前线.md:2908"
+      },
+      {
+        "id": "flag.mid_station_control",
+        "type": "str",
+        "initial": "none",
+        "write": "中站争夺结算",
+        "readers": "Q-06、谈判筹码",
+        "effect": "断口归属",
+        "source": "docs/scenario/S6-断线-战争前线.md:2909"
+      },
+      {
+        "id": "flag.rail_sewn",
+        "type": "bool",
+        "initial": false,
+        "write": "渭军铺轨达 60 米",
+        "readers": "Q-10、结局判定",
+        "effect": "结局 D",
+        "source": "docs/scenario/S6-断线-战争前线.md:2910"
+      },
+      {
+        "id": "flag.rail_progress",
+        "type": "int",
+        "initial": 0,
+        "write": "每幕渭军工程推进",
+        "readers": "Q-10",
+        "effect": "倒计时",
+        "source": "docs/scenario/S6-断线-战争前线.md:2911"
+      },
+      {
+        "id": "flag.dirty_hands",
+        "type": "int",
+        "initial": 0,
+        "write": "每次灰色行为",
+        "readers": "结局判定、蔺禾记录",
+        "effect": "结局质量",
+        "source": "docs/scenario/S6-断线-战争前线.md:2912"
+      },
+      {
+        "id": "flag.defiance_record",
+        "type": "bool",
+        "initial": false,
+        "write": "抗命失败/伪造失败",
+        "readers": "郗鹤年对白树、Q-09",
+        "effect": "调查启动条件",
+        "source": "docs/scenario/S6-断线-战争前线.md:2913"
+      },
+      {
+        "id": "flag.unreliable_unit",
+        "type": "bool",
+        "initial": false,
+        "write": "士气≥5 且 纪律≤2，或抗命灾难",
+        "readers": "G-04 督战队登场、命令表权重",
+        "effect": "督战队随队",
+        "source": "docs/scenario/S6-断线-战争前线.md:2914"
+      },
+      {
+        "id": "flag.broken_spirit",
+        "type": "bool",
+        "initial": false,
+        "write": "纪律≥5 且 士气≤1",
+        "readers": "所有非战斗判定",
+        "effect": "凯旋降级",
+        "source": "docs/scenario/S6-断线-战争前线.md:2915"
+      },
+      {
+        "id": "flag.investigation",
+        "type": "bool",
+        "initial": false,
+        "write": "flag.defiance_record 且 rep.command ≤ 0",
+        "readers": "Q-09 开启",
+        "effect": "第五幕分支",
+        "source": "docs/scenario/S6-断线-战争前线.md:2916"
+      },
+      {
+        "id": "flag.mid_station_lead",
+        "type": "bool",
+        "initial": false,
+        "write": "获得中站线索",
+        "readers": "Q-06 前置",
+        "effect": "提前解锁中站",
+        "source": "docs/scenario/S6-断线-战争前线.md:2917"
+      },
+      {
+        "id": "flag.river_people_contact",
+        "type": "int",
+        "initial": 0,
+        "write": "与河民交涉",
+        "readers": "Q-05、区域 7 解锁",
+        "effect": "河民关系",
+        "source": "docs/scenario/S6-断线-战争前线.md:2918"
+      },
+      {
+        "id": "flag.river_crossing",
+        "type": "bool",
+        "initial": false,
+        "write": "成功渡河",
+        "readers": "Q-08 前置",
+        "effect": "敌后路线",
+        "source": "docs/scenario/S6-断线-战争前线.md:2919"
+      },
+      {
+        "id": "flag.behind_lines",
+        "type": "bool",
+        "initial": false,
+        "write": "进入后仓岭",
+        "readers": "区域 8/9 解锁",
+        "effect": "敌后场景",
+        "source": "docs/scenario/S6-断线-战争前线.md:2920"
+      },
+      {
+        "id": "flag.supply_route_known",
+        "type": "bool",
+        "initial": false,
+        "write": "得知米线",
+        "readers": "区域 5 解锁",
+        "effect": "补给线可用",
+        "source": "docs/scenario/S6-断线-战争前线.md:2921"
+      },
+      {
+        "id": "flag.railmap",
+        "type": "bool",
+        "initial": false,
+        "write": "取得战前铁路图纸",
+        "readers": "补给到达表 +2",
+        "effect": "补给效率",
+        "source": "docs/scenario/S6-断线-战争前线.md:2922"
+      },
+      {
+        "id": "flag.real_map_made",
+        "type": "bool",
+        "initial": false,
+        "write": "Q-02 成功",
+        "readers": "命令荒谬度 −2",
+        "effect": "命令质量",
+        "source": "docs/scenario/S6-断线-战争前线.md:2923"
+      },
+      {
+        "id": "flag.real_map_hidden",
+        "type": "bool",
+        "initial": false,
+        "write": "Q-02 succeeded_dirty",
+        "readers": "rep.command −1",
+        "effect": "隐藏收益",
+        "source": "docs/scenario/S6-断线-战争前线.md:2924"
+      },
+      {
+        "id": "flag.tower_fixed",
+        "type": "bool",
+        "initial": false,
+        "write": "Q-01 成功",
+        "readers": "命令链\"执行\"分支",
+        "effect": "通信可用",
+        "source": "docs/scenario/S6-断线-战争前线.md:2925"
+      },
+      {
+        "id": "flag.battery_diverted",
+        "type": "bool",
+        "initial": false,
+        "write": "挪用哑塔电池",
+        "readers": "燃料轨 −2、命令链延迟",
+        "effect": "道德账",
+        "source": "docs/scenario/S6-断线-战争前线.md:2926"
+      },
+      {
+        "id": "flag.heiyang_rivalry",
+        "type": "int",
+        "initial": 0,
+        "write": "与黑杨支队互动",
+        "readers": "Q-03 aborted 分支",
+        "effect": "抢功冲突",
+        "source": "docs/scenario/S6-断线-战争前线.md:2927"
+      },
+      {
+        "id": "flag.heiyang_evidence",
+        "type": "bool",
+        "initial": false,
+        "write": "取得 1192 年材料",
+        "readers": "G-06 柏岩对白树",
+        "effect": "可敌对化",
+        "source": "docs/scenario/S6-断线-战争前线.md:2928"
+      },
+      {
+        "id": "flag.qiwu_recruited",
+        "type": "bool",
+        "initial": false,
+        "write": "Q-07 recruited",
+        "readers": "第四幕、结局",
+        "effect": "祁五成为队友",
+        "source": "docs/scenario/S6-断线-战争前线.md:2929"
+      },
+      {
+        "id": "flag.qiwu_killed",
+        "type": "bool",
+        "initial": false,
+        "write": "祁五被己方处决",
+        "readers": "士气 −2、回响",
+        "effect": "第五幕变形回响",
+        "source": "docs/scenario/S6-断线-战争前线.md:2930"
+      },
+      {
+        "id": "flag.looting_done",
+        "type": "bool",
+        "initial": false,
+        "write": "首次掠夺",
+        "readers": "R-09 掠夺后遗症表",
+        "effect": "声望与士气",
+        "source": "docs/scenario/S6-断线-战争前线.md:2931"
+      },
+      {
+        "id": "flag.whiteflag_record",
+        "type": "int",
+        "initial": 0,
+        "write": "与蔺禾的每次交涉",
+        "readers": "结局判定（正面证据）",
+        "effect": "抵消 dirty_hands",
+        "source": "docs/scenario/S6-断线-战争前线.md:2932"
+      },
+      {
+        "id": "flag.command_1192",
+        "type": "bool",
+        "initial": false,
+        "write": "取得未上报的撤退命令",
+        "readers": "Q-09、L-06 掉落",
+        "effect": "最强谈判筹码",
+        "source": "docs/scenario/S6-断线-战争前线.md:2933"
+      },
+      {
+        "id": "flag.captured",
+        "type": "bool",
+        "initial": false,
+        "write": "在敌后被俘",
+        "readers": "第四幕分支",
+        "effect": "灰色结局",
+        "source": "docs/scenario/S6-断线-战争前线.md:2934"
+      },
+      {
+        "id": "flag.witness_massacre",
+        "type": "bool",
+        "initial": false,
+        "write": "目睹或参与屠杀",
+        "readers": "士气 −3、蔺禾记录 2 行",
+        "effect": "结局 B/C",
+        "source": "docs/scenario/S6-断线-战争前线.md:2935"
+      },
+      {
+        "id": "flag.supply_cut_days",
+        "type": "int",
+        "initial": 0,
+        "write": "米线被切断的日数",
+        "readers": "四轨、士气",
+        "effect": "崩溃风险",
+        "source": "docs/scenario/S6-断线-战争前线.md:2936"
+      },
+      {
+        "id": "flag.stash_discovered",
+        "type": "bool",
+        "initial": false,
+        "write": "突击检查发现私储",
+        "readers": "纪律 −2",
+        "effect": "调查链",
+        "source": "docs/scenario/S6-断线-战争前线.md:2937"
+      },
+      {
+        "id": "flag.tongda_debt",
+        "type": "int",
+        "initial": 0,
+        "write": "欠通达行的账",
+        "readers": "每幕 +25%",
+        "effect": "债务事件",
+        "source": "docs/scenario/S6-断线-战争前线.md:2938"
+      },
+      {
+        "id": "flag.weijun_adaptation",
+        "type": "array",
+        "initial": [],
+        "write": "玩家重复同一打法",
+        "readers": "遭遇组建",
+        "effect": "敌方反制",
+        "source": "docs/scenario/S6-断线-战争前线.md:2939"
+      },
+      {
+        "id": "flag.winter",
+        "type": "bool",
+        "initial": false,
+        "write": "第五幕开始",
+        "readers": "冬装、泥沼冻结",
+        "effect": "终局条件",
+        "source": "docs/scenario/S6-断线-战争前线.md:2940"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.command",
+        "type": "int",
+        "initial": 0,
+        "write": "上级评价、擅自改令",
+        "readers": "补给优先级、处罚分支",
+        "effect": "命令链是否\"执行\"",
+        "source": "docs/scenario/S6-断线-战争前线.md:2916"
+      },
+      {
+        "id": "rep.logistics",
+        "type": "int",
+        "initial": 0,
+        "write": "补给到达、征用物资",
+        "readers": "第四轨补给表",
+        "effect": "每周配额",
+        "source": "docs/scenario/S6-断线-战争前线.md:2947"
+      },
+      {
+        "id": "rep.battalion",
+        "type": "int",
+        "initial": 0,
+        "write": "灰鸢内部处置、抢功冲突",
+        "readers": "Q-03 aborted 分支",
+        "effect": "分队是否听令",
+        "source": "docs/scenario/S6-断线-战争前线.md:2948"
+      },
+      {
+        "id": "rep.heiyang",
+        "type": "int",
+        "initial": 0,
+        "write": "与黑杨支队的互动",
+        "readers": "第四幕分支",
+        "effect": "是否被友军抢功",
+        "source": "docs/scenario/S6-断线-战争前线.md:2949"
+      },
+      {
+        "id": "rep.weijun",
+        "type": "int",
+        "initial": -3,
+        "write": "敌后行动、俘虏处置",
+        "readers": "被俘判定 DF",
+        "effect": "谈判起点",
+        "source": "docs/scenario/S6-断线-战争前线.md:2950"
+      },
+      {
+        "id": "rep.riverfolk",
+        "type": "int",
+        "initial": 0,
+        "write": "渡河、征用、告密处理",
+        "readers": "河民摆渡与否",
+        "effect": "是否给向导",
+        "source": "docs/scenario/S6-断线-战争前线.md:2951"
+      },
+      {
+        "id": "rep.tongda",
+        "type": "int",
+        "initial": 0,
+        "write": "采购、欠账、走私",
+        "readers": "补给到达表 +2",
+        "effect": "通达行是否再赊",
+        "source": "docs/scenario/S6-断线-战争前线.md:2952"
+      },
+      {
+        "id": "rep.whiteflag",
+        "type": "int",
+        "initial": 1,
+        "write": "与蔺禾的每次交涉",
+        "readers": "结局判定",
+        "effect": "抵消 flag.dirty_hands",
+        "source": "docs/scenario/S6-断线-战争前线.md:2953"
+      }
+    ],
+    "clock": []
+  },
+  "ledger_template": {
+    "source": "docs/scenario/S6-断线-战争前线.md:3925",
+    "meta": {
+      "world": "broken_line",
+      "world_name": "砚洲 · 断线走廊",
+      "engine": "tactics",
+      "tone_pack": "tragic_hero",
+      "party_level": 1,
+      "party_size": 5,
+      "session": 0
+    },
+    "clock": {
+      "year": 1194,
+      "season": "autumn",
+      "day": 1,
+      "watch": "morning",
+      "chapter": 1,
+      "active_pressure": "谈判代表已在洄城集结；渭军在第一场雪前完成缝合"
+    },
+    "frontline": {
+      "player_column": "F",
+      "columns": {
+        "A": 3,
+        "B": 3,
+        "C": 3,
+        "D": 3,
+        "E": 3,
+        "F": 3,
+        "G": 3,
+        "H": 3,
+        "I": 3,
+        "J": 3,
+        "K": 3,
+        "L": 3
+      },
+      "owner": {
+        "A": "none",
+        "B": "none",
+        "C": "none",
+        "D": "wei",
+        "E": "wei",
+        "F": "wei",
+        "G": "none",
+        "H": "none",
+        "I": "none",
+        "J": "none",
+        "K": "none",
+        "L": "none"
+      },
+      "ms_gang_owner": "wei",
+      "mid_station_control": "none",
+      "rail_progress": 0,
+      "rail_sewn": false,
+      "last_moved_chapter": 1
+    },
+    "supply": {
+      "ammo": 5,
+      "ration": 4,
+      "meds": 3,
+      "fuel": 2,
+      "stash": 0,
+      "stash_visible_risk": 0,
+      "route_status": "half_open",
+      "cut_days": 0,
+      "last_resupply_roll": 0
+    },
+    "morale_discipline": {
+      "morale": 3,
+      "discipline": 4,
+      "broken_spirit": false,
+      "unreliable_unit": false
+    },
+    "command_chain": {
+      "current_order": null,
+      "order_id": null,
+      "issued_by": null,
+      "absurdity": 0,
+      "state": "none",
+      "defiance_record": false,
+      "investigation": false,
+      "history": []
+    },
+    "party": [
+      {
+        "name": "（姓名）",
+        "role": "",
+        "drive": "",
+        "status": "alive",
+        "strain": 0,
+        "resolve": 3,
+        "trauma": 0,
+        "open_loops": []
+      }
+    ],
+    "npcs": [
+      {
+        "name": "韩熠",
+        "role": "分队长",
+        "drive": "把还活着的人带到换防日",
+        "lever": "他签过一份不自愿的文件",
+        "mask": "平静、话少",
+        "tell": "数人数点到第七个会停一下",
+        "affinity": 2,
+        "awe": 1,
+        "location": "H-7 哨线",
+        "status": "alive",
+        "knows": [
+          "C-37",
+          "C-06",
+          "C-11"
+        ]
+      }
+    ],
+    "reputation": {
+      "command": 0,
+      "logistics": 0,
+      "battalion": 0,
+      "heiyang": 0,
+      "weijun": -3,
+      "riverfolk": 0,
+      "tongda": 0,
+      "whiteflag": 1
+    },
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "1183 年煤车事件",
+        "state": "dormant",
+        "progress": 0,
+        "paths_resolved": [],
+        "payoff": "战争是被设计出来的"
+      },
+      {
+        "id": "C-02",
+        "name": "晨线行动被删掉的第三条",
+        "state": "dormant",
+        "progress": 0,
+        "paths_resolved": [],
+        "payoff": "上级早就打算放弃 D-F 段"
+      },
+      {
+        "id": "C-11",
+        "name": "1192 年未上报的撤退命令",
+        "state": "dormant",
+        "progress": 0,
+        "paths_resolved": [],
+        "payoff": "最强谈判筹码"
+      }
+    ],
+    "flags": {
+      "chapter": 1,
+      "day": 1,
+      "tower_fixed": false,
+      "battery_diverted": false,
+      "railmap": false,
+      "real_map_made": false,
+      "river_crossing": false,
+      "behind_lines": false,
+      "captured": false,
+      "dirty_hands": 0,
+      "whiteflag_record": 0,
+      "winter": false,
+      "command_1192": false,
+      "looting_done": false,
+      "witness_massacre": false
+    },
+    "weijun_adaptation": [],
+    "casualties": {
+      "dead": 0,
+      "wounded": 0,
+      "missing": 0,
+      "captured": 0
+    },
+    "debts": [],
+    "facts": [],
+    "hooks": []
+  }
+}

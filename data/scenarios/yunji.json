@@ -1,0 +1,2368 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1",
+  "meta": {
+    "world": "yunji",
+    "engine": "tactics",
+    "campaign": "九钥与元柜",
+    "party_level": 1,
+    "party_size": 4,
+    "tone_pack": "noir"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 学徒",
+      "summary": "队伍成形、拿到第一枚权钥、认识霍砚与温苔。",
+      "nodes": [
+        "V0",
+        "V1"
+      ],
+      "tasks": [
+        "V0",
+        "V1"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2916"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 上行",
+      "summary": "进入上阶、第一次面对“不偷也能赢”、遭遇罗屏。",
+      "nodes": [
+        "V2",
+        "V3"
+      ],
+      "tasks": [
+        "V2",
+        "V3"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2917"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 下沉",
+      "summary": "认识工团与涝底、第一次承担道德成本、拿到图纸。",
+      "nodes": [
+        "V4",
+        "V5"
+      ],
+      "tasks": [
+        "V4",
+        "V5"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2918"
+    },
+    {
+      "id": "act-4",
+      "name": "第四幕 · 反咬",
+      "summary": "识破霍砚、取得反钥、暗线完整揭示。",
+      "nodes": [
+        "V6",
+        "V7",
+        "V8"
+      ],
+      "tasks": [
+        "V6",
+        "V7",
+        "V8"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2919"
+    },
+    {
+      "id": "act-5",
+      "name": "第五幕 · 开柜",
+      "summary": "终局选择、结局演出、余波。",
+      "nodes": [
+        "V9"
+      ],
+      "tasks": [
+        "V9"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2920"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "grey-market",
+      "name": "五阶·灰市",
+      "next": [
+        "copper-ring"
+      ],
+      "marks": [
+        "开局"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2042"
+    },
+    {
+      "id": "copper-ring",
+      "name": "四阶·铜环",
+      "next": [
+        "V1",
+        "V6"
+      ],
+      "marks": [
+        "flag.key_v1 → V1",
+        "rep_watch <= 0 且 subsidence_known → V6（需 tier4_pass）"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2045"
+    },
+    {
+      "id": "whitewall",
+      "name": "二阶·白壁",
+      "next": [
+        "V2",
+        "V7"
+      ],
+      "marks": [
+        "flag.key_v2 → V2",
+        "keys_collected >= 4 → V7"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2051"
+    },
+    {
+      "id": "watch-intervention",
+      "name": "岑照提前介入",
+      "unlock": "flag.echo_sold",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2054"
+    },
+    {
+      "id": "press",
+      "name": "镜台报馆",
+      "next": [
+        "ending-a"
+      ],
+      "unlock": "flag.subsidence_known",
+      "marks": [
+        "press_allied"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2067"
+    },
+    {
+      "id": "ladders",
+      "name": "千梯",
+      "marks": [
+        "ladder_sealed → 全部跨阶移动受限"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2069"
+    },
+    {
+      "id": "fogshelf",
+      "name": "雾桥",
+      "next": [
+        "ending-b"
+      ],
+      "unlock": "flag.fogshelf_known",
+      "marks": [
+        "私下分账 / B 结局"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2071"
+    },
+    {
+      "id": "V0",
+      "type": "task",
+      "name": "绳会账房的后间木匣",
+      "act": "act-1",
+      "next": [
+        "V1"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "战役开始，且 队伍等级 >= 1"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受温苔的委托"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.v0_box == true 且 clock.silence <= 2"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.v0_box == true 且 clock.silence >= 3"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.v0_box == false 且 flag.ropeclan_cut == true"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "flag.chapter >= 1 而未完成（温苔把活给了别人）"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1862"
+    },
+    {
+      "id": "V1",
+      "type": "task",
+      "name": "铜环·判牍阁",
+      "act": "act-1",
+      "next": [
+        "V2"
+      ],
+      "marks": [
+        "得印"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.v0_done == true 且 flag.rep_ropeclan >= 0"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受霍砚的委托"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v1 == true 且 clock.silence <= 4"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.key_v1 == true 且 clock.silence >= 5"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.insider_liwang_dead == true 且 flag.has_insider == false 或 clock.silence >= 11"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "判牍阁档案被转移（flag.chapter >= 3 而未接取）"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1874"
+    },
+    {
+      "id": "V2",
+      "type": "task",
+      "name": "白壁·听泉馆",
+      "act": "act-2",
+      "next": [
+        "V3"
+      ],
+      "marks": [
+        "得鸟"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.key_v1 == true 且 flag.rep_baihang >= 0"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受（霍砚坚持“只要那只鸟”）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v2 == true 且 flag.madame_hurt == false"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.key_v2 == true 且 flag.madame_hurt == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_mercy",
+          "condition": "flag.v2_truth_heard == true 且 玩家主动放弃取鸟（老夫人自己交出——同样获得权钥，且 rep_baihang +1）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.key_v2 == false 且 clock.silence >= 11"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1887"
+    },
+    {
+      "id": "V3",
+      "type": "task",
+      "name": "中庭·琉璃厅",
+      "act": "act-2",
+      "next": [
+        "V4"
+      ],
+      "marks": [
+        "得针"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.key_v2 == true（霍砚：预展夜有一枚胸针）"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v3 == true 且 clock.silence <= 4"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.key_v3 == true 且 clock.silence >= 5"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.key_v3 == false 且 flag.rival_luo_first == true"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "预展夜结束（clock.prep_deadline == 0）"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1900"
+    },
+    {
+      "id": "V4",
+      "type": "task",
+      "name": "铁腹·七号料库",
+      "act": "act-3",
+      "next": [
+        "V5"
+      ],
+      "marks": [
+        "得量规"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.key_v3 == true 且 flag.rep_gongtuan >= -1"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受，或 flag.rep_gongtuan >= 1 时改由邵铁委托（succeeded_union 路线）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v4 == true 且 clock.silence <= 4"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.key_v4 == true 且 clock.silence >= 5"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_union",
+          "condition": "flag.key_v4 == true 且 flag.union_allied == true（工团主动交出量规，rep_gongtuan +2，但权钥被标记）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.insider_hejiu_dead == true 或 clock.silence >= 11"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1912"
+    },
+    {
+      "id": "V5",
+      "type": "task",
+      "name": "涝底·排水枢纽",
+      "act": "act-3",
+      "next": [
+        "V6"
+      ],
+      "marks": [
+        "得图纸"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.key_v4 == true 且 flag.rep_gongtuan >= 0"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v5 == true 且 flag.flood_happened == false"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_flood",
+          "condition": "flag.key_v5 == true 且 flag.flood_happened == true（拿到了图纸，但六阶以下被淹，全员 +1 负担，两层声望 −2）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.key_v5 == false 且 clock.silence >= 11"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1925"
+    },
+    {
+      "id": "V6",
+      "type": "task",
+      "name": "铜环·守夜局证物房",
+      "act": "act-4",
+      "next": [
+        "V7"
+      ],
+      "marks": [
+        "得封存物",
+        "keys_collected >= 5"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.subsidence_known == true 且 flag.rep_watch <= 0"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受（本册唯一“玩家主动提出”的活）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v6 == true 且 flag.weizheng_exposed == false"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.key_v6 == true 且 flag.weizheng_exposed == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_trap",
+          "condition": "flag.key_v6 == true 且 flag.weizheng_used == true（玩家识破卫铮并反利用，岑照收到假情报；终局关键筹码）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "被捕（clock.silence >= 11）→ 转为“越狱”支线，完成后可重接"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1937"
+    },
+    {
+      "id": "V7",
+      "type": "task",
+      "name": "白壁·回声匣",
+      "act": "act-4",
+      "next": [
+        "V8",
+        "turning-point"
+      ],
+      "marks": [
+        "得匣内件"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.keys_collected >= 4（霍砚终于点名要这只匣）"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受（若拒绝，霍砚撤回后续所有委托 → 暗线转为“追查霍砚”）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v7 == true 且 flag.echo_box_silenced == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_loud",
+          "condition": "flag.key_v7 == true 且 flag.echo_box_silenced == false（此后 clock.silence 下限锁定 5，且每时段 +1）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.key_v7 == false 且 clock.silence >= 11"
+        },
+        {
+          "from": "active",
+          "to": "cursed",
+          "condition": "玩家在不知情时把匣子卖给了第三方 → flag.echo_sold == true（第三方被追踪，买家找上门；岑照提前介入）"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1950"
+    },
+    {
+      "id": "turning-point",
+      "name": "转折点：识破霍砚",
+      "marks": [
+        "识破 → 可反制（V6 假情报 / 保留权钥）",
+        "未识破 → 静默值下限锁定，全城追索"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2722"
+    },
+    {
+      "id": "V8",
+      "type": "task",
+      "name": "井底·旧城遗址",
+      "act": "act-4",
+      "next": [
+        "V9",
+        "darkline-reveal"
+      ],
+      "marks": [
+        "得造钥模"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.entered_shaft_bottom == true 且 flag.keys_collected >= 5"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受（或由老钳引导，succeeded_guide 路线）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.key_v8 == true 且 flag.laoqian_alive == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.key_v8 == true 且 flag.laoqian_alive == false"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_guide",
+          "condition": "flag.key_v8 == true 且 flag.laoqian_allied == true（额外获得崖测坐标，解锁终局第三种解法）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.key_v8 == false 且 沉听者被惊动（clock.silence >= 11）"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1964"
+    },
+    {
+      "id": "darkline-reveal",
+      "name": "暗线完整揭示：计霜录音",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2727"
+    },
+    {
+      "id": "V9",
+      "type": "task",
+      "name": "冠台·元柜",
+      "act": "act-5",
+      "next": [
+        "ending-a",
+        "ending-b",
+        "ending-c",
+        "ending-d"
+      ],
+      "marks": [
+        "A 开柜（press_allied）→ 名单公开，城市震荡",
+        "B 换手（交给岑照/白壁行/金衡行）→ 名单封存，换取赦免与财富",
+        "C 自持（keys_kept）→ 你们成为新的守钥人",
+        "D 崩塌（强开且 silence>=11）→ 结构信息泄露，阶间冲突"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.keys_collected >= 8 且 flag.primecoffer_located == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家决定进入（这是唯一没有雇主的活）"
+        },
+        {
+          "from": "active",
+          "to": "ending_open",
+          "condition": "flag.primecoffer_opened == true 且 flag.press_allied == true"
+        },
+        {
+          "from": "active",
+          "to": "ending_sell",
+          "condition": "flag.keys_sold == true（交给岑照／白壁行／金衡行）"
+        },
+        {
+          "from": "active",
+          "to": "ending_hold",
+          "condition": "flag.primecoffer_opened == true 且 flag.keys_kept == true"
+        },
+        {
+          "from": "active",
+          "to": "ending_collapse",
+          "condition": "clock.silence >= 11 且强行开柜 → 结构信息泄露，全城动荡"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1977"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "九枚权钥各对应一座柜，且必须同时到场才能开元柜",
+      "carrier": "证据：造钥模、九孔锁盘",
+      "npcs": [
+        "岑照",
+        "霍砚",
+        "造钥匠"
+      ],
+      "flags": [
+        "flag.keys_collected"
+      ],
+      "tasks": [
+        "V9"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "冠台九孔锁盘的机关",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2658"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "造钥模的尺寸表",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2658"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "岑照的说明",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2658"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由九座柜的排列推出",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2658"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2637"
+    },
+    {
+      "id": "C-02",
+      "name": "雇主知道每件赃物的确切位置与可走通的路线",
+      "carrier": "证据：换班表、灰市出货记录",
+      "npcs": [
+        "霍砚"
+      ],
+      "flags": [
+        "flag.huo_motive_suspected"
+      ],
+      "note": "贯穿暗线",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2638"
+    },
+    {
+      "id": "C-03",
+      "name": "判牍阁的巡逻表与检修井全图构成黑井路线",
+      "carrier": "证据：巡逻表、检修井全图",
+      "npcs": [
+        "檐党联络人"
+      ],
+      "flags": [
+        "flag.fogshelf_known"
+      ],
+      "tasks": [
+        "V1"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2639"
+    },
+    {
+      "id": "C-04",
+      "name": "每座柜都与元柜有确定的对应关系",
+      "carrier": "证据：料库存货单、裂缝实测",
+      "npcs": [
+        "老练",
+        "量规持有人"
+      ],
+      "flags": [
+        "flag.primecoffer_located"
+      ],
+      "tasks": [
+        "V4"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2640"
+    },
+    {
+      "id": "C-05",
+      "name": "白壁行的部分买家不问赃物来历",
+      "carrier": "NPC：买家名单",
+      "npcs": [
+        "掮客",
+        "老练"
+      ],
+      "flags": [
+        "flag.has_insider"
+      ],
+      "tasks": [
+        "V2"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2641"
+    },
+    {
+      "id": "C-06",
+      "name": "回声匣本身是追踪器，且匣子会响",
+      "carrier": "证据：匣体构造",
+      "npcs": [
+        "白壁·听泉馆线人"
+      ],
+      "flags": [
+        "flag.echo_box_silenced"
+      ],
+      "tasks": [
+        "V7"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "拆开匣底",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2659"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "匣子的响动规律",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2659"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "白壁线人",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2659"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由其\"锁起来\"的理由反推",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2659"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2642"
+    },
+    {
+      "id": "C-07",
+      "name": "权钥可经市场辨真伪，已有若干枚被人动过",
+      "carrier": "NPC：权钥行情",
+      "npcs": [
+        "金衡行",
+        "绳会"
+      ],
+      "flags": [
+        "flag.keys_sold",
+        "flag.keys_kept"
+      ],
+      "tasks": [
+        "V6"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2643"
+    },
+    {
+      "id": "C-08",
+      "name": "静默社有一套通用的旧锁序，可绕过多数机械锁",
+      "carrier": "证据：静默社旧锁序",
+      "npcs": [
+        "哨械工匠"
+      ],
+      "flags": [
+        "flag.tier1_pass"
+      ],
+      "note": "全部据点",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2644"
+    },
+    {
+      "id": "C-09",
+      "name": "元柜里装的不是钱，而是某种必须同时到场才能读的东西",
+      "carrier": "场景：冠台·元柜",
+      "npcs": [
+        "岑照"
+      ],
+      "flags": [
+        "flag.primecoffer_opened"
+      ],
+      "tasks": [
+        "V9"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "开柜后的实物",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2660"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "沉降名单残页",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2660"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "宓老夫人的沉默",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2660"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由锁盘的\"同时到场\"条件推出",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2660"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2645"
+    },
+    {
+      "id": "C-10",
+      "name": "宓老夫人手里握着第十枚权钥，藏印在某处",
+      "carrier": "NPC：宓老夫人",
+      "npcs": [
+        "宓老夫人"
+      ],
+      "flags": [
+        "flag.anti_key_held"
+      ],
+      "tasks": [
+        "V2"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2646"
+    },
+    {
+      "id": "C-11",
+      "name": "旧锅炉检修口是唯一通往四十级以下的暗路",
+      "carrier": "证据：旧泵房老图纸",
+      "npcs": [
+        "工团内线"
+      ],
+      "flags": [
+        "flag.entered_shaft_bottom"
+      ],
+      "tasks": [
+        "V5"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2647"
+    },
+    {
+      "id": "C-12",
+      "name": "霍砚在找钥匙，同时雇着两支团伙",
+      "carrier": "NPC：霍砚对白树",
+      "npcs": [
+        "霍砚"
+      ],
+      "flags": [
+        "flag.huo_identity_known"
+      ],
+      "note": "贯穿暗线",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2648"
+    },
+    {
+      "id": "C-13",
+      "name": "柜险单里的账是假的，代签的受益人是理事",
+      "carrier": "证据：柜险单、代签底档",
+      "npcs": [
+        "账房",
+        "理事"
+      ],
+      "flags": [
+        "flag.weizheng_exposed"
+      ],
+      "tasks": [
+        "V3"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "代签底档的笔迹",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2661"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "柜险单的连号",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2661"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "账房的口误",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2661"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由受益人栏的空白反推",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2661"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2649"
+    },
+    {
+      "id": "C-14",
+      "name": "空版之夜的铅字坑里埋着被撤下的那份名单",
+      "carrier": "证据：铅字坑位置",
+      "npcs": [
+        "岑照"
+      ],
+      "flags": [
+        "flag.weizheng_used"
+      ],
+      "tasks": [
+        "V8"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2650"
+    },
+    {
+      "id": "C-15",
+      "name": "工团内部有人替理事会做事",
+      "carrier": "NPC：工团内线",
+      "npcs": [
+        "工团联络人"
+      ],
+      "flags": [
+        "flag.ropeclan_cut"
+      ],
+      "tasks": [
+        "V4"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "值班表对不上",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2662"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "工团的领料单",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2662"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "幸存工人的指认",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2662"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由多次提前泄密推出",
+          "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2662"
+        }
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2651"
+    },
+    {
+      "id": "C-16",
+      "name": "存在一把「反钥」，可能就锁在证物房里",
+      "carrier": "证据：证物编号册",
+      "npcs": [
+        "守夜局线人"
+      ],
+      "flags": [
+        "flag.anti_key_held"
+      ],
+      "tasks": [
+        "V6"
+      ],
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2652"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "霍砚",
+      "alias": "副理",
+      "role": "白壁行副理，本册的雇主与暗线核心",
+      "faction": "白壁行［归属／表面中立］",
+      "drive": "在两年内把九枚权钥凑齐，并决定是把《沉降名单》公开，还是让自己成为唯一能开元柜的人。",
+      "secret": "他是守钥人计霜的儿子；元柜的九钥制度是他母亲定的，他手里已有第一枚（从未交给任何人）。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：按时交货、不留痕迹、替他保守动机。下降：追问他的动机、把赃物卖给第三方、伤害内应。"
+      },
+      "knows": [
+        "C-01",
+        "C-04",
+        "C-09"
+      ],
+      "if_dead_or_betrayed": "白壁行立刻对全城发布「拒收通告」，棺材铺的账会送到绳会；但他预先留了一封信给镜台报馆，信里点名了玩家——这封信会在 1d6 个会话后被刊登，届时守夜局会照着名单上门。故事继续，但玩家从此在被追猎中完成终局。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:324"
+    },
+    {
+      "id": "npc-02",
+      "name": "温苔",
+      "alias": "绳头",
+      "role": "绳会总掮客，中间人",
+      "faction": "绳会［中立］",
+      "drive": "让绳会成为城里唯一不可替代的中枢，并让自己活着退场。",
+      "secret": "她的暗账里有一页记着「霍砚付了三次钱给同一个死人」。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：准时付佣、不在她的地方动手。下降：在她账房里见血、绕过她私下交易。"
+      },
+      "knows": [
+        "C-02",
+        "C-06",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "绳会「断绳」；但她的暗账会流入灰市，任何人花标准 ×3 都能买到——其中包含玩家所有已销赃的记录。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:332"
+    },
+    {
+      "id": "npc-03",
+      "name": "岑照",
+      "alias": "总巡查使",
+      "role": "守夜局总巡查使，追猎者",
+      "faction": "守夜局［敌对］",
+      "drive": "在她退休之前，把《沉降名单》拿到手，用它换一个不会被崩塌吞掉的秩序。",
+      "secret": "她 219 年参与过查抄镜台报馆，她保留了一块没交上去的铅字。",
+      "attitude": {
+        "affinity": -2,
+        "note": "初始 −2。上升：主动交出赃物、提供他人情报、救过她的人。下降：在她面前杀人、在她辖区连续作案。"
+      },
+      "knows": [
+        "C-03",
+        "C-07",
+        "C-12"
+      ],
+      "if_dead_or_betrayed": "守夜局换上一个更蠢也更狠的继任者，全城进入「铜环宵禁」常驻状态；但岑照的私人笔记本会被她的副手交给镜台报馆。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:340"
+    },
+    {
+      "id": "npc-04",
+      "name": "尤梨",
+      "alias": "拍卖师",
+      "role": "白壁行首席拍卖师，买家接口",
+      "faction": "白壁行［归属］",
+      "drive": "把白壁行做成艺术品的唯一话语权，并嫁进二阶。",
+      "secret": "她私下替三阶一位买家做「代持」，那批代持物里有一枚权钥。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：给她独家拍品、在拍卖中不添乱。下降：在她厅里动手、抬价抬到她下不来台。"
+      },
+      "knows": [
+        "C-05",
+        "C-08",
+        "C-10"
+      ],
+      "if_dead_or_betrayed": "白壁行的买家名单公开，全城赃物市场崩盘两周；她的代持物被金衡行收回，玩家少一条销赃路径。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:348"
+    },
+    {
+      "id": "npc-05",
+      "name": "裴无咎",
+      "alias": "柜务总监",
+      "role": "金衡行柜务总监，失主之一",
+      "faction": "金衡行［归属］",
+      "drive": "让金衡行的柜永远不被打开过第二次——因为他已经打开过一次。",
+      "secret": "190 年的《沉降名单》第一版，是他卖给出价者的。",
+      "attitude": {
+        "affinity": -1,
+        "note": "初始 −1。上升：归还赃物、提供安防情报。下降：触碰主柜、公开柜险欺诈。"
+      },
+      "knows": [
+        "C-01",
+        "C-07",
+        "C-13"
+      ],
+      "if_dead_or_betrayed": "金衡行启动全城柜险重估，所有柜的安防临时 +1 级（持续 1d4 周）；他的残片被捐给镜台报馆，成为一条新的线索。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:356"
+    },
+    {
+      "id": "npc-06",
+      "name": "胡同舟",
+      "alias": "主编",
+      "role": "镜台报馆主编",
+      "faction": "镜台报馆［中立］",
+      "drive": "在死之前印出《沉降名单》。",
+      "secret": "他手里有霍砚留给他的那封信，但他还没决定要不要拆。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：给他可印的证据、在报馆受威胁时站在他这边。下降：给他假料、拿他的记者当替罪羊。"
+      },
+      "knows": [
+        "C-06",
+        "C-09",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "报馆被彻底查封，《沉降名单》的唯一公开渠道关闭；但他已把副本托付给三名学生记者，他们会在终局前出现。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:364"
+    },
+    {
+      "id": "npc-07",
+      "name": "邵铁",
+      "alias": "总管",
+      "role": "铁腹工团总管",
+      "faction": "铁腹工团［归属］",
+      "drive": "不让七阶再降一次阶——137 年的事他祖父经历过。",
+      "secret": "他知道 261 年那道裂缝没有真正被填好。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：帮工团拿回被扣押的料、不伤害工人。下降：在七阶闹出人命、破坏货索。"
+      },
+      "knows": [
+        "C-04",
+        "C-11",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "工团封锁货索并宣布罢工，全城断供；邵铁的副手甘雨上位，她比邵铁更恨上阶，也更愿意和玩家做交易。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:372"
+    },
+    {
+      "id": "npc-08",
+      "name": "桑螭",
+      "alias": "檐口",
+      "role": "檐党最大檐口的头目",
+      "faction": "檐党［中立／可敌对］",
+      "drive": "把四十级重新打通——那是檐党被打断的骨头。",
+      "secret": "她 248 年时在现场，她父亲死在那四十级上。",
+      "attitude": {
+        "affinity": -1,
+        "note": "初始 −1。上升：帮檐党打通一段井、交檐钱不拖欠。下降：在她井里动手、绕过她走别人的檐。"
+      },
+      "knows": [
+        "C-03",
+        "C-05",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "檐党分裂，检修井进入「乱檐」状态（每段井随机归属，通行须逐段谈判）；另有一个年轻檐口上位，他会主动找玩家提出合作。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:380"
+    },
+    {
+      "id": "npc-09",
+      "name": "计晚",
+      "alias": "执钥",
+      "role": "静默社现任执钥（技术权威）",
+      "faction": "静默社［中立］",
+      "drive": "找到她师父计霜，问清楚元柜为什么要封。",
+      "secret": "她手里的那把钥匙，是元柜的「反钥」——关上而不是打开用的。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：把开过的柜恢复原状、归还静默社的物件。下降：暴力破坏哨械、把锁序图纸外传。"
+      },
+      "knows": [
+        "C-01",
+        "C-08",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "静默社宣布“此城无锁可修”，全城柜的维修停摆两周，柜险暴涨；她的反钥由学徒阿枝带去井底，成为终局的一个可选解法。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:388"
+    },
+    {
+      "id": "npc-10",
+      "name": "黎望",
+      "alias": "书记官",
+      "role": "铜环判牍阁书记官，据点 V1 内应",
+      "faction": "理事会［可被策反］",
+      "drive": "把一份三年前被压下的判决书送出去——那上面有他老师的名字。",
+      "secret": "他知道判决书是假的，但他需要它是真的。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：答应帮他送出判决书、不牵连他的名字。下降：威胁他、在他当值时动手。"
+      },
+      "knows": [
+        "C-01",
+        "C-13",
+        "C-03"
+      ],
+      "if_dead_or_betrayed": "判牍阁加装双人当值制度，V1 的内应路线永久关闭；但他已经把判决书副本寄给了自己母亲，玩家可从她那里取到（多一个场景）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:396"
+    },
+    {
+      "id": "npc-11",
+      "name": "阿宓",
+      "alias": "女仆",
+      "role": "听泉馆西翼女仆，据点 V2 内应",
+      "faction": "白壁行［可被策反］",
+      "drive": "攒够钱把弟弟从六阶接到三阶。",
+      "secret": "她每晚把老夫人的安眠药换成半片——老夫人失眠是她造成的。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：付钱痛快、答应带她弟弟、不伤老夫人。下降：赖账、在她面前伤人。"
+      },
+      "knows": [
+        "C-02",
+        "C-05",
+        "C-10"
+      ],
+      "if_dead_or_betrayed": "听泉馆换全套家卫，V2 的伪装路线永久关闭；她的弟弟会自己找上玩家，带着她留下的半张图——内容是一段她偷听到的霍砚通话。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:404"
+    },
+    {
+      "id": "npc-12",
+      "name": "游七",
+      "alias": "道具师",
+      "role": "中庭琉璃厅道具师，据点 V3 内应",
+      "faction": "中立［可被雇佣］",
+      "drive": "做一场没人看得出来是假的演出。",
+      "secret": "他为三阶派出所做过假证物。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：给他一个好剧本、让他参与设计。下降：把他的道具弄坏、让他背锅。"
+      },
+      "knows": [
+        "C-03",
+        "C-06",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "琉璃厅关闭整修一个月，V3 的舞台路线不可用；他的学徒接管工坊，会以更高价格继续提供服务（且更会讲价）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:412"
+    },
+    {
+      "id": "npc-13",
+      "name": "贺九",
+      "alias": "夜班",
+      "role": "铁腹七号料库夜班，据点 V4 内应",
+      "faction": "铁腹工团［可被策反］",
+      "drive": "让女儿不必再上夜班。",
+      "secret": "他十年前签过一份料位卡的代签，那批料根本没进库。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：替他补上那份代签、给他钱。下降：拿代签威胁他、在他面前伤害同事。"
+      },
+      "knows": [
+        "C-04",
+        "C-11",
+        "C-13"
+      ],
+      "if_dead_or_betrayed": "七号料库改为双人夜班并加装巡检哨械；他的女儿会带着他的保温杯找到玩家，杯底有一张纸条。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:420"
+    },
+    {
+      "id": "npc-14",
+      "name": "水虹",
+      "alias": "技术员",
+      "role": "涝底排水站技术员，据点 V5 内应",
+      "faction": "铁腹工团［可被策反］",
+      "drive": "让 261 年那道裂缝被正式记录，而不是被填埋。",
+      "secret": "她偷偷测量过裂缝，实测值是官方通报的三倍。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：承诺把数据交给镜台报馆、不动主阀门。下降：擅自泄洪、把她的测量本弄丢。"
+      },
+      "knows": [
+        "C-04",
+        "C-08",
+        "C-09"
+      ],
+      "if_dead_or_betrayed": "排水站加装值守哨械，V5 的断电方案失效；她的测量本被同事当作废纸卖到灰市，玩家仍可花标准 ×2 买回（多一个场景）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:428"
+    },
+    {
+      "id": "npc-15",
+      "name": "卫铮",
+      "alias": "看守",
+      "role": "守夜局证物房看守，据点 V6 内应（双面）",
+      "faction": "守夜局［表面归属／实为岑照的人］",
+      "drive": "活到退休，并且不让任何人知道他替岑照做过什么。",
+      "secret": "他是岑照安插在证物房的眼睛；他给玩家的情报有一半是岑照让他给的。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1（他表现得非常配合）。上升：给他一条能让他脱身的路。下降：让他暴露。"
+      },
+      "knows": [
+        "C-07",
+        "C-12",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "守夜局立刻知道有内鬼，并会顺着唯一的外来接触者查到玩家；若玩家识破他的双面身份并反利用，可让岑照收到一份假情报（终局的关键筹码）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:436"
+    },
+    {
+      "id": "npc-16",
+      "name": "薄言",
+      "alias": "持匣人",
+      "role": "白壁行回声匣保管员，据点 V7 的关键人物",
+      "faction": "白壁行［归属］",
+      "drive": "不让匣子离开自己——因为他知道匣子一响，就是他死期。",
+      "secret": "匣子的定位信号不是发给守夜局的，是发给霍砚的。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：给他一条活路、帮他把匣子留在这里。下降：抢匣子时伤他。"
+      },
+      "knows": [
+        "C-06",
+        "C-10",
+        "C-12"
+      ],
+      "if_dead_or_betrayed": "匣子失去唯一知道如何“静音”的人，此后静默值每时段 +1 且无法用预案点归零；若玩家留住他并让他开口，可获得静音方法（终局必要）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:444"
+    },
+    {
+      "id": "npc-17",
+      "name": "老钳",
+      "alias": "拾骨人",
+      "role": "井底拾骨人的头儿，据点 V8 向导",
+      "faction": "无［中立］",
+      "drive": "在死之前把井底的旧城挖出来——他说下面还有六阶。",
+      "secret": "他把计霜的造钥模当废铁收了十二年，一直摆在床头当枕头。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：帮他挖、给他吃的、叫他老钳而不是拾骨人。下降：偷他的东西、在他面前嫌弃井底。"
+      },
+      "knows": [
+        "C-01",
+        "C-09",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "拾骨人全体迁走，井底再无向导；他的床头被翻烂，造钥模被别人先一步拿走（V8 改为追夺任务）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:452"
+    },
+    {
+      "id": "npc-18",
+      "name": "曲临",
+      "alias": "侍从长",
+      "role": "冠台侍从长，据点 V9 内应",
+      "faction": "理事会［可被策反］",
+      "drive": "在他退休前，让冠台底下那口封死的井有一个正式的解释。",
+      "secret": "他有元柜工程日志的副本，抄了二十年，抄了两份。",
+      "attitude": {
+        "affinity": -1,
+        "note": "初始 −1。上升：用《崖测录》与他交换、不惊动理事会。下降：在冠台动手、把他当工具。"
+      },
+      "knows": [
+        "C-01",
+        "C-09",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "冠台进入「净阶」，V9 的内应路线关闭；但他抄的第二份日志已经寄给了镜台报馆，玩家可从胡同舟处取得（代价：必须答应让报馆跟着报道终局）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:460"
+    },
+    {
+      "id": "npc-19",
+      "name": "罗屏",
+      "alias": "罗盘",
+      "role": "同行竞争者，罗屏盗团头目",
+      "faction": "无［敌对］",
+      "drive": "在同一座城里，做唯一一支被记住的盗团。",
+      "secret": "他的图是从霍砚那里买的——他也接了霍砚的活，只是接的是同一批钥匙的另一半。",
+      "attitude": {
+        "affinity": -1,
+        "note": "初始 −1。上升：合作一次、分他一杯羹、承认他的手法。下降：抢他的活、在他面前拆他的台。"
+      },
+      "knows": [
+        "C-02",
+        "C-07",
+        "C-12"
+      ],
+      "if_dead_or_betrayed": "他的盗团散伙，其中两人会投奔玩家（带来他的全部图）；玩家获得一整套已被踩点的据点情报，但也接手了他的债主。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:468"
+    },
+    {
+      "id": "npc-20",
+      "name": "雀九",
+      "alias": "飞贼",
+      "role": "独立檐行者，竞争者兼潜在盟友",
+      "faction": "檐党［中立］",
+      "drive": "偷一件没人偷成过的东西，好让她的名字被刻在四十级。",
+      "secret": "她偷偷给黎望送过药——她是判牍阁那个书记官的妹妹。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：带她一起干一次大的、救过她。下降：抢她的目标、把她交给守夜局。"
+      },
+      "knows": [
+        "C-03",
+        "C-05",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "檐党与玩家彻底交恶；她的哥哥黎望会拒绝再做内应，除非玩家为她做一件事（把她的名字刻上四十级）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:476"
+    },
+    {
+      "id": "npc-21",
+      "name": "阿大与阿小",
+      "alias": "双生",
+      "role": "一对双胞胎窃贼，竞争者",
+      "faction": "绳会［中立］",
+      "drive": "凑够钱离开云脊城——他们已经算过，需要金衡 ×4。",
+      "secret": "其中一人想留下来，另一人想走；他们用掷硬币决定谁是谁。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：给他们一次干净的活、不拆穿他们。下降：挑拨他们、抢他们的货。"
+      },
+      "knows": [
+        "C-02",
+        "C-06",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "活着的那个会带着另一半的钱和所有线索投靠岑照；此后每次潜入都有 30% 概率遇到“熟悉你们手法的人”提前埋伏。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:484"
+    },
+    {
+      "id": "npc-22",
+      "name": "宓老夫人",
+      "alias": "馆主",
+      "role": "听泉馆主人，据点 V2 的失主",
+      "faction": "白壁行［中立］",
+      "drive": "在她死之前，把一件东西还给一个六十年前的人。",
+      "secret": "她年轻时是静默社的人；那只机械鸟是她造的。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：不伤她的下人、愿意听她讲完一段话。下降：在她家里动手、拿她的东西去卖。"
+      },
+      "knows": [
+        "C-01",
+        "C-08",
+        "C-10"
+      ],
+      "if_dead_or_betrayed": "听泉馆被白壁行接管，V2 的所有后续线索转移；她的遗产清单里有一条写给玩家的名字（她早就查到是谁），玩家因此被白壁行列入观察名单。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:492"
+    },
+    {
+      "id": "npc-23",
+      "name": "甘雨",
+      "alias": "副总管",
+      "role": "铁腹工团副总管，据点 V4 的失主",
+      "faction": "铁腹工团［归属］",
+      "drive": "接邵铁的班，并让七阶不再被当成可牺牲的一阶。",
+      "secret": "她知道 261 年的填埋是理事会下的令，工团收了封口费。",
+      "attitude": {
+        "affinity": -1,
+        "note": "初始 −1。上升：把料还回去、帮她拿到证据。下降：偷工团的料、伤害工人。"
+      },
+      "knows": [
+        "C-04",
+        "C-11",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "邵铁不再信任任何人，工团与玩家的交集全部关闭；但她留下的证据会由贺九转交，玩家仍可取得（代价：必须替工团做一件事）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:500"
+    },
+    {
+      "id": "npc-24",
+      "name": "裴知",
+      "alias": "少东",
+      "role": "金衡行少东，失主与潜在买家",
+      "faction": "金衡行［归属］",
+      "drive": "在他父亲退位之前，做成一笔他父亲做不成的生意。",
+      "secret": "他私下买了柜险，投保标的包括自己家的主柜。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：给他独家、让他觉得自己精明。下降：让他觉得自己被耍了。"
+      },
+      "knows": [
+        "C-07",
+        "C-13",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "金衡行全面收缩，所有柜险作废，玩家少一个情报渠道；他的投保单成为证据，指向他父亲 190 年的旧事。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:508"
+    },
+    {
+      "id": "npc-25",
+      "name": "卜同",
+      "alias": "账房",
+      "role": "绳会账房，销赃的执行者",
+      "faction": "绳会［归属］",
+      "drive": "把每一笔账做平，一毫都不差。",
+      "secret": "他偷偷抄了一份副账，藏在雾桥的磅秤暗格。",
+      "attitude": {
+        "affinity": 0,
+        "note": "初始 0。上升：账目清楚、不欠绳会的钱。下降：赖账、在他面前动账本。"
+      },
+      "knows": [
+        "C-06",
+        "C-11",
+        "C-13"
+      ],
+      "if_dead_or_betrayed": "绳会的账乱 1d4 周，销赃折价率 −20%；他的副账被温苔找到，温苔会用它反制玩家一次。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:516"
+    },
+    {
+      "id": "npc-26",
+      "name": "阿枝",
+      "alias": "学徒",
+      "role": "静默社学徒，技术支援",
+      "faction": "静默社［中立］",
+      "drive": "让计晚承认她能造柜。",
+      "secret": "她偷偷仿制过一把锁序钥匙，能开三阶那座旧柜——那座柜现在是一家餐厅。",
+      "attitude": {
+        "affinity": 1,
+        "note": "初始 +1。上升：给她真的锁序图纸看、让她动手。下降：让她参与暴力、把她的仿制品弄坏。"
+      },
+      "knows": [
+        "C-08",
+        "C-16",
+        "C-05"
+      ],
+      "if_dead_or_betrayed": "静默社与玩家永久交恶，全城哨械维修记录向守夜局开放；若她活着到终局，她可以替玩家改装一次锁盘（关键选项）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:524"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "冠台",
+      "atmosphere": "这里没有街道，只有平台和风。海拔两千九百六十米，云从脚下过，所以叫冠台。理事会大厅的地板是整块岩脊磨平的，走上去有回声。所有人都压低声音，包括来抗议的人。",
+      "unlock": "阶籍 ≥ 一阶通行证（flag.tier1_pass）或 声望（理事会）≥ +2；否则只能经检修井（檐行者路线）。",
+      "key_places": [
+        "理事会大厅——九阶各派七席。可交互对象：席位下方的铜制投票匣（可开，DF 16）。",
+        "冠台图书室——藏有《崖测录》与历次沉降评估。可交互对象：借阅登记簿（可伪造）。",
+        "天空港——飞艇与货运吊臂。可交互对象：货运时刻板（每时段刷新）。",
+        "元柜井口——图书室下方的一口封死的竖井。可交互对象：井口的九孔锁盘（终局）。",
+        "侍从长值房——曲临的办公室。可交互对象：他的私人茶柜（内有副本钥匙）。"
+      ],
+      "encounters": "预算 6–10（高等级段）；典型组合 = 冠台侍卫（精锐）×2 + 哨械「垂听者」×1。",
+      "resources": "一阶通行证（唯一）、沉降评估摘要、《崖测录》副本、元柜井口图。",
+      "if_botched": "冠台进入「净阶」状态——全部吊篮停运 1d6 时段，检修井加装栅格，此后所有经千梯上行的路线 DF +3；声望（理事会）−3。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:145"
+    },
+    {
+      "id": "loc-02",
+      "name": "白壁",
+      "atmosphere": "一整排面朝崖外的白房子，墙是真的白，因为每月洗一次。这里是老钱，不喧哗，连狗都不叫。夜里两点之后，整阶只剩下空调外机的滴水声。",
+      "unlock": "flag.rep_baihang ≥ 0，或持白壁行邀请函；否则须经外墙（檐行者，潜行 DF 16）。",
+      "key_places": [
+        "听泉馆——宓老夫人的宅子，西翼有室内泉。可交互对象：泉水循环泵（可制造噪音掩护）。",
+        "白壁行拍卖厅——洗印与拍卖一体。可交互对象：拍品预展柜（摸清安防的最佳场所）。",
+        "白壁行地库——洗印模具与待洗物品。可交互对象：洗印台（本城唯一合法改来历的地方）。",
+        "回声匣保管室——恒温、独立供电。可交互对象：匣本身（V7）。",
+        "老园丁小屋——阿宓住的地方。可交互对象：她的换班表。"
+      ],
+      "encounters": "预算 5–9；典型组合 = 家卫（标准）×3 + 猎犬（杂兵，迅捷）×2。",
+      "resources": "洗印服务（唯一）、高端赃物的行情、老夫人的私人情报、邀请函。",
+      "if_botched": "白壁行对全城发出「拒收通告」，此后 1d4 周内所有赃物折价率 −20%；声望（白壁行）−3。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:159"
+    },
+    {
+      "id": "loc-03",
+      "name": "中庭",
+      "atmosphere": "城市的客厅。剧场、医院、百货、婚丧嫁娶都在这里办。人多，眼杂，也最容易藏人。三阶的中庭大堂是六层挑空，抬头能看见四阶的地板缝里漏下来的水。",
+      "key_places": [
+        "琉璃厅——剧院兼预展场地。可交互对象：舞台上方的吊杆系统（可作为垂直通道）。",
+        "中庭医院——六阶以下的人来这里要排队。可交互对象：急诊登记表（追踪谁当晚来过）。",
+        "旧柜餐厅——把第一座公共柜的锁序铜板当墙面装饰。可交互对象：铜板（可拓印）。",
+        "道具工坊——游七的地盘。可交互对象：道具箱的清单（伪装道具来源）。",
+        "中庭派出所——守夜局在三阶的派出机构。可交互对象：值班表。"
+      ],
+      "encounters": "预算 3–7；典型组合 = 巡逻巡守（标准）×2 + 便衣（杂兵，隐伏）×1。",
+      "resources": "伪装道具、人群掩护、医院床位（去创伤）、剧院的人脉。",
+      "if_botched": "中庭大堂加装临时查验口，此后每次穿越三阶须通过一次欺骗 DF 14；声望（守夜局）−1。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:173"
+    },
+    {
+      "id": "loc-04",
+      "name": "铜环",
+      "atmosphere": "铜是这里的颜色——屋顶、招牌、门把手，连法院的栏杆都是铜的，因为铜不生锈。写字楼、法院、守夜局总部都挤在这一阶。白天最吵，夜里最亮。",
+      "unlock": "—（开局可用，但守夜局总部需 flag.tier4_pass）。",
+      "key_places": [
+        "判牍阁——法院档案库。可交互对象：档案索引柜（V1 目标区）。",
+        "守夜局总部——《夜巡三条》铜牌挂在这里。可交互对象：值班室的巡逻调度板（最值钱的情报）。",
+        "铜环证物房——268 年设立。可交互对象：证物编号册（V6）。",
+        "柜险查勘处——金衡行在此办公。可交互对象：柜险单存根（廉价情报）。",
+        "铜环当铺——后墙有静默社章程石刻。可交互对象：石刻（可拓印，解锁静默社声望）。"
+      ],
+      "encounters": "预算 6–12；典型组合 = 巡守小队（标准）×3 + 哨械「记名录」×1 + 查勘员（杂兵）。",
+      "resources": "巡逻调度表、柜险情报、法律文书伪造、证物房线索。",
+      "if_botched": "四阶进入「铜环宵禁」，夜间所有通行须连过两次潜行 DF 15；声望（守夜局）−2。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:187"
+    },
+    {
+      "id": "loc-05",
+      "name": "灰市",
+      "atmosphere": "本册的母港。灰市的顶就是六阶的地板，所以永远不亮；所有的灯都是自己拉的线。这里什么都卖，包括别人的秘密。绳会的账房在最深处，门口挂着一串铜毫做的帘子。",
+      "key_places": [
+        "绳会账房——温苔的地盘，后间有木匣。可交互对象：暗账（可查谁在找什么）。",
+        "檐下铁铺——改造装备。可交互对象：工作台（工艺，可用）。",
+        "修表铺——门口摆着报废的初代哨械。可交互对象：哨械残骸（技术 DF 14 可拆出零件）。",
+        "当铺后墙——静默社章程石刻。可交互对象：拓印工具。",
+        "哑巴酒馆——不说话的酒馆，因为隔墙有耳。可交互对象：墙上的欠账板。"
+      ],
+      "encounters": "预算 2–6；典型组合 = 檐党收数人（杂兵）×4 或 醉汉（杂兵）×3（非致命）。",
+      "resources": "全部非法服务、销赃渠道、装备改造、传闻、雇主。",
+      "if_botched": "绳会宣布「断绳」——3d6 天内不接你们的货，不传话，不认人；声望（绳会）−3。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:201"
+    },
+    {
+      "id": "loc-06",
+      "name": "沉巷",
+      "atmosphere": "137 年被削掉两层的旧工人区。天花板低，管道外露，走道里永远有风。被封的旧两层就在脚下的检修井里，檐党说是「下面还有六阶」。",
+      "key_places": [
+        "租屋长廊——一间挨一间的隔断。可交互对象：隔断墙后的听音孔（情报）。",
+        "被封旧层——137 年削掉的两层。可交互对象：旧层的货运口（通往七阶的捷径）。",
+        "沉巷小学堂——孩子们白天上课。可交互对象：教室墙上的阶籍表（谁家搬走了）。",
+        "檐党哨点——收檐钱的地方。可交互对象：凿痕标记。",
+        "公共澡堂——唯一能洗掉痕迹又不被问的地方。可交互对象：换衣柜（临时藏物）。"
+      ],
+      "encounters": "预算 2–6；典型组合 = 檐党巡巷（杂兵）×4 + 檐党打手（标准）×1。",
+      "resources": "藏身处（可发展据点）、下层人脉、通往七阶的捷径、廉价劳动力。",
+      "if_botched": "檐党在沉巷发布「挂名」——你们的相貌被画在墙上，此后在六阶以下行动被认出的概率大增；声望（檐党）−3。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:215"
+    },
+    {
+      "id": "loc-07",
+      "name": "铁腹",
+      "atmosphere": "整阶都在震。工场、货索站台、仓库，空气里有铁屑和机油味。铁腹工团在这里说了算，工牌比通行证好使。",
+      "unlock": "flag.rep_gongtuan ≥ −1 或 持工牌（可伪造，欺骗 DF 13）。",
+      "key_places": [
+        "七号料库——夜班三人，堆着贵重金属。可交互对象：料位卡（V4 目标区）。",
+        "货索站台——全城货运的咽喉。可交互对象：调度牌（可改动运输顺序）。",
+        "旧锅炉房——233 年罢工的号志旗藏在这里。可交互对象：锅炉检修口（通往八阶）。",
+        "工团议事堂——邵铁的办公室。可交互对象：工牌发放册。",
+        "废件场——报废哨械堆积。可交互对象：可拆零件（技术 DF 12）。"
+      ],
+      "encounters": "预算 5–10；典型组合 = 工团纠察（标准）×3 + 装卸机（精锐，巨型）×1。",
+      "resources": "工牌、金属原料、运输调度权限、工团武力支援、通往八阶的检修口。",
+      "if_botched": "工团封锁货索，此后所有经货索的运输路线关闭 1d4 周；声望（铁腹工团）−3。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:229"
+    },
+    {
+      "id": "loc-08",
+      "name": "涝底",
+      "atmosphere": "排水、废料、电厂。地面永远是湿的，脚下的水往低处走，最后落进井底。261 年出现的贯穿裂缝被填埋了，但填埋层下面还在渗。这里的灯是防水的，绿幽幽。",
+      "unlock": "flag.rep_gongtuan ≥ 0（需工团放行）或 经旧锅炉检修口（潜行 DF 15）。",
+      "key_places": [
+        "排水枢纽——八阶的心脏。可交互对象：主阀门轮盘（关掉它，全阶停水）。",
+        "填埋裂缝——261 年封锁的那道。可交互对象：填埋层后的旧泵房（V5 目标）。",
+        "黑汛旧泵房——73 年被淤泥封死。可交互对象：泵房里的老图纸（V5 赃物）。",
+        "电厂主控——全城三分之一电力。可交互对象：分时供电表（踩点核心情报）。",
+        "渗水层——往下就是井底。可交互对象：锈蚀的爬梯（危险的捷径）。"
+      ],
+      "encounters": "预算 6–12；典型组合 = 涝底值守（标准）×2 + 排污巡检机（精锐，装甲）×1 + 渗水爬虫群（杂兵）×4。",
+      "resources": "供电表（决定所有电子安防的窗口）、老图纸、通往井底的路、断电能力。",
+      "if_botched": "八阶泄洪一次，六阶以下被淹 1d3 时段，全城供电波动；声望（铁腹工团）−2，声望（理事会）−2，且获得 1 层【负担】（道德成本，由导引者提出）。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:243"
+    },
+    {
+      "id": "loc-09",
+      "name": "井底",
+      "atmosphere": "没有阶籍的地方。矿渣堆、旧城木栈残骸、拾骨人的棚屋。往下四十米是水泥，往上两千九百米是城。这里的人不抬头。",
+      "unlock": "flag.entered_shaft_bottom（首次需经八阶渗水层或千梯四十级）。",
+      "key_places": [
+        "木栈残骸——城历前 60 年的檐。可交互对象：栈道尽头的岩壁凿痕（静默社标记）。",
+        "拾骨人营地——老钳的地盘。可交互对象：他的废件堆（V8 赃物在其中）。",
+        "空版铅字坑——219 年查抄的铅字被倒在这里。可交互对象：尚未熔化的铅字（可读出标题）。",
+        "渗水口——从八阶落下的水。可交互对象：水面下的旧仓门。",
+        "崖测井——往下四十米的水泥层下还有东西。可交互对象：井盖的九孔锁（终局伏笔）。"
+      ],
+      "encounters": "预算 7–14；典型组合 = 拾骨人（杂兵）×5 + 井底爬行者（标准，隐伏）×2 + 崖测井下物（首领，仅终局前）。",
+      "resources": "造钥模（V8）、空版铅字（线索）、静默社标记、静默社声望、终局伏笔。",
+      "if_botched": "拾骨人全体迁走，井底再无向导；此后在井底的追踪 DF +4；声望（静默社）−2。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:257"
+    },
+    {
+      "id": "loc-10",
+      "name": "千梯",
+      "atmosphere": "三条路并行——吊篮在崖外晃，货索在崖内爬，检修井在墙里藏。千梯上没有人管你从哪来，只有人管你交没交檐钱。",
+      "unlock": "—（开局可用吊篮）；货索需工牌；检修井需檐行者或檐党放行。",
+      "key_places": [
+        "吊篮站台（每阶一处）——客运。可交互对象：阶籍查验闸（可伪造）。",
+        "货索井道——货运。可交互对象：中途挂钩站（可藏身、可甩脱）。",
+        "检修井——墙内的钢爬梯与滑轮。可交互对象：檐党凿痕（路标）。",
+        "四十级——248 年被封的四十级。可交互对象：檐党的纪念凿刻。",
+        "中途挂钩站 B7——全城的货物都在这里换钩。可交互对象：换钩记录板。"
+      ],
+      "encounters": "预算 3–9；典型组合 = 檐党收数人（杂兵）×3 + 巡检哨械（标准）×1，或在四十级遇到「罗屏盗团」（标准 ×3）。",
+      "resources": "最快的跨阶移动、甩脱追兵的场地、檐党人脉、运输情报。",
+      "if_botched": "檐党封井，检修井全线加装栅格；此后跨阶移动一律走吊篮（须过查验），移动耗时 ×2 且风险池骰改为 d4。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:271"
+    },
+    {
+      "id": "loc-11",
+      "name": "雾桥",
+      "atmosphere": "雾、铁锈、和一种没有回声的安静。所有声音都被雾吃掉，所以掮客喜欢在这里谈价。",
+      "unlock": "flag.know_fogshelf（由绳会或檐党告知）或 声望（绳会）≥ +1。",
+      "key_places": [
+        "装卸平台尽头——谈判点。可交互对象：一台还能动的旧吊臂。",
+        "雾里的旧集装箱——藏物。可交互对象：箱号（可作为约定暗号）。",
+        "崖边裂隙——往下就是雾。可交互对象：一条被绳子磨出的沟（说明有人常来）。",
+        "废弃磅秤——称货的地方。可交互对象：秤盘下的暗格。"
+      ],
+      "encounters": "预算 4–10；典型组合 = 对方带来的保镖（标准）×2，或埋伏（杂兵 ×4，隐伏）。",
+      "resources": "不受阶籍约束的交易、分账、灭迹（把东西扔下崖）、私下会面。",
+      "if_botched": "雾桥成为对方的伏击点并永久标记为「不可信」；此后在此地的交涉立场 +4；声望（绳会）−2。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:287"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-a",
+      "name": "开柜",
+      "requirements": "flag.press_allied == true",
+      "result": "玩家把《九阶图》与《沉降名单》交给镜台报馆。报纸印出那一版的时候，全城同时读到了同一件事：这座城在沉，而且有人早就知道。理事会垮台或改组；八阶与九阶的人开始往上走；玩家成为公众口中的“揭幕者”，同时在守夜局与金衡行的名单上排第一。",
+      "epilogue": "一次全城追索（1–2 次会话），之后玩家可以选择离开云脊城，或留下重建某个檐口。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2926"
+    },
+    {
+      "id": "ending-b",
+      "name": "换手",
+      "requirements": "flag.keys_sold == true",
+      "result": "玩家把九钥（或名单）交给岑照／白壁行／金衡行中的任一方。他们拿到赦免、一笔足以离开这座城的钱、和一个新的身份。名单被封存。沉降照旧。三十年内，某几阶会塌，而塌下去的还是同一批人。",
+      "epilogue": "玩家富有但声名狼藉（或声名显赫但内心空洞）；导引者应当演出一次“很多年后”的短景——他们在一座更高的城里，听见有人说起云脊城塌了。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2931"
+    },
+    {
+      "id": "ending-c",
+      "name": "自持",
+      "requirements": "flag.primecoffer_opened == true 且 flag.keys_kept == true",
+      "result": "玩家自己拿着名单。他们成为新的守钥人：所有势力都想要他们手里的东西，也都不敢动他们。玩家可以逐个去谈：用名单换工团的自由、换檐党的井、换报馆的版面、换霍砚和岑照互相制衡。",
+      "epilogue": "这不是一个“结束”，而是一个长期状态。战役转入开放结局，玩家决定每一次把名单的哪一部分给谁。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2936"
+    },
+    {
+      "id": "ending-d",
+      "name": "崩塌",
+      "requirements": "clock.silence >= 11 且强行开柜",
+      "result": "强开的那一瞬间，九孔守柜机把结构数据广播给了全城。九阶同时知道了自己脚下的承重量。结果不是解放，是恐慌：上阶封锁下阶，下阶冲击上阶，货索停运，千梯断裂。",
+      "epilogue": "玩家在混乱中逃出冠台，带着（或没带着）名单。城市进入动荡期；下一季的战役从废墟里开始。",
+      "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2941"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1989",
+    "declared_flag_count": 41,
+    "actual_flag_count": 41,
+    "flag": [
+      {
+        "id": "flag.chapter",
+        "type": "int",
+        "initial": 0,
+        "write": "每完成一个据点 +1",
+        "readers": "全部状态机",
+        "effect": "决定哪些活可接、哪些已过期",
+        "universal": true,
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1993"
+      },
+      {
+        "id": "flag.keys_collected",
+        "type": "int",
+        "initial": 0,
+        "write": "每取得一枚权钥 +1",
+        "readers": "V9 状态机、霍砚对白树",
+        "effect": "终局开启条件（≥8）",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1994"
+      },
+      {
+        "id": "flag.key_v1 ~ flag.key_v9",
+        "type": "bool",
+        "initial": false,
+        "write": "取得对应权钥",
+        "readers": "各据点状态机、元柜锁盘",
+        "effect": "决定《元柜锁盘》DF",
+        "note": "一行覆盖九枚（bool ×9）",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1995"
+      },
+      {
+        "id": "flag.v0_box",
+        "type": "bool",
+        "initial": false,
+        "write": "打开后间木匣",
+        "readers": "V0 状态机",
+        "effect": "教学据点的完成判定",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1996"
+      },
+      {
+        "id": "flag.v0_done",
+        "type": "bool",
+        "initial": false,
+        "write": "V0 结算",
+        "readers": "V1 状态机",
+        "effect": "开启正式委托",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1997"
+      },
+      {
+        "id": "flag.v2_truth_heard",
+        "type": "bool",
+        "initial": false,
+        "write": "听完老夫人讲完一段话",
+        "readers": "V2 状态机",
+        "effect": "开启 succeeded_mercy",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1998"
+      },
+      {
+        "id": "flag.madame_hurt",
+        "type": "bool",
+        "initial": false,
+        "write": "伤害宓老夫人",
+        "readers": "V2 状态机、白壁行声望",
+        "effect": "直接 −3 拍品资格",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:1999"
+      },
+      {
+        "id": "flag.subsidence_known",
+        "type": "bool",
+        "initial": false,
+        "write": "读到《沉降名单》任一份残页",
+        "readers": "V6/V9 状态机、霍砚与岑照对白树",
+        "effect": "开启后半段所有剧情",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2000"
+      },
+      {
+        "id": "flag.primecoffer_located",
+        "type": "bool",
+        "initial": false,
+        "write": "取得元柜井口图或曲临的日志",
+        "readers": "V9 状态机",
+        "effect": "终局地点",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2001"
+      },
+      {
+        "id": "flag.primecoffer_opened",
+        "type": "bool",
+        "initial": false,
+        "write": "元柜开启",
+        "readers": "结局判定",
+        "effect": "决定 A／C 结局",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2002"
+      },
+      {
+        "id": "flag.keys_sold",
+        "type": "bool",
+        "initial": false,
+        "write": "把权钥交给第三方",
+        "readers": "结局判定",
+        "effect": "决定 B 结局",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2003"
+      },
+      {
+        "id": "flag.keys_kept",
+        "type": "bool",
+        "initial": false,
+        "write": "终局选择自持",
+        "readers": "结局判定",
+        "effect": "决定 C 结局",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2004"
+      },
+      {
+        "id": "flag.echo_box_silenced",
+        "type": "bool",
+        "initial": false,
+        "write": "让薄言说出静音方法或打开外壳",
+        "readers": "V7 状态机",
+        "effect": "移除静默值下限锁定",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2005"
+      },
+      {
+        "id": "flag.echo_box_taken",
+        "type": "bool",
+        "initial": false,
+        "write": "匣子被带出保管室",
+        "readers": "V7 状态机",
+        "effect": "启动每时段 +1",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2006"
+      },
+      {
+        "id": "flag.echo_sold",
+        "type": "bool",
+        "initial": false,
+        "write": "匣子被卖给第三方",
+        "readers": "V7 状态机 → cursed",
+        "effect": "岑照提前介入",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2007"
+      },
+      {
+        "id": "flag.huo_motive_suspected",
+        "type": "bool",
+        "initial": false,
+        "write": "玩家提出对霍砚的怀疑",
+        "readers": "霍砚对白树、岑照对白树",
+        "effect": "解锁质问选项",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2008"
+      },
+      {
+        "id": "flag.huo_identity_known",
+        "type": "bool",
+        "initial": false,
+        "write": "得知霍砚是计霜之子",
+        "readers": "霍砚对白树终局节点",
+        "effect": "终局多一个选项",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2009"
+      },
+      {
+        "id": "flag.jishuang_recording",
+        "type": "bool",
+        "initial": false,
+        "write": "听到计霜录音",
+        "readers": "V8、V9",
+        "effect": "暗线完整揭示",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2010"
+      },
+      {
+        "id": "flag.anti_key_held",
+        "type": "bool",
+        "initial": false,
+        "write": "取得反钥",
+        "readers": "V9",
+        "effect": "终局可“关上”元柜（避免 D 结局）",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2011"
+      },
+      {
+        "id": "flag.weizheng_exposed",
+        "type": "bool",
+        "initial": false,
+        "write": "卫铮的双面身份被识破",
+        "readers": "V6 状态机",
+        "effect": "卫铮态度轴 −3",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2012"
+      },
+      {
+        "id": "flag.weizheng_used",
+        "type": "bool",
+        "initial": false,
+        "write": "反利用卫铮传假情报",
+        "readers": "V6 → succeeded_trap",
+        "effect": "终局对岑照的优势",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2013"
+      },
+      {
+        "id": "flag.insider_liwang_dead",
+        "type": "bool",
+        "initial": false,
+        "write": "黎望死亡",
+        "readers": "V1 状态机、雀九对白树",
+        "effect": "内应路线关闭",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2014"
+      },
+      {
+        "id": "flag.insider_hejiu_dead",
+        "type": "bool",
+        "initial": false,
+        "write": "贺九死亡",
+        "readers": "V4 状态机",
+        "effect": "内应路线关闭",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2015"
+      },
+      {
+        "id": "flag.has_insider",
+        "type": "bool",
+        "initial": false,
+        "write": "成功策反任一位内应",
+        "readers": "预案点「内应」用途",
+        "effect": "允许花 2 点叫内应",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2016"
+      },
+      {
+        "id": "flag.laoqian_alive",
+        "type": "bool",
+        "initial": false,
+        "write": "首次进入井底（false → true）",
+        "readers": "V8 状态机",
+        "effect": "决定可否取得向导",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2017"
+      },
+      {
+        "id": "flag.laoqian_allied",
+        "type": "bool",
+        "initial": false,
+        "write": "与老钳关系 ≥ 3",
+        "readers": "V8 → succeeded_guide",
+        "effect": "获得崖测坐标",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2018"
+      },
+      {
+        "id": "flag.entered_shaft_bottom",
+        "type": "bool",
+        "initial": false,
+        "write": "首次抵达九阶",
+        "readers": "V8 状态机",
+        "effect": "解锁井底区域",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2019"
+      },
+      {
+        "id": "flag.flood_happened",
+        "type": "bool",
+        "initial": false,
+        "write": "擅动主阀门",
+        "readers": "V5 状态机",
+        "effect": "两层声望 −2、全员 +1 负担",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2020"
+      },
+      {
+        "id": "flag.union_allied",
+        "type": "bool",
+        "initial": false,
+        "write": "声望（铁腹工团）≥ +2",
+        "readers": "V4 → succeeded_union",
+        "effect": "工团主动交出权钥",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2021"
+      },
+      {
+        "id": "flag.rival_luo_first",
+        "type": "bool",
+        "initial": false,
+        "write": "罗屏盗团先一步得手",
+        "readers": "V3 状态机、罗屏对白树",
+        "effect": "该据点失败或转为抢夺",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2022"
+      },
+      {
+        "id": "flag.press_allied",
+        "type": "bool",
+        "initial": false,
+        "write": "声望（镜台报馆）≥ +2",
+        "readers": "V9 结局判定",
+        "effect": "决定 A 结局能否成立",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2023"
+      },
+      {
+        "id": "flag.huo_letter_sent",
+        "type": "bool",
+        "initial": false,
+        "write": "霍砚死亡或被背叛",
+        "readers": "1d6 会话后生效",
+        "effect": "守夜局照名单上门",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2024"
+      },
+      {
+        "id": "flag.watch_warrant",
+        "type": "bool",
+        "initial": false,
+        "write": "声望（守夜局）≤ −2",
+        "readers": "全区盘查",
+        "effect": "跨阶移动须过查验",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2025"
+      },
+      {
+        "id": "flag.ropeclan_cut",
+        "type": "bool",
+        "initial": false,
+        "write": "声望（绳会）≤ −3 或温苔死亡",
+        "readers": "销赃",
+        "effect": "断绳：折价率 −20%",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2026"
+      },
+      {
+        "id": "flag.eaves_sealed",
+        "type": "bool",
+        "initial": false,
+        "write": "声望（檐党）≤ −3 或桑螭死亡",
+        "readers": "千梯",
+        "effect": "检修井封井，移动耗时 ×2",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2027"
+      },
+      {
+        "id": "flag.ladder_sealed",
+        "type": "bool",
+        "initial": false,
+        "write": "在千梯搞砸",
+        "readers": "全城移动",
+        "effect": "只能走吊篮（须查验）",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2028"
+      },
+      {
+        "id": "flag.fogshelf_known",
+        "type": "bool",
+        "initial": false,
+        "write": "由绳会或檐党告知",
+        "readers": "雾桥区域",
+        "effect": "解锁不受阶籍约束的交易点",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2029"
+      },
+      {
+        "id": "flag.tier1_pass",
+        "type": "bool",
+        "initial": false,
+        "write": "取得一阶通行证（真或伪）",
+        "readers": "冠台区域",
+        "effect": "解锁一阶",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2030"
+      },
+      {
+        "id": "flag.tier4_pass",
+        "type": "bool",
+        "initial": false,
+        "write": "取得四阶通行证",
+        "readers": "守夜局总部",
+        "effect": "解锁证物房外部路线",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2031"
+      },
+      {
+        "id": "flag.debt_rope",
+        "type": "int",
+        "initial": 0,
+        "write": "欠绳会的钱",
+        "readers": "每章结算 +20%",
+        "effect": "债主上门事件",
+        "note": "类型列原文「int（银阶）」",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2036"
+      },
+      {
+        "id": "flag.nemesis_level",
+        "type": "int",
+        "initial": 0,
+        "write": "每章结束 +1（若有敌对者）",
+        "readers": "岑照／罗屏的计划推进",
+        "effect": "决定敌对者出手的强度",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2037"
+      }
+    ],
+    "rep": [],
+    "clock": [
+      {
+        "id": "clock.silence",
+        "type": "int",
+        "initial": 0,
+        "write": "见第 5 节",
+        "readers": "全部潜入场景",
+        "effect": "决定响应等级",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2032"
+      },
+      {
+        "id": "clock.prep_pool",
+        "type": "int",
+        "initial": 0,
+        "write": "踩点阶段累积",
+        "readers": "潜入场景",
+        "effect": "上限 4 + 队伍人数",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2033"
+      },
+      {
+        "id": "clock.prep_deadline",
+        "type": "int",
+        "initial": 3,
+        "write": "每踩点时段 −1",
+        "readers": "状态机 expired",
+        "effect": "归零则起始静默值 +3",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2034"
+      },
+      {
+        "id": "clock.patrol_shift",
+        "type": "int",
+        "initial": 3,
+        "write": "每时段 −1，归零重置",
+        "readers": "巡逻遭遇判定",
+        "effect": "影响巡逻 DF",
+        "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2035"
+      }
+    ]
+  },
+  "ledger_template": {
+    "source": "docs/scenario/S2-静默劫案-高塔与金库.md:2951",
+    "meta": {
+      "world": "yunji",
+      "module": "S2-silent-heist",
+      "engine": "tactics",
+      "tone_pack": "noir",
+      "session": 0,
+      "party_level": 1,
+      "party_size": 4
+    },
+    "clock": {
+      "day": 1,
+      "watch": "night",
+      "active_pressure": "霍砚的第一票必须在三日内动手",
+      "prep_deadline": 3,
+      "patrol_shift": 3
+    },
+    "silence": {
+      "current": 0,
+      "tier": "静默",
+      "floor_lock": 0,
+      "last_event": ""
+    },
+    "prep": {
+      "pool": 0,
+      "cap": 8,
+      "spent_this_job": 0,
+      "actions_done": []
+    },
+    "heist": {
+      "current_job": "V0",
+      "state": "offered",
+      "scheme": "",
+      "entry_route": "",
+      "exit_route": "",
+      "loot": [],
+      "outcome": ""
+    },
+    "keys": {
+      "collected": 0,
+      "held": [],
+      "sold": [],
+      "anti_key": false,
+      "primecoffer_located": false
+    },
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "九钥是什么",
+        "state": "hidden",
+        "progress": 0,
+        "paths_resolved": [],
+        "paths_remaining": [
+          "锁序残片",
+          "计晚的反钥",
+          "老钳的模"
+        ],
+        "payoff": "元柜验证物"
+      },
+      {
+        "id": "C-09",
+        "name": "元柜里不是钱",
+        "state": "hidden",
+        "progress": 0,
+        "paths_resolved": [],
+        "paths_remaining": [
+          "沉听者的数字",
+          "曲临的日志",
+          "未印的铅字"
+        ],
+        "payoff": "沉降名单"
+      },
+      {
+        "id": "C-12",
+        "name": "霍砚在雇两队",
+        "state": "hidden",
+        "progress": 0,
+        "paths_resolved": [],
+        "paths_remaining": [
+          "温苔的暗账",
+          "罗屏的图",
+          "薄言的话"
+        ],
+        "payoff": "雇主背叛"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "霍砚",
+        "role": "雇主",
+        "drive": "凑齐九钥并决定名单的命运",
+        "lever": "他是计霜的儿子",
+        "mask": "整洁、礼貌、先摆正手里的东西",
+        "tell": "提到母亲时左袖口会往下拉",
+        "location": "二阶白壁行",
+        "affinity": 1,
+        "awe": 0,
+        "status": "alive",
+        "knows": [
+          "C-01",
+          "C-04",
+          "C-09"
+        ]
+      },
+      {
+        "name": "温苔",
+        "role": "中间人",
+        "drive": "让绳会不可替代并活着退场",
+        "lever": "她的暗账",
+        "mask": "记账时不看人",
+        "tell": "真正动心时会停下笔",
+        "location": "五阶灰市",
+        "affinity": 0,
+        "awe": 0,
+        "status": "alive",
+        "knows": [
+          "C-02",
+          "C-06",
+          "C-11"
+        ]
+      },
+      {
+        "name": "岑照",
+        "role": "追猎者",
+        "drive": "拿到名单换一个不会塌的秩序",
+        "lever": "219 年她留下的铅字",
+        "mask": "走路很轻、说话很慢",
+        "tell": "她记得每一个见过的名字",
+        "location": "四阶守夜局",
+        "affinity": -2,
+        "awe": 1,
+        "status": "alive",
+        "knows": [
+          "C-03",
+          "C-07",
+          "C-12"
+        ]
+      },
+      {
+        "name": "黎望",
+        "role": "内应-V1",
+        "drive": "送出三年前被压下的判决书",
+        "lever": "他知道判决书是假的",
+        "mask": "写字时肩膀跟着动",
+        "tell": "被问到老师名字时会停笔",
+        "location": "四阶判牍阁",
+        "affinity": 0,
+        "awe": 0,
+        "status": "alive",
+        "knows": [
+          "C-01",
+          "C-13",
+          "C-03"
+        ]
+      }
+    ],
+    "locations": [
+      {
+        "name": "五阶·灰市",
+        "state": "已探明",
+        "site_elements": [
+          "账房帘子",
+          "检修井入口",
+          "哑巴酒馆"
+        ],
+        "changed": false
+      },
+      {
+        "name": "四阶·铜环",
+        "state": "未探明",
+        "site_elements": [],
+        "changed": false
+      },
+      {
+        "name": "一阶·冠台",
+        "state": "锁定",
+        "site_elements": [],
+        "changed": false
+      }
+    ],
+    "reputation": {
+      "council": 0,
+      "jinheng": 0,
+      "jingmo": 0,
+      "watch": 0,
+      "baihang": 0,
+      "ropeclan": 0,
+      "eaves": 0,
+      "gongtuan": 0,
+      "press": 0
+    },
+    "facts": [],
+    "debts": [
+      {
+        "from": "party",
+        "to": "绳会",
+        "nature": "",
+        "amount_silver": 0,
+        "due": ""
+      }
+    ],
+    "nemeses": [
+      {
+        "name": "岑照",
+        "level": 0,
+        "plan": "建立团伙手法档案",
+        "next_move": "在第三次作案后点名"
+      }
+    ],
+    "flags": {
+      "chapter": 0,
+      "keys_collected": 0,
+      "has_insider": false,
+      "subsidence_known": false,
+      "echo_box_silenced": false,
+      "watch_warrant": false,
+      "ropeclan_cut": false,
+      "eaves_sealed": false,
+      "fogshelf_known": false,
+      "entered_shaft_bottom": false
+    },
+    "hooks": [
+      "温苔的木匣里那张索引号指向判牍阁",
+      "有人在灰市打听'会响的那只匣子'",
+      "沉巷旧层的墙上有人刻了新的箭头"
+    ],
+    "party": []
+  }
+}
