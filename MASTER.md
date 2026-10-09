@@ -40,9 +40,9 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
 - **分支保护**：ruleset「master」为 `active`——须经 PR + **四道 required checks** + 禁 force push / 禁删除。
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门 / 回归门 / 内容防火墙门 / **提交邮箱门**。
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
-- **数据层**：`python3 tests/validate_data.py` → **61 个文件**（`data/system/**` + `data/worlds/**`（三册）+ schema/registry）。
+- **数据层**：`python3 tests/validate_data.py` → **62 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + schema/registry）。
 - **回归**：`bash tests/run_all.sh` → 4 个脚本（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout`）。
-- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 系统规则 a–e ✅** · **M1.2 世界模组 a–c ✅** · M1.3 随机表 **a ← 进行中（Issue #38）** / b 待 · M1.4 待 · M2–M6 待。
+- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 系统规则 a–e ✅** · **M1.2 世界模组 a–c ✅** · M1.3 随机表 **a ✅ / b 已开（#41）待实现** · M1.4 待 · M2–M6 待。
 
 ---
 
@@ -87,7 +87,7 @@ bash tests/content_firewall.sh
 | 　M1.0 | 数据格式与校验基线（FORMAT + JSON Schema + 校验器） | ✅ |
 | 　M1.1 | 系统规则数据（`data/system/`） | ✅ a 内核 / b 战术 / c 构建 / d 互动 / e 导引者 |
 | 　M1.2 | 世界模组数据（`data/worlds/`） | a 阈界都市 ✅ / b 余烬纪元 ✅ / c 熵网 ✅ |
-| 　M1.3 | 随机表（`data/random_tables/`：system 08 + S7 70 张；各模组表已在 `data/worlds/*`） | **a 通用生成器（docs/system/08，#38）← 进行中** / b S7 70 张（docs/scenario/S7）待 |
+| 　M1.3 | 随机表（`data/random_tables/`：system 08 + S7 70 张；各模组表已在 `data/worlds/*`） | a 通用生成器（docs/system/08）✅ / **b S7 70 张（docs/scenario/S7，#41）← 待实现** |
 | 　M1.4 | 剧本（`data/scenarios/`：09/S8 + S1–S6 结构件 + 账本模板） | 待（**需先做 docs/ 修订**：C-xx 线索主表、flag 归一） |
 | **M2** | 规则核心（离线可玩） | 待 |
 | **M3** | 会话与存档 + 后端 API | 待 |
