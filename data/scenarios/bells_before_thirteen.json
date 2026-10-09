@@ -631,7 +631,9 @@
         "affinity": 0,
         "location": "烬冠堡",
         "status": "crowned",
-        "knows": []
+        "knows": [],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "threads": [

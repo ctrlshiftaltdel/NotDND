@@ -2239,7 +2239,9 @@
           "C-01",
           "C-04",
           "C-09"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       },
       {
         "name": "温苔",
@@ -2256,7 +2258,9 @@
           "C-02",
           "C-06",
           "C-11"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       },
       {
         "name": "岑照",
@@ -2273,7 +2277,9 @@
           "C-03",
           "C-07",
           "C-12"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       },
       {
         "name": "黎望",
@@ -2290,7 +2296,9 @@
           "C-01",
           "C-13",
           "C-03"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "locations": [
@@ -2302,19 +2310,25 @@
           "检修井入口",
           "哑巴酒馆"
         ],
-        "changed": false
+        "changed": false,
+        "place_id": null,
+        "pinned": false
       },
       {
         "name": "四阶·铜环",
         "state": "未探明",
         "site_elements": [],
-        "changed": false
+        "changed": false,
+        "place_id": null,
+        "pinned": false
       },
       {
         "name": "一阶·冠台",
         "state": "锁定",
         "site_elements": [],
-        "changed": false
+        "changed": false,
+        "place_id": null,
+        "pinned": false
       }
     ],
     "reputation": {

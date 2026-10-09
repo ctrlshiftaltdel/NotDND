@@ -2428,7 +2428,9 @@
           "C-17",
           "C-18",
           "C-19"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "factions": {
@@ -2466,7 +2468,9 @@
           "居住舱"
         ],
         "changed": false,
-        "notes": []
+        "notes": [],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "flags": {

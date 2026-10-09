@@ -2969,7 +2969,9 @@
           "C-37",
           "C-06",
           "C-11"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "reputation": {

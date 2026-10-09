@@ -664,7 +664,9 @@
         "status": "on_duty",
         "knows": [
           "C-01"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "threads": [

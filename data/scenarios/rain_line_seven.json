@@ -461,7 +461,9 @@
         "status": "waiting",
         "knows": [
           "C-01"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "threads": [
