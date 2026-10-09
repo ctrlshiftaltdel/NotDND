@@ -28,6 +28,11 @@ M2c（Issue #72）已落地：构建引擎骰池与结算（docs/system/02B 第�
 不混用；符纹插槽 / 构建点成长 / 双引擎互转留给 M2d。
 源文档未写的数值一律不臆造，仍以 `TODO(M2)` / `TODO(M2d)` 标注。
 
+ATLAS I5（Issue #67）已接线：战术投影——规则核心在需要距离或高地时，
+向地图（`atlas.py` 内核）询问投影，而不是另维护一套口头坐标。本层只
+调用内核的 `range_band` 与 `high_ground`（外加读已有战术帧的 `space`
+口径）；**没接地图时一切行为与 M2b 默认完全一致**（心象剧场）。
+
 设计约定
   · 零第三方依赖（仅 Python 3 标准库）；`import prism_core` **无副作用**。
   · 所有状态都是纯数据（dict / list / 基本类型），可直接 JSON 序列化：
@@ -40,6 +45,7 @@ M2c（Issue #72）已落地：构建引擎骰池与结算（docs/system/02B 第�
   一、术语与显式白名单      二、掷骰器
   三、会话状态契约          四、结算的单一进出口
   五、场景行动单入口        六、战斗状态机
+  六·附、战术投影（ATLAS I5）
   七、派生值与明细          八、成长
   九、构建引擎（M2c，02B 第一至五节）
 """
@@ -417,6 +423,10 @@ class RuleSession:
         self.action_fails: dict = {}     # {行动 id: 累计失败次数}
         self.pressure = 0                # 场景压力计（见 tick_pressure）
         self.combat: dict | None = None
+        # 战术投影块（ATLAS I5，见六·附）：{atlas, frame_id, space,
+        # unit_zones}。**运行期状态，不进 snapshot()**——地图的落盘与
+        # 恢复由 I4 的 atlas 存档块负责，加载后由网页层重新 attach。
+        self.tactical: dict | None = None
         self.dirty = False               # M3 存档层据此判断是否需要写盘
 
     def add_log(self, kind: str, text: str, *, speaker: str = "",
@@ -448,6 +458,8 @@ class RuleSession:
             "action_fails": copy.deepcopy(self.action_fails),
             "pressure": self.pressure,
             "combat": copy.deepcopy(self.combat),
+            # 注意：tactical（活地图）刻意不入快照——I4 的 atlas 存档块
+            # 负责地图持久化，网页层加载后重新 attach（见六·附）。
         }
 
     @classmethod
@@ -1408,12 +1420,23 @@ def resolve_attack(session: "RuleSession", attacker: dict | None,
       · 严重失手（自然 1）：无伤害，攻击者获得 1 层【失衡】，并掷失手表。
     韧性削减按 docs/system/01 第八节：普通命中减伤害值的一半（向下取整），
     暴击减全额。伤害结算统一走 deal_damage（唯一伤害出口）。
+    高地（I5 战术投影）：会话接了战术地图且攻击者对目标占高地时，
+    自动 +1 枚助势骰（02A 附录「常用情境修正」）；没接地图无此修正。
     """
     out = {"grade": "miss", "grade_zh": _ATTACK_GRADE_ZH["miss"],
            "attack_total": 0, "guard": 0, "margin": 0, "roll": None,
            "damage": 0, "poise": None, "events": [], "text": ""}
     if attacker is None or target is None:
         return out
+    # 高地情境修正（docs/system/02A 附录「常用情境修正」：高地 = +1 枚
+    # 助势骰）。有地图时向地图询问投影（I5）；没接地图返回 False，
+    # 行为与 M2b 默认完全一致。公式本身不变——情境修正是公式的一列。
+    high = tactical_high_ground(session, attacker, target)
+    if high:
+        advantage = int(advantage or 0) + 1
+        out["high_ground"] = True
+        out["events"].append({"type": "high_ground",
+                              "attacker": attacker.get("name")})
     attack = roll("1d20", advantage=advantage, disadvantage=disadvantage,
                   rng=rng)
     total = int(attack["total"]) + int(attack_bonus or 0)
@@ -2232,6 +2255,145 @@ def combat_view(session: RuleSession) -> dict:
         "enemies": [_unit_view(enemy) for enemy in combat.get("enemies") or []],
         "party": [_unit_view(unit) for unit in session.party],
     }
+
+
+# ════════════════════════════════════════════════════════════════════════
+# 六·附 战术投影（ATLAS I5，Issue #67）
+# ════════════════════════════════════════════════════════════════════════
+#
+# docs/system/02A 第六节：战斗默认走「心象剧场」（近／中／远、相邻／
+# 脱离靠口头维护），战术地图是可选件。本节把「可选件」的插口开在
+# 规则核心上：调用方用 attach_tactical_map 把一张**已有战术帧**
+# （atlas_gen.generate_tactical 的产物）连同「单位 → 区域」的钉扎关系
+# 接到会话上；此后规则核心在需要距离或高地时，向地图询问投影——
+# 本层**只调用内核的 range_band 与 high_ground**（ATLAS-DESIGN.md
+# §3.3 契约），外加读战术帧自己的 `space` 口径，不碰其他内核函数。
+#
+# 没接地图时，下面所有查询都返回 None / False，战斗结算与 M2b 默认
+# 完全一致；接了地图也不改战斗公式本身——唯一的公式内接线是 02A
+# 附录「常用情境修正」里的「高地 = +1 枚助势骰」，见 resolve_attack。
+
+#: metric 战术帧一格约 6 米（ATLAS-DESIGN.md §5.6）；abstract 帧
+#: 「一次走位」跨一区，米数不参与换算。
+TACTICAL_CELL_METERS = 6
+
+
+def attach_tactical_map(session: RuleSession, atlas: dict, frame_id: str,
+                        unit_zones: dict | None = None) -> dict:
+    """把一张已有战术帧接到会话上，返回投影块（同时存于 session.tactical）。
+
+    参数
+      atlas      活地图 dict（atlas.py 内核生成，战术帧已由
+                 atlas_gen.generate_tactical 投出）；
+      frame_id   战术帧 id（形如 "{world}/tactical/{房间}"）；
+      unit_zones {unit_id: 区域 place_id}：把战斗单位钉到帧内区域上。
+
+    校验只用内核 range_band：钉住的区域必须真的在本帧里（自问自答 =
+    same；帧或区域不存在时 range_band 返回 far）。帧的 `space` 口径
+    必须是 metric / abstract 之一（这就是「已有的战术帧」——投影帧
+    由 generate_tactical 从地点帧复制口径）。
+
+    地图是运行期状态，不进 session.snapshot()；落盘与恢复归 I4 的
+    atlas 存档块，网页层加载后重新 attach。
+    """
+    frame = atlas.get("frames", {}).get(frame_id) if isinstance(atlas, dict) \
+        else None
+    if frame is None:
+        raise ValueError("战术帧不存在：%s" % frame_id)
+    space = str(frame.get("space") or "")
+    if space not in ("metric", "abstract"):
+        raise ValueError("帧的 space 口径必须是 metric / abstract：%r"
+                         % (space,))
+    zones = {str(key): str(value)
+             for key, value in dict(unit_zones or {}).items()}
+    import atlas as atlas_kernel  # 局部导入：保持 import prism_core 无副作用
+    for uid, zone in zones.items():
+        if atlas_kernel.range_band(atlas, frame_id, zone, zone) != "same":
+            raise ValueError("单位 %s 钉住的区域不在帧 %s 内：%s"
+                             % (uid, frame_id, zone))
+    block = {"atlas": atlas, "frame_id": str(frame_id),
+             "space": space, "unit_zones": zones}
+    session.tactical = block
+    session.touch()
+    return block
+
+
+def detach_tactical_map(session: RuleSession) -> None:
+    """摘掉战术投影（战斗结束 / 换场景时调用）；没接地图时是空操作。"""
+    if getattr(session, "tactical", None) is not None:
+        session.tactical = None
+        session.touch()
+
+
+def tactical_map(session: RuleSession) -> dict | None:
+    """会话的战术投影元信息：{frame_id, space, unit_zones}（不含活地图
+    本体，深拷贝安全）；没接地图时返回 None。"""
+    block = getattr(session, "tactical", None)
+    if not block:
+        return None
+    return {"frame_id": block["frame_id"], "space": block["space"],
+            "unit_zones": dict(block["unit_zones"])}
+
+
+def _tactical_pin(session: RuleSession, unit: dict | None) -> str | None:
+    """单位在战术帧里钉住的区域 id；没接地图 / 没钉住返回 None。"""
+    block = getattr(session, "tactical", None)
+    if not block or unit is None:
+        return None
+    return block["unit_zones"].get(str(unit.get("id") or "")) or None
+
+
+def tactical_range_band(session: RuleSession, attacker: dict | None,
+                        target: dict | None) -> str | None:
+    """两单位在战术帧里的距离档（内核 range_band 的图距离投影）：
+    same / adjacent / near / mid / far。
+
+    没接地图、或任一单位没钉住 → None：调用方回到心象剧场默认
+    （02A 第六节），不臆造位置。
+    """
+    za = _tactical_pin(session, attacker)
+    zb = _tactical_pin(session, target)
+    if not za or not zb:
+        return None
+    block = session.tactical
+    import atlas as atlas_kernel
+    return str(atlas_kernel.range_band(block["atlas"], block["frame_id"],
+                                       za, zb))
+
+
+def tactical_high_ground(session: RuleSession, attacker: dict | None,
+                         target: dict | None) -> bool:
+    """攻击者是否对目标占据高地（内核 high_ground 的投影：目标 z 更低、
+    平面切比雪夫距离 ≤ 1、且有上 / 下或相邻连接）。
+
+    没接地图或没钉住一律 False——高地修正消失，行为与默认一致。
+    """
+    za = _tactical_pin(session, attacker)
+    zb = _tactical_pin(session, target)
+    if not za or not zb:
+        return False
+    block = session.tactical
+    import atlas as atlas_kernel
+    return bool(atlas_kernel.high_ground(block["atlas"], block["frame_id"],
+                                         za, zb))
+
+
+def tactical_move_zones(session: RuleSession, meters: float) -> int | None:
+    """把规则里的移动米数换成战术帧的跨区数。
+
+    metric 帧：ceil(米 / TACTICAL_CELL_METERS)（§5.6「一区按 6 米计」）。
+    abstract 帧：**不把米换成跨区**——一次走位跨一区，米数不参与，
+    返回 None（ATLAS-DESIGN.md §5.6 / §6.3）。没接地图同样返回 None。
+    """
+    block = getattr(session, "tactical", None)
+    if not block:
+        return None
+    if block["space"] == "abstract":
+        return None
+    amount = int(meters or 0)
+    if amount <= 0:
+        return 0
+    return -(-amount // TACTICAL_CELL_METERS)   # 整数上取整 ceil
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -3136,6 +3298,10 @@ __all__ = [
     "ENCOUNTER_STRENGTH", "BOSS_BUDGET_SHARE", "MINION_CAP",
     "initiative_adjustment", "roll_initiative",
     "combat_abandon", "combat_view",
+    # 六·附 战术投影（ATLAS I5）
+    "TACTICAL_CELL_METERS", "attach_tactical_map", "detach_tactical_map",
+    "tactical_map", "tactical_range_band", "tactical_high_ground",
+    "tactical_move_zones",
     # 七、派生值与明细
     "vitality_cap", "move_speed", "carry_capacity", "focus_cap",
     "tempo_cap",

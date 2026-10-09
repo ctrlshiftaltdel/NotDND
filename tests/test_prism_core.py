@@ -15,6 +15,11 @@ M2c 覆盖：构建引擎骰池四部分组成、成功阈值与单骰成功率�
 骰阶 5 阶与期望成功数速查表、动量池（入账/花费/清零/上下限）、
 应力上限与惩罚段、崩溃事件 4 步、降低应力 4 手段。
 
+ATLAS I5（Issue #67）覆盖：战术投影接线——attach_tactical_map 的
+坏帧 / 坏钉扎校验、距离档（两格图距离 = 第 3.3 节的「近」）、高地
+（z 更高且相邻，并折成 +1 枚助势骰）、abstract 帧不把米换成跨区、
+没接地图时行为与 M2b 默认完全一致、投影块不进会话快照。
+
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_prism_core.py` 运行。
 """
 
@@ -27,6 +32,8 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import prism_core as pc
+import atlas as al          # I5：测试需要手工造帧并投出真实战术帧
+import atlas_gen as ag
 
 
 class SeqRandom:
@@ -1284,6 +1291,166 @@ def check_stress_system():
     assert shrunk["stress"] == 14
 
 
+# ── ATLAS I5：战术投影接到规则核心（Issue #67）─────────────────────────
+
+#: 夹具地图里由 generate_tactical 投出的战术帧 id（world=t-i5，房间 r1）。
+TAC_ID = "t-i5/tactical/r1"
+
+
+def _tactical_atlas():
+    """I5 测试夹具：手工造一张地图，不读 data/worlds/。
+
+      · w/site/s1   metric 地点帧：r1-r2-r3 一条线 + 高台 h1(z=1，邻 r1)；
+                    供 atlas_gen.generate_tactical 投出**真实战术帧**；
+      · w/met       metric 平帧：mA-mB-mC-mD 一条线（覆盖 3 格 = 中）；
+      · w/abstract  abstract 帧：a1-a2-a3 一条线（不换算米）。
+    """
+    atlas = al.new_atlas("t-i5", 7)
+    al.add_frame(atlas, "w/site/s1", space="metric",
+                 z_meaning="层", cell="房间")
+    for pid, (x, y, z) in {"r1": (0, 0, 0), "r2": (1, 0, 0),
+                           "r3": (2, 0, 0), "h1": (0, 1, 1)}.items():
+        al.add_place(atlas, {"id": pid, "name": pid, "kind": "room",
+                             "frame_id": "w/site/s1", "x": x, "y": y, "z": z})
+    al.add_link(atlas, "w/site/s1", "r1", "r2", "东")
+    al.add_link(atlas, "w/site/s1", "r2", "r3", "东")
+    al.add_link(atlas, "w/site/s1", "h1", "r1", "南")
+    al.add_frame(atlas, "w/met", space="metric", z_meaning="街区", cell="6米")
+    for pid, (x, y, z) in {"mA": (0, 0, 0), "mB": (1, 0, 0),
+                           "mC": (2, 0, 0), "mD": (3, 0, 0)}.items():
+        al.add_place(atlas, {"id": pid, "name": pid, "kind": "zone",
+                             "frame_id": "w/met", "x": x, "y": y, "z": z})
+    al.add_link(atlas, "w/met", "mA", "mB", "东")
+    al.add_link(atlas, "w/met", "mB", "mC", "东")
+    al.add_link(atlas, "w/met", "mC", "mD", "东")
+    al.add_frame(atlas, "w/abstract", space="abstract",
+                 z_meaning="层", cell="一次走位")
+    for pid, (x, y, z) in {"a1": (0, 0, 0), "a2": (1, 0, 0),
+                           "a3": (2, 0, 0)}.items():
+        al.add_place(atlas, {"id": pid, "name": pid, "kind": "zone",
+                             "frame_id": "w/abstract", "x": x, "y": y,
+                             "z": z})
+    al.add_link(atlas, "w/abstract", "a1", "a2", "东")
+    al.add_link(atlas, "w/abstract", "a2", "a3", "东")
+    return atlas
+
+
+def _tac_zones(atlas):
+    """战术帧内 {房间名: 区域 place_id}。"""
+    return {place["name"]: place["id"]
+            for place in atlas["frames"][TAC_ID]["places"].values()}
+
+
+def check_tactical_projection_bands():
+    """距离档：0 同区 / 1 相邻 / 2 近 / 3–4 中（ATLAS-DESIGN.md §3.3）；
+    没接地图或没钉住 → None（心象剧场默认）。"""
+    atlas = _tactical_atlas()
+    tac = ag.generate_tactical(atlas, "r1")
+    assert tac["space"] == "metric"
+    session = pc.RuleSession("s-band")
+    zones = _tac_zones(atlas)
+    pc.attach_tactical_map(session, atlas, TAC_ID,
+                           {"u1": zones["r1"], "u2": zones["r2"],
+                            "u3": zones["r3"]})
+    u1 = pc.new_unit("u1", "甲")
+    u2 = pc.new_unit("u2", "乙")
+    u3 = pc.new_unit("u3", "丙")
+    ghost = pc.new_unit("u9", "没钉住的游魂")
+    assert pc.tactical_range_band(session, u1, u1) == "same"
+    assert pc.tactical_range_band(session, u1, u2) == "adjacent"
+    # 验收主断言：两格图距离得到第 3.3 节的档（2 → 近）。
+    assert pc.tactical_range_band(session, u1, u3) == "near"
+    # 没钉住的单位 → None：不臆造位置，回到心象剧场。
+    assert pc.tactical_range_band(session, u1, ghost) is None
+    # 3 格 = 中：内核直接投影 + 会话接了带 4 格的 metric 帧都能查到。
+    assert al.range_band(atlas, "w/met", "mA", "mD") == "mid"
+    wide = pc.RuleSession("s-wide")
+    pc.attach_tactical_map(wide, atlas, "w/met", {"u1": "mA", "u4": "mD"})
+    assert pc.tactical_range_band(wide, u1, pc.new_unit("u4", "丁")) == "mid"
+    # 没接地图 → None；detach 之后同样 None。
+    assert pc.tactical_range_band(pc.RuleSession("s-bare"), u1, u2) is None
+    pc.detach_tactical_map(session)
+    assert pc.tactical_range_band(session, u1, u2) is None
+    # attach 校验：帧不存在、钉扎不在帧内，都要直接 raise。
+    for bad_atlas, bad_frame, bad_zones in (
+            (atlas, "w/none", {}),
+            (atlas, "w/met", {"u1": "a1"})):
+        try:
+            pc.attach_tactical_map(pc.RuleSession("s-bad"), bad_atlas,
+                                   bad_frame, bad_zones)
+            raise AssertionError("attach 应拒绝：%s %r" % (bad_frame, bad_zones))
+        except ValueError:
+            pass
+
+
+def check_tactical_high_ground_and_attack():
+    """高地：z 更高且相邻（有连接）为高地；折进攻击解算 = +1 枚助势骰
+    （docs/system/02A 附录「常用情境修正」）；没地图时无此修正。"""
+    atlas = _tactical_atlas()
+    ag.generate_tactical(atlas, "r1")
+    zones = _tac_zones(atlas)
+    session = pc.RuleSession("s-hg")
+    pc.attach_tactical_map(session, atlas, TAC_ID,
+                           {"e1": zones["h1"], "u1": zones["r1"],
+                            "u2": zones["r2"]})
+    sharp = pc.new_unit("e1", "高台射手")
+    victim = pc.new_unit("u1", "低处目标")
+    other = pc.new_unit("u2", "隔壁目标")
+    # h1(z=1) 对相邻且更低的 r1：高地成立。
+    assert pc.tactical_high_ground(session, sharp, victim) is True
+    # 反向（对方更高）不成立；相邻但没有连接（h1→r2）也不成立。
+    assert pc.tactical_high_ground(session, victim, sharp) is False
+    assert pc.tactical_high_ground(session, sharp, other) is False
+    # 没钉住 / 没接地图 → False（行为与 M2b 默认一致）。
+    assert pc.tactical_high_ground(
+        session, sharp, pc.new_unit("u9", "游魂")) is False
+    assert pc.tactical_high_ground(pc.RuleSession("s-bare"),
+                                   sharp, victim) is False
+    # 攻击解算接线： SeqRandom(15, 3) → d20=15、助势 d6=3。
+    # 有高地：总 18，对防护 10 的裸单位 margin +8 → 重击，并留高地标记。
+    out = pc.resolve_attack(session, sharp, victim, notation="1d6",
+                            rng=SeqRandom(15, 3))
+    assert out["high_ground"] is True, out
+    assert out["grade"] == "solid", out
+    # 没接地图：同一掷 d20=15 → margin +5 → 命中，且没有高地标记。
+    # （换一个全新目标：上一个已被打到濒危，状态修正会改变防护。）
+    plain = pc.RuleSession("s-plain")
+    fresh = pc.new_unit("u3", "全新目标")
+    out2 = pc.resolve_attack(plain, sharp, fresh, notation="1d6",
+                             rng=SeqRandom(15))
+    assert "high_ground" not in out2, out2
+    assert out2["grade"] == "hit", out2
+
+
+def check_tactical_move_zones_abstract():
+    """metric 帧把米换成跨区 ceil(米/6)；abstract 帧不换算（§5.6/§6.3）；
+    没接地图 → None；投影块不进快照。"""
+    atlas = _tactical_atlas()
+    session = pc.RuleSession("s-mz")
+    pc.attach_tactical_map(session, atlas, "w/met", {"u1": "mA"})
+    assert pc.tactical_move_zones(session, 6) == 1
+    assert pc.tactical_move_zones(session, 12) == 2
+    assert pc.tactical_move_zones(session, 3) == 1        # 不足一格向上取整
+    assert pc.tactical_move_zones(session, 0) == 0
+    # abstract 帧：米数不参与，一次走位跨一区。
+    abs_session = pc.RuleSession("s-mz-abs")
+    pc.attach_tactical_map(abs_session, atlas, "w/abstract", {"u1": "a1"})
+    assert pc.tactical_move_zones(abs_session, 12) is None
+    assert pc.tactical_move_zones(abs_session, 3) is None
+    # 没接地图 → None。
+    assert pc.tactical_move_zones(pc.RuleSession("s-mz-none"), 12) is None
+    # 元信息视图不含活地图本体。
+    assert pc.tactical_map(abs_session) == {
+        "frame_id": "w/abstract", "space": "abstract",
+        "unit_zones": {"u1": "a1"}}
+    # 投影块（活地图）不进快照；恢复后由网页层重新 attach。
+    snap = abs_session.snapshot()
+    assert "tactical" not in snap
+    restored = pc.RuleSession.from_snapshot(snap)
+    assert restored.tactical is None
+    assert pc.tactical_move_zones(restored, 12) is None
+
+
 def main():
     checks = (
         check_roll_whitelist,
@@ -1322,6 +1489,10 @@ def main():
         check_build_die_ranks,
         check_momentum_pool,
         check_stress_system,
+        # ATLAS I5（Issue #67）
+        check_tactical_projection_bands,
+        check_tactical_high_ground_and_attack,
+        check_tactical_move_zones_abstract,
     )
     failures = 0
     for check in checks:
