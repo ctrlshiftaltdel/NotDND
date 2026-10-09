@@ -698,7 +698,9 @@ data/
 
 > **收紧裁定（M1.4a）**：本族实体项已随 S1–S6 六册数据落地收紧为
 > `additionalProperties: false`；各册实况差异以**可选字段**承载（缺即省略），不再开放扩展。
-> 文件名 = 账本 `meta.world` 值转小写下划线（如 `ashen-crown` → `ashen_crown.json`）。
+> 文件名 = 该战役的**稳定 slug**（默认取 `meta.world` 转小写下划线，如 `ashen-crown` →
+> `ashen_crown.json`；同一世界有多则战役时取**战役专属 slug**，如 `rain_line_seven.json`；
+> **不得与既有文件重名**，裁定见 M1.4b）。
 
 顶层（`scenario.schema.json`）：
 
