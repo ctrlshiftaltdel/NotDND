@@ -9,7 +9,15 @@
 M2a（Issue #53）已落地：属性修正 / 熟练量表 / 助势骰（层数与取消）/
 五档结果 / 资源夹取与专注过用 / 伤害标签（抗性 / 弱点 / 免疫 / 吸收）/
 状态叠加与【疲惫】/ 灾难后果表 / 张力曲线触发。
-源文档未写的数值一律不臆造，仍以 `TODO(M2)` / `TODO(M2b)` 标注。
+
+M2b（Issue #59）已落地：先攻（d20 + 洞察修正 + 灵巧修正的一半）/
+攻击六档解算（暴击 / 重击 / 命中 / 擦过 / 落空 / 严重失手）/
+韧性与破韧（含首领护盾与阶段转化）/ 敌体行动（选招 → 掷骰 →
+比防护 → deal_damage）/ 遭遇预算（5×6 预算表、强度档、组成限制）/
+派生值（活力上限 / 移动 / 负重 / 先攻 / 专注与气势上限）/
+濒危挣扎循环与【创伤】层数 / 状态层数（叠至 3 层升级）/
+成长（十二级三层制、经验点法、六类成长选择、A 类 +4 上限）。
+源文档未写的数值一律不臆造，仍以 `TODO(M2)` / `TODO(M2c)` 标注。
 
 设计约定
   · 零第三方依赖（仅 Python 3 标准库）；`import prism_core` **无副作用**。
@@ -155,6 +163,28 @@ DEBUFF_CONDITIONS = ("失衡", "束缚", "麻痹", "恐惧", "流血", "中毒",
 _BUFF_CONDITIONS = ("加速", "护持", "隐匿", "专注", "再生")
 _DERIVED_CONDITIONS = ("疲惫", "过载中")
 KNOWN_CONDITIONS = DEBUFF_CONDITIONS + _BUFF_CONDITIONS + _DERIVED_CONDITIONS
+
+# ── 状态层数（docs/system/01 第五节叠加规则 2 / data/system/conditions.json）
+# 「部分状态标注 N 层，叠至 3 层时升级为完整效果」——源文档点名的两层
+# 状态是【失衡】（02A 机动：绊摔 / 震击给 3 层 → 倒地）与【流血】
+# （02A 机动：要害打击给 3 层）。
+LAYERED_CONDITIONS = ("失衡", "流血")
+CONDITION_MAX_LAYERS = 3
+
+# ── 濒危挣扎（docs/system/01 第十一节「濒危 Downed」）──────────────────
+# d20 + 体魄修正 vs DF 12：累计 3 次成功 → 稳定（+1 活力、+1 层【创伤】）；
+# 累计 3 次失败 → 消亡；队友医疗 DF 14 可使其立即稳定。
+DOWNED_STRUGGLE_DF = 12
+DOWNED_STABILIZE_SUCCESSES = 3
+DOWNED_DEATH_FAILURES = 3
+MEDICAL_STABILIZE_DF = 14
+
+# ── 创伤（docs/system/01 第十一节「创伤 Trauma」）───────────────────────
+# 每次濒危稳定后 +1 层：1–2 层无机械影响；3 层活力上限 −5；
+# 4 层起每次进入战斗开局获得 1 层【恐惧】。
+TRAUMA_VITALITY_PENALTY_AT = 3
+TRAUMA_VITALITY_PENALTY = 5
+TRAUMA_FEAR_AT = 4
 
 
 def attribute_modifier(value: int) -> int:
@@ -327,15 +357,31 @@ def new_unit(unit_id: str, name: str, *, attributes: dict | None = None) -> dict
         "vitality": 0,
         "max_vitality": 0,
         "guard": 0,
+        "poise": 0,               # 韧性（01 第八节；recompute 后才有上限）
+        "max_poise": 0,
+        "poise_broken": False,
+        "poise_shields": 0,       # 首领韧性护盾层数
+        "boss_phase": 0,          # 首领阶段转化（1 暴怒 / 2 绝望 / 3 崩解）
+        "trauma": 0,              # 【创伤】层数（01 第十一节）
         "downed": False,          # 濒危标记（docs/system/01 第十一节）
         "downed_fails": 0,        # 濒危挣扎失败计数（01 第十一节：受击 +1，暴击 +2）
+        "downed_successes": 0,    # 濒危挣扎成功计数（3 成稳定）
         "dead": False,
         "conditions": [],
+        "condition_layers": {},   # 叠层状态层数 {状态名: 层数}（01 第五节）
+        "condition_rounds": {},   # 同名重复施加的延长记录 {状态名: 回合}
         "resources": {pool: 0 for pool in RESOURCE_POOLS},
         "damage_relations": {},   # {resistance/weakness/immunity/absorb: [伤害标签]}
         "equipment": {},
         "stance": "",
         "cover": "",
+        "career_vitality": 0,     # 职途起始活力（世界模组数据，+6 ~ +14）
+        "career_focus_bonus": 0,  # 职途专注加成（世界模组数据）
+        "growth_attr_gain": {},   # A 类成长追踪：{属性: 累计 +N}（上限 +4）
+        "growth_history": [],     # 成长选择历史（同一类别不得连续超过 2 次）
+        "proficiencies": [],      # B 类：技能熟练
+        "specializations": [],    # C 类：技能专精
+        "growth_records": [],     # D/E/F 类：世界模组驱动的选择记录
     }
 
 
@@ -414,6 +460,7 @@ def _unit_view(unit: dict | None) -> dict:
     if not unit:
         return {}
     fields = ("id", "name", "level", "vitality", "max_vitality", "guard",
+              "poise", "max_poise", "poise_broken", "trauma",
               "downed", "dead", "conditions", "resources", "attributes")
     return {key: copy.deepcopy(unit.get(key)) for key in fields}
 
@@ -447,6 +494,8 @@ def deal_damage(session: RuleSession, unit: dict | None, amount: int,
         "modified": False,
         "relation": "",
         "healed": 0,
+        "effective": 0,
+        "broken_amp": False,
         "label": str(label or ""),
     }
     if unit is None:
@@ -468,10 +517,16 @@ def deal_damage(session: RuleSession, unit: dict | None, amount: int,
         unit["vitality"] = max(0, healed)
         out["vitality"] = int(unit["vitality"])
         out["healed"] = int(unit["vitality"]) - before
+        out["effective"] = effective
         session.touch()
         return out
 
     before = int(unit.get("vitality") or 0)
+    # 破韧（docs/system/01 第八节破韧效果表）：承受伤害 +50%。
+    if unit.get("poise_broken") and effective > 0:
+        effective += effective // 2
+        out["broken_amp"] = True
+    out["effective"] = effective
     unit["vitality"] = max(0, before - max(0, effective))
     out["vitality"] = int(unit["vitality"])
     out["lost"] = before - int(unit["vitality"])
@@ -479,9 +534,14 @@ def deal_damage(session: RuleSession, unit: dict | None, amount: int,
     # 刚跌到 0 及以下：进入濒危。已经不是濒危的再次受击不改标记，
     # 但按 01 第十一节推进濒危挣扎的失败计数（暴击 +2）。注意濒危单位
     # 活力已夹在 0，不能拿 lost 判断——只要这次命中真造成了伤害
-    # （有效伤害 > 0）就计数。
+    # （有效伤害 > 0）就计数。敌体没有濒危挣扎（no_struggle，02A 第九节
+    # 模板无濒危条目）：活力归零即被击倒。
     if int(unit["vitality"]) <= 0 and not out["downed"]:
-        unit["downed"] = True
+        if unit.get("no_struggle"):
+            unit["dead"] = True
+        else:
+            unit["downed"] = True
+            unit.setdefault("downed_successes", 0)
     out["downed"] = bool(unit.get("downed"))
     out["dead"] = bool(unit.get("dead"))
     if out["downed"] and was_downed and effective > 0:
@@ -552,6 +612,79 @@ def heal_unit(session: RuleSession, unit: dict | None, amount: int) -> int:
     return got
 
 
+def downed_struggle(session: RuleSession, unit: dict | None, *,
+                    rng=None) -> dict:
+    """濒危单位的挣扎判定（docs/system/01 第十一节「濒危 Downed」）。
+
+    每次在自己的回合开始时进行：`d20 + 体魄修正 vs DF 12`。
+      · 累计 3 次成功 → 稳定下来：恢复 1 点活力、获得 1 层【创伤】；
+      · 累计 3 次失败 → 消亡。
+    受击导致的失败计数（普通 +1 / 暴击 +2）由 deal_damage 推进，与本
+    函数共用 downed_fails 计数器。医疗急救的立即稳定走 stabilize_downed。
+    """
+    out = {"struggled": False, "total": 0, "df": DOWNED_STRUGGLE_DF,
+           "success": False, "successes": 0, "fails": 0,
+           "stabilized": False, "dead": False}
+    if not unit or unit.get("dead") or not unit.get("downed"):
+        return out
+    vigor = int((unit.get("attributes") or {}).get("VIG", 4) or 4)
+    total = roll("1d20", rng=rng)["total"] + attribute_modifier(vigor)
+    out.update(struggled=True, total=total)
+    if total >= DOWNED_STRUGGLE_DF:
+        unit["downed_successes"] = int(unit.get("downed_successes") or 0) + 1
+        out["success"] = True
+    else:
+        unit["downed_fails"] = int(unit.get("downed_fails") or 0) + 1
+    out["successes"] = int(unit.get("downed_successes") or 0)
+    out["fails"] = int(unit.get("downed_fails") or 0)
+    if out["successes"] >= DOWNED_STABILIZE_SUCCESSES:
+        out["stabilized"] = True
+        out["healed"] = stabilize_downed(session, unit)["healed"]
+    elif out["fails"] >= DOWNED_DEATH_FAILURES:
+        unit["dead"] = True
+        unit["downed"] = False
+        out["dead"] = True
+    session.touch()
+    return out
+
+
+def stabilize_downed(session: RuleSession, unit: dict | None, *,
+                     source: str = "struggle") -> dict:
+    """稳定一个濒危单位（唯一出口）。
+
+    挣扎 3 次成功（source="struggle"）：恢复 1 点活力 + 获得 1 层【创伤】；
+    队友医疗急救 DF 14（source="medical"，判定由调用方掷）：立即稳定，
+    只获得【创伤】——源文档未写医疗稳定恢复活力，不臆造。
+    """
+    out = {"stabilized": False, "healed": 0, "trauma": 0}
+    if not unit or unit.get("dead") or not unit.get("downed"):
+        return out
+    unit["downed"] = False
+    unit["downed_fails"] = 0
+    unit["downed_successes"] = 0
+    out["stabilized"] = True
+    out["trauma"] = add_trauma(session, unit, 1)
+    if source != "medical":
+        out["healed"] = heal_unit(session, unit, 1)
+    session.add_log("system", f"{unit.get('name')} 稳定了下来"
+                    f"（{'挣扎' if source == 'struggle' else '医疗急救'}）。",
+                    speaker="战斗")
+    return out
+
+
+def add_trauma(session: RuleSession, unit: dict | None, layers: int = 1) -> int:
+    """叠加【创伤】层数（docs/system/01 第十一节「创伤 Trauma」）。
+
+    每次濒危稳定后 +1 层。层数效应由 vitality_cap（3 层 → 活力上限
+    −5）与 start_combat（4 层起 → 开局 1 层【恐惧】）读取。
+    """
+    if unit is None:
+        return 0
+    unit["trauma"] = int(unit.get("trauma") or 0) + max(0, int(layers or 0))
+    session.touch()
+    return int(unit["trauma"])
+
+
 def change_resource(session: RuleSession, unit: dict | None, pool: str,
                     delta: int) -> dict:
     """**唯一资源进出口**：正数获得、负数消耗。
@@ -607,17 +740,21 @@ def change_resource(session: RuleSession, unit: dict | None, pool: str,
     return out
 
 
-def add_condition(session: RuleSession, unit: dict | None, name: str) -> bool:
-    """给单位施加一个状态，返回是否新加。
+def add_condition(session: RuleSession, unit: dict | None, name: str, *,
+                  layers: int = 1) -> bool:
+    """给单位施加一个状态，返回是否有新变化（新状态或层数增加）。
 
     叠加规则按 docs/system/01 第五节与 data/system/conditions.json：
-      · 同一种状态不叠加数值，只取最强一档——同名重复施加返回 False
-        （持续时间追踪属回合推进，见 TODO(M2b)）；
+      · 同一种状态**不叠加数值**，只取最强一档；同名重复施加改为延长
+        持续时间（规则层记录施加回合 combat["round"]，非叠层状态返回
+        False）；
+      · 标注「N 层」的状态（LAYERED_CONDITIONS：【失衡】【流血】）可以
+        叠层，叠至 3 层时升级为完整效果（如失衡 3 层 → 自动倒地，失去
+        1 个回合全部 AP——由 _advance 在该单位回合开始时结算）；层数
+        存于 unit["condition_layers"]；
       · 同时拥有 3 个及以上减益状态时，自动额外获得【疲惫】。
     状态名走白名单（KNOWN_CONDITIONS，来自 conditions.json）；世界模组
     扩展状态须经 register_condition 登记，未登记的名字直接 raise。
-    TODO(M2b)：标注「N 层」的状态（叠至 3 层升级为完整效果）与
-    【创伤】层数效应（活力上限 −5 等）随状态数据接入落地。
     """
     name = str(name or "").strip()
     if not name:
@@ -628,10 +765,24 @@ def add_condition(session: RuleSession, unit: dict | None, name: str) -> bool:
             "世界模组扩展状态须经 register_condition 登记）")
     if unit is None:
         return False
+    layers = max(0, int(layers or 0))
     conditions = unit.setdefault("conditions", [])
     if name in conditions:
+        if name in LAYERED_CONDITIONS and layers > 0:
+            counts = unit.setdefault("condition_layers", {})
+            counts[name] = min(CONDITION_MAX_LAYERS,
+                               int(counts.get(name) or 1) + layers)
+            # 同名重复施加改为延长持续时间（01 第五节叠加规则 1）。
+            if session.combat:
+                rounds = unit.setdefault("condition_rounds", {})
+                rounds[name] = int(session.combat.get("round", 1) or 1)
+            session.touch()
+            return True
         return False
     conditions.append(name)
+    if name in LAYERED_CONDITIONS and layers > 1:
+        unit.setdefault("condition_layers", {})[name] = \
+            min(CONDITION_MAX_LAYERS, layers)
     if name in DEBUFF_CONDITIONS:
         active = [item for item in conditions if item in DEBUFF_CONDITIONS]
         if len(active) >= 3 and "疲惫" not in conditions:
@@ -1120,6 +1271,300 @@ def _find_action_unit(session: RuleSession, unit_id: str) -> dict | None:
 # 六、战斗状态机
 # ════════════════════════════════════════════════════════════════════════
 
+# ── 命中解算（docs/system/02A 附录速查表 653-663 / data/system/tactics_combat.json
+# attack_grades）：比较 = 结果 − 目标防护。自然 1 走严重失手，优先于数值档。──
+CRIT_MARGIN = 10      # ≥ +10 暴击
+SOLID_MARGIN = 6      # +6 ~ +9 重击
+GRAZE_MARGIN = -2     # −1 ~ −2 擦过；≤ −3 落空
+_ATTACK_GRADE_ZH = {"crit": "暴击", "solid": "重击", "hit": "命中",
+                    "graze": "擦过", "miss": "落空", "fumble": "严重失手"}
+
+# ── 严重失手表（docs/system/02A 第五节「严重失手」，d6）──────────────────
+# 与 data/system/tactics_combat.json fumble.rows 一致；规则层只做
+# 「不造成伤害 + 攻击者获得 1 层【失衡】 + 掷出后果文本」，
+# 后果演出（误伤队友、武器位置等）归导引者模块。
+FUMBLE_TABLE = (
+    "武器脱手，落在距离你 1d4 米的位置，需 1 AP 捡回",
+    "你的攻击破坏了掩体，自己失去了它",
+    "你跌进了敌人的控制区，对方获得一次免费的攻击机会",
+    "武器卡住／卡壳，需要 1 AP 修理后才能再次使用",
+    "你误伤了相邻的一个队友（造成一半伤害）",
+    "你暴露了自己的意图和位置，敌人获得针对你的 +1 骰（持续一回合）",
+)
+
+# ── 态势与掩体的防护修正（docs/system/01 第七节 / 02A 第五节掩体表）──────
+STANCE_GUARD = {"攻势": -2, "守势": 3, "游势": 1, "专注势": 0}
+COVER_GUARD = {"轻度": 2, "中度": 4, "重度": 6}   # 「完全」掩体 = 无法被攻击
+
+# ── 状态对防护的修正（docs/system/01 第五节 / 第八节破韧表）──────────────
+CONDITION_GUARD = {"护持": 3, "破绽": -3, "过载中": -2}
+BREAK_GUARD_PENALTY = -4        # 破韧：防护 −4
+BOSS_PHASE1_GUARD = -2          # 首领暴怒形态：防护 −2
+BOSS_PHASE3_GUARD = -6          # 首领崩解形态：防护 −6（真正的破韧）
+
+# ── 韧性（docs/system/01 第八节）─────────────────────────────────────────
+# 韧性上限 = 体魄 × 3 + 体型加值 + 职途／物种加值；每回合开始恢复上限 25%
+# （向上取整）；韧性归零 → 破韧；重整 DF 12，成功脱离并恢复至上限 50%。
+POISE_SIZE_BONUS = {"小型": 0, "中型": 6, "大型": 12, "巨兽": 20, "首领": 30}
+POISE_REGEN_NUM = 1
+POISE_REGEN_DEN = 4
+RALLY_DF = 12
+BOSS_SHIELDS = 3                # 首领：3 层韧性护盾
+BOSS_SHIELD_RESTORE = 3         # 护盾消耗后恢复至韧性上限的 60%（3/5 → 分子 3）
+BOSS_SHIELD_DEN = 5
+BOSS_PHASE2_DAMAGE = 2          # 绝望形态：全部伤害 +2
+BOSS_PHASE2_VITALITY = 3        # 绝望形态：每回合开始消耗 3 点活力换 1 AP
+
+# ── 敌人四档模板（docs/system/02A 第九节 / data/system/tactics_enemies.json）
+# damage 为（伤害骰记法, 固定加值）二元组；budget 同时是该敌体的经验权重
+# （源文档未写敌体经验值，暂以遭遇预算权重计，见 PR 的 TODO 清单）。
+ENEMY_TIERS = {
+    "minion": {"name": "杂兵", "vitality": 12, "guard": 12, "poise": 8,
+               "attack_bonus": 3, "damage": ("1d6", 1), "ap": 3, "df": 10,
+               "budget": 1},
+    "standard": {"name": "标准", "vitality": 26, "guard": 14, "poise": 14,
+                 "attack_bonus": 5, "damage": ("1d8", 2), "ap": 3, "df": 12,
+                 "budget": 3},
+    "elite": {"name": "精锐", "vitality": 48, "guard": 16, "poise": 24,
+              "attack_bonus": 7, "damage": ("2d8", 3), "ap": 3, "df": 14,
+              "budget": 7},
+    "boss": {"name": "首领", "vitality": 110, "guard": 18, "poise": 40,
+             "attack_bonus": 9, "damage": ("3d8", 4), "ap": 4, "df": 17,
+             "budget": 20, "shields": BOSS_SHIELDS},
+}
+# 按队伍等级缩放（02A:494-503）：（等级下限, 上限, 活力, 防护, 攻击, 伤害）。
+ENEMY_SCALING = ((1, 1, 0, 0, 0, 0), (2, 3, 6, 0, 1, 1), (4, 5, 14, 1, 2, 2),
+                 (6, 7, 24, 2, 3, 4), (8, 9, 38, 3, 5, 6),
+                 (10, 12, 55, 4, 7, 9))
+# 敌人修饰词缀（02A:513-528）：budget 计入遭遇预算；数值型词缀在
+# make_enemy 落地，行为型词缀（控场 / 召唤 / 恐惧光环……）只登记名目，
+# 行为演出归导引者模块（docs/system/04）。
+ENEMY_AFFIXES = {
+    "迅捷": {"budget": 1}, "装甲": {"budget": 1}, "狂暴": {"budget": 1},
+    "远程": {"budget": 1}, "再生": {"budget": 2}, "控场": {"budget": 2},
+    "召唤": {"budget": 3}, "隐伏": {"budget": 2}, "分身": {"budget": 2},
+    "反伤": {"budget": 1}, "护主": {"budget": 1}, "恐惧光环": {"budget": 2},
+    "适应": {"budget": 2}, "巨型": {"budget": 5},
+}
+AFFIX_LIMIT = 4                 # 词缀叠加不得超过 4 个（02A:530）
+
+# ── 遭遇预算（docs/system/02A 第十节 / data/system/tactics_encounter.json）──
+# 预算上限 = 队伍人数 × (队伍平均等级 + 2)；强度档按占比折算。
+ENCOUNTER_STRENGTH = {
+    "entangled": 0.4, "纠缠": 0.4,
+    "standard": 0.7, "标准": 0.7,
+    "harsh": 1.0, "严酷": 1.0,
+    "deadly": 1.4, "致命": 1.4,
+}
+BOSS_BUDGET_SHARE = 0.6         # 单个首领的预算 ≤ 本场总预算的 60%
+MINION_CAP = 6                  # 杂兵数量建议 ≤ 6（02A:577）
+
+
+def attack_grade(margin: int, *, natural: int | None = None) -> str:
+    """攻击解算：比较 = 结果 − 目标防护 → 六档之一（02A 附录速查表）。
+
+      ≥ +10 暴击 ｜ +6 ~ +9 重击 ｜ 0 ~ +5 命中 ｜ −1 ~ −2 擦过 ｜
+      ≤ −3 落空 ｜ 自然 1 严重失手（优先于数值档）。
+    """
+    if natural is not None and int(natural) == 1:
+        return "fumble"
+    margin = int(margin)
+    if margin >= CRIT_MARGIN:
+        return "crit"
+    if margin >= SOLID_MARGIN:
+        return "solid"
+    if margin >= 0:
+        return "hit"
+    if margin >= GRAZE_MARGIN:
+        return "graze"
+    return "miss"
+
+
+def resolve_attack(session: "RuleSession", attacker: dict | None,
+                   target: dict | None, *, notation: str = "1d6",
+                   damage_bonus: int = 0, attack_bonus: int = 0,
+                   advantage: int = 0, disadvantage: int = 0, tag: str = "",
+                   rng=None) -> dict:
+    """一次攻击的完整解算：掷骰 → 比防护 → 伤害 → 韧性削减。
+
+    按 docs/system/02A 第五节与附录速查表：
+      · 暴击：掷两次伤害骰取较高 + 正常加值，并附加 1 层【失衡】
+        （02A:223「必定造成横向的额外状态」；来源默认【失衡】）；
+      · 重击：正常伤害 + 2；
+      · 命中：正常伤害；
+      · 擦过：一半伤害（向下取整），不触发附加效果（含韧性削减）；
+      · 落空：无伤害；
+      · 严重失手（自然 1）：无伤害，攻击者获得 1 层【失衡】，并掷失手表。
+    韧性削减按 docs/system/01 第八节：普通命中减伤害值的一半（向下取整），
+    暴击减全额。伤害结算统一走 deal_damage（唯一伤害出口）。
+    """
+    out = {"grade": "miss", "grade_zh": _ATTACK_GRADE_ZH["miss"],
+           "attack_total": 0, "guard": 0, "margin": 0, "roll": None,
+           "damage": 0, "poise": None, "events": [], "text": ""}
+    if attacker is None or target is None:
+        return out
+    attack = roll("1d20", advantage=advantage, disadvantage=disadvantage,
+                  rng=rng)
+    total = int(attack["total"]) + int(attack_bonus or 0)
+    guard = compute_guard(target, session)
+    grade = attack_grade(total - guard, natural=attack.get("natural"))
+    out.update(grade=grade, grade_zh=_ATTACK_GRADE_ZH[grade],
+               attack_total=total, guard=guard, margin=total - guard,
+               roll=attack)
+
+    if grade == "fumble":
+        row = int((rng or random).randint(1, 6))
+        out["fumble_row"] = row
+        out["fumble_text"] = FUMBLE_TABLE[row - 1]
+        add_condition(session, attacker, "失衡")
+        out["text"] = f"严重失手：{out['fumble_text']}"
+        out["events"].append({"type": "fumble", "attacker": attacker.get("name"),
+                              "row": row})
+        return out
+    if grade == "miss":
+        out["text"] = "攻击落空。"
+        out["events"].append({"type": "miss", "attacker": attacker.get("name"),
+                              "target": target.get("name")})
+        return out
+
+    base = roll(notation, rng=rng)["total"] + int(damage_bonus or 0)
+    if grade == "crit":
+        second = roll(notation, rng=rng)["total"] + int(damage_bonus or 0)
+        damage = max(base, second)
+    elif grade == "solid":
+        damage = base + 2
+    elif grade == "graze":
+        damage = base // 2
+    else:
+        damage = base
+    # 首领绝望形态：全部伤害 +2（docs/system/01 第八节阶段表）。
+    if int(attacker.get("boss_phase") or 0) >= 2:
+        damage += BOSS_PHASE2_DAMAGE
+
+    result = deal_damage(session, target, damage, tag=tag,
+                         crit=(grade == "crit"))
+    out["damage"] = int(result["lost"])
+    out["damage_result"] = result
+    out["events"].append({"type": "damage", "attacker": attacker.get("name"),
+                          "target": target.get("name"), "grade": grade,
+                          "damage": out["damage"]})
+
+    # 韧性削减（docs/system/01 第八节）：普通命中 = 伤害的一半（向下取整），
+    # 暴击 = 全额；擦过「不触发任何附加效果」→ 不削韧性；吸收反弹不削。
+    if grade != "graze" and result["relation"] != "absorb" \
+            and int(result.get("effective") or 0) > 0:
+        effective = int(result["effective"])
+        reduction = effective if grade == "crit" else effective // 2
+        out["poise"] = apply_poise_damage(session, target, reduction)
+
+    # 暴击的横向状态（02A:223）；弱点伤害的【失衡】已由 deal_damage 施加。
+    if grade == "crit":
+        add_condition(session, target, "失衡")
+    return out
+
+
+def max_poise(unit: dict | None) -> int:
+    """韧性上限（docs/system/01 第八节）：体魄 × 3 + 体型加值 + 职途／物种加值。
+
+    敌体模板直接给出韧性数值（tactics_enemies.json），存于 unit["max_poise"]
+    时优先使用；否则按公式推导（体型缺省按中型 +6）。
+    """
+    if not unit:
+        return 0
+    template = int(unit.get("max_poise") or 0)
+    if template > 0:
+        return template
+    vigor = int((unit.get("attributes") or {}).get("VIG", 4) or 4)
+    size = str(unit.get("size") or "中型")
+    return vigor * 3 + int(POISE_SIZE_BONUS.get(size, POISE_SIZE_BONUS["中型"])) \
+        + int(unit.get("poise_bonus") or 0)
+
+
+def apply_poise_damage(session: "RuleSession", unit: dict | None,
+                       amount: int) -> dict | None:
+    """削减韧性；归零时进入破韧（或消耗首领护盾并阶段转化）。
+
+    返回 {poise, max, broken, shield_used, phase}；单位没有韧性数据
+    （上限 0）时返回 None——不是所有单位都需要第二货币。
+    首领阶段转化（docs/system/01 第八节）：第 1 次破韧 → 暴怒形态，
+    第 2 次 → 绝望形态，第 3 次 → 崩解形态（真正的破韧，不再恢复韧性）。
+    """
+    if not unit or int(amount or 0) <= 0 or max_poise(unit) <= 0:
+        return None
+    cap = max_poise(unit)
+    unit["poise"] = max(0, int(unit.get("poise") or 0) - int(amount))
+    out = {"poise": int(unit["poise"]), "max": cap, "broken": False,
+           "shield_used": 0, "phase": int(unit.get("boss_phase") or 0)}
+    if unit["poise"] > 0:
+        return out
+    # 韧性归零：首领先消耗护盾（每层立即恢复至上限 60%）；护盾耗尽的那
+    # 一次破韧即崩解形态——真正的破韧，不再恢复韧性（01 第八节阶段表）。
+    shields = int(unit.get("poise_shields") or 0)
+    breaks = int(unit.get("boss_breaks") or 0) + 1
+    unit["boss_breaks"] = breaks
+    if shields > 0:
+        unit["poise_shields"] = shields - 1
+        out["shield_used"] = 1
+        out["phase"] = min(3, breaks)
+        unit["boss_phase"] = out["phase"]
+        if unit["poise_shields"] == 0:
+            unit["poise"] = 0
+            unit["poise_broken"] = True
+            out["broken"] = True
+            out["poise"] = 0
+        else:
+            unit["poise"] = -(-cap * BOSS_SHIELD_RESTORE // BOSS_SHIELD_DEN)
+            out["poise"] = int(unit["poise"])
+    else:
+        unit["poise_broken"] = True
+        unit["poise"] = 0
+        if breaks >= 3:
+            # 无护盾却累计三次破韧的场合同样进入崩解口径；普通单位
+            # （breaks == 1）只是普通破韧，不挂阶段标记。
+            out["phase"] = 3
+            unit["boss_phase"] = 3
+        out["broken"] = True
+    session.touch()
+    return out
+
+
+def poise_regen_amount(unit: dict | None) -> int:
+    """回合开始的韧性自然恢复量：上限的 25% 向上取整（docs/system/01 第八节）。
+
+    破韧期间与首领崩解形态（不再恢复韧性）不恢复。
+    """
+    if not unit or unit.get("poise_broken") or int(unit.get("boss_phase") or 0) >= 3:
+        return 0
+    cap = max_poise(unit)
+    if cap <= 0:
+        return 0
+    return -(-cap * POISE_REGEN_NUM // POISE_REGEN_DEN)
+
+
+def rally_broken(session: "RuleSession", unit: dict | None, *,
+                 rng=None) -> dict:
+    """破韧单位的【重整】尝试（docs/system/01 第八节破韧表）。
+
+    d20 + 体魄修正 vs DF 12（与濒危挣扎同构的写法；源文档写作
+    「DF 12 + 体魄修正」，此处按挣扎循环的口径实现，见 PR 对照表）。
+    成功 → 脱离破韧，韧性恢复至上限的 50%（向上取整）。
+    """
+    out = {"rallied": False, "total": 0, "df": RALLY_DF}
+    if not unit or not unit.get("poise_broken"):
+        return out
+    if int(unit.get("boss_phase") or 0) >= 3:
+        return out    # 崩解形态：就此不再恢复韧性（01 第八节）
+    vigor = int((unit.get("attributes") or {}).get("VIG", 4) or 4)
+    total = roll("1d20", rng=rng)["total"] + attribute_modifier(vigor)
+    out["total"] = total
+    if total >= RALLY_DF:
+        unit["poise_broken"] = False
+        unit["poise"] = -(-max_poise(unit) // 2)
+        out["rallied"] = True
+        session.touch()
+    return out
+
+
 # 仅本场战斗有效的临时增益字段。TODO(M2)：按 docs/system/01 第七 / 八节与
 # 02A 场地要素列出（能力与场地赋予的临时修正）；所有战斗出口都会清理，
 # 漏掉任何一条都会让上一场的修正常驻。
@@ -1127,20 +1572,25 @@ COMBAT_BUFF_FIELDS: tuple[str, ...] = ()
 
 
 def start_combat(session: RuleSession, *, difficulty: str = "",
-                 enemies: list[dict] | None = None) -> dict:
+                 enemies: list[dict] | None = None,
+                 strength: str = "") -> dict:
     """开始一场遭遇。**内容由服务端决定**，玩家只能选择「打不打」。
 
-    敌体列表缺省时走遭遇生成（build_encounter）；生成器落地前，
-    调用方（测试 / 剧本）必须显式传入敌体列表。
+    敌体列表缺省时走遭遇生成（build_encounter，按 docs/system/02A 第十节
+    的预算与强度档）；`difficulty` 兼容作为强度档名传入。生成器拿不到
+    预算（无队伍）时返回空列表并报错，调用方必须显式传入敌体。
 
     开局后必须**立刻推进一次**：先攻最高的可能是敌体，如果只顾好顺序就
     返回，没人去跑它的回合，战斗会从第一秒就静止。_advance 会一路推进
     到第一个需要玩家操作的位置才返回。
+
+    开局结算（docs/system/01 第十一节）：创伤 4 层及以上的角色，每次
+    进入战斗开局获得 1 层【恐惧】。
     """
     if session.combat and not session.combat.get("over"):
         raise ValueError("战斗还没结束")
     squad = list(enemies) if enemies is not None else build_encounter(
-        session, difficulty)
+        session, difficulty, strength=strength)
     if not squad:
         raise ValueError("这里没有可交战的东西")
     session.combat = {
@@ -1149,11 +1599,16 @@ def start_combat(session: RuleSession, *, difficulty: str = "",
         "difficulty": str(difficulty or ""),
         "enemies": squad,
         "order": [],
+        "inits": {},     # 先攻分：一次掷骰，整场战斗保持（01 第六节回合结构）
         "turn_i": 0,
         "acts": {},      # 本回合的去重表：{单位 key: 动作 / 标记}
         "events": [],    # 本回合结算出的事件（前端逐条播报）
         "over": "",      # "" / victory / defeat / fled
     }
+    for unit in session.party:
+        if int(unit.get("trauma") or 0) >= TRAUMA_FEAR_AT \
+                and "恐惧" not in (unit.get("conditions") or []):
+            add_condition(session, unit, "恐惧")
     _reorder_initiative(session)
     _advance(session)
     session.add_log("system", f"战斗开始：{len(squad)} 个敌体。", speaker="战斗")
@@ -1161,56 +1616,200 @@ def start_combat(session: RuleSession, *, difficulty: str = "",
     return combat_view(session)
 
 
-def build_encounter(session: RuleSession, difficulty: str = "") -> list[dict]:
+def encounter_budget(party_size: int, avg_level: float) -> int:
+    """遭遇预算上限 = 队伍人数 × (队伍平均等级 + 2)（docs/system/02A:550）。"""
+    size = max(1, int(party_size or 1))
+    level = max(1.0, float(avg_level or 1))
+    return int(size * (level + 2))
+
+
+def strength_budget(total: int, strength: str = "standard") -> int:
+    """按强度档折算预算（docs/system/02A:563-568）：纠缠 40% / 标准 70% /
+    严酷 100% / 致命 140%，向上取整。未知档名直接报错，不静默降档。
+    """
+    ratio = ENCOUNTER_STRENGTH.get(str(strength or "").strip())
+    if ratio is None:
+        raise ValueError(f"未知遭遇强度档：{strength}"
+                         f"（可用：{', '.join(ENCOUNTER_STRENGTH)}）")
+    return -(-round(int(total) * ratio * 100) // 100)
+
+
+def make_enemy(tier: str, *, level: int = 1, name: str = "",
+               affixes: tuple = (), persona: str = "",
+               unit_id: str = "") -> dict:
+    """按四档模板造一个敌体（docs/system/02A 第九节 + tactics_enemies.json）。
+
+    词缀取白名单（ENEMY_AFFIXES），数量上限 4（02A:530）；数值型词缀
+    （迅捷 / 装甲 / 狂暴 / 巨型 / 再生）在此落地，行为型词缀只登记名目。
+    敌体没有濒危挣扎：活力归零即被击倒（no_struggle 标记）。
+    """
+    if tier not in ENEMY_TIERS:
+        raise ValueError(f"未知敌体档位：{tier}"
+                         f"（可用：{', '.join(ENEMY_TIERS)}）")
+    if len(affixes) > AFFIX_LIMIT:
+        raise ValueError(f"词缀叠加不得超过 {AFFIX_LIMIT} 个（02A:530）")
+    template = ENEMY_TIERS[tier]
+    level = max(1, min(12, int(level or 1)))
+    scale = next((row for row in ENEMY_SCALING if row[0] <= level <= row[1]),
+                 ENEMY_SCALING[0])
+    vitality = template["vitality"] + scale[2]
+    guard_total = template["guard"] + scale[3]
+    attack_bonus = template["attack_bonus"] + scale[4]
+    dice, flat = template["damage"]
+    flat += scale[5]
+
+    affix_list = [str(a) for a in affixes]
+    unknown = [a for a in affix_list if a not in ENEMY_AFFIXES]
+    if unknown:
+        raise ValueError(f"未知敌体词缀：{', '.join(unknown)}")
+    xp = int(template["budget"]) + sum(int(ENEMY_AFFIXES[a]["budget"])
+                                       for a in affix_list)
+
+    unit = new_unit(unit_id or f"enemy-{tier}-{name or level}",
+                    name or f"{template['name']}（LV{level}）")
+    unit["side"] = "enemy"
+    unit["no_struggle"] = True        # 敌体无濒危挣扎：活力归零即被击倒
+    unit["level"] = level
+    unit["tier"] = tier
+    unit["attack_bonus"] = attack_bonus
+    unit["damage_notation"] = dice
+    unit["damage_bonus"] = flat
+    unit["ap"] = int(template["ap"])
+    unit["df"] = int(template["df"])
+    unit["xp"] = xp                   # 经验权重 = 预算（TODO：源文档未写敌体经验）
+    unit["persona"] = str(persona or "")
+    # 模板防护换算成「基础 10 + 天生护甲」挂进装备，guard_breakdown 同源。
+    armor_guard = guard_total - GUARD_BASE
+    unit["equipment"] = {"armor": {"name": "天生护甲", "guard": armor_guard}}
+    # 韧性直接采用模板数值（02A:483）；首领附带 3 层韧性护盾。
+    unit["max_poise"] = int(template["poise"])
+    unit["poise"] = int(template["poise"])
+    if template.get("shields"):
+        unit["poise_shields"] = int(template["shields"])
+    # 数值型词缀（02A:515-528）。
+    for affix in affix_list:
+        if affix == "迅捷":
+            unit["init_bonus"] = int(unit.get("init_bonus") or 0) + 3
+        elif affix == "装甲":
+            unit["equipment"]["armor"]["guard"] += 3
+        elif affix == "狂暴":
+            unit["damage_bonus"] += 3
+            unit["equipment"]["armor"]["guard"] -= 2
+        elif affix == "巨型":
+            vitality *= 2
+        elif affix == "再生":
+            unit["regen_amount"] = 3
+    if vitality != int(unit.get("max_vitality") or 0):
+        unit["max_vitality"] = vitality
+        unit["vitality"] = vitality
+    unit["affixes"] = affix_list
+    unit["guard"] = compute_guard(unit)   # 词缀改过护甲后统一重算
+    return unit
+
+
+def build_encounter(session: RuleSession, difficulty: str = "",
+                    *, strength: str = "") -> list[dict]:
     """按遭遇预算生成敌体列表（缺省遭遇生成器）。
 
-    TODO(M2)：预算与强度档按 docs/system/02A 第九、十节与
-    data/system/tactics_encounter.json 落地；当前返回空列表——
-    调用方必须显式传入敌体，数据驱动的入口保持不变。
+    预算与强度档按 docs/system/02A 第九、十节与
+    data/system/tactics_encounter.json 落地：
+      · 预算上限 = 队伍人数 × (队伍平均等级 + 2)；强度档缺省按「标准 70%」；
+      · 组成限制：同类敌人 ≤ max(2, 队伍人数 × 1.5)；单个首领 ≤ 总预算 60%；
+        杂兵 ≤ 6；至少两类不同的敌人（不足时给首个敌体挂【迅捷】词缀补足
+        「或至少一个带词缀的个体」这一条）。
+    填充顺序 首领 → 精锐 → 标准 → 杂兵，确定性可复现（不掷骰）。
     """
-    return []
+    party = session.party or []
+    size = max(1, len(party))
+    levels = [int(unit.get("level") or 1) for unit in party] or [1]
+    avg = sum(levels) / len(levels)
+    total = encounter_budget(size, avg)
+    key = str(strength or difficulty or "").strip()
+    ratio = ENCOUNTER_STRENGTH.get(key, ENCOUNTER_STRENGTH["standard"]) \
+        if key else ENCOUNTER_STRENGTH["standard"]
+    budget = -(-round(total * ratio * 100) // 100)
+
+    enemies: list[dict] = []
+    spent = 0
+    counts: dict[str, int] = {}
+    same_cap = max(2, int(size * 1.5))          # 同类敌人上限（向下取整，最低 2）
+    avg_level = max(1, int(avg))
+    for tier in ("boss", "elite", "standard", "minion"):
+        template = ENEMY_TIERS[tier]
+        cost = int(template["budget"])
+        if tier == "boss" and cost > total * BOSS_BUDGET_SHARE:
+            continue                             # 首领不得超过总预算的 60%
+        while spent + cost <= budget \
+                and counts.get(tier, 0) < same_cap \
+                and not (tier == "minion" and counts.get("minion", 0) >= MINION_CAP):
+            index = counts.get(tier, 0) + 1
+            enemies.append(make_enemy(
+                tier, level=avg_level,
+                name=f"{template['name']}·{index}",
+                unit_id=f"{tier}-{index}"))
+            counts[tier] = index
+            spent += cost
+    if enemies and len(counts) < 2 and "迅捷" not in (enemies[0].get("affixes") or []):
+        # 组成限制 3：至少两类不同的敌人（或至少一个带词缀的个体）。
+        enemies[0]["affixes"] = list(enemies[0].get("affixes") or []) + ["迅捷"]
+        enemies[0]["init_bonus"] = int(enemies[0].get("init_bonus") or 0) + 3
+        enemies[0]["xp"] = int(enemies[0].get("xp") or 0) \
+            + int(ENEMY_AFFIXES["迅捷"]["budget"])
+    return enemies
 
 
-def _reorder_initiative(session: RuleSession) -> None:
-    """重排行动顺序，并清零本回合的去重表。
+def initiative_adjustment(unit: dict | None) -> int:
+    """先攻调整 = 洞察修正 + 灵巧修正的一半（向下取整）（01 第二节 / 02A:275）。"""
+    attrs = (unit or {}).get("attributes") or {}
+    insight = attribute_modifier(int(attrs.get("INS", 4) or 4))
+    finesse = attribute_modifier(int(attrs.get("FIN", 4) or 4))
+    return insight + finesse // 2
 
-    TODO(M2)：先攻分按 docs/system/02A 第六节、docs/system/01 第二节
-    （洞察修正 + 灵巧修正的一半）落地；平手规则同节。当前所有单位
-    同分，按单位 key 稳定排序（确定性优先，方便测试与复现）。
+
+def roll_initiative(unit: dict | None, *, rng=None) -> int:
+    """先攻掷骰 = d20 + 洞察修正 + 灵巧修正的一半（向下取整）（02A:275）。
+
+    词缀 / 职途提供的额外先攻加值经 unit["init_bonus"] 折入。
     """
-    combat = session.combat
-    if not combat:
-        return
-    units: list[dict] = []
-    for unit in session.party:
-        if _can_act_unit(unit):
-            units.append(_order_entry("party", str(unit.get("id") or ""),
-                                      str(unit.get("name") or ""), unit))
-    for index, enemy in enumerate(combat.get("enemies") or []):
-        if _can_act_unit(enemy):
-            units.append(_order_entry("enemy", str(index),
-                                      str(enemy.get("name") or ""), enemy))
-    units.sort(key=lambda entry: (-int(entry.get("init") or 0), entry["key"]))
-    combat["order"] = units
-    combat["turn_i"] = 0
-
-
-def _order_entry(side: str, unit_key: str, name: str, unit: dict) -> dict:
-    return {"key": _unit_key(side, unit_key), "side": side, "id": unit_key,
-            "name": name, "init": _initiative_score(unit)}
+    return roll("1d20", rng=rng)["total"] + initiative_adjustment(unit) \
+        + int((unit or {}).get("init_bonus") or 0)
 
 
 def _unit_key(side: str, unit_id: str) -> str:
     return f"{side}:{unit_id}"
 
 
-def _initiative_score(unit: dict) -> int:
-    """单位的一次先攻分。
+def _reorder_initiative(session: RuleSession, *, rng=None) -> None:
+    """重排行动顺序，并清零本回合的去重表。
 
-    TODO(M2)：按 docs/system/02A 第六节 / docs/system/01 第二节落地；
-    当前返回 0（占位），排序退化为按单位 key 的稳定顺序。
+    先攻分按 docs/system/02A:275 落地（d20 + 洞察修正 + 灵巧修正的一半）；
+    一次掷骰，整场战斗保持这个顺序（docs/system/01 第六节回合结构）——
+    掷过的分存在 combat["inits"]，跨回合重排只重算名单不重掷。平手时按
+    单位 key 稳定排序（源文档未写先攻平手规则，取确定性顺序，见 PR）。
     """
-    return 0
+    combat = session.combat
+    if not combat:
+        return
+    inits = combat.setdefault("inits", {})
+    candidates: list[tuple[str, str, str, dict]] = []
+    for unit in session.party:
+        if unit is not None and not unit.get("dead"):
+            candidates.append(("party", str(unit.get("id") or ""),
+                               str(unit.get("name") or ""), unit))
+    for index, enemy in enumerate(combat.get("enemies") or []):
+        if enemy is not None and not enemy.get("dead"):
+            candidates.append(("enemy", str(index),
+                               str(enemy.get("name") or ""), enemy))
+    units: list[dict] = []
+    for side, unit_key, name, unit in candidates:
+        key = _unit_key(side, unit_key)
+        if key not in inits:
+            inits[key] = roll_initiative(unit, rng=rng)
+        units.append({"key": key, "side": side, "id": unit_key,
+                      "name": name, "init": int(inits[key])})
+    units.sort(key=lambda entry: (-int(entry.get("init") or 0), entry["key"]))
+    combat["order"] = units
+    combat["turn_i"] = 0
 
 
 def _can_act_unit(unit: dict | None) -> bool:
@@ -1282,11 +1881,15 @@ def _conscious_party(session: RuleSession) -> list[dict]:
 
 
 def _check_combat_end(session: RuleSession) -> bool:
-    """胜负检查点：敌体全倒 → 胜利；全队不能行动 → 失败。
+    """胜负检查点：敌体全倒 → 胜利；全队消亡 → 失败。
 
     这是一个**共用检查点**：任何单位行动完、以及恢复中的战斗每次推进前
     都先过这里。漏掉任何一条出口，战斗就会停在「胜负已分、状态却没标记」
     的死局里——界面还显示进行中，玩家却做什么都不对。
+
+    失败判据用「全部消亡」而不是「全部濒危」：濒危角色还能挣扎稳定、
+    还能被救（01 第十一节），全倒即判负会让挣扎循环形同虚设。
+    濒危全队被敌体补刀的死亡螺旋由 _pick_enemy_target 的目标池兜底。
     """
     combat = session.combat
     if not combat or combat.get("over"):
@@ -1294,7 +1897,7 @@ def _check_combat_end(session: RuleSession) -> bool:
     if all(enemy.get("dead") for enemy in combat.get("enemies") or []):
         _end_combat(session, "victory")
         return True
-    if not _conscious_party(session):
+    if not _alive_party(session):
         _end_combat(session, "defeat")
         return True
     return False
@@ -1332,16 +1935,55 @@ def _advance(session: RuleSession) -> None:
             combat["round"] = int(combat.get("round", 1) or 1) + 1
             combat["acts"] = {}
             _reorder_initiative(session)
-            # 重掷先攻是重新赋值 order，旧下标作废，必须回到 0。
+            # 重排是重新赋值 order（先攻分沿用 combat["inits"]，不重掷），
+            # 旧下标作废，必须回到 0。
             index = 0
         entry = combat["order"][index]
-        if not _unit_can_act(session, entry):
+        unit = _order_unit(session, entry)
+        if unit is None or unit.get("dead"):
             index += 1
             continue
         # 去重表：少了它，顺序回绕时同一单位会在同一回合里再动一次。
         if combat["acts"].get(entry["key"]):
             index += 1
             continue
+        # 濒危挣扎（01 第十一节）：濒危单位的回合开始时掷 d20 + 体魄修正
+        # vs DF 12；3 成稳定 / 3 败消亡。挣扎同样消耗本回合。
+        if unit.get("downed"):
+            result = downed_struggle(session, unit)
+            combat["acts"][entry["key"]] = "struggle"
+            combat["events"].append({
+                "type": "downed_struggle", "unit": unit.get("name"),
+                "success": result["success"], "successes": result["successes"],
+                "fails": result["fails"], "stabilized": result["stabilized"],
+                "dead": result["dead"]})
+            if _check_combat_end(session):
+                return
+            index += 1
+            continue
+        # 失衡 3 层 → 自动倒地，失去 1 个回合全部 AP（01 第五节叠加规则 2）。
+        layers = int((unit.get("condition_layers") or {}).get("失衡") or 0)
+        if layers >= CONDITION_MAX_LAYERS:
+            unit.setdefault("condition_layers", {})["失衡"] = 0
+            combat["acts"][entry["key"]] = "prone"
+            combat["events"].append({"type": "prone", "unit": unit.get("name")})
+            session.add_log("system", f"{unit.get('name')} 失衡叠加至 3 层，倒地了。",
+                            speaker="战斗")
+            index += 1
+            continue
+        # 回合开始结算：流血 / 熵染伤害、再生、韧性自然恢复、首领阶段维持。
+        for event in _turn_start(session, unit):
+            combat["events"].append(event)
+        # 回合开始的效果可能直接把人打倒 / 打死（流血、熵染）——
+        # 该单位本回合就此消耗。
+        if unit.get("dead") or unit.get("downed"):
+            combat["acts"][entry["key"]] = "turn_start"
+            if _check_combat_end(session):
+                return
+            index += 1
+            continue
+        if _check_combat_end(session):
+            return
         combat["turn_i"] = index
         if entry.get("side") == "enemy":
             _enemy_turn(session, entry)
@@ -1363,27 +2005,46 @@ def _advance(session: RuleSession) -> None:
     combat["turn_i"] = 0
 
 
-def _pick_enemy_target(session: RuleSession) -> dict | None:
-    """敌体的目标选择：当前行动角色优先（他刚暴露自己），倒下就换人。
+def _pick_enemy_target(session: RuleSession, enemy: dict | None = None) -> dict | None:
+    """敌体的目标选择：战术人格优先（docs/system/04），倒下就换人。
 
-    目标偏好数据（战术人格）由 M2 接入 docs/system/04；这里只保证
-    服务端自己选目标，玩家不能替敌体决定打谁。
+    人格只影响**目标偏好**的数值代理（规则层没有伤害统计与位置数据）：
+      · 猛攻 brute → 属性上最具攻击性（MGT + FIN 最高）的目标；
+      · 控场 controller → 最灵活（FIN 最高）的目标；
+      · 其他人格与缺省：当前行动角色优先（他刚暴露自己）。
+    完整的六型人格行为卡（docs/system/04 敌体战术人格 24 张卡）的演出
+    归导引者模块（M5），规则层只保证服务端自己选目标。
     """
+    persona = str((enemy or {}).get("persona") or "")
+    conscious = [unit for unit in session.party if _can_act_unit(unit)]
+    if persona == "brute" and conscious:
+        return max(conscious, key=lambda unit: int(
+            (unit.get("attributes") or {}).get("MGT", 4)) + int(
+            (unit.get("attributes") or {}).get("FIN", 4)))
+    if persona == "controller" and conscious:
+        return max(conscious, key=lambda unit: int(
+            (unit.get("attributes") or {}).get("FIN", 4)))
     active = next((unit for unit in session.party
                    if str(unit.get("id") or "") == str(session.active_unit_id)),
                   None)
     if _can_act_unit(active):
         return active
-    return next((unit for unit in session.party if _can_act_unit(unit)), None)
+    standing = next((unit for unit in session.party if _can_act_unit(unit)),
+                    None)
+    if standing:
+        return standing
+    # 没有站着的角色时也要能继续：濒危角色可以被补刀（挣扎失败的死亡螺旋）。
+    return next((unit for unit in session.party
+                 if not unit.get("dead") and unit.get("downed")), None)
 
 
 def _enemy_turn(session: RuleSession, entry: dict) -> None:
-    """一个敌体的一次行动（控制流骨架）。"""
+    """一个敌体的一次行动：选招 → 掷骰 → 比防护 → deal_damage。"""
     combat = session.combat
     enemy = _order_unit(session, entry)
     if enemy is None or not _can_act_unit(enemy):
         return
-    target = _pick_enemy_target(session)
+    target = _pick_enemy_target(session, enemy)
     if target is None:
         return
     outcome = _resolve_enemy_action(session, enemy, target) or {}
@@ -1396,14 +2057,94 @@ def _enemy_turn(session: RuleSession, entry: dict) -> None:
 
 def _resolve_enemy_action(session: RuleSession, enemy: dict,
                           target: dict) -> dict:
-    """敌体行动的结算（占位）。
+    """敌体行动的结算（docs/system/02A 第五、九节）。
 
-    TODO(M2)：按 docs/system/02A 第五、九节与 data/system/tactics_enemies.json
-    落地「选招 → 掷骰 → 比防护 → 走 deal_damage」的全过程，并接入
-    docs/system/04 的敌体战术人格。在语义落地前返回空结果，
-    不做任何数值猜测。
+    选招：敌体数据自带 `maneuvers`（[{name, attack_bonus, damage,
+    advantage}, ...]）时按回合轮换，否则用基础攻击（模板的攻击加值与
+    伤害骰）。人格只影响目标选择（见 _pick_enemy_target）；行为卡的
+    叙事演出归导引者模块（docs/system/04，M5 接线）。
     """
-    return {"text": "", "events": []}
+    if not _can_act_unit(enemy):
+        return {"text": "", "events": []}
+    attack_bonus = int(enemy.get("attack_bonus") or 0)
+    notation = str(enemy.get("damage_notation") or "1d6")
+    damage_bonus = int(enemy.get("damage_bonus") or 0)
+    advantage = 0
+    maneuver_name = "基础攻击"
+    round_no = int((session.combat or {}).get("round", 1) or 1)
+    maneuvers = enemy.get("maneuvers") or []
+    if maneuvers:
+        maneuver = maneuvers[(round_no - 1) % len(maneuvers)]
+        if isinstance(maneuver, dict):
+            maneuver_name = str(maneuver.get("name") or maneuver_name)
+            attack_bonus += int(maneuver.get("attack_bonus") or 0)
+            damage_bonus += int(maneuver.get("damage") or 0)
+            advantage += int(maneuver.get("advantage") or 0)
+    # 首领暴怒形态：攻击 +1 骰（docs/system/01 第八节阶段表）。
+    if int(enemy.get("boss_phase") or 0) == 1:
+        advantage += 1
+
+    out = resolve_attack(session, enemy, target, notation=notation,
+                         damage_bonus=damage_bonus,
+                         attack_bonus=attack_bonus, advantage=advantage,
+                         tag=str(enemy.get("damage_tag") or ""))
+    parts = [f"{enemy.get('name')} 以{maneuver_name}攻击 "
+             f"{target.get('name')}：{out['grade_zh']}"]
+    if out["grade"] not in ("miss", "fumble"):
+        parts.append(f"伤害 {out['damage']}")
+    poise = out.get("poise")
+    if isinstance(poise, dict):
+        if poise.get("shield_used"):
+            parts.append(f"破韧！{enemy.get('name')} 进入阶段 {poise['phase']}"
+                         "（护盾消耗，韧性回升）")
+        elif poise.get("broken"):
+            parts.append(f"{enemy.get('name')} 的韧性被打崩了")
+    out["text"] = "；".join(parts) + "。"
+    return out
+
+
+def _turn_start(session: RuleSession, unit: dict) -> list[dict]:
+    """一个单位回合开始时的结算（docs/system/01 第五、八节）。
+
+      · 【流血】：每回合开始损失 2 点活力；
+      · 【熵染】：熵蚀伤害持续 1 点/回合；
+      · 再生 / 敌体词缀「再生」：每回合开始恢复 regen_amount 点活力；
+      · 韧性自然恢复：上限的 25%（向上取整）；
+      · 首领绝望形态：每回合开始消耗 3 点活力换取额外 1 AP
+        （AP 经济属回合层，这里只结算活力代价并出事件）。
+    """
+    events: list[dict] = []
+    if unit is None or unit.get("dead"):
+        return events
+    conditions = unit.get("conditions") or []
+    name = str(unit.get("name") or "")
+    if "流血" in conditions:
+        result = deal_damage(session, unit, 2, label="流血")
+        events.append({"type": "bleed", "unit": name,
+                       "damage": int(result["lost"]),
+                       "downed": bool(result["downed"]),
+                       "dead": bool(result["dead"])})
+    if "熵染" in conditions:
+        result = deal_damage(session, unit, 1, label="熵染", tag="熵蚀")
+        events.append({"type": "taint", "unit": name,
+                       "damage": int(result["lost"])})
+    regen = int(unit.get("regen_amount") or 0)
+    if regen > 0 and not unit.get("downed"):
+        healed = heal_unit(session, unit, regen)
+        if healed:
+            events.append({"type": "regen", "unit": name, "healed": healed})
+    amount = poise_regen_amount(unit)
+    if amount > 0:
+        cap = max_poise(unit)
+        unit["poise"] = min(cap, int(unit.get("poise") or 0) + amount)
+        events.append({"type": "poise_regen", "unit": name,
+                       "poise": int(unit["poise"]), "max": cap})
+    if int(unit.get("boss_phase") or 0) == 2:
+        result = deal_damage(session, unit, BOSS_PHASE2_VITALITY,
+                             label="绝望形态")
+        events.append({"type": "boss_desperation", "unit": name,
+                       "damage": int(result["lost"])})
+    return events
 
 
 def _end_combat(session: RuleSession, outcome: str) -> None:
@@ -1413,12 +2154,11 @@ def _end_combat(session: RuleSession, outcome: str) -> None:
         return
     combat["over"] = str(outcome)
     if outcome == "victory":
-        # 只给**真正被击倒**的敌体经验；没打倒的不给。
+        # 只给**真正被击倒**的敌体经验；没打倒的不给。经验权重 = 敌体的
+        # 遭遇预算（make_enemy 设置；源文档未写敌体经验值，见 PR 对照表）。
         xp_total = sum(int(enemy.get("xp") or 0)
                        for enemy in combat.get("enemies") or []
                        if enemy.get("dead"))
-        # TODO(M2)：难度 / 预算的结算系数与成长口径按
-        # docs/system/02A 第十节、docs/system/01 第十四节落地。
         alive = _alive_party(session)
         share = xp_total // max(1, len(alive))
         for unit in alive:
@@ -1488,11 +2228,88 @@ def combat_view(session: RuleSession) -> dict:
 # ════════════════════════════════════════════════════════════════════════
 
 
+def vitality_cap(unit: dict | None) -> int:
+    """活力上限（docs/system/01 第二节 / data/system/derived.json）。
+
+    活力上限 = (体魄 × 3) + 职途起始活力 + (角色等级 − 1) × 2。
+    职途起始活力（+6 ~ +14）是世界模组数据，经 unit["career_vitality"]
+    传入（缺省 0，不臆造具体职途数值）。3 层及以上【创伤】：上限 −5
+    （docs/system/01 第十一节创伤表）。
+    """
+    if not unit:
+        return 0
+    vigor = int((unit.get("attributes") or {}).get("VIG", 4) or 4)
+    level = max(1, int(unit.get("level") or 1))
+    cap = vigor * 3 + int(unit.get("career_vitality") or 0) + (level - 1) * 2
+    if int(unit.get("trauma") or 0) >= TRAUMA_VITALITY_PENALTY_AT:
+        cap -= TRAUMA_VITALITY_PENALTY
+    return max(0, cap)
+
+
+def move_speed(unit: dict | None) -> int:
+    """移动速度（docs/system/01 第二节）：6 + 灵巧修正 米，最低 3 米。
+
+    修正来源（均出自源文档）：
+      · 态势【游势】+3 米（01 第七节）；【加速】+3 米（01 第五节）；
+      · 负载标签（derived.json load_rules）：总重达到「中」以上 −1 米；
+        两件以上「重」−2 米（取代前者）；
+      · 【负担过重】状态 −2 米；【迟滞】移动减半；【束缚】移动降为 0。
+    """
+    if not unit:
+        return 0
+    conditions = unit.get("conditions") or []
+    if "束缚" in conditions:
+        return 0
+    finesse = attribute_modifier(
+        int((unit.get("attributes") or {}).get("FIN", 4) or 4))
+    speed = 6 + finesse
+    if unit.get("stance") == "游势" or "游势" in conditions:
+        speed += 3
+    if "加速" in conditions:
+        speed += 3
+    loads = [str(label) for label in (unit.get("load") or [])]
+    if loads.count("重") >= 2:
+        speed -= 2
+    elif "中" in loads:
+        speed -= 1
+    if "负担过重" in conditions:
+        speed -= 2
+    if "迟滞" in conditions:
+        speed //= 2
+    return max(3, speed)
+
+
+def carry_capacity(unit: dict | None) -> dict:
+    """负重上限（docs/system/01 第二节）：舒适 = 力道 × 5，最大 = 力道 × 10。
+
+    超出舒适值后移动 −2 米、敏捷类判定 −1（状态化的【负担过重】由
+    调用方施加，本函数只给阈值）。
+    """
+    might = int(((unit or {}).get("attributes") or {}).get("MGT", 4) or 4)
+    return {"comfort": might * 5, "max": might * 10}
+
+
+def focus_cap(unit: dict | None) -> int:
+    """专注上限（docs/system/01 第十二节）：(心智与气场较高一项 × 2) + 职途加成。
+
+    职途加成是世界模组数据，经 unit["career_focus_bonus"] 传入（缺省 0）。
+    """
+    attrs = (unit or {}).get("attributes") or {}
+    best = max(int(attrs.get("MND", 4) or 4), int(attrs.get("PRE", 4) or 4))
+    return best * 2 + int((unit or {}).get("career_focus_bonus") or 0)
+
+
+def tempo_cap(party_size: int) -> int:
+    """气势池 = 队伍人数 + 2（docs/system/01 第十二节；队伍共享，不存于单位）。"""
+    return max(1, int(party_size or 1)) + 2
+
+
 def equipped_items(unit: dict | None) -> dict:
     """按装备槽位取当前穿戴（只认白名单槽位）。
 
-    TODO(M2)：与装备目录 / 背包接线（docs/system/02A 装备表、各世界模组
-    装备节）；目录数据在 M2 落入 data/，本函数保持槽位结构不变。
+    装备条目为 {name, guard, ...} 的纯数据 dict（护甲的 Guard 值 0–6，
+    docs/system/01 第二节）；敌体模板把天生护甲也挂成装备条目，保证
+    防护展示与结算同源。
     """
     equipment = (unit or {}).get("equipment") or {}
     return {slot: equipment.get(slot)
@@ -1507,25 +2324,42 @@ def item_guard_bonus(item) -> int:
 
 
 def _stance_guard_bonus(unit: dict) -> int:
-    """态势对防护的修正。
-
-    TODO(M2)：按 docs/system/01 第七节与 data/system/stances.json 落地；
-    当前返回 0。
+    """态势对防护的修正（docs/system/01 第七节）：攻势 −2 / 守势 +3 /
+    游势 +1 / 专注势 0。
     """
-    return 0
+    return int(STANCE_GUARD.get(str((unit or {}).get("stance") or ""), 0))
 
 
 def _cover_guard_bonus(unit: dict) -> int:
-    """掩体对防护的修正。
-
-    TODO(M2)：按 docs/system/02A 第五节与 data/system/tactics_combat.json
-    落地；当前返回 0。
+    """掩体对防护的修正（docs/system/02A 第五节掩体表）：轻 +2 / 中 +4 /
+    重 +6；「完全」掩体意味着无法被攻击，由调用方处理目标合法性。
     """
-    return 0
+    return int(COVER_GUARD.get(str((unit or {}).get("cover") or ""), 0))
+
+
+def _condition_guard_bonus(unit: dict) -> int:
+    """状态与破韧对防护的修正（docs/system/01 第五、八节）。
+
+      · 【护持】+3、【破绽】−3、【过载中】−2（01 第五节）；
+      · 破韧：防护 −4（01 第八节破韧效果表）；
+      · 首领阶段：暴怒形态 −2；崩解形态（真正的破韧）−6，优先于破韧的 −4。
+    """
+    if not unit:
+        return 0
+    total = sum(int(CONDITION_GUARD.get(str(name), 0))
+                for name in (unit.get("conditions") or []))
+    phase = int(unit.get("boss_phase") or 0)
+    if phase >= 3:
+        total += BOSS_PHASE3_GUARD
+    elif unit.get("poise_broken"):
+        total += BREAK_GUARD_PENALTY
+    elif phase == 1:
+        total += BOSS_PHASE1_GUARD
+    return total
 
 
 def guard_breakdown(unit: dict | None, session: RuleSession | None = None) -> dict:
-    """把防护拆成可展示的几段：基础 + 装备 + 态势 + 掩体。
+    """把防护拆成可展示的几段：基础 + 装备 + 态势 + 掩体 + 状态。
 
     展示与结算必须同源：compute_guard 直接调本函数。只返回一个数字的话，
     界面要另算一份——那必然漂移，玩家会看到角色卡与结算对不上。
@@ -1539,7 +2373,8 @@ def guard_breakdown(unit: dict | None, session: RuleSession | None = None) -> di
             parts.append({"label": str(item.get("name") or slot_zh),
                           "value": value})
     for label, value in (("态势修正", _stance_guard_bonus(unit or {})),
-                         ("掩体修正", _cover_guard_bonus(unit or {}))):
+                         ("掩体修正", _cover_guard_bonus(unit or {})),
+                         ("状态修正", _condition_guard_bonus(unit or {}))):
         if value:
             parts.append({"label": label, "value": int(value)})
     total = max(0, sum(int(part["value"]) for part in parts))
@@ -1552,21 +2387,33 @@ def compute_guard(unit: dict | None, session: RuleSession | None = None) -> int:
 
 
 def recompute_unit(unit: dict | None, session: RuleSession | None = None) -> None:
-    """统一重算派生值；凡是会改变属性 / 等级 / 装备的路径都必须走这里。
+    """统一重算派生值；凡是会改变属性 / 等级 / 装备 / 创伤的路径都必须走这里。
 
-    当前只重算防护，并按已知上限夹取活力（没有上限时不硬夹——
-    不能把「未落地的数据」当成 0 上限处理）。
-    TODO(M2)：活力上限 / 移动 / 先攻等其余派生值按 docs/system/01 第二节
-    与 02A/02B 落地（职途与装备数据接入后，仍统一从这里重算）。
+    覆盖（docs/system/01 第二节与第十二节、data/system/derived.json）：
+      · 防护（装备 + 态势 + 掩体 + 状态）；
+      · 活力上限（体魄 / 等级 / 职途 / 创伤），并把当前活力夹回上限内；
+      · 专注上限（写入 max_resources.focus；气势是队伍共享池，
+        上限用 tempo_cap(队伍人数) 由会话层计算，不存于单位）；
+      · 韧性上限（敌体模板优先），首次计算时以满韧性开局。
     """
     if unit is None:
         return
     unit["guard"] = compute_guard(unit, session)
-    cap = int(unit.get("max_vitality") or 0)
-    vitality = max(0, int(unit.get("vitality") or 0))
-    if cap > 0:
-        vitality = min(vitality, cap)
-    unit["vitality"] = vitality
+    cap = vitality_cap(unit)
+    unit["max_vitality"] = cap
+    unit["vitality"] = min(max(0, int(unit.get("vitality") or 0)), cap) \
+        if cap > 0 else max(0, int(unit.get("vitality") or 0))
+    unit.setdefault("max_resources", {})["focus"] = focus_cap(unit)
+    poise_cap = max_poise(unit)
+    if not int(unit.get("max_poise") or 0):
+        # 未初始化（新建角色卡）：以满韧性开局。
+        unit["max_poise"] = poise_cap
+        if poise_cap > 0:
+            unit["poise"] = poise_cap
+    else:
+        # 敌体模板等调用方已给出韧性数据的，只夹取不重置。
+        unit["poise"] = min(int(unit.get("poise") or 0),
+                            int(unit["max_poise"] or 0))
     if session is not None:
         session.touch()
 
@@ -1576,9 +2423,17 @@ def recompute_unit(unit: dict | None, session: RuleSession | None = None) -> Non
 # ════════════════════════════════════════════════════════════════════════
 
 # 等级门槛表：[(等级, 升入该级所需的累计经验), ...]。
-# TODO(M2)：按 docs/system/01 第十四节（经验点法：积满 [当前等级 × 10] 点
-# 升级；或里程碑法直接给等级）落地；空表期间恒定 1 级。
-LEVEL_XP_THRESHOLDS: tuple[tuple[int, int], ...] = ()
+# 经验点法（docs/system/01 第十四节「升级条件」）：积满 [当前等级 × 10]
+# 点升级——1 级攒 10 点升 2 级，2 级再攒 20 点升 3 级……累计到 L 级
+# 需 10 × (1 + 2 + … + (L−1)) = 5L(L−1) 点。里程碑法（推荐）不经此表，
+# 由导引者直接给等级（M3+ 的会话层接口）。
+LEVEL_XP_THRESHOLDS: tuple[tuple[int, int], ...] = tuple(
+    (level, 5 * level * (level - 1)) for level in range(2, 13))
+
+# 六类成长选择（docs/system/01 第十四节 / data/system/growth.json choices）。
+GROWTH_CATEGORIES = ("A", "B", "C", "D", "E", "F")
+GROWTH_ATTRIBUTE_CAP = 4     # A 类：通过此方式每项属性最多 +4
+GROWTH_CONSECUTIVE_LIMIT = 2  # 同一类别不得连续选择超过 2 次
 
 
 def level_for_xp(xp: int) -> int:
@@ -1594,21 +2449,20 @@ def level_for_xp(xp: int) -> int:
 def growth_points_for(level: int) -> int:
     """升入某个等级时**由服务端发放**的成长点数。
 
-    TODO(M2)：按 docs/system/01 第十四节「每级固定收益」与
-    docs/system/02A/02B 的成长表落地；当前返回 0（占位）。
-
-    发放只发生在这里——玩家只能消费已经发放的点数（见 assign_attribute），
-    没有「加等级 / 加点数」的入口。
+    每级固定收益（docs/system/01 第十四节 per_level）：活力上限 +2、
+    成长选择任选 1 项（= 1 点）、熟练加值按量表（自动随等级生效）。
+    发放只发生在这里——玩家只能消费已经发放的点数（见 assign_attribute /
+    apply_growth_choice），没有「加等级 / 加点数」的入口。
     """
-    return 0
+    return 1
 
 
 def award_xp(session: RuleSession, unit: dict | None, amount: int) -> dict:
     """给经验；跨级时自动升级并发放成长点数。
 
     升级必须**把等级写回单位**（只算不写会出现「日志显示升级、角色卡
-    还是旧等级」）。升级只做派生值重算与上限夹取；活力是否随升级变化
-    由 M2 的成长口径决定（docs/system/01 第十四节只写了活力上限 +2）。
+    还是旧等级」）。升级只做派生值重算与上限夹取；活力上限 +2 由
+    recompute_unit 按公式（等级项）自动带入（docs/system/01 第十四节）。
     """
     if unit is None:
         raise ValueError("经验必须发到某个单位上")
@@ -1638,13 +2492,12 @@ def award_xp(session: RuleSession, unit: dict | None, amount: int) -> dict:
 
 def assign_attribute(session: RuleSession, unit_id: str, attribute: str,
                      delta: int = 1) -> dict:
-    """消费成长点数调整属性：**服务端发放、玩家分配**。
+    """消费成长点数调整属性：**服务端发放、玩家分配**（成长选择 A 类）。
 
-    校验四件事：属性名在白名单内；结果不越 1–10 的界；
-    delta 不为 0；手里确实有成长点数。任何一条不过都直接拒绝。
-
-    TODO(M2)：A 类成长「每项属性通过成长最多 +4」需要按
-    docs/system/01 第十四节追踪每项属性的历史加成，与上限校验一并落地。
+    校验五件事：属性名在白名单内；结果不越 1–10 的界；delta 不为 0；
+    手里确实有成长点数；A 类上限——通过成长每项属性最多 +4
+    （docs/system/01 第十四节，历史加成记于 unit["growth_attr_gain"]）。
+    任何一条不过都直接拒绝。
     """
     unit = next((p for p in session.party
                  if str(p.get("id") or "") == str(unit_id or "")), None)
@@ -1662,11 +2515,24 @@ def assign_attribute(session: RuleSession, unit_id: str, attribute: str,
         raise ValueError(
             f"{ATTRIBUTES[key]['zh']}必须保持在 {ATTRIBUTE_MIN}–{ATTRIBUTE_MAX} "
             f"之间（当前 {current}）")
+    if delta > 0:
+        gains = unit.setdefault("growth_attr_gain", {})
+        gained = int(gains.get(key, 0))
+        if gained + delta > GROWTH_ATTRIBUTE_CAP:
+            raise ValueError(
+                f"{ATTRIBUTES[key]['zh']}通过成长已 +{gained}，"
+                f"上限 +{GROWTH_ATTRIBUTE_CAP}（01 第十四节 A 类）")
     if int(unit.get("growth_points") or 0) < 1:
         raise ValueError("没有可分配的成长点数（由服务端在升级时发放）")
     unit["growth_points"] = int(unit["growth_points"]) - 1
     before_cap = int(unit.get("max_vitality") or 0)
     unit.setdefault("attributes", {})[key] = new
+    if delta > 0:
+        gains[key] = int(gains.get(key, 0)) + delta
+    else:
+        gains[key] = max(0, int(gains.get(key, 0)) + delta)
+    history = unit.setdefault("growth_history", [])
+    history.append("A")
     recompute_unit(unit, session)
     after_cap = int(unit.get("max_vitality") or 0)
     session.add_log(
@@ -1680,6 +2546,80 @@ def assign_attribute(session: RuleSession, unit_id: str, attribute: str,
             "d_vitality_cap": after_cap - before_cap}
 
 
+def apply_growth_choice(session: RuleSession, unit_id: str, category: str,
+                        payload=None) -> dict:
+    """消费 1 点成长点数做一次**成长选择**（docs/system/01 第十四节）。
+
+    六类选择（data/system/growth.json choices）：
+      · A 属性强化：一项属性 +1（走 assign_attribute，含 +4 上限）；
+      · B 新熟练：获得一项技能熟练；已有熟练则改为专精；
+      · C 技能专精：一项已熟练的技能升级为专精（判定额外 +1）；
+      · D 职途能力 / E 通用专长 / F 能力深化：效果由世界模组与导引者
+        裁定，规则层只把 payload 记入 growth_records。
+    限制：同一类别不得连续选择超过 2 次（growth_history 追踪）。
+    玩家只能消费服务端已发放的点数；没有直接加点入口。
+    """
+    unit = next((p for p in session.party
+                 if str(p.get("id") or "") == str(unit_id or "")), None)
+    if unit is None:
+        raise ValueError("单位不存在")
+    category = str(category or "").strip().upper()
+    if category not in GROWTH_CATEGORIES:
+        raise ValueError(f"未知成长类别：{category}"
+                         f"（可用：{'/'.join(GROWTH_CATEGORIES)}）")
+    history = unit.setdefault("growth_history", [])
+    if len(history) >= GROWTH_CONSECUTIVE_LIMIT \
+            and all(item == category
+                    for item in history[-GROWTH_CONSECUTIVE_LIMIT:]):
+        raise ValueError(
+            f"同一类别（{category}）不得连续选择超过 "
+            f"{GROWTH_CONSECUTIVE_LIMIT} 次（01 第十四节）")
+    if int(unit.get("growth_points") or 0) < 1:
+        raise ValueError("没有可分配的成长点数（由服务端在升级时发放）")
+
+    if category == "A":
+        payload = payload or {}
+        result = assign_attribute(session, unit_id,
+                                  str(payload.get("attribute") or ""),
+                                  int(payload.get("delta", 1) or 1))
+        return result
+
+    unit["growth_points"] = int(unit["growth_points"]) - 1
+    out = {"category": category, "growth_points": int(unit["growth_points"])}
+    if category == "B":
+        skill = str((payload or {}).get("skill") or "").strip()
+        if not skill:
+            raise ValueError("B 类需要 payload.skill（技能名）")
+        if skill in unit.get("specializations", []):
+            raise ValueError("该技能已是专精")
+        if skill in unit.get("proficiencies", []):
+            unit.setdefault("specializations", []).append(skill)
+            out["effect"] = "specialization"
+        else:
+            unit.setdefault("proficiencies", []).append(skill)
+            out["effect"] = "proficiency"
+    elif category == "C":
+        skill = str((payload or {}).get("skill") or "").strip()
+        if skill not in unit.get("proficiencies", []):
+            raise ValueError("C 类专精要求该技能已有熟练")
+        if skill in unit.get("specializations", []):
+            raise ValueError("该技能已是专精")
+        unit.setdefault("specializations", []).append(skill)
+        out["effect"] = "specialization"
+    else:  # D / E / F：世界模组与导引者裁定，规则层记录。
+        if payload is None:
+            raise ValueError(f"{category} 类需要 payload（世界模组数据）")
+        unit.setdefault("growth_records", []).append(
+            {"category": category, "payload": payload})
+        out["effect"] = "recorded"
+    history.append(category)
+    session.add_log("system",
+                    f"{unit.get('name', '')} 完成了一次 {category} 类成长选择。",
+                    speaker="成长")
+    session.touch()
+    return out
+
+
 __all__ = [
     # 一、术语与白名单
     "ATTRIBUTES", "ATTRIBUTE_IDS", "ATTRIBUTE_MIN", "ATTRIBUTE_MAX",
@@ -1687,6 +2627,11 @@ __all__ = [
     "ACTION_KINDS", "COMBAT_ACTIONS", "EQUIP_SLOTS", "OUTCOMES",
     "PROFICIENCY_LEVELS", "STRAIN_MAX", "RESOLVE_MAX",
     "DEBUFF_CONDITIONS", "KNOWN_CONDITIONS", "register_condition",
+    "LAYERED_CONDITIONS", "CONDITION_MAX_LAYERS",
+    "DOWNED_STRUGGLE_DF", "DOWNED_STABILIZE_SUCCESSES",
+    "DOWNED_DEATH_FAILURES", "MEDICAL_STABILIZE_DF",
+    "TRAUMA_VITALITY_PENALTY_AT", "TRAUMA_VITALITY_PENALTY",
+    "TRAUMA_FEAR_AT",
     "attribute_modifier", "proficiency_bonus",
     # 二、掷骰器
     "DICE_MAX_COUNT", "DICE_MAX_SIDES", "DEFAULT_CHECK_NOTATION", "roll",
@@ -1695,19 +2640,32 @@ __all__ = [
     # 三、会话状态契约
     "new_unit", "RuleSession",
     # 四、结算的单一进出口
-    "deal_damage", "heal_unit", "change_resource", "add_condition",
+    "deal_damage", "heal_unit", "downed_struggle", "stabilize_downed",
+    "add_trauma", "change_resource", "add_condition",
     "failure_cost", "apply_failure", "tick_pressure",
     "CATASTROPHE_TABLE", "PRESSURE_MAX", "TENSION_BANDS", "tension_band",
     "RISK_POOL_ZONES", "risk_roll",
     # 五、场景行动单入口
     "perform_action", "resolve_check", "judge_check",
     # 六、战斗状态机
+    "CRIT_MARGIN", "SOLID_MARGIN", "GRAZE_MARGIN", "FUMBLE_TABLE",
+    "attack_grade", "resolve_attack",
+    "STANCE_GUARD", "COVER_GUARD", "CONDITION_GUARD", "BREAK_GUARD_PENALTY",
+    "POISE_SIZE_BONUS", "RALLY_DF", "BOSS_SHIELDS",
+    "max_poise", "apply_poise_damage", "poise_regen_amount", "rally_broken",
     "COMBAT_BUFF_FIELDS", "start_combat", "build_encounter",
+    "encounter_budget", "strength_budget", "make_enemy",
+    "ENEMY_TIERS", "ENEMY_SCALING", "ENEMY_AFFIXES", "AFFIX_LIMIT",
+    "ENCOUNTER_STRENGTH", "BOSS_BUDGET_SHARE", "MINION_CAP",
+    "initiative_adjustment", "roll_initiative",
     "combat_abandon", "combat_view",
     # 七、派生值与明细
+    "vitality_cap", "move_speed", "carry_capacity", "focus_cap",
+    "tempo_cap",
     "equipped_items", "item_guard_bonus", "guard_breakdown", "compute_guard",
     "recompute_unit",
     # 八、成长
     "LEVEL_XP_THRESHOLDS", "level_for_xp", "growth_points_for", "award_xp",
-    "assign_attribute",
+    "GROWTH_CATEGORIES", "GROWTH_ATTRIBUTE_CAP", "GROWTH_CONSECUTIVE_LIMIT",
+    "assign_attribute", "apply_growth_choice",
 ]
