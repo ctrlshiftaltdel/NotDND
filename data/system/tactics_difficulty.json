@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.tactics_difficulty",
-  "source": "docs/system/02A-战术引擎.md:168",
+  "source": "docs/system/02a-tactics-engine.md:168",
   "declared": {
     "ladder_rows": 10,
     "party_level_rows": 3
@@ -9,32 +9,32 @@
   "improvised": {
     "baseline": 12,
     "adjustments": [
-      {"question": "这事本来就该很难吗", "delta": "+2～+6", "source": "docs/system/02A-战术引擎.md:44"},
-      {"question": "角色有很好的准备吗", "delta": "−2～−4", "source": "docs/system/02A-战术引擎.md:44"},
-      {"question": "失败会很有趣吗", "delta": "如果是，降低 DF，让剧情跑起来", "source": "docs/system/02A-战术引擎.md:44"}
+      {"question": "这事本来就该很难吗", "delta": "+2～+6", "source": "docs/system/02a-tactics-engine.md:44"},
+      {"question": "角色有很好的准备吗", "delta": "−2～−4", "source": "docs/system/02a-tactics-engine.md:44"},
+      {"question": "失败会很有趣吗", "delta": "如果是，降低 DF，让剧情跑起来", "source": "docs/system/02a-tactics-engine.md:44"}
     ]
   },
   "ladder": [
-    {"df": 6, "name": "童稚", "analogy": "受过训练的人几乎不会失手", "source": "docs/system/02A-战术引擎.md:174"},
-    {"df": 8, "name": "平凡", "analogy": "普通人有时能做好的事", "source": "docs/system/02A-战术引擎.md:175"},
-    {"df": 10, "name": "简易", "analogy": "需要一点注意", "source": "docs/system/02A-战术引擎.md:176"},
-    {"df": 12, "name": "常规", "analogy": "专业人士的日常水准", "source": "docs/system/02A-战术引擎.md:177"},
-    {"df": 14, "name": "有挑战", "analogy": "需要专注与准备", "source": "docs/system/02A-战术引擎.md:178"},
-    {"df": 16, "name": "困难", "analogy": "需要技巧或一点运气", "source": "docs/system/02A-战术引擎.md:179"},
-    {"df": 18, "name": "严峻", "analogy": "领域的顶尖人士才有把握", "source": "docs/system/02A-战术引擎.md:180"},
-    {"df": 20, "name": "极限", "analogy": "需要多重优势叠加", "source": "docs/system/02A-战术引擎.md:181"},
-    {"df": 24, "name": "传说", "analogy": "需要整个团队铺路才能触及", "source": "docs/system/02A-战术引擎.md:182"},
-    {"df": 28, "name": "神话", "analogy": "应当被改写为一个多阶段任务，而不是一次掷骰", "open_ended": true, "source": "docs/system/02A-战术引擎.md:183"}
+    {"df": 6, "name": "童稚", "analogy": "受过训练的人几乎不会失手", "source": "docs/system/02a-tactics-engine.md:174"},
+    {"df": 8, "name": "平凡", "analogy": "普通人有时能做好的事", "source": "docs/system/02a-tactics-engine.md:175"},
+    {"df": 10, "name": "简易", "analogy": "需要一点注意", "source": "docs/system/02a-tactics-engine.md:176"},
+    {"df": 12, "name": "常规", "analogy": "专业人士的日常水准", "source": "docs/system/02a-tactics-engine.md:177"},
+    {"df": 14, "name": "有挑战", "analogy": "需要专注与准备", "source": "docs/system/02a-tactics-engine.md:178"},
+    {"df": 16, "name": "困难", "analogy": "需要技巧或一点运气", "source": "docs/system/02a-tactics-engine.md:179"},
+    {"df": 18, "name": "严峻", "analogy": "领域的顶尖人士才有把握", "source": "docs/system/02a-tactics-engine.md:180"},
+    {"df": 20, "name": "极限", "analogy": "需要多重优势叠加", "source": "docs/system/02a-tactics-engine.md:181"},
+    {"df": 24, "name": "传说", "analogy": "需要整个团队铺路才能触及", "source": "docs/system/02a-tactics-engine.md:182"},
+    {"df": 28, "name": "神话", "analogy": "应当被改写为一个多阶段任务，而不是一次掷骰", "open_ended": true, "source": "docs/system/02a-tactics-engine.md:183"}
   ],
   "by_party_level": [
-    {"level_range": "1–3", "typical_bonus": "+3 ~ +5", "target_df": "13 ~ 15", "source": "docs/system/02A-战术引擎.md:191"},
-    {"level_range": "4–7", "typical_bonus": "+5 ~ +8", "target_df": "15 ~ 18", "source": "docs/system/02A-战术引擎.md:192"},
-    {"level_range": "8–12", "typical_bonus": "+8 ~ +11", "target_df": "18 ~ 21", "source": "docs/system/02A-战术引擎.md:193"}
+    {"level_range": "1–3", "typical_bonus": "+3 ~ +5", "target_df": "13 ~ 15", "source": "docs/system/02a-tactics-engine.md:191"},
+    {"level_range": "4–7", "typical_bonus": "+5 ~ +8", "target_df": "15 ~ 18", "source": "docs/system/02a-tactics-engine.md:192"},
+    {"level_range": "8–12", "typical_bonus": "+8 ~ +11", "target_df": "18 ~ 21", "source": "docs/system/02a-tactics-engine.md:193"}
   ],
   "split_rule": {
     "threshold": 22,
     "rule": "任何 DF ≥ 22 的单次检定都应当被拆成一个多阶段任务。",
     "example": "例如“说服国王出兵”不该是一次 DF 25 的交涉，而应当是一系列活动：找到能见到他的人（DF 14）→ 掌握他真正在意的筹码（调查 DF 16）→ 打击他的反对者（战斗或交涉）→ 最终摊牌时 DF 降至 16。",
-    "source": "docs/system/02A-战术引擎.md:199"
+    "source": "docs/system/02a-tactics-engine.md:199"
   }
 }

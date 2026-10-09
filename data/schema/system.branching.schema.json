@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.branching）",
-  "description": "导引者操作系统第六节：三条分支法——八种故事引擎、三条路线格式、未选路线管理与路线池。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "导引者操作系统第六节：三条分支法——八种故事引擎、三条路线格式、未选路线管理与路线池。源自 docs/system/04-conductor-os.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "engines", "non_adjacent", "route_format", "unselected", "consistency_questions", "pool_rules"],
   "properties": {

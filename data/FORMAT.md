@@ -683,7 +683,7 @@ data/
   - `die` 形如 `d20` / `d100`（pattern `^d[0-9]+$`）。
   - `rows[]`：`{roll, result, example?, tag?, tier?, effect?, df?, source?}`，`roll` 从 1 起。
     - `df`：可空整数，用于「场地要素」类行（如 `docs/system/08` 扩展表）；具体数值口径
-      仍以内核 `01-内核CORE.md` 第十节为准，此处只存该行自带的难度值。
+      仍以内核 `01-core.md` 第十节为准，此处只存该行自带的难度值。
     - `source`：**行级**溯源（可选）；逐行指回 `docs/` 的行号，便于机器核对。
   - `interface?`：与内核的唯一接口；`type` 说明结果落到哪一类字段，数值一律回查
     `01`／`02A`／`03`，本族不复制内核数值表。
@@ -744,7 +744,7 @@ data/
 
 **`factions` / `evidence`（顶层）**：剧本册补充结构，M1.4a 六册未用到，保留键位备用。
 
-**世界账本 ledger**（canonical 键，兼容 `docs/system/04-导引者操作系统.md`）：
+**世界账本 ledger**（canonical 键，兼容 `docs/system/04-conductor-os.md`）：
 
 - 必有：`meta`、`clock`、`party`、`npcs`、`threads`、`facts`、`hooks`。
 - 可选：`locations`、`debts`、`nemeses`、`factions`、`flags`，以及各世界模组
@@ -819,7 +819,7 @@ docs/<system|scenario>/<文件名>.md:<行号>
 ```
 
 - 正则：`^docs/(system|scenario)/[^:]+\.md:[0-9]+$`
-- 例：`docs/system/01-内核CORE.md:36`
+- 例：`docs/system/01-core.md:36`
 - 校验器会检查：`source` 指向的文件**确实存在**，且行号**在文件行数之内**
   （行号等于文件总行数允许，超过即报错）。
 - 账本模板等聚合结构，在**顶层**带一个 `source` 即可，内部条目可省略。
@@ -859,10 +859,10 @@ docs/<system|scenario>/<文件名>.md:<行号>
 
 ## 9. 交叉引用
 
-- 世界账本字段与规则：`docs/system/04-导引者操作系统.md`（第四节）。
-- 每册 12 节结构与账本 JSON 骨架：`docs/scenario/S0-系列总纲与编写规范.md`。
-- 六维属性 / 等级 / 修正的来源：`docs/system/01-内核CORE.md`（第一、二节）。
-- 随机表 JSON 结构：`docs/scenario/S7-随机生成器.md`（数字工具附录）。
+- 世界账本字段与规则：`docs/system/04-conductor-os.md`（第四节）。
+- 每册 12 节结构与账本 JSON 骨架：`docs/scenario/s0-series-overview-and-style-guide.md`。
+- 六维属性 / 等级 / 修正的来源：`docs/system/01-core.md`（第一、二节）。
+- 随机表 JSON 结构：`docs/scenario/s7-random-generator.md`（数字工具附录）。
 
 ---
 

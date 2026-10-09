@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.tension）",
-  "description": "导引者操作系统第十二节：张力曲线管理器——张力值五档、升温 / 降温信号、疲劳管理与高潮三要素。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "导引者操作系统第十二节：张力曲线管理器——张力值五档、升温 / 降温信号、疲劳管理与高潮三要素。源自 docs/system/04-conductor-os.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "bands", "heat_signals", "cool_signals", "fatigue", "climax_elements"],
   "properties": {

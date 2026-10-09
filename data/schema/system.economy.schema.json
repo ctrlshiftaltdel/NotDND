@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.economy）",
-  "description": "互动层第五节：货币层级 3、持有资金 5 级、物价参考 7、讨价还价 5、稀有度 5、债务、收入来源 4。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "互动层第五节：货币层级 3、持有资金 5 级、物价参考 7、讨价还价 5、稀有度 5、债务、收入来源 4。源自 docs/system/03-interaction-layer.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "currency_tiers", "wealth_levels", "price_reference", "haggle", "rarities", "debt", "income_sources"],
   "properties": {

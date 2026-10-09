@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.build_momentum）",
-  "description": "构建引擎第四节：动量池结构（共享池起始 0 上限 10 + 每人持有上限 5）、获取表（7 条）、花费表（7 条）、任意时刻可花费、每场景结束清零。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "构建引擎第四节：动量池结构（共享池起始 0 上限 10 + 每人持有上限 5）、获取表（7 条）、花费表（7 条）、任意时刻可花费、每场景结束清零。源自 docs/system/02b-forge-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "pool", "timing", "timing_source", "gain", "spends", "clear"],
   "properties": {

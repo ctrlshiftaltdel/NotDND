@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.social）",
-  "description": "互动层第二节：交涉论战——启用条件、立场/说服点公式、玩家行动 6、NPC 应对 5、立场归零、好感与敬畏、论证四路径、轻量版。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "互动层第二节：交涉论战——启用条件、立场/说服点公式、玩家行动 6、NPC 应对 5、立场归零、好感与敬畏、论证四路径、轻量版。源自 docs/system/03-interaction-layer.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "use_rule", "setup", "player_actions", "npc_responses", "zero_stance", "relation_meters", "relation_effects", "argument_paths", "gm_duty", "light_version"],
   "properties": {

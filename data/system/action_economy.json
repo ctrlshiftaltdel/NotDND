@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.action_economy",
-  "source": "docs/system/01-内核CORE.md:280",
+  "source": "docs/system/01-core.md:280",
   "note": "棱镜用行动点（AP）取代传统的“一个动作、一个附赠动作”，因为 AP 给了玩家在同一回合内做取舍的空间，而取舍产生有趣。",
   "round": {
     "ap_per_turn": 3,
@@ -14,64 +14,64 @@
       "未用完的 AP：最多保留 1 点转换为「反应额度」",
       "回合结束，结算状态"
     ],
-    "source": "docs/system/01-内核CORE.md:287"
+    "source": "docs/system/01-core.md:287"
   },
   "actions": [
     {"id": "move", "name": "移动", "ap": 1,
-     "note": "移动一次等于自身移动速度的距离；可多次支付", "source": "docs/system/01-内核CORE.md:302"},
+     "note": "移动一次等于自身移动速度的距离；可多次支付", "source": "docs/system/01-core.md:302"},
     {"id": "stance_switch", "name": "姿态切换", "ap": 0, "ap_note": "每回合一次",
-     "note": "在第 7 节四种态势间切换", "source": "docs/system/01-内核CORE.md:303"},
+     "note": "在第 7 节四种态势间切换", "source": "docs/system/01-core.md:303"},
     {"id": "assist_action", "name": "辅助动作", "ap": 1,
-     "note": "一次快速交互：开门、拔枪、服下药剂、高声呼喊、调整瞄具", "source": "docs/system/01-内核CORE.md:304"},
+     "note": "一次快速交互：开门、拔枪、服下药剂、高声呼喊、调整瞄具", "source": "docs/system/01-core.md:304"},
     {"id": "basic_attack", "name": "基础攻击", "ap": 2,
-     "note": "一次基础武器攻击或使用一件普通道具", "source": "docs/system/01-内核CORE.md:305"},
+     "note": "一次基础武器攻击或使用一件普通道具", "source": "docs/system/01-core.md:305"},
     {"id": "full_ability", "name": "全额能力", "ap": 3,
-     "note": "施放一项标准能力；通常效果强力，多数需要消耗专注", "source": "docs/system/01-内核CORE.md:306"},
+     "note": "施放一项标准能力；通常效果强力，多数需要消耗专注", "source": "docs/system/01-core.md:306"},
     {"id": "quick_ability", "name": "快速能力", "ap": 1,
-     "note": "名为「迅捷」的能力，或消耗 1 点专注的小型能力", "source": "docs/system/01-内核CORE.md:307"},
+     "note": "名为「迅捷」的能力，或消耗 1 点专注的小型能力", "source": "docs/system/01-core.md:307"},
     {"id": "suppress", "name": "压制动作", "ap": 2,
-     "note": "专门针对对手韧性的推、绊、震、撞（见第 8 节）", "source": "docs/system/01-内核CORE.md:308"},
+     "note": "专门针对对手韧性的推、绊、震、撞（见第 8 节）", "source": "docs/system/01-core.md:308"},
     {"id": "recon", "name": "巡查动作", "ap": 1,
-     "note": "主动搜寻环境中的可交互对象（DF 由场景决定）", "source": "docs/system/01-内核CORE.md:309"},
+     "note": "主动搜寻环境中的可交互对象（DF 由场景决定）", "source": "docs/system/01-core.md:309"},
     {"id": "assist", "name": "协助", "ap": 2,
-     "note": "为队友的下一次判定提供 +1 枚助势骰（需描述具体的帮助方式）", "source": "docs/system/01-内核CORE.md:310"},
+     "note": "为队友的下一次判定提供 +1 枚助势骰（需描述具体的帮助方式）", "source": "docs/system/01-core.md:310"},
     {"id": "reaction", "name": "反应", "ap": null, "ap_note": "用保留的 AP",
-     "note": "对他人行动作出一次即时回应", "source": "docs/system/01-内核CORE.md:311"}
+     "note": "对他人行动作出一次即时回应", "source": "docs/system/01-core.md:311"}
   ],
   "reactions": [
     {"id": "parry", "name": "格挡", "en": "Parry", "cost": 1,
-     "effect": "承受一次攻击时，防护临时 +2，或者在豁免成功后减半伤害", "source": "docs/system/01-内核CORE.md:319"},
+     "effect": "承受一次攻击时，防护临时 +2，或者在豁免成功后减半伤害", "source": "docs/system/01-core.md:319"},
     {"id": "dodge", "name": "闪避", "en": "Dodge", "cost": 1,
-     "effect": "强制一次攻击判定重掷（对手取两次中较低的一次）", "source": "docs/system/01-内核CORE.md:320"},
+     "effect": "强制一次攻击判定重掷（对手取两次中较低的一次）", "source": "docs/system/01-core.md:320"},
     {"id": "riposte", "name": "反手打击", "en": "Riposte", "cost": 1,
-     "effect": "敌人离开你的相邻位置时，对其发起一次基础攻击", "source": "docs/system/01-内核CORE.md:321"},
+     "effect": "敌人离开你的相邻位置时，对其发起一次基础攻击", "source": "docs/system/01-core.md:321"},
     {"id": "interpose", "name": "援护", "en": "Interpose", "cost": 1,
-     "effect": "把一次针对队友的攻击改为针对自己", "source": "docs/system/01-内核CORE.md:322"},
+     "effect": "把一次针对队友的攻击改为针对自己", "source": "docs/system/01-core.md:322"},
     {"id": "combo_response", "name": "响应连携", "cost": 1,
-     "effect": "参与队友触发的连携（见第 9 节）", "source": "docs/system/01-内核CORE.md:323"}
+     "effect": "参与队友触发的连携（见第 9 节）", "source": "docs/system/01-core.md:323"}
   ],
   "reaction_note": "每个参战者在自己的回合结束时，可把未使用的 AP 转换为至多 1 点反应额度；反应额度在下一个自己的回合开始时会清零重置。",
   "overload": {
     "note": "在任意时刻，你可以宣布过载，把下个回合的 AP 提前在当前回合使用。",
     "levels": [
-      {"level": 1, "extra_ap": 1, "next_ap": 2, "source": "docs/system/01-内核CORE.md:334"},
-      {"level": 2, "extra_ap": 2, "next_ap": 1, "source": "docs/system/01-内核CORE.md:335"},
+      {"level": 1, "extra_ap": 1, "next_ap": 2, "source": "docs/system/01-core.md:334"},
+      {"level": 2, "extra_ap": 2, "next_ap": 1, "source": "docs/system/01-core.md:335"},
       {"level": 3, "extra_ap": 3, "next_ap": 0, "note": "且立刻获得 1 层【疲惫】",
-       "source": "docs/system/01-内核CORE.md:336"}
+       "source": "docs/system/01-core.md:336"}
     ],
     "cost": "在偿还完成之前，角色处于【过载中】状态——防护 −2，且任何针对该角色的攻击额外获得 1 枚助势骰",
-    "cost_source": "docs/system/01-内核CORE.md:339"
+    "cost_source": "docs/system/01-core.md:339"
   },
   "time_units": [
     {"id": "beat", "name": "节拍", "duration": "数秒",
-     "use": "战斗中的一次行动", "source": "docs/system/01-内核CORE.md:347"},
+     "use": "战斗中的一次行动", "source": "docs/system/01-core.md:347"},
     {"id": "period", "name": "时段", "duration": "10 分钟",
-     "use": "搜查一个房间、闲聊一段、短距移动", "source": "docs/system/01-内核CORE.md:348"},
+     "use": "搜查一个房间、闲聊一段、短距移动", "source": "docs/system/01-core.md:348"},
     {"id": "scene", "name": "场景", "en": "Scene", "duration": "任意",
-     "use": "一段连续虚构时间的完整情节", "source": "docs/system/01-内核CORE.md:349"},
+     "use": "一段连续虚构时间的完整情节", "source": "docs/system/01-core.md:349"},
     {"id": "session", "name": "会话", "en": "Session", "duration": "2–4 小时",
-     "use": "一次游戏，通常以 4–8 个场景组成", "source": "docs/system/01-内核CORE.md:350"},
+     "use": "一次游戏，通常以 4–8 个场景组成", "source": "docs/system/01-core.md:350"},
     {"id": "interlude", "name": "间幕", "en": "Interlude", "duration": "会话之间",
-     "use": "角色在虚构世界里的日常与长期事务", "source": "docs/system/01-内核CORE.md:351"}
+     "use": "角色在虚构世界里的日常与长期事务", "source": "docs/system/01-core.md:351"}
   ]
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S8-起步战役集.md:865",
+  "source": "docs/scenario/s8-starter-campaigns.md:865",
   "meta": {
     "world": "broken_line",
     "engine": "tactics",
@@ -26,7 +26,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:884"
+      "source": "docs/scenario/s8-starter-campaigns.md:884"
     },
     {
       "id": "act-2",
@@ -43,7 +43,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:929"
+      "source": "docs/scenario/s8-starter-campaigns.md:929"
     },
     {
       "id": "act-3",
@@ -56,7 +56,7 @@
         "3.3 抉择：把真相交给谁——交战区／交白旗会公开／交渭渡河民 / 通达行（论战或说服 DF 15；无论选谁，都有一个人为此承担代价）",
         "3.4 收束：谁活下来——结算减员与换防（无判定；这是本册「减员是常态」的落地，补兵永远是陌生人）"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:969"
+      "source": "docs/scenario/s8-starter-campaigns.md:969"
     }
   ],
   "nodes": [
@@ -67,7 +67,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:896"
+      "source": "docs/scenario/s8-starter-campaigns.md:896"
     },
     {
       "id": "N12",
@@ -76,7 +76,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:897"
+      "source": "docs/scenario/s8-starter-campaigns.md:897"
     },
     {
       "id": "N13",
@@ -85,7 +85,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:898"
+      "source": "docs/scenario/s8-starter-campaigns.md:898"
     },
     {
       "id": "N14",
@@ -94,7 +94,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:899"
+      "source": "docs/scenario/s8-starter-campaigns.md:899"
     },
     {
       "id": "N15",
@@ -103,7 +103,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:900"
+      "source": "docs/scenario/s8-starter-campaigns.md:900"
     },
     {
       "id": "N21",
@@ -112,7 +112,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:941"
+      "source": "docs/scenario/s8-starter-campaigns.md:941"
     },
     {
       "id": "N22",
@@ -121,7 +121,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:942"
+      "source": "docs/scenario/s8-starter-campaigns.md:942"
     },
     {
       "id": "N23",
@@ -130,7 +130,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:943"
+      "source": "docs/scenario/s8-starter-campaigns.md:943"
     },
     {
       "id": "N24",
@@ -139,7 +139,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:944"
+      "source": "docs/scenario/s8-starter-campaigns.md:944"
     },
     {
       "id": "N25",
@@ -148,7 +148,7 @@
       "next": [
         "N31"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:932"
+      "source": "docs/scenario/s8-starter-campaigns.md:932"
     },
     {
       "id": "N31",
@@ -157,7 +157,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:981"
+      "source": "docs/scenario/s8-starter-campaigns.md:981"
     },
     {
       "id": "N32",
@@ -166,7 +166,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:982"
+      "source": "docs/scenario/s8-starter-campaigns.md:982"
     },
     {
       "id": "N33",
@@ -175,7 +175,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:983"
+      "source": "docs/scenario/s8-starter-campaigns.md:983"
     },
     {
       "id": "N34",
@@ -186,7 +186,7 @@
         "ending-defy",
         "ending-forward"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:984"
+      "source": "docs/scenario/s8-starter-campaigns.md:984"
     },
     {
       "id": "Q-00",
@@ -234,7 +234,7 @@
         "forward"
       ],
       "act": "act-1",
-      "source": "docs/scenario/S8-起步战役集.md:884"
+      "source": "docs/scenario/s8-starter-campaigns.md:884"
     }
   ],
   "threads": [
@@ -256,20 +256,20 @@
         {
           "path": "调查",
           "detail": "测绘员苏勉手里的真图与命令附图不一致（洞察 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:910"
+          "source": "docs/scenario/s8-starter-campaigns.md:910"
         },
         {
           "path": "社交",
           "detail": "友邻柏岩或费岭一句「我们上个月就发现那边多了人」（说服 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:911"
+          "source": "docs/scenario/s8-starter-campaigns.md:911"
         },
         {
           "path": "环境",
           "detail": "磨石岗西坡多出的工事与 1186 年旧掩体的位置对不上（观察 DF 14）",
-          "source": "docs/scenario/S8-起步战役集.md:912"
+          "source": "docs/scenario/s8-starter-campaigns.md:912"
         }
       ],
-      "source": "docs/scenario/S8-起步战役集.md:909"
+      "source": "docs/scenario/s8-starter-campaigns.md:909"
     },
     {
       "id": "C-02",
@@ -291,21 +291,21 @@
         {
           "path": "分析",
           "detail": "战区作战方案原件（分析 DF 15）",
-          "source": "docs/scenario/S8-起步战役集.md:954"
+          "source": "docs/scenario/s8-starter-campaigns.md:954"
         },
         {
           "path": "洞察",
           "detail": "白旗会记录簿里被涂掉的一段（洞察 DF 14）",
-          "source": "docs/scenario/S8-起步战役集.md:954"
+          "source": "docs/scenario/s8-starter-campaigns.md:954"
         },
         {
           "path": "共感",
           "detail": "渭军俘虏祁五口供里反复提到的一个代号（共感 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:954"
+          "source": "docs/scenario/s8-starter-campaigns.md:954"
         }
       ],
       "note": "文档在 S8:954 一行内给出三条路径，path 行号同源。",
-      "source": "docs/scenario/S8-起步战役集.md:954"
+      "source": "docs/scenario/s8-starter-campaigns.md:954"
     },
     {
       "id": "C-03",
@@ -320,7 +320,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:879"
+      "source": "docs/scenario/s8-starter-campaigns.md:879"
     }
   ],
   "npcs": [
@@ -336,7 +336,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:904"
+      "source": "docs/scenario/s8-starter-campaigns.md:904"
     },
     {
       "id": "npc-02",
@@ -347,7 +347,7 @@
         "affinity": 0,
         "note": "第二幕可接任班长"
       },
-      "source": "docs/scenario/S8-起步战役集.md:905"
+      "source": "docs/scenario/s8-starter-campaigns.md:905"
     },
     {
       "id": "npc-03",
@@ -355,7 +355,7 @@
       "role": "分队老兵，下士",
       "drive": "活着换防",
       "note": "第三幕起成为减员表的主要对象",
-      "source": "docs/scenario/S8-起步战役集.md:906"
+      "source": "docs/scenario/s8-starter-campaigns.md:906"
     },
     {
       "id": "npc-04",
@@ -365,7 +365,7 @@
       "attitude": {
         "affinity": 1
       },
-      "source": "docs/scenario/S8-起步战役集.md:907"
+      "source": "docs/scenario/s8-starter-campaigns.md:907"
     },
     {
       "id": "npc-05",
@@ -375,7 +375,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:910"
+      "source": "docs/scenario/s8-starter-campaigns.md:910"
     },
     {
       "id": "npc-06",
@@ -386,7 +386,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:944"
+      "source": "docs/scenario/s8-starter-campaigns.md:944"
     },
     {
       "id": "npc-07",
@@ -399,7 +399,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:949"
+      "source": "docs/scenario/s8-starter-campaigns.md:949"
     },
     {
       "id": "npc-08",
@@ -410,7 +410,7 @@
       "attitude": {
         "affinity": -1
       },
-      "source": "docs/scenario/S8-起步战役集.md:950"
+      "source": "docs/scenario/s8-starter-campaigns.md:950"
     },
     {
       "id": "npc-09",
@@ -420,7 +420,7 @@
       "attitude": {
         "affinity": -1
       },
-      "source": "docs/scenario/S8-起步战役集.md:951"
+      "source": "docs/scenario/s8-starter-campaigns.md:951"
     },
     {
       "id": "npc-10",
@@ -433,7 +433,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:952"
+      "source": "docs/scenario/s8-starter-campaigns.md:952"
     },
     {
       "id": "npc-11",
@@ -444,7 +444,7 @@
       "attitude": {
         "affinity": -1
       },
-      "source": "docs/scenario/S8-起步战役集.md:988"
+      "source": "docs/scenario/s8-starter-campaigns.md:988"
     },
     {
       "id": "npc-12",
@@ -454,7 +454,7 @@
       "attitude": {
         "affinity": 0
       },
-      "source": "docs/scenario/S8-起步战役集.md:989"
+      "source": "docs/scenario/s8-starter-campaigns.md:989"
     },
     {
       "id": "npc-13",
@@ -464,7 +464,7 @@
       "attitude": {
         "affinity": 1
       },
-      "source": "docs/scenario/S8-起步战役集.md:990"
+      "source": "docs/scenario/s8-starter-campaigns.md:990"
     },
     {
       "id": "npc-14",
@@ -478,7 +478,7 @@
       "knows": [
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:991"
+      "source": "docs/scenario/s8-starter-campaigns.md:991"
     }
   ],
   "locations": [
@@ -486,37 +486,37 @@
       "id": "loc-01",
       "name": "H-7 第七支撑点",
       "atmosphere": "战壕壁上的霜被头盔灯照出一层灰；一号机枪位下埋着 1192 年旧弹药箱",
-      "source": "docs/scenario/S8-起步战役集.md:896"
+      "source": "docs/scenario/s8-starter-campaigns.md:896"
     },
     {
       "id": "loc-02",
       "name": "碎镜滩",
       "atmosphere": "前方四百米，有金属在反光——可能只是一块被炮翻过来的铁皮",
-      "source": "docs/scenario/S8-起步战役集.md:897"
+      "source": "docs/scenario/s8-starter-campaigns.md:897"
     },
     {
       "id": "loc-03",
       "name": "磨石岗",
       "atmosphere": "阵地比图上多一个连——地图滞后 48 小时",
-      "source": "docs/scenario/S8-起步战役集.md:898"
+      "source": "docs/scenario/s8-starter-campaigns.md:898"
     },
     {
       "id": "loc-04",
       "name": "三号土路·第九公里",
       "atmosphere": "雨下了四天，三号土路变成黄色的浆，辎重队的骡车陷在这里",
-      "source": "docs/scenario/S8-起步战役集.md:941"
+      "source": "docs/scenario/s8-starter-campaigns.md:941"
     },
     {
       "id": "loc-05",
       "name": "白棚",
       "atmosphere": "战地医院与白旗会记录簿所在",
-      "source": "docs/scenario/S8-起步战役集.md:944"
+      "source": "docs/scenario/s8-starter-campaigns.md:944"
     },
     {
       "id": "loc-06",
       "name": "哑塔",
       "atmosphere": "三天前截获的渭军电文与此塔有关；值机时只有电流声",
-      "source": "docs/scenario/S8-起步战役集.md:981"
+      "source": "docs/scenario/s8-starter-campaigns.md:981"
     }
   ],
   "endings": [
@@ -526,7 +526,7 @@
       "type": "服从",
       "requirements": "玩家按令把战线推上去",
       "result": "代价是分队残废、伤亡惨重。→ 接 S6 正式战役的「晨线」路线：玩家获得嘉奖与一枚编号勋章",
-      "source": "docs/scenario/S8-起步战役集.md:994"
+      "source": "docs/scenario/s8-starter-campaigns.md:994"
     },
     {
       "id": "ending-defy",
@@ -534,7 +534,7 @@
       "type": "抗命",
       "requirements": "玩家放弃推进，把八个人活着带回来",
       "result": "接「前线派」路线：纪律受损但保住编制，进入长期线",
-      "source": "docs/scenario/S8-起步战役集.md:995"
+      "source": "docs/scenario/s8-starter-campaigns.md:995"
     },
     {
       "id": "ending-forward",
@@ -542,11 +542,11 @@
       "type": "揭幕",
       "requirements": "玩家把「被删掉的第三条」交给白旗会或河民",
       "result": "接「揭幕」路线：谈判桌因此改写，代价是有人替他们背锅",
-      "source": "docs/scenario/S8-起步战役集.md:996"
+      "source": "docs/scenario/s8-starter-campaigns.md:996"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S8-起步战役集.md:865",
+    "source": "docs/scenario/s8-starter-campaigns.md:865",
     "declared_flag_count": 5,
     "actual_flag_count": 5,
     "flag": [
@@ -557,7 +557,7 @@
         "write": "第一幕幕末：证实命令基于旧图",
         "readers": "Q-00/C-01",
         "effect": "开启主线",
-        "source": "docs/scenario/S8-起步战役集.md:917"
+        "source": "docs/scenario/s8-starter-campaigns.md:917"
       },
       {
         "id": "flag.action_line3",
@@ -566,7 +566,7 @@
         "write": "第二幕幕末：得知晨线行动被删的第三条",
         "readers": "Q-00/C-02",
         "effect": "真相可递出",
-        "source": "docs/scenario/S8-起步战役集.md:958"
+        "source": "docs/scenario/s8-starter-campaigns.md:958"
       },
       {
         "id": "flag.defied",
@@ -575,7 +575,7 @@
         "write": "是否抗命",
         "readers": "Q-00/act-3",
         "effect": "影响命令链与结局",
-        "source": "docs/scenario/S8-起步战役集.md:959"
+        "source": "docs/scenario/s8-starter-campaigns.md:959"
       },
       {
         "id": "flag.q1_known",
@@ -584,7 +584,7 @@
         "write": "第一线索交接完成",
         "readers": "C-02/C-03",
         "effect": "截获电文与被删的第三条并线",
-        "source": "docs/scenario/S8-起步战役集.md:964"
+        "source": "docs/scenario/s8-starter-campaigns.md:964"
       },
       {
         "id": "flag.losses",
@@ -593,7 +593,7 @@
         "write": "每幕结算减员",
         "readers": "act-1/act-2/act-3",
         "effect": "本幕减员（1~2）；补兵永远是陌生人",
-        "source": "docs/scenario/S8-起步战役集.md:924"
+        "source": "docs/scenario/s8-starter-campaigns.md:924"
       }
     ],
     "rep": [
@@ -604,7 +604,7 @@
         "write": "上报真图 / 抗命等行为",
         "readers": "act-2/act-3",
         "effect": "战区司令部态度（−1~1）",
-        "source": "docs/scenario/S8-起步战役集.md:961"
+        "source": "docs/scenario/s8-starter-campaigns.md:961"
       },
       {
         "id": "rep.logistics",
@@ -613,7 +613,7 @@
         "write": "补给协作行为",
         "readers": "act-2/act-3",
         "effect": "辎重序列态度（0~1）",
-        "source": "docs/scenario/S8-起步战役集.md:962"
+        "source": "docs/scenario/s8-starter-campaigns.md:962"
       }
     ],
     "clock": [
@@ -624,7 +624,7 @@
         "write": "每幕 −1",
         "readers": "Q-00/act-3",
         "effect": "换防/冬天倒计时（归零前须收束）",
-        "source": "docs/scenario/S8-起步战役集.md:963"
+        "source": "docs/scenario/s8-starter-campaigns.md:963"
       }
     ]
   },
@@ -703,6 +703,6 @@
       "discipline": 6,
       "note": "士气与纪律（0~10）"
     },
-    "source": "docs/scenario/S8-起步战役集.md:922"
+    "source": "docs/scenario/s8-starter-campaigns.md:922"
   }
 }

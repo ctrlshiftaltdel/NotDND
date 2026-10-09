@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.damage）",
-  "description": "伤害结算流程、命中判定（命中 / 擦过 / 暴击 / 严重失手）、抗性 / 弱点 / 免疫 / 吸收、濒危与挣扎、消亡与回光、创伤层；源自 docs/system/01-内核CORE.md 第十一节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "伤害结算流程、命中判定（命中 / 擦过 / 暴击 / 严重失手）、抗性 / 弱点 / 免疫 / 吸收、濒危与挣扎、消亡与回光、创伤层；源自 docs/system/01-core.md 第十一节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "resolution_flow", "outcomes", "relations", "downed", "fade", "trauma"],
   "properties": {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.skills）",
-  "description": "29 项技能（属性对取高、分类、用途）与合并项别名；源自 docs/system/01-内核CORE.md 第三节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "29 项技能（属性对取高、分类、用途）与合并项别名；源自 docs/system/01-core.md 第三节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared_total", "proficiency_note", "categories", "skills", "aliases"],
   "properties": {

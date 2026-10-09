@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S4-静海-硬科幻.md:1",
+  "source": "docs/scenario/s4-still-sea-hard-scifi.md:1",
   "meta": {
     "world": "still-sea",
     "engine": "build",
@@ -25,7 +25,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2376"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2376"
     },
     {
       "id": "act-2",
@@ -44,7 +44,7 @@
         "Q-01",
         "Q-05"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2398"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2398"
     },
     {
       "id": "act-3",
@@ -66,7 +66,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2425"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2425"
     },
     {
       "id": "act-4",
@@ -79,7 +79,7 @@
         "N32",
         "N33"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2452"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2452"
     },
     {
       "id": "act-5",
@@ -91,7 +91,7 @@
         "N41",
         "N50"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2472"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2472"
     }
   ],
   "nodes": [
@@ -102,7 +102,7 @@
       "next": [
         "N01"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2350"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2350"
     },
     {
       "id": "N01",
@@ -114,7 +114,7 @@
       "marks": [
         "窗口抉择：去哑铃核实失联，或去汀洲送汀胺药，两个窗口同时打开，只够选一个"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2350"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2350"
     },
     {
       "id": "N02",
@@ -124,7 +124,7 @@
         "N03",
         "N04"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2350"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2350"
     },
     {
       "id": "N03",
@@ -136,7 +136,7 @@
       "marks": [
         "去哑铃 → 进入第二幕主线"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2353"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2353"
     },
     {
       "id": "N04",
@@ -148,7 +148,7 @@
       "marks": [
         "去汀洲 → 先完成 Q-02 再前往哑铃（汀洲线会给\"药与呼吸塔\"的另一重压力，并使哑铃延后 130 衡日，触发若干世界时钟）"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2353"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2353"
     },
     {
       "id": "N10",
@@ -157,7 +157,7 @@
       "next": [
         "N11"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2355"
     },
     {
       "id": "N11",
@@ -170,7 +170,7 @@
       "marks": [
         "进入 clock.dumbbell_cold（12 时段），在\"救样本\"与\"救人\"之间分配时段"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2355"
     },
     {
       "id": "N12",
@@ -180,7 +180,7 @@
         "N13",
         "N15"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2355"
     },
     {
       "id": "N13",
@@ -189,7 +189,7 @@
       "marks": [
         "揭示：静默不是事故（flag.lingering_signal）"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2355"
     },
     {
       "id": "N14",
@@ -198,7 +198,7 @@
       "marks": [
         "与\"样本库核心\"（首领）对抗/交涉；它只为保护样本，不惜牺牲人"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2357"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2357"
     },
     {
       "id": "N15",
@@ -207,7 +207,7 @@
       "marks": [
         "全幕的情感高点：先看到卫长庚的尸体，几小时后收到他\"还活着\"的、早已发出的回信；导引者必须演出这次延迟落差，不得抹去"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2357"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2357"
     },
     {
       "id": "N20",
@@ -219,7 +219,7 @@
       "marks": [
         "三条路径取得：韩砚秋 / 邵霜 / 档案室（见 Q-03）"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2359"
     },
     {
       "id": "N21",
@@ -231,7 +231,7 @@
       "marks": [
         "对白树三。可将其争取为首领级盟友。她复算的原始结论是：\"未必有害，但确实未知。\""
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2359"
     },
     {
       "id": "N22",
@@ -243,7 +243,7 @@
       "marks": [
         "宁执中（首领）的封锁权，可让一处区域\"消失\""
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2359"
     },
     {
       "id": "N23",
@@ -252,7 +252,7 @@
       "marks": [
         "用《公开复算》/《灯塔宣讲》把真相变成公共事件；这是\"回信\"结局的必要条件之一"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2359"
     },
     {
       "id": "N24",
@@ -261,7 +261,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2360"
     },
     {
       "id": "N25",
@@ -270,7 +270,7 @@
       "next": [
         "N26"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2360"
     },
     {
       "id": "N26",
@@ -279,7 +279,7 @@
       "next": [
         "N27"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2360"
     },
     {
       "id": "N27",
@@ -288,7 +288,7 @@
       "marks": [
         "与何燎对白树四。揭示：熄灯会掌握让全系统静默九衡日的技术（flag.truth_lamplighter）；何燎其实不想永久熄灯，他的手下更激进"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2360"
     },
     {
       "id": "N28",
@@ -297,7 +297,7 @@
       "marks": [
         "支线：盐冢远岸号残骸（首领）提供旧岸数据"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2361"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2361"
     },
     {
       "id": "N29",
@@ -306,7 +306,7 @@
       "marks": [
         "支线：云脊台/长夜林提供母星悬念。二者可并行，用延迟通信完成"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2361"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2361"
     },
     {
       "id": "N30",
@@ -318,7 +318,7 @@
       "marks": [
         "clock.breath_tower 逼近归零。可用本船货物补齐，或从主砧调件（需另派船、耗时 334 衡日）"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2363"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2363"
     },
     {
       "id": "N31",
@@ -330,7 +330,7 @@
       "marks": [
         "蒋叠山与沈蕤的线；制冷剂只够到下一个窗口。可救援、可调停、可无视"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2363"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2363"
     },
     {
       "id": "N32",
@@ -342,7 +342,7 @@
       "marks": [
         "本幕的核心场景：有限的 Δv 与多个殖民地之间做分派。建议用一次真实的多目标 Δv 计算。会议用集体检定 + 论战（各势力代表立场），并允许《窗口分派》"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2363"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2363"
     },
     {
       "id": "N33",
@@ -351,7 +351,7 @@
       "marks": [
         "熄灯会静默母站（首领）。可谈判（何燎线）或夺取"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2365"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2365"
     },
     {
       "id": "N40",
@@ -363,7 +363,7 @@
       "marks": [
         "用《全系统广播》或《静默航行》/《熄灯协议》执行终局通信动作。每个此前争取到的势力提供固定 +1；每项真相提供一名失败者重掷的机会"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2367"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2367"
     },
     {
       "id": "N41",
@@ -375,7 +375,7 @@
       "marks": [
         "若样本在幕二一息尚存，此刻可能融合为\"样本逃逸体\"（首领）。破韧三次后可分割灭活并保住样本"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2367"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2367"
     },
     {
       "id": "N50",
@@ -388,7 +388,7 @@
         "火种（牺牲一处保全多处）",
         "导引者公开四方案的所需、立即收益与长期代价，逐名询问确认。若队伍意见分裂，用角色内论战或投票；不替玩家决定情绪"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2369"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2369"
     },
     {
       "id": "Q-00",
@@ -442,7 +442,7 @@
         }
       ],
       "note": "expired 不是全盘清零：保留已获取的真相、账本事实、等级；但一处殖民地永久失联（写入 clock.lost_colonies），熄灯会声望 +1，主线转入\"收拾残局\"的变体。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:1605"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1605"
     },
     {
       "id": "Q-01",
@@ -477,7 +477,7 @@
         }
       ],
       "note": "窗口：clock.dumbbell_cold 初值 12 时段，每完成一次舱内行动 −1。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:1623"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1623"
     },
     {
       "id": "Q-02",
@@ -501,7 +501,7 @@
           "condition": "clock.breath_tower 归零，冷滩港进入配给恐慌，物价 +1 层"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:1635"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1635"
     },
     {
       "id": "Q-03",
@@ -524,7 +524,7 @@
           "condition": "flag.sha_shuang_dead == true 且 flag.xi_notes_lost == true"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:1644"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1644"
     },
     {
       "id": "Q-04",
@@ -553,7 +553,7 @@
           "condition": "clock.blackout 归零，全系统进入九衡日静默"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:1653"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1653"
     },
     {
       "id": "Q-05",
@@ -572,7 +572,7 @@
           "condition": "两处皆不可得，稳态结局中\"利用迟信\"路线永久关闭"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:1663"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1663"
     },
     {
       "id": "Q-06",
@@ -591,7 +591,7 @@
           "condition": "三次尝试皆无法确认，母星悬念维持开放"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:1671"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:1671"
     }
   ],
   "threads": [
@@ -614,25 +614,25 @@
         {
           "path": "A（物理）",
           "detail": "席砚生的旧笔记",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2557"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2557"
         },
         {
           "path": "B（文档）",
           "detail": "评估原版",
-          "source": "docs/scenario/S4-静海-硬科幻.md:1648"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:1648"
         },
         {
           "path": "C（人证）",
           "detail": "邵霜复算",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2557"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2557"
         },
         {
           "path": "D（推理）",
           "detail": "由封锁令的删号推出",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2557"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2557"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2525"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2525"
     },
     {
       "id": "C-02",
@@ -649,7 +649,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2526"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2526"
     },
     {
       "id": "C-03",
@@ -668,25 +668,25 @@
         {
           "path": "A（物理）",
           "detail": "七号中继实查",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2558"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2558"
         },
         {
           "path": "B（文档）",
           "detail": "操作手册残页",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2527"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2527"
         },
         {
           "path": "C（人证）",
           "detail": "何燎布道",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2558"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2558"
         },
         {
           "path": "D（推理）",
           "detail": "由布道内容的专业度反推",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2558"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2558"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2527"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2527"
     },
     {
       "id": "C-04",
@@ -701,7 +701,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2528"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2528"
     },
     {
       "id": "C-05",
@@ -716,7 +716,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2529"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2529"
     },
     {
       "id": "C-06",
@@ -732,7 +732,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2530"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2530"
     },
     {
       "id": "C-07",
@@ -747,7 +747,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2531"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2531"
     },
     {
       "id": "C-08",
@@ -762,7 +762,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2532"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2532"
     },
     {
       "id": "C-09",
@@ -777,7 +777,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2533"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2533"
     },
     {
       "id": "C-10",
@@ -792,7 +792,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2534"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2534"
     },
     {
       "id": "C-11",
@@ -811,25 +811,25 @@
         {
           "path": "A（物理）",
           "detail": "档案室原件",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2559"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2559"
         },
         {
           "path": "B（文档）",
           "detail": "编号缺口",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2535"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2535"
         },
         {
           "path": "C（人证）",
           "detail": "宁执中被驳倒后的默认",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2559"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2559"
         },
         {
           "path": "D（推理）",
           "detail": "由命令的时间线矛盾推出",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2559"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2559"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2535"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2535"
     },
     {
       "id": "C-12",
@@ -844,7 +844,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2536"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2536"
     },
     {
       "id": "C-13",
@@ -859,7 +859,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2537"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2537"
     },
     {
       "id": "C-14",
@@ -874,7 +874,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2538"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2538"
     },
     {
       "id": "C-15",
@@ -889,7 +889,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2539"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2539"
     },
     {
       "id": "C-16",
@@ -904,7 +904,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2540"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2540"
     },
     {
       "id": "C-17",
@@ -923,25 +923,25 @@
         {
           "path": "A（物理）",
           "detail": "站内实探",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2560"
         },
         {
           "path": "B（文档）",
           "detail": "样本库权限记录",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2560"
         },
         {
           "path": "C（人证）",
           "detail": "幸存者口述",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2560"
         },
         {
           "path": "D（推理）",
           "detail": "由设计容量与实际不符推出",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2560"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2541"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2541"
     },
     {
       "id": "C-18",
@@ -960,25 +960,25 @@
         {
           "path": "A（物理）",
           "detail": "居住舱搜索",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2561"
         },
         {
           "path": "B（文档）",
           "detail": "生命维持日志",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2561"
         },
         {
           "path": "C（人证）",
           "detail": "回声中的应答",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2561"
         },
         {
           "path": "D（推理）",
           "detail": "由消耗量反推人数",
-          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+          "source": "docs/scenario/s4-still-sea-hard-scifi.md:2561"
         }
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2542"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2542"
     },
     {
       "id": "C-19",
@@ -993,7 +993,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2543"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2543"
     },
     {
       "id": "C-20",
@@ -1008,7 +1008,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2544"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2544"
     },
     {
       "id": "C-21",
@@ -1023,7 +1023,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2545"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2545"
     },
     {
       "id": "C-22",
@@ -1038,7 +1038,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2546"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2546"
     },
     {
       "id": "C-23",
@@ -1053,7 +1053,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2547"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2547"
     },
     {
       "id": "C-24",
@@ -1068,7 +1068,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2548"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2548"
     },
     {
       "id": "C-25",
@@ -1081,7 +1081,7 @@
         "flag.lingering_signal"
       ],
       "note": "终局",
-      "source": "docs/scenario/S4-静海-硬科幻.md:2549"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2549"
     },
     {
       "id": "C-26",
@@ -1096,7 +1096,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2550"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2550"
     },
     {
       "id": "C-27",
@@ -1111,7 +1111,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S4-静海-硬科幻.md:2551"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2551"
     }
   ],
   "npcs": [
@@ -1137,7 +1137,7 @@
         "C-07"
       ],
       "if_dead_or_betrayed": "船组选出新船务官（玩家可角逐），\"回信号\"的所有权与债务按工会章程重新分配；他藏在枕下的旧岸航行日志会被下一名船长找到，旧岸线不锁死，但延迟 +1 衡日。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:446"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:446"
     },
     {
       "id": "npc-02",
@@ -1160,7 +1160,7 @@
         "C-09"
       ],
       "if_dead_or_betrayed": "船况隐患暴露，主线转移前必须多花 1 衡日维修；工会改派一名更官僚的技师，改装 DF +2。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:458"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:458"
     },
     {
       "id": "npc-03",
@@ -1183,7 +1183,7 @@
         "C-10"
       ],
       "if_dead_or_betrayed": "联合进入敌对，锚地拒绝加注，所有航程 Δv 成本上升一档（见 5.1）；他的价目表落入玩家手中，反可作证据。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:470"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:470"
     },
     {
       "id": "npc-04",
@@ -1206,7 +1206,7 @@
         "C-14"
       ],
       "if_dead_or_betrayed": "锚地失去中立情报点，玩家只能靠人脉判定获取传闻，DF +2；她的旧伤证据被联合回收，白隼线少一条人证。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:482"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:482"
     },
     {
       "id": "npc-05",
@@ -1229,7 +1229,7 @@
         "C-16"
       ],
       "if_dead_or_betrayed": "盐冢对玩家封锁，旧岸线只剩主砧黑炉一条昂贵路径；他的打捞船与一名继承者仍在，可作延迟 NPC 延续线索。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:494"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:494"
     },
     {
       "id": "npc-06",
@@ -1252,7 +1252,7 @@
         "C-11"
       ],
       "if_dead_or_betrayed": "残页随她一起消失或被销毁，真相线转由检疫署内部异议者（NPC 12）承担，DF +2 且延迟 +1 衡日。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:508"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:508"
     },
     {
       "id": "npc-07",
@@ -1275,7 +1275,7 @@
         "C-13"
       ],
       "if_dead_or_betrayed": "真实余量曝光，冷滩港进入配给恐慌，物价 +1 层，主线中\"救汀洲\"的紧迫度上升；她的副手可接续。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:520"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:520"
     },
     {
       "id": "npc-08",
@@ -1298,7 +1298,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "冷滩港基层把玩家当作\"楼上的人\"，所有在汀洲的交涉 DF +2；他的女儿成为一条延迟 NPC 支线。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:532"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:532"
     },
     {
       "id": "npc-09",
@@ -1321,7 +1321,7 @@
         "C-11"
       ],
       "if_dead_or_betrayed": "检疫署全面敌对，钉环与哑铃通道关闭；但他的死亡会激发一名更冷硬的继任者（NPC 10 接管），危机升级。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:546"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:546"
     },
     {
       "id": "npc-10",
@@ -1344,7 +1344,7 @@
         "C-17"
       ],
       "if_dead_or_betrayed": "迟信原始数据丢失，玩家只能靠哑铃现存的、被损坏的记录反推，DF +3；她被署内除名的消息会成为熄灯会的宣传素材。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:558"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:558"
     },
     {
       "id": "npc-11",
@@ -1368,7 +1368,7 @@
       ],
       "if_dead_or_betrayed": "他的死亡以一段迟到的电文抵达，玩家在收到时他早已不在；站内幸存者数量因此固化在某一档，并影响终局\"救出几人\"的账。故事继续，且更痛。",
       "delayed": true,
-      "source": "docs/scenario/S4-静海-硬科幻.md:572"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:572"
     },
     {
       "id": "npc-12",
@@ -1391,7 +1391,7 @@
       ],
       "if_dead_or_betrayed": "七号中继失守，熄灯会控制该节点，全系统延迟 +1 时段；但她留下的缓存舱仍保存着所有未被投递的消息，成为后期夺回线。",
       "delayed": true,
-      "source": "docs/scenario/S4-静海-硬科幻.md:585"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:585"
     },
     {
       "id": "npc-13",
@@ -1414,7 +1414,7 @@
       ],
       "if_dead_or_betrayed": "白隼陷入罢工或崩溃，公司改派一名只为产能负责的人，外环人道危机概率大增；他的最后一份\"工程口径\"电文会成为终局道德债务。",
       "delayed": true,
-      "source": "docs/scenario/S4-静海-硬科幻.md:598"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:598"
     },
     {
       "id": "npc-14",
@@ -1437,7 +1437,7 @@
       ],
       "if_dead_or_betrayed": "他停止发信。母星悬念永久中断，熄灯会声望 +1；但他留下的时间胶囊仍可在亲临长夜林时开启。",
       "delayed": true,
-      "source": "docs/scenario/S4-静海-硬科幻.md:611"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:611"
     },
     {
       "id": "npc-15",
@@ -1459,7 +1459,7 @@
       ],
       "if_dead_or_betrayed": "若玩家证明它是伪造或重播，则失去\"哑铃仍有幸存者\"的乐观假设，但也避免被误导；证伪过程本身给出一条关于中继缓存机制的硬线索（C-20）。",
       "delayed": true,
-      "source": "docs/scenario/S4-静海-硬科幻.md:624"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:624"
     },
     {
       "id": "npc-16",
@@ -1482,7 +1482,7 @@
         "C-23"
       ],
       "if_dead_or_betrayed": "熄灯会由激进派接管，直接进入\"九衡日静默\"实操，终局难度上升；他的遗稿反而证明熄灯会有过一次\"可以谈\"的时刻。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:639"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:639"
     },
     {
       "id": "npc-17",
@@ -1505,7 +1505,7 @@
         "C-24"
       ],
       "if_dead_or_betrayed": "双生礁对玩家关闭，走私路线与非法改装消失；她的账本落入检疫署之手，会引发一次针对礁群的清剿。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:651"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:651"
     },
     {
       "id": "npc-18",
@@ -1528,7 +1528,7 @@
         "C-21"
       ],
       "if_dead_or_betrayed": "白隼罢工失控或瓦解，外环人道危机概率大增；她的死亡会在终局成为无法回避的道德账。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:663"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:663"
     },
     {
       "id": "npc-19",
@@ -1551,7 +1551,7 @@
         "C-25"
       ],
       "if_dead_or_betrayed": "闭环改良的可能被中断，终局\"利用迟信重建生态\"的路线变窄；他的资料分散存于主砧与云脊台两处，可分别追回。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:675"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:675"
     },
     {
       "id": "npc-20",
@@ -1574,7 +1574,7 @@
         "C-26"
       ],
       "if_dead_or_betrayed": "通信能力骤降，全船延迟 +1 时段；她的笔记本是关键证据，但需要信延判定才能解读。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:687"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:687"
     },
     {
       "id": "npc-21",
@@ -1597,7 +1597,7 @@
         "C-17"
       ],
       "if_dead_or_betrayed": "最重要的独立人证消失，真相只能靠实物与延迟电文凑，DF +2 且更依赖运气；他的旧笔记藏在小站地板下，可被找到。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:699"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:699"
     },
     {
       "id": "npc-22",
@@ -1620,7 +1620,7 @@
         "C-27"
       ],
       "if_dead_or_betrayed": "盐冢的伦理底线被踩，打捞人全体敌对；但他的名录副本一旦留存，可在终局\"把名字带回去\"的路线中使用。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:711"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:711"
     }
   ],
   "locations": [
@@ -1640,7 +1640,7 @@
       "resources": "系统级档案、汀胺药源、补给与据点、声望入口。",
       "if_botched": "若引发穹顶减压事故或纵火，配给署改为军管，物价 +1 层，且共同事务局对所有玩家声望 −1；修复需完成 Q-02《把呼吸还回去》。",
       "purpose": "它把\"人口中心\"具体化，让政治与配给成为可玩内容，而不是背景数字。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:210"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:210"
     },
     {
       "id": "loc-02",
@@ -1658,7 +1658,7 @@
       "resources": "舰船整备、合法通行、窗口情报、走私通道、灯火串入口权限。",
       "if_botched": "若在封闭舱引发减压或带出未检货物，钉环全面封锁，所有对外通信延迟 +2 时段，且检疫署声望 −1。",
       "purpose": "它是\"授权与封锁\"的现场，让检疫署从抽象机构变成必须每天面对的窗口。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:220"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:220"
     },
     {
       "id": "loc-03",
@@ -1676,7 +1676,7 @@
       "resources": "轨道学与信延训练、历史证据、耀斑预警、抗故障的\"实物信件\"渠道。",
       "if_botched": "若损毁监听阵或档案室，全系统失去唯一的深空监视与旧岸悬念线索，后续耀斑事件无预警。",
       "purpose": "它证明\"最可靠的信不一定是电波\"，也是玩家学会延迟思维的地方。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:230"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:230"
     },
     {
       "id": "loc-04",
@@ -1694,7 +1694,7 @@
       "resources": "燃料与水、维修、装备改造、货代业务、据点选择。",
       "if_botched": "若与矿业联合彻底翻脸，锚地拒绝为你们加注燃料，所有航程 Δv 成本上升一档（见第 5 节），走私通道成为唯一补给。",
       "purpose": "它是本册的开局舞台：既有资源，也有人情与算计，让第一次抉择有分量。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:240"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:240"
     },
     {
       "id": "loc-05",
@@ -1712,7 +1712,7 @@
       "resources": "迟信样本、检疫真相、旧规程密钥、进入终局的证据。",
       "if_botched": "若制冷系统彻底失效，样本库失活，迟信样本被毁，主线转入\"是否还有别的样本\"的备用线索链（Q-05 分支），且站内幸存者若未撤离将全部死亡。",
       "purpose": "它是主线的心脏：一个把\"信息不完全\"压缩到极致的封闭现场。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:250"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:250"
     },
     {
       "id": "loc-06",
@@ -1730,7 +1730,7 @@
       "resources": "稀有部件、符纹（构建引擎）来源、散热与结构改装、第三方同盟。",
       "if_botched": "若引发炉区事故，主砧产能减半，全系统维修与改造价格 +1 层，且第三方同盟态度转冷。",
       "purpose": "它提供\"技术中立地带\"，让玩家能靠工艺而非武力改变局势。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:260"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:260"
     },
     {
       "id": "loc-07",
@@ -1748,7 +1748,7 @@
       "resources": "旧岸数据、稀有打捞物、打捞人同盟、历史黑匣证据。",
       "if_botched": "若惊动冷棺区或炸毁残骸，打捞人声望 −2，盐冢对玩家封锁，旧岸线线索只剩一条昂贵的备用路径。",
       "purpose": "它把\"过去\"变成可打捞的实物，并提供一条与主线并行、关于\"我们从哪来\"的线索。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:270"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:270"
     },
     {
       "id": "loc-08",
@@ -1766,7 +1766,7 @@
       "resources": "挥发分（燃料原料）、大额运费合约、孤悬殖民地的政治线索。",
       "if_botched": "若煽动罢工成功却无补给，白隼陷入人道危机，全系统燃料价格 +1 层；若无视，白隼死伤成为终局的道德债务（写入账本）。",
       "purpose": "它把\"外环的孤立\"具体化，让\"要不要去救白隼\"成为一个真实的两难。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:280"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:280"
     },
     {
       "id": "loc-09",
@@ -1784,7 +1784,7 @@
       "resources": "非法改装、黑市情报、绕过检疫的航线、被高价悬赏的目标信息。",
       "if_botched": "若出卖礁群的信誉或引来检疫署，双生礁封锁，走私路线消失，且玩家被列入礁群黑名单。",
       "purpose": "它提供一个没有道德裁判的空间，让玩家的策略选择脱离官方框架。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:290"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:290"
     },
     {
       "id": "loc-10",
@@ -1802,7 +1802,7 @@
       "resources": "通信控制权、被缓存的历史消息、掩饰行踪的能力、熄灯终局的关键。",
       "if_botched": "若摧毁关键中继，全系统延迟永久 +2 时段，且部分殖民地彼此彻底失联（写入 `clock`）；修复需从主砧重造部件。",
       "purpose": "它是本册\"延迟通信\"特则的物理载体，让抽象规则变成可攻防的地点。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:300"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:300"
     },
     {
       "id": "loc-11",
@@ -1820,7 +1820,7 @@
       "resources": "母星悬念的最终（可能无解的）答案、迟信的原始环境数据、最极端的长延迟对白。",
       "if_botched": "若哨站失联或人员崩溃，母星线索永久中断，熄灯会借此宣传\"再远的结果也只是一片沉默\"，其声望 +1。",
       "purpose": "它提供\"最远的距离\"，让\"回信\"这个词有最重的分量。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:310"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:310"
     }
   ],
   "endings": [
@@ -1832,7 +1832,7 @@
       "result": "静海各殖民地第一次在同一时刻听见同一句话；真相被公开，检疫署被要求复核，熄灯会分裂，灯火串被重建。",
       "cost": "真相让一部分人永远无法原谅另一部分人；检疫署与矿业联合的公信力崩塌，短期出现权力真空；你亲手救下的人里，会有人因为你的另一个选择而失去亲人。",
       "epilogue": "共识下形成的\"静海议事规则\"由参与势力共同书写；若玩家保留了邵霜与何燎，制度更温和；若只剩强硬派人手，则新秩序很快变旧。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:2490"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2490"
     },
     {
       "id": "ending-b",
@@ -1842,7 +1842,7 @@
       "result": "各殖民地彼此不再通信，静海退回一串互不知情的壳；不再有\"迟到的坏消息\"，也不再有\"我们派船去救你\"。",
       "cost": "任何一处殖民地出事，都将在很久以后才被知道，或永远不被知道；长途航行失去通信支持，变成真正的单程；熄灯会达成目的，但其内部也会因\"下一步做什么\"而分裂。",
       "epilogue": "若玩家保留了至少一座中继作为\"唯一的门\"，结局留有一线；若彻底熄灯，则本战役的世界永久转为\"沉默的静海\"。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:2496"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2496"
     },
     {
       "id": "ending-c",
@@ -1852,7 +1852,7 @@
       "result": "一小群人带着迟信样本与全部真相，驶向长夜林或更远的地方，去寻找一个能理解它的地方；留下的多数人各自关门自保。",
       "cost": "这是\"把答案带走、把问题留下\"的结局；留下的人不会知道你们是否成功，你们也不会知道他们是否活着。航行本身可能耗时数年乃至十几个衡年。",
       "epilogue": "若玩家在旅程中仍保持与静海的一条单向通信，结局多一层\"远方的回声\"；若彻底静默，则这是一个开放到遥远的收束。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:2502"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2502"
     },
     {
       "id": "ending-d",
@@ -1862,7 +1862,7 @@
       "result": "玩家用精确的计算，把有限的 Δv 分给尽可能多的人，代价是明确放弃至少一处殖民地（写入 party.lost_colonies）。",
       "cost": "这是\"算对了但依然有人死\"的结局；被放弃的人不会理解算术，只会记得你们没有来。系统得以延续，但你们的名字在后来的殖民地史里会同时被感激与被诅咒。",
       "epilogue": "被放弃的那一处是否还有幸存者、是否发来最后一条消息，决定了结局是\"冷酷但必要\"还是\"冷酷且残忍\"。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:2508"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2508"
     },
     {
       "id": "ending-e",
@@ -1870,11 +1870,11 @@
       "type": "未能选择",
       "result": "若队伍拒绝所有方案、窗口全部错过、或 `clock.window_missed ≥ 1` 且未补救，则哑铃再次静默，汀洲呼吸塔告急，熄灯会先手。",
       "note": "等级、账本事实与等级保留。下一幕从\"锚地的第二次整备\"开始，韦守拙说：\"这是你们第二次来。上一次留下的东西，这次别再浪费了。\"这是失败推进，不是惩罚。",
-      "source": "docs/scenario/S4-静海-硬科幻.md:2514"
+      "source": "docs/scenario/s4-still-sea-hard-scifi.md:2514"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S4-静海-硬科幻.md:1680",
+    "source": "docs/scenario/s4-still-sea-hard-scifi.md:1680",
     "declared_flag_count": 33,
     "actual_flag_count": 33,
     "flag": [
@@ -1886,7 +1886,7 @@
         "readers": "全部任务状态机",
         "effect": "当前幕次（跨册通用，见 `S0` §7.2）",
         "universal": true,
-        "source": "docs/scenario/S4-静海-硬科幻.md:1686"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1686"
       },
       {
         "id": "flag.anchor_ready",
@@ -1895,7 +1895,7 @@
         "write": "锚地整备完成",
         "readers": "Q-00",
         "effect": "开启主线",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1687"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1687"
       },
       {
         "id": "flag.chose_dumbbell",
@@ -1904,7 +1904,7 @@
         "write": "选择第一航段去哑铃",
         "readers": "Q-00/Q-01",
         "effect": "决定主线起点",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1688"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1688"
       },
       {
         "id": "flag.chose_tingzhou",
@@ -1913,7 +1913,7 @@
         "write": "选择第一航段去汀洲",
         "readers": "Q-02",
         "effect": "先救药，哑铃延后",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1689"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1689"
       },
       {
         "id": "flag.dumbbell_arrived",
@@ -1922,7 +1922,7 @@
         "write": "完成汀洲→哑铃转移",
         "readers": "Q-00",
         "effect": "进入核实阶段",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1690"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1690"
       },
       {
         "id": "flag.dumbbell_access",
@@ -1931,7 +1931,7 @@
         "write": "破拆或取得样本库权限",
         "readers": "Q-01",
         "effect": "进入样本库",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1691"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1691"
       },
       {
         "id": "flag.cold_safe",
@@ -1940,7 +1940,7 @@
         "write": "修复哑铃制冷",
         "readers": "Q-00/Q-05",
         "effect": "保住迟信样本",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1692"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1692"
       },
       {
         "id": "flag.survivors_saved",
@@ -1949,7 +1949,7 @@
         "write": "撤离站内幸存者",
         "readers": "终局",
         "effect": "幸存人数影响结局质量",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1693"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1693"
       },
       {
         "id": "flag.lingering_signal",
@@ -1958,7 +1958,7 @@
         "write": "收到旧规程\"迟到的信\"",
         "readers": "Q-00",
         "effect": "真相第一块拼图",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1694"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1694"
       },
       {
         "id": "flag.truth_assessment",
@@ -1967,7 +1967,7 @@
         "write": "取得评估原版",
         "readers": "Q-03",
         "effect": "truth_count +1",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1695"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1695"
       },
       {
         "id": "flag.truth_quarantine",
@@ -1976,7 +1976,7 @@
         "write": "证实封锁是有意为之",
         "readers": "Q-03",
         "effect": "truth_count +1",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1696"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1696"
       },
       {
         "id": "flag.truth_lamplighter",
@@ -1985,7 +1985,7 @@
         "write": "掌握熄灯会真实手段",
         "readers": "Q-04",
         "effect": "truth_count +1",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1697"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1697"
       },
       {
         "id": "flag.sha_shuang_dead",
@@ -1994,7 +1994,7 @@
         "write": "邵霜死亡",
         "readers": "Q-03",
         "effect": "真相线 DF +2",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1698"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1698"
       },
       {
         "id": "flag.xi_notes_found",
@@ -2003,7 +2003,7 @@
         "write": "找到席砚生旧笔记",
         "readers": "Q-03",
         "effect": "备用真相路径",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1699"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1699"
       },
       {
         "id": "flag.forged_assessment",
@@ -2012,7 +2012,7 @@
         "write": "接受官方评估版本",
         "readers": "终局",
         "effect": "终局真相判定 DF +2",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1700"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1700"
       },
       {
         "id": "flag.dumbbell_cold",
@@ -2021,7 +2021,7 @@
         "write": "每次舱内行动 −1",
         "readers": "Q-01",
         "effect": "归零则样本失活",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1701"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1701"
       },
       {
         "id": "flag.breath_tower_alert",
@@ -2030,7 +2030,7 @@
         "write": "得知呼吸塔余量真相",
         "readers": "Q-02",
         "effect": "开启补给线",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1702"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1702"
       },
       {
         "id": "flag.breath_tower_saved",
@@ -2039,7 +2039,7 @@
         "write": "完成呼吸塔补给",
         "readers": "终局",
         "effect": "汀洲存活",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1703"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1703"
       },
       {
         "id": "flag.tng_amine_shipped",
@@ -2048,7 +2048,7 @@
         "write": "汀胺送达汀洲",
         "readers": "Q-02",
         "effect": "汀洲平民生存率",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1704"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1704"
       },
       {
         "id": "flag.bai_sun_crisis",
@@ -2057,7 +2057,7 @@
         "write": "白隼进入人道危机",
         "readers": "终局",
         "effect": "道德债务",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1705"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1705"
       },
       {
         "id": "flag.bai_sun_strike",
@@ -2066,7 +2066,7 @@
         "write": "白隼工人罢工",
         "readers": "Q-00/Q-02",
         "effect": "外环供给中断",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1706"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1706"
       },
       {
         "id": "flag.jiang_note",
@@ -2075,7 +2075,7 @@
         "write": "蒋叠山发来\"工程口径\"私信",
         "readers": "终局",
         "effect": "白隼信息",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1707"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1707"
       },
       {
         "id": "flag.relay_6_controlled",
@@ -2084,7 +2084,7 @@
         "write": "控制七号中继",
         "readers": "Q-04",
         "effect": "熄灯会渗透入口",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1708"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1708"
       },
       {
         "id": "flag.relay_7_controlled",
@@ -2093,7 +2093,7 @@
         "write": "控制七号（另一编号）中继",
         "readers": "Q-04",
         "effect": "同上，二选一",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1709"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1709"
       },
       {
         "id": "flag.relay_seized",
@@ -2102,7 +2102,7 @@
         "write": "每控制一座中继 +1",
         "readers": "Q-00/Q-04",
         "effect": "4 时熄灯会可先手",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1710"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1710"
       },
       {
         "id": "flag.cache_raided",
@@ -2111,7 +2111,7 @@
         "write": "打捞缓存舱",
         "readers": "Q-03/Q-04",
         "effect": "获得被扣消息",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1711"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1711"
       },
       {
         "id": "flag.echo_debunked",
@@ -2120,7 +2120,7 @@
         "write": "证明「回声」为伪造/重播",
         "readers": "Q-03",
         "effect": "避免被误导，得线索",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1712"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1712"
       },
       {
         "id": "flag.silent_run",
@@ -2129,7 +2129,7 @@
         "write": "执行静默航行",
         "readers": "Q-00",
         "effect": "进入\"静默航行\"结局",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1713"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1713"
       },
       {
         "id": "flag.sample_secured",
@@ -2138,7 +2138,7 @@
         "write": "取得可转移的迟信样本",
         "readers": "终局",
         "effect": "利用迟信路线",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1714"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1714"
       },
       {
         "id": "flag.public_broadcast",
@@ -2147,7 +2147,7 @@
         "write": "完成全系统广播",
         "readers": "Q-00",
         "effect": "进入\"回信\"结局",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1715"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1715"
       },
       {
         "id": "flag.sacrifice_choice",
@@ -2156,7 +2156,7 @@
         "write": "主动放弃一处殖民地",
         "readers": "Q-00",
         "effect": "进入\"火种\"结局",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1716"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1716"
       },
       {
         "id": "flag.ho_liao_talked",
@@ -2165,7 +2165,7 @@
         "write": "与何燎达成某种共识",
         "readers": "Q-04",
         "effect": "熄灯会可谈",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1717"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1717"
       },
       {
         "id": "flag.blackout",
@@ -2174,7 +2174,7 @@
         "write": "静默母站启动倒计时，每章 −1",
         "readers": "Q-04",
         "effect": "归零则九衡日静默",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1718"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1718"
       }
     ],
     "rep": [
@@ -2185,7 +2185,7 @@
         "write": "任务/公开行为",
         "readers": "通行/档案",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1725"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1725"
       },
       {
         "id": "rep.矿业联合",
@@ -2194,7 +2194,7 @@
         "write": "交易/对抗",
         "readers": "燃料/护航",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1726"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1726"
       },
       {
         "id": "rep.白隼公司",
@@ -2203,7 +2203,7 @@
         "write": "外环选择",
         "readers": "挥发分/补给",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1727"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1727"
       },
       {
         "id": "rep.锚地工会",
@@ -2212,7 +2212,7 @@
         "write": "维修/手艺",
         "readers": "改装/维修",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1728"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1728"
       },
       {
         "id": "rep.检疫署",
@@ -2221,7 +2221,7 @@
         "write": "检疫选择",
         "readers": "通行/权限",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1729"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1729"
       },
       {
         "id": "rep.熄灯会",
@@ -2230,7 +2230,7 @@
         "write": "通信选择",
         "readers": "信道/掩藏",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1730"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1730"
       },
       {
         "id": "rep.打捞人",
@@ -2239,7 +2239,7 @@
         "write": "盐冢选择",
         "readers": "残骸/数据",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1731"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1731"
       },
       {
         "id": "rep.灯火守",
@@ -2248,7 +2248,7 @@
         "write": "中继选择",
         "readers": "信道优先",
         "effect": "−3～+3",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1732"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1732"
       }
     ],
     "clock": [
@@ -2259,7 +2259,7 @@
         "write": "熄灯会启动前的衡日数",
         "readers": "Q-04",
         "effect": "主时间窗",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1719"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1719"
       },
       {
         "id": "clock.window_missed",
@@ -2268,7 +2268,7 @@
         "write": "每错过一个关键窗口 +1",
         "readers": "Q-00",
         "effect": "1 时主任务 expired",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1720"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1720"
       },
       {
         "id": "clock.dumbbell_cold",
@@ -2277,7 +2277,7 @@
         "write": "见上（同 flag.dumbbell_cold）",
         "readers": "Q-01",
         "effect": "样本库倒计时",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1721"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1721"
       },
       {
         "id": "clock.breath_tower",
@@ -2286,7 +2286,7 @@
         "write": "呼吸塔余量（衡日），每推进一衡日 −1",
         "readers": "Q-02",
         "effect": "归零则配给恐慌",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1722"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1722"
       },
       {
         "id": "clock.star_flare",
@@ -2295,7 +2295,7 @@
         "write": "耀斑预警倒计时（衡日）",
         "readers": "全局",
         "effect": "归零则触发耀斑事件",
-        "source": "docs/scenario/S4-静海-硬科幻.md:1723"
+        "source": "docs/scenario/s4-still-sea-hard-scifi.md:1723"
       }
     ],
     "evidence": [
@@ -2328,7 +2328,7 @@
     ]
   },
   "ledger_template": {
-    "source": "docs/scenario/S4-静海-硬科幻.md:2568",
+    "source": "docs/scenario/s4-still-sea-hard-scifi.md:2568",
     "meta": {
       "world": "still-sea",
       "engine": "build",

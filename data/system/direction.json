@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.direction",
-  "source": "docs/system/04-导引者操作系统.md:489",
+  "source": "docs/system/04-conductor-os.md:489",
   "note": "导演剪接与镜头语言：三条基本准则、五种常用镜头、长度控制与收尾短句。",
   "declared": {
     "principles": 3,
@@ -12,40 +12,40 @@
   "principles": [
     {"order": 1, "name": "不要把玩家刚说过的事再讲一遍",
      "rule": "玩家的动作已经发生了，只需要接上它的结果。",
-     "source": "docs/system/04-导引者操作系统.md:495"},
+     "source": "docs/system/04-conductor-os.md:495"},
     {"order": 2, "name": "每段落至少包含一个感官细节或一个具体名词",
      "rule": "具体名词比形容词重要十倍。",
-     "source": "docs/system/04-导引者操作系统.md:502"},
+     "source": "docs/system/04-conductor-os.md:502"},
     {"order": 3, "name": "场景要以一个动作结束，而不是一个状态",
      "rule": "状态会杀死动力；动作会创造下一步。",
-     "source": "docs/system/04-导引者操作系统.md:505"}
+     "source": "docs/system/04-conductor-os.md:505"}
   ],
   "shots": [
     {"id": "establishing", "name": "建立镜头", "usage": "每个场景开头一次，交代空间与调性",
      "example": "雨把整条街洗成了灰色。霓虹灯在水洼里碎成一地。",
-     "source": "docs/system/04-导引者操作系统.md:512"},
+     "source": "docs/system/04-conductor-os.md:512"},
     {"id": "closeup", "name": "特写", "usage": "强调一个关键物件或细节",
      "example": "他的袖扣是银的，上面有一道新鲜的划痕。",
-     "source": "docs/system/04-导引者操作系统.md:513"},
+     "source": "docs/system/04-conductor-os.md:513"},
     {"id": "jump_cut", "name": "跳切", "usage": "省略过程，直接切换",
      "example": "三小时后，你们站在了码头尽头。",
-     "source": "docs/system/04-导引者操作系统.md:514"},
+     "source": "docs/system/04-conductor-os.md:514"},
     {"id": "juxtaposition", "name": "并置", "usage": "把两件不相关的事放在一起产生意味",
      "example": "屋内的新娘正在笑；窗外有人被押进了车。",
-     "source": "docs/system/04-导引者操作系统.md:515"},
+     "source": "docs/system/04-conductor-os.md:515"},
     {"id": "silence", "name": "静默", "usage": "用空白制造压迫感",
      "example": "不描写任何事，只写一句短对话，然后留白。",
-     "source": "docs/system/04-导引者操作系统.md:516"}
+     "source": "docs/system/04-conductor-os.md:516"}
   ],
   "length_control": [
-    {"position": "场景开场描写", "length": "30–80 字", "source": "docs/system/04-导引者操作系统.md:522"},
-    {"position": "单次回应主体", "length": "80–200 字", "source": "docs/system/04-导引者操作系统.md:523"},
-    {"position": "NPC 单次发言", "length": "1–3 句（重要 NPC 可以更长一次）", "source": "docs/system/04-导引者操作系统.md:524"},
-    {"position": "钩子", "length": "1–2 句", "source": "docs/system/04-导引者操作系统.md:525"}
+    {"position": "场景开场描写", "length": "30–80 字", "source": "docs/system/04-conductor-os.md:522"},
+    {"position": "单次回应主体", "length": "80–200 字", "source": "docs/system/04-conductor-os.md:523"},
+    {"position": "NPC 单次发言", "length": "1–3 句（重要 NPC 可以更长一次）", "source": "docs/system/04-conductor-os.md:524"},
+    {"position": "钩子", "length": "1–2 句", "source": "docs/system/04-conductor-os.md:525"}
   ],
   "closing_lines": [
-    {"order": 1, "line": "然后灯灭了。", "source": "docs/system/04-导引者操作系统.md:533"},
-    {"order": 2, "line": "他没有回答。", "source": "docs/system/04-导引者操作系统.md:534"},
-    {"order": 3, "line": "第二天早上，谁也没提这件事。", "source": "docs/system/04-导引者操作系统.md:535"}
+    {"order": 1, "line": "然后灯灭了。", "source": "docs/system/04-conductor-os.md:533"},
+    {"order": 2, "line": "他没有回答。", "source": "docs/system/04-conductor-os.md:534"},
+    {"order": 3, "line": "第二天早上，谁也没提这件事。", "source": "docs/system/04-conductor-os.md:535"}
   ]
 }

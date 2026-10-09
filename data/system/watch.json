@@ -1,17 +1,17 @@
 {
   "schema_version": 1,
   "kind": "system.watch",
-  "source": "docs/system/03-互动层.md:27",
+  "source": "docs/system/03-interaction-layer.md:27",
   "note": "虚构时间以时段（Watch）为最小单位；导引者应主动推进时段，而不是等待玩家申报。",
   "declared": {"watches": 4},
   "watches": [
-    {"id": "dawn", "name": "晨", "hours": "05–09", "features": "警戒低，NPC 疲惫，光线变化大", "source": "docs/system/03-互动层.md:33"},
-    {"id": "day", "name": "昼", "hours": "09–17", "features": "活动高峰，人多眼杂，交易便利", "source": "docs/system/03-互动层.md:34"},
-    {"id": "dusk", "name": "昏", "hours": "17–21", "features": "交接班，边界模糊，社交良机", "source": "docs/system/03-互动层.md:35"},
-    {"id": "night", "name": "夜", "hours": "21–05", "features": "危险高峰，隐蔽最佳，多数资源不可用", "source": "docs/system/03-互动层.md:36"}
+    {"id": "dawn", "name": "晨", "hours": "05–09", "features": "警戒低，NPC 疲惫，光线变化大", "source": "docs/system/03-interaction-layer.md:33"},
+    {"id": "day", "name": "昼", "hours": "09–17", "features": "活动高峰，人多眼杂，交易便利", "source": "docs/system/03-interaction-layer.md:34"},
+    {"id": "dusk", "name": "昏", "hours": "17–21", "features": "交接班，边界模糊，社交良机", "source": "docs/system/03-interaction-layer.md:35"},
+    {"id": "night", "name": "夜", "hours": "21–05", "features": "危险高峰，隐蔽最佳，多数资源不可用", "source": "docs/system/03-interaction-layer.md:36"}
   ],
   "budget": {
-    "source": "docs/system/03-互动层.md:38",
+    "source": "docs/system/03-interaction-layer.md:38",
     "major_actions": 1,
     "major_hours_min": 1,
     "major_hours_max": 3,
@@ -19,7 +19,7 @@
     "rule": "每个时段每个角色可以完成一件大事（大约需要 1–3 小时精力的事）或若干件小事（每件约 10 分钟）。"
   },
   "pacing": {
-    "source": "docs/system/03-互动层.md:40",
+    "source": "docs/system/03-interaction-layer.md:40",
     "session_watches_min": 3,
     "session_watches_max": 6,
     "rule": "一个典型的会话应当消耗 3–6 个时段。"

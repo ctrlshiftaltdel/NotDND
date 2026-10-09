@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/09-起步战役.md:273",
+  "source": "docs/scenario/09-three-openings.md:273",
   "meta": {
     "world": "entropic-net",
     "engine": "build",
@@ -23,7 +23,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:325"
+      "source": "docs/scenario/09-three-openings.md:325"
     },
     {
       "id": "act-2",
@@ -38,14 +38,14 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:341"
+      "source": "docs/scenario/09-three-openings.md:341"
     },
     {
       "id": "act-3",
       "name": "第三幕：摊牌",
       "level_range": "1–3",
       "summary": "目标：在上传完成前，对容器做最后一个决定。高潮三要素：无论选什么，都会有人失去一段自己；知情的选择；第 41 次备份一旦被写入或清除，这个「她」就再也不会以同样的方式存在第二次。",
-      "source": "docs/scenario/09-起步战役.md:362"
+      "source": "docs/scenario/09-three-openings.md:362"
     }
   ],
   "nodes": [
@@ -56,7 +56,7 @@
       "next": [
         "N12"
       ],
-      "source": "docs/scenario/09-起步战役.md:329"
+      "source": "docs/scenario/09-three-openings.md:329"
     },
     {
       "id": "N12",
@@ -65,7 +65,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/09-起步战役.md:330"
+      "source": "docs/scenario/09-three-openings.md:330"
     },
     {
       "id": "N13",
@@ -81,7 +81,7 @@
         "牵连",
         "回响"
       ],
-      "source": "docs/scenario/09-起步战役.md:331"
+      "source": "docs/scenario/09-three-openings.md:331"
     },
     {
       "id": "N21",
@@ -90,7 +90,7 @@
       "next": [
         "N23"
       ],
-      "source": "docs/scenario/09-起步战役.md:345"
+      "source": "docs/scenario/09-three-openings.md:345"
     },
     {
       "id": "N22",
@@ -99,7 +99,7 @@
       "next": [
         "N23"
       ],
-      "source": "docs/scenario/09-起步战役.md:346"
+      "source": "docs/scenario/09-three-openings.md:346"
     },
     {
       "id": "N23",
@@ -109,7 +109,7 @@
         "N31"
       ],
       "unlock": "选定做法并付出第一个真实代价",
-      "source": "docs/scenario/09-起步战役.md:347"
+      "source": "docs/scenario/09-three-openings.md:347"
     },
     {
       "id": "N31",
@@ -120,7 +120,7 @@
         "ending-qingchu",
         "ending-liuxia"
       ],
-      "source": "docs/scenario/09-起步战役.md:364"
+      "source": "docs/scenario/09-three-openings.md:364"
     },
     {
       "id": "Q-00",
@@ -168,7 +168,7 @@
         "leave"
       ],
       "act": "act-1",
-      "source": "docs/scenario/09-起步战役.md:325"
+      "source": "docs/scenario/09-three-openings.md:325"
     }
   ],
   "threads": [
@@ -191,20 +191,20 @@
         {
           "path": "文档",
           "detail": "备份日志里那段三十一年前的时间戳",
-          "source": "docs/scenario/09-起步战役.md:350"
+          "source": "docs/scenario/09-three-openings.md:350"
         },
         {
           "path": "人证",
           "detail": "叶槐说出只有裴芜知道的事（一条河、一个名字）",
-          "source": "docs/scenario/09-起步战役.md:351"
+          "source": "docs/scenario/09-three-openings.md:351"
         },
         {
           "path": "环境",
           "detail": "阿箬在无名区见过同样「不该存在」的中继——坍缩那天，有不止一个人没出来",
-          "source": "docs/scenario/09-起步战役.md:352"
+          "source": "docs/scenario/09-three-openings.md:352"
         }
       ],
-      "source": "docs/scenario/09-起步战役.md:280"
+      "source": "docs/scenario/09-three-openings.md:280"
     },
     {
       "id": "C-02",
@@ -220,7 +220,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:349"
+      "source": "docs/scenario/09-three-openings.md:349"
     },
     {
       "id": "C-03",
@@ -232,7 +232,7 @@
       "flags": [
         "flag.memory_deleted"
       ],
-      "source": "docs/scenario/09-起步战役.md:346"
+      "source": "docs/scenario/09-three-openings.md:346"
     },
     {
       "id": "C-04",
@@ -244,7 +244,7 @@
       "flags": [
         "flag.upload_started"
       ],
-      "source": "docs/scenario/09-起步战役.md:288"
+      "source": "docs/scenario/09-three-openings.md:288"
     },
     {
       "id": "C-05",
@@ -257,7 +257,7 @@
         "flag.log_restored"
       ],
       "note": "后续钩子：云枢的回收清单上，第 42 行到第 47 行，都不是空的（09 册后续钩子）。",
-      "source": "docs/scenario/09-起步战役.md:337"
+      "source": "docs/scenario/09-three-openings.md:337"
     }
   ],
   "npcs": [
@@ -274,7 +274,7 @@
         "C-01",
         "C-03"
       ],
-      "source": "docs/scenario/09-起步战役.md:293"
+      "source": "docs/scenario/09-three-openings.md:293"
     },
     {
       "id": "npc-02",
@@ -288,7 +288,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/09-起步战役.md:300"
+      "source": "docs/scenario/09-three-openings.md:300"
     },
     {
       "id": "npc-03",
@@ -301,7 +301,7 @@
       "knows": [
         "C-04"
       ],
-      "source": "docs/scenario/09-起步战役.md:306"
+      "source": "docs/scenario/09-three-openings.md:306"
     },
     {
       "id": "npc-04",
@@ -314,7 +314,7 @@
       "knows": [
         "C-05"
       ],
-      "source": "docs/scenario/09-起步战役.md:312"
+      "source": "docs/scenario/09-three-openings.md:312"
     },
     {
       "id": "npc-05",
@@ -329,7 +329,7 @@
         "C-01",
         "C-02"
       ],
-      "source": "docs/scenario/09-起步战役.md:318"
+      "source": "docs/scenario/09-three-openings.md:318"
     }
   ],
   "locations": [
@@ -337,19 +337,19 @@
       "id": "loc-01",
       "name": "档案层隔间",
       "atmosphere": "老式备份舱里躺着叶槐",
-      "source": "docs/scenario/09-起步战役.md:329"
+      "source": "docs/scenario/09-three-openings.md:329"
     },
     {
       "id": "loc-02",
       "name": "无名区旧中继",
       "purpose": "裴晚失踪后留下的坐标所指之处",
-      "source": "docs/scenario/09-起步战役.md:331"
+      "source": "docs/scenario/09-three-openings.md:331"
     },
     {
       "id": "loc-03",
       "name": "高同步区",
       "atmosphere": "在里面待太久的人会开始分不清自己是本体还是备份",
-      "source": "docs/scenario/09-起步战役.md:358"
+      "source": "docs/scenario/09-three-openings.md:358"
     }
   ],
   "endings": [
@@ -359,7 +359,7 @@
       "type": "转移",
       "requirements": "完成转移，把裴芜写进叶槐的容器",
       "result": "一具身体里有两个人。叶槐同意共用，代价是他从此再也不能确定哪段记忆是自己的。裴晚终于认得出妹妹的脸——然后发现自己认不出母亲的",
-      "source": "docs/scenario/09-起步战役.md:376"
+      "source": "docs/scenario/09-three-openings.md:376"
     },
     {
       "id": "ending-qingchu",
@@ -367,7 +367,7 @@
       "type": "消散",
       "requirements": "让云枢完成回收，或由玩家亲手清除",
       "result": "裴芜永久消散。叶槐恢复「干净」，但失去了一整段情感记忆。裴晚崩溃——而且她连自己被删掉的部分都记不得了，所以她的崩溃看起来很平静",
-      "source": "docs/scenario/09-起步战役.md:377"
+      "source": "docs/scenario/09-three-openings.md:377"
     },
     {
       "id": "ending-liuxia",
@@ -375,11 +375,11 @@
       "type": "锚点",
       "requirements": "让第 41 次留在熵网里，成为一个稳定的锚点",
       "result": "裴芜不出去，但也不再消散；她成了网里一个能被人找到的坐标。云枢失手，叶槐恢复原状，裴晚把剩下的日子用来做一件事：每个月下一次网，去看她一次",
-      "source": "docs/scenario/09-起步战役.md:378"
+      "source": "docs/scenario/09-three-openings.md:378"
     }
   ],
   "flags": {
-    "source": "docs/scenario/09-起步战役.md:273",
+    "source": "docs/scenario/09-three-openings.md:273",
     "declared_flag_count": 0,
     "actual_flag_count": 7,
     "flag": [
@@ -391,7 +391,7 @@
         "readers": "C-01/C-02/Q-00",
         "effect": "因为这一次，裴芜也学会了配合",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:280"
+        "source": "docs/scenario/09-three-openings.md:280"
       },
       {
         "id": "flag.memory_deleted",
@@ -401,7 +401,7 @@
         "readers": "C-03",
         "effect": "她已删掉自己近二十年的记忆；她不记得自己记不清",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:346"
+        "source": "docs/scenario/09-three-openings.md:346"
       },
       {
         "id": "flag.log_restored",
@@ -411,7 +411,7 @@
         "readers": "C-05",
         "effect": "得知裴芜不是唯一一个被留在里面的人",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:337"
+        "source": "docs/scenario/09-three-openings.md:337"
       },
       {
         "id": "flag.upload_started",
@@ -421,7 +421,7 @@
         "readers": "C-04/act-3",
         "effect": "开始把备份上传到云端；一旦上传完成，裴芜会被拆成训练数据",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:347"
+        "source": "docs/scenario/09-three-openings.md:347"
       },
       {
         "id": "flag.peiwan_contacted",
@@ -431,7 +431,7 @@
         "readers": "Q-00",
         "effect": "你们知道了真相的方向，也成了她的共犯",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:335"
+        "source": "docs/scenario/09-three-openings.md:335"
       },
       {
         "id": "flag.deal_refused",
@@ -441,7 +441,7 @@
         "readers": "act-2/act-3",
         "effect": "在「卖掉一个人」和「拒绝财团」之间选了后者",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:336"
+        "source": "docs/scenario/09-three-openings.md:336"
       },
       {
         "id": "flag.identity_lost",
@@ -451,7 +451,7 @@
         "readers": "Q-00",
         "effect": "删掉自己的一段记忆，或失去一个身份",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:360"
+        "source": "docs/scenario/09-three-openings.md:360"
       }
     ],
     "rep": [
@@ -463,7 +463,7 @@
         "readers": "act-2/act-3",
         "effect": "云枢财团态度",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:336"
+        "source": "docs/scenario/09-three-openings.md:336"
       }
     ],
     "clock": [
@@ -475,7 +475,7 @@
         "readers": "act-2/act-3",
         "effect": "一旦上传完成，裴芜会被拆成训练数据",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:347"
+        "source": "docs/scenario/09-three-openings.md:347"
       }
     ]
   },
@@ -546,6 +546,6 @@
       "rep_yunshu": 0,
       "upload": 0
     },
-    "source": "docs/scenario/09-起步战役.md:273"
+    "source": "docs/scenario/09-three-openings.md:273"
   }
 }

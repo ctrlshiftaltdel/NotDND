@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.tactics_resolution",
-  "source": "docs/system/02A-战术引擎.md:27",
+  "source": "docs/system/02a-tactics-engine.md:27",
   "declared": {
     "advantage_sources": 9,
     "disadvantage_sources": 7,
@@ -12,110 +12,110 @@
   "resolution": {
     "formula": "判定结果 = d20 + 属性修正 + 熟练加值 + 专精加值 + 助势骰总和 + 情境修正",
     "components": [
-      {"name": "属性修正", "detail": "见 CORE 第 1 节量表，−2 至 +3", "source": "docs/system/02A-战术引擎.md:31"},
-      {"name": "熟练加值", "detail": "若该技能熟练：+2／+3／+4", "source": "docs/system/02A-战术引擎.md:32"},
-      {"name": "专精加值", "detail": "若该技能专精：额外 +1", "source": "docs/system/02A-战术引擎.md:33"},
-      {"name": "助势骰总和", "detail": "见第 2 节", "source": "docs/system/02A-战术引擎.md:34"},
-      {"name": "情境修正", "detail": "态势、装备、高地、掩体等", "source": "docs/system/02A-战术引擎.md:35"}
+      {"name": "属性修正", "detail": "见 CORE 第 1 节量表，−2 至 +3", "source": "docs/system/02a-tactics-engine.md:31"},
+      {"name": "熟练加值", "detail": "若该技能熟练：+2／+3／+4", "source": "docs/system/02a-tactics-engine.md:32"},
+      {"name": "专精加值", "detail": "若该技能专精：额外 +1", "source": "docs/system/02a-tactics-engine.md:33"},
+      {"name": "助势骰总和", "detail": "见第 2 节", "source": "docs/system/02a-tactics-engine.md:34"},
+      {"name": "情境修正", "detail": "态势、装备、高地、掩体等", "source": "docs/system/02a-tactics-engine.md:35"}
     ],
     "df_compare": [
-      {"relation": "gt", "outcome": "达成", "source": "docs/system/02A-战术引擎.md:40"},
-      {"relation": "eq", "outcome": "达成（平手归属于行动方）", "source": "docs/system/02A-战术引擎.md:41"},
-      {"relation": "lt", "outcome": "未达成", "source": "docs/system/02A-战术引擎.md:42"}
+      {"relation": "gt", "outcome": "达成", "source": "docs/system/02a-tactics-engine.md:40"},
+      {"relation": "eq", "outcome": "达成（平手归属于行动方）", "source": "docs/system/02a-tactics-engine.md:41"},
+      {"relation": "lt", "outcome": "未达成", "source": "docs/system/02a-tactics-engine.md:42"}
     ],
     "play_principle": "掷骰只用于：结果不确定、两边都有趣、此刻有压力。",
-    "play_principle_source": "docs/system/02A-战术引擎.md:55"
+    "play_principle_source": "docs/system/02a-tactics-engine.md:55"
   },
   "skip_roll": [
-    {"order": 1, "situation": "没有有意义的失败方式", "source": "docs/system/02A-战术引擎.md:50"},
-    {"order": 2, "situation": "角色有压倒性的优势且无时间压力", "source": "docs/system/02A-战术引擎.md:51"},
-    {"order": 3, "situation": "失败不会导致剧情推进", "source": "docs/system/02A-战术引擎.md:52"},
-    {"order": 4, "situation": "玩家主动选择了代价", "source": "docs/system/02A-战术引擎.md:53"}
+    {"order": 1, "situation": "没有有意义的失败方式", "source": "docs/system/02a-tactics-engine.md:50"},
+    {"order": 2, "situation": "角色有压倒性的优势且无时间压力", "source": "docs/system/02a-tactics-engine.md:51"},
+    {"order": 3, "situation": "失败不会导致剧情推进", "source": "docs/system/02a-tactics-engine.md:52"},
+    {"order": 4, "situation": "玩家主动选择了代价", "source": "docs/system/02a-tactics-engine.md:53"}
   ],
   "edge_dice": {
     "die": "d6",
     "rule": "每获得一层优势，你额外掷一枚 d6，把结果加到你的判定上。",
     "tiers": [
-      {"layer": 1, "name": "微弱优势", "dice": "+1d6", "expectation": 3.5, "source": "docs/system/02A-战术引擎.md:76"},
-      {"layer": 2, "name": "明显优势", "dice": "+2d6", "expectation": 7, "source": "docs/system/02A-战术引擎.md:77"},
-      {"layer": 3, "name": "压倒优势", "dice": "+3d6", "expectation": 10.5, "source": "docs/system/02A-战术引擎.md:78"}
+      {"layer": 1, "name": "微弱优势", "dice": "+1d6", "expectation": 3.5, "source": "docs/system/02a-tactics-engine.md:76"},
+      {"layer": 2, "name": "明显优势", "dice": "+2d6", "expectation": 7, "source": "docs/system/02a-tactics-engine.md:77"},
+      {"layer": 3, "name": "压倒优势", "dice": "+3d6", "expectation": 10.5, "source": "docs/system/02a-tactics-engine.md:78"}
     ],
     "max_layers": 3,
     "beyond_max": "每多一层改为 +2 固定加值",
-    "beyond_max_source": "docs/system/02A-战术引擎.md:79",
+    "beyond_max_source": "docs/system/02a-tactics-engine.md:79",
     "disadvantage": "每层劣势，掷一枚 d6 并从结果中减去。劣势同样最多 3 层。",
-    "disadvantage_source": "docs/system/02A-战术引擎.md:83",
+    "disadvantage_source": "docs/system/02a-tactics-engine.md:83",
     "cancellation": "当一个判定同时有优势和劣势时，它们互相抵消（而不是各自计算）。",
-    "cancellation_source": "docs/system/02A-战术引擎.md:85",
+    "cancellation_source": "docs/system/02a-tactics-engine.md:85",
     "same_source_rule": "同来源不叠加：例如三个队友各给你一次协助，在同一回合也只算 +1。",
-    "same_source_source": "docs/system/02A-战术引擎.md:115"
+    "same_source_source": "docs/system/02a-tactics-engine.md:115"
   },
   "advantage_sources": [
-    {"name": "使用了高地的射手", "layers": [1], "source": "docs/system/02A-战术引擎.md:93"},
-    {"name": "目标未察觉你的存在（偷袭）", "layers": [1], "source": "docs/system/02A-战术引擎.md:94"},
-    {"name": "队友刚刚用【协助】动作支援你", "layers": [1], "source": "docs/system/02A-战术引擎.md:95"},
-    {"name": "你使用了与自身战斗风格高度契合的环境要素", "layers": [1], "source": "docs/system/02A-战术引擎.md:96"},
-    {"name": "目标处于【失衡】或【恐惧】", "layers": [1], "source": "docs/system/02A-战术引擎.md:97"},
-    {"name": "你调用的【背景标签】与当前局面高度相关", "layers": [1], "source": "docs/system/02A-战术引擎.md:98"},
-    {"name": "你刚花费 1 AP 瞄准（近战则为蓄势待发）", "layers": [2], "source": "docs/system/02A-战术引擎.md:99"},
-    {"name": "敌方处于【破韧】状态", "layers": [2], "source": "docs/system/02A-战术引擎.md:100"},
-    {"name": "你在此前已经失败过一次并调整了方案", "layers": [1], "note": "每次会话每人限一次", "source": "docs/system/02A-战术引擎.md:101"}
+    {"name": "使用了高地的射手", "layers": [1], "source": "docs/system/02a-tactics-engine.md:93"},
+    {"name": "目标未察觉你的存在（偷袭）", "layers": [1], "source": "docs/system/02a-tactics-engine.md:94"},
+    {"name": "队友刚刚用【协助】动作支援你", "layers": [1], "source": "docs/system/02a-tactics-engine.md:95"},
+    {"name": "你使用了与自身战斗风格高度契合的环境要素", "layers": [1], "source": "docs/system/02a-tactics-engine.md:96"},
+    {"name": "目标处于【失衡】或【恐惧】", "layers": [1], "source": "docs/system/02a-tactics-engine.md:97"},
+    {"name": "你调用的【背景标签】与当前局面高度相关", "layers": [1], "source": "docs/system/02a-tactics-engine.md:98"},
+    {"name": "你刚花费 1 AP 瞄准（近战则为蓄势待发）", "layers": [2], "source": "docs/system/02a-tactics-engine.md:99"},
+    {"name": "敌方处于【破韧】状态", "layers": [2], "source": "docs/system/02a-tactics-engine.md:100"},
+    {"name": "你在此前已经失败过一次并调整了方案", "layers": [1], "note": "每次会话每人限一次", "source": "docs/system/02a-tactics-engine.md:101"}
   ],
   "disadvantage_sources": [
-    {"name": "目标处于中度或重度掩体后", "layers": [-1, -2], "source": "docs/system/02A-战术引擎.md:107"},
-    {"name": "你在移动中攻击且未做好", "layers": [-1], "source": "docs/system/02A-战术引擎.md:108"},
-    {"name": "照明完全不足且你无夜视", "layers": [-1], "source": "docs/system/02A-战术引擎.md:109"},
-    {"name": "你正在同时处理另一件事（分心）", "layers": [-1], "source": "docs/system/02A-战术引擎.md:110"},
-    {"name": "目标正在专注躲避（其上一个动作为闪避）", "layers": [-1], "source": "docs/system/02A-战术引擎.md:111"},
-    {"name": "你处于【失衡】【中毒】【恐惧】等状态", "layers": [-1], "note": "每个状态，最多 −3", "source": "docs/system/02A-战术引擎.md:112"},
-    {"name": "你攻击的目标正处于守势态势", "layers": [-1], "source": "docs/system/02A-战术引擎.md:113"}
+    {"name": "目标处于中度或重度掩体后", "layers": [-1, -2], "source": "docs/system/02a-tactics-engine.md:107"},
+    {"name": "你在移动中攻击且未做好", "layers": [-1], "source": "docs/system/02a-tactics-engine.md:108"},
+    {"name": "照明完全不足且你无夜视", "layers": [-1], "source": "docs/system/02a-tactics-engine.md:109"},
+    {"name": "你正在同时处理另一件事（分心）", "layers": [-1], "source": "docs/system/02a-tactics-engine.md:110"},
+    {"name": "目标正在专注躲避（其上一个动作为闪避）", "layers": [-1], "source": "docs/system/02a-tactics-engine.md:111"},
+    {"name": "你处于【失衡】【中毒】【恐惧】等状态", "layers": [-1], "note": "每个状态，最多 −3", "source": "docs/system/02a-tactics-engine.md:112"},
+    {"name": "你攻击的目标正处于守势态势", "layers": [-1], "source": "docs/system/02a-tactics-engine.md:113"}
   ],
   "outcome_formula": "R = 判定结果 − DF",
   "outcome_grades": [
     {"id": "triumph", "band": "≥ +6", "name": "凯旋", "en": "Triumph",
      "meaning": "不只是做到，还做到了出色",
      "consequence": "目标达成 ＋额外收益。额外收益可以是：额外信息、额外效果、为下一次行动铺路、或让一个队友也受益",
-     "source": "docs/system/02A-战术引擎.md:127"},
+     "source": "docs/system/02a-tactics-engine.md:127"},
     {"id": "success", "band": "0 ~ +5", "name": "成功", "en": "Success",
      "meaning": "干净利落", "consequence": "目标达成，按描述结算",
-     "source": "docs/system/02A-战术引擎.md:128"},
+     "source": "docs/system/02a-tactics-engine.md:128"},
     {"id": "narrow", "band": "−1 ~ −2", "name": "险成", "en": "Narrow",
      "meaning": "做到了，但付出了代价",
      "consequence": "目标达成，＋一个代价。代价可以是：损失资源、引入麻烦、留下痕迹、暴露自己",
-     "source": "docs/system/02A-战术引擎.md:129"},
+     "source": "docs/system/02a-tactics-engine.md:129"},
     {"id": "failure", "band": "−3 ~ −9", "name": "挫败", "en": "Failure",
      "meaning": "没做到，而且情况变差",
      "consequence": "目标未达成，＋情况恶化。恶化可以是：被发现、失去机会、盟友受损、敌人抢占先手",
-     "source": "docs/system/02A-战术引擎.md:130"},
+     "source": "docs/system/02a-tactics-engine.md:130"},
     {"id": "catastrophe", "band": "≤ −10 或自然 1", "name": "灾难", "en": "Catastrophe",
      "meaning": "不只是失败，还赔了",
      "consequence": "目标未达成 ＋显著麻烦。麻烦可以包括：自己陷入危险、设备损坏、第三方介入、不可逆的后果",
-     "source": "docs/system/02A-战术引擎.md:131"}
+     "source": "docs/system/02a-tactics-engine.md:131"}
   ],
   "catastrophe_table": {
     "die": "d20",
-    "source": "docs/system/02A-战术引擎.md:139",
+    "source": "docs/system/02a-tactics-engine.md:139",
     "rows": [
-      {"roll": 1, "result": "你的武器／工具损坏或脱手，落入难以取回的位置", "source": "docs/system/02A-战术引擎.md:145"},
-      {"roll": 2, "result": "你发出巨响，引来了不必要的注意", "source": "docs/system/02A-战术引擎.md:146"},
-      {"roll": 3, "result": "你伤到了自己（1d6 伤害）或伤到了同伴", "source": "docs/system/02A-战术引擎.md:147"},
-      {"roll": 4, "result": "你触发了场景中的一个负面场地要素", "source": "docs/system/02A-战术引擎.md:148"},
-      {"roll": 5, "result": "关键情报被误导了：你得出一个错误的结论", "source": "docs/system/02A-战术引擎.md:149"},
-      {"roll": 6, "result": "你失去了高地／位置优势，被压制在不利地形", "source": "docs/system/02A-战术引擎.md:150"},
-      {"roll": 7, "result": "你损坏了一个重要的第三方物件（需赔偿或解释）", "source": "docs/system/02A-战术引擎.md:151"},
-      {"roll": 8, "result": "你被卷入下一个危险空间（掉进下一层、被拖进裂缝、或落入包围圈）", "source": "docs/system/02A-战术引擎.md:152"},
-      {"roll": 9, "result": "你暴露了身份／意图，对方开始针对你采取措施", "source": "docs/system/02A-战术引擎.md:153"},
-      {"roll": 10, "result": "你累计 1 点负担", "source": "docs/system/02A-战术引擎.md:154"},
-      {"roll": 11, "result": "你错过了时机，机会窗口关闭（可能需要另想办法）", "source": "docs/system/02A-战术引擎.md:155"},
-      {"roll": 12, "result": "你的盟友／雇主对你的能力产生怀疑，声望 −1", "source": "docs/system/02A-战术引擎.md:156"},
-      {"roll": 13, "result": "敌人获得了你身上的一个重要物品", "source": "docs/system/02A-战术引擎.md:157"},
-      {"roll": 14, "result": "你被困、被压或被卡住，需要一次行动才能脱身", "source": "docs/system/02A-战术引擎.md:158"},
-      {"roll": 15, "result": "一个无关者被卷入并受伤，道德成本产生", "source": "docs/system/02A-战术引擎.md:159"},
-      {"roll": 16, "result": "环境被永久改变，从此这条路线不可用", "source": "docs/system/02A-战术引擎.md:160"},
-      {"roll": 17, "result": "你触发了某个伏笔（导引者把计划中的麻烦提前）", "source": "docs/system/02A-战术引擎.md:161"},
-      {"roll": 18, "result": "你让一个敌人获得了针对你的针对性增益（下次针对你 +1 枚助势骰）", "source": "docs/system/02A-战术引擎.md:162"},
-      {"roll": 19, "result": "你的行动反而帮助了对手（导引者说明为何）", "source": "docs/system/02A-战术引擎.md:163"},
-      {"roll": 20, "result": "双重灾难：再掷一次本表，两个后果同时发生", "source": "docs/system/02A-战术引擎.md:164"}
+      {"roll": 1, "result": "你的武器／工具损坏或脱手，落入难以取回的位置", "source": "docs/system/02a-tactics-engine.md:145"},
+      {"roll": 2, "result": "你发出巨响，引来了不必要的注意", "source": "docs/system/02a-tactics-engine.md:146"},
+      {"roll": 3, "result": "你伤到了自己（1d6 伤害）或伤到了同伴", "source": "docs/system/02a-tactics-engine.md:147"},
+      {"roll": 4, "result": "你触发了场景中的一个负面场地要素", "source": "docs/system/02a-tactics-engine.md:148"},
+      {"roll": 5, "result": "关键情报被误导了：你得出一个错误的结论", "source": "docs/system/02a-tactics-engine.md:149"},
+      {"roll": 6, "result": "你失去了高地／位置优势，被压制在不利地形", "source": "docs/system/02a-tactics-engine.md:150"},
+      {"roll": 7, "result": "你损坏了一个重要的第三方物件（需赔偿或解释）", "source": "docs/system/02a-tactics-engine.md:151"},
+      {"roll": 8, "result": "你被卷入下一个危险空间（掉进下一层、被拖进裂缝、或落入包围圈）", "source": "docs/system/02a-tactics-engine.md:152"},
+      {"roll": 9, "result": "你暴露了身份／意图，对方开始针对你采取措施", "source": "docs/system/02a-tactics-engine.md:153"},
+      {"roll": 10, "result": "你累计 1 点负担", "source": "docs/system/02a-tactics-engine.md:154"},
+      {"roll": 11, "result": "你错过了时机，机会窗口关闭（可能需要另想办法）", "source": "docs/system/02a-tactics-engine.md:155"},
+      {"roll": 12, "result": "你的盟友／雇主对你的能力产生怀疑，声望 −1", "source": "docs/system/02a-tactics-engine.md:156"},
+      {"roll": 13, "result": "敌人获得了你身上的一个重要物品", "source": "docs/system/02a-tactics-engine.md:157"},
+      {"roll": 14, "result": "你被困、被压或被卡住，需要一次行动才能脱身", "source": "docs/system/02a-tactics-engine.md:158"},
+      {"roll": 15, "result": "一个无关者被卷入并受伤，道德成本产生", "source": "docs/system/02a-tactics-engine.md:159"},
+      {"roll": 16, "result": "环境被永久改变，从此这条路线不可用", "source": "docs/system/02a-tactics-engine.md:160"},
+      {"roll": 17, "result": "你触发了某个伏笔（导引者把计划中的麻烦提前）", "source": "docs/system/02a-tactics-engine.md:161"},
+      {"roll": 18, "result": "你让一个敌人获得了针对你的针对性增益（下次针对你 +1 枚助势骰）", "source": "docs/system/02a-tactics-engine.md:162"},
+      {"roll": 19, "result": "你的行动反而帮助了对手（导引者说明为何）", "source": "docs/system/02a-tactics-engine.md:163"},
+      {"roll": 20, "result": "双重灾难：再掷一次本表，两个后果同时发生", "source": "docs/system/02a-tactics-engine.md:164"}
     ]
   }
 }

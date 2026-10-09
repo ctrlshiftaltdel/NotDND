@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.resources",
-  "source": "docs/system/01-内核CORE.md:632",
+  "source": "docs/system/01-core.md:632",
   "pools": {
     "focus": {
       "name": "专注",
@@ -9,12 +9,12 @@
       "role": "个人能力资源",
       "capacity": "(心智与气场中较高的一项 × 2) + 职途加成",
       "notes": [
-        {"order": 1, "rule": "大多数能力的消耗在 1–3 点之间", "source": "docs/system/01-内核CORE.md:640"},
-        {"order": 2, "rule": "短歇恢复上限的一半（向上取整），长歇完全恢复", "source": "docs/system/01-内核CORE.md:641"},
+        {"order": 1, "rule": "大多数能力的消耗在 1–3 点之间", "source": "docs/system/01-core.md:640"},
+        {"order": 2, "rule": "短歇恢复上限的一半（向上取整），长歇完全恢复", "source": "docs/system/01-core.md:641"},
         {"order": 3, "rule": "专注归零后仍可过度使用能力，但每次引发 1 层【疲惫】并获得 1 点负担",
-         "source": "docs/system/01-内核CORE.md:642"}
+         "source": "docs/system/01-core.md:642"}
       ],
-      "source": "docs/system/01-内核CORE.md:634"
+      "source": "docs/system/01-core.md:634"
     },
     "tempo": {
       "name": "气势",
@@ -22,24 +22,24 @@
       "role": "团队共享节拍资源",
       "capacity": "队伍人数 + 2",
       "note": "每个新场景开始时刷新至上限。任何玩家可以在任何时刻花费，无需顺序",
-      "note_source": "docs/system/01-内核CORE.md:650",
+      "note_source": "docs/system/01-core.md:650",
       "spends": [
         {"cost": 1, "name": "增益", "effect": "为本队任意一次判定追加 1 枚助势骰",
-         "source": "docs/system/01-内核CORE.md:654"},
+         "source": "docs/system/01-core.md:654"},
         {"cost": 1, "name": "改写", "effect": "要求导引者把刚刚一次敌体的成功结果改为“擦过”，并演出为何侥幸",
-         "source": "docs/system/01-内核CORE.md:655"},
+         "source": "docs/system/01-core.md:655"},
         {"cost": 1, "name": "灵感", "effect": "导引者必须指出一条此刻可以利用的线索（可以是重新描述环境）",
-         "source": "docs/system/01-内核CORE.md:656"},
+         "source": "docs/system/01-core.md:656"},
         {"cost": 1, "name": "刷新", "effect": "一个本场景已用过的道具／能力可以再用一次",
-         "source": "docs/system/01-内核CORE.md:657"},
+         "source": "docs/system/01-core.md:657"},
         {"cost": 1, "name": "造景", "effect": "提议一个场地要素（见第 10 节）",
-         "source": "docs/system/01-内核CORE.md:658"},
+         "source": "docs/system/01-core.md:658"},
         {"cost": 2, "name": "抢拍", "effect": "让玩家在当前时刻插入一次额外行动，打断当前的顺序",
-         "source": "docs/system/01-内核CORE.md:659"}
+         "source": "docs/system/01-core.md:659"}
       ],
       "zero_rule": "气势归零时：导引者获得一次机会，免费执行一次场景恶化事件，并演出“运势已经耗尽”的感觉。这是透支团队气势的代价。",
-      "zero_rule_source": "docs/system/01-内核CORE.md:661",
-      "source": "docs/system/01-内核CORE.md:644"
+      "zero_rule_source": "docs/system/01-core.md:661",
+      "source": "docs/system/01-core.md:644"
     },
     "strain": {
       "name": "负担",
@@ -47,19 +47,19 @@
       "role": "长期累积的消耗",
       "range": "0 到 6",
       "levels": [
-        {"range": "0–1", "effect": "无影响", "source": "docs/system/01-内核CORE.md:669"},
+        {"range": "0–1", "effect": "无影响", "source": "docs/system/01-core.md:669"},
         {"range": "2–3", "effect": "所有判定 −1 骰；跑步、长时间活动的耐受 DF +2",
-         "source": "docs/system/01-内核CORE.md:670"},
+         "source": "docs/system/01-core.md:670"},
         {"range": "4–5", "effect": "所有判定 −2 骰；活力上限 −10%",
-         "source": "docs/system/01-内核CORE.md:671"},
+         "source": "docs/system/01-core.md:671"},
         {"range": "6", "effect": "所有判定 −3 骰；角色必须进行一次“崩溃”演出（由玩家主导叙事）",
-         "source": "docs/system/01-内核CORE.md:672"}
+         "source": "docs/system/01-core.md:672"}
       ],
       "sources": "濒危 +1、单次失去超过 1/3 活力的严重伤害 +1、彻夜不眠 +1、过度使用专注 +1、重大创伤事件由导引者裁定 +1",
-      "sources_source": "docs/system/01-内核CORE.md:674",
+      "sources_source": "docs/system/01-core.md:674",
       "recovery": "长歇 −1（在真正安全的环境中 −2）；专门的休整章节可一次性 −2",
-      "recovery_source": "docs/system/01-内核CORE.md:676",
-      "source": "docs/system/01-内核CORE.md:663"
+      "recovery_source": "docs/system/01-core.md:676",
+      "source": "docs/system/01-core.md:663"
     },
     "resolve": {
       "name": "决意",
@@ -68,44 +68,44 @@
       "capacity": "起始 3 点，上限 5 点",
       "spends": [
         {"cost": 1, "name": "重掷", "effect": "重掷任何一次自己的判定，取新结果",
-         "source": "docs/system/01-内核CORE.md:688"},
+         "source": "docs/system/01-core.md:688"},
         {"cost": 1, "name": "不死身", "effect": "把一次本来致命的结果改为濒危（对自己）",
-         "source": "docs/system/01-内核CORE.md:689"},
+         "source": "docs/system/01-core.md:689"},
         {"cost": 2, "name": "舍身", "effect": "同上，但替队友承受",
-         "source": "docs/system/01-内核CORE.md:690"},
+         "source": "docs/system/01-core.md:690"},
         {"cost": 1, "name": "背景牌", "effect": "调用一个背景标签，获得一次场景优势（例：【前警员】→直接获得进入警戒区的许可）",
-         "source": "docs/system/01-内核CORE.md:691"},
+         "source": "docs/system/01-core.md:691"},
         {"cost": 1, "name": "追问", "effect": "向导引者提出一个关于当前场景的问题，导引者必须诚实且完整地回答",
-         "source": "docs/system/01-内核CORE.md:692"},
+         "source": "docs/system/01-core.md:692"},
         {"cost": 2, "name": "回光", "effect": "从濒危／消亡边缘拉回（见第 11 节）",
-         "source": "docs/system/01-内核CORE.md:693"}
+         "source": "docs/system/01-core.md:693"}
       ],
       "recovery": [
-        {"order": 1, "rule": "每次会话开始时重置为 3 点", "source": "docs/system/01-内核CORE.md:697"},
+        {"order": 1, "rule": "每次会话开始时重置为 3 点", "source": "docs/system/01-core.md:697"},
         {"order": 2, "rule": "当玩家做出符合其角色驱动、但明显对自己不利的重要抉择时，导引者应当奖励 1 点",
-         "source": "docs/system/01-内核CORE.md:698"}
+         "source": "docs/system/01-core.md:698"}
       ],
-      "source": "docs/system/01-内核CORE.md:678"
+      "source": "docs/system/01-core.md:678"
     }
   },
   "rest": [
     {"id": "breather", "name": "喘息", "en": "Breather", "duration": "1 分钟", "condition": "脱离直接威胁",
-     "recovery": "恢复活力上限的 10%；可免费重整一次态势", "source": "docs/system/01-内核CORE.md:708"},
+     "recovery": "恢复活力上限的 10%；可免费重整一次态势", "source": "docs/system/01-core.md:708"},
     {"id": "short_rest", "name": "短歇", "en": "Short Rest", "duration": "1 小时", "condition": "相对安全的环境",
      "recovery": "恢复活力上限的 1/4；专注恢复一半；可花费医疗用品额外治疗；可修理装备",
-     "source": "docs/system/01-内核CORE.md:709"},
+     "source": "docs/system/01-core.md:709"},
     {"id": "long_rest", "name": "长歇", "en": "Long Rest", "duration": "8 小时", "condition": "安全据点（需有遮蔽与守卫安排）",
      "recovery": "活力与专注全满；负担 −1；清除不需要专门解除的状态；部分能力在该时段重新充能",
-     "source": "docs/system/01-内核CORE.md:710"},
+     "source": "docs/system/01-core.md:710"},
     {"id": "interlude", "name": "间幕", "en": "Interlude", "duration": "会话之间", "condition": "虚构时间流逝",
-     "recovery": "处理个人事务、声望变化、工艺制作、关系维护（见 03）", "source": "docs/system/01-内核CORE.md:711"}
+     "recovery": "处理个人事务、声望变化、工艺制作、关系维护（见 03）", "source": "docs/system/01-core.md:711"}
   ],
   "medical": [
     {"id": "first_aid", "rule": "医疗 判定 DF 12：为每个目标恢复 1d6 + 心智修正的活力。每次会话中对同一目标上限 3 次。",
-     "source": "docs/system/01-内核CORE.md:715"},
+     "source": "docs/system/01-core.md:715"},
     {"id": "battlefield_care", "rule": "医疗 判定 DF 16（战场救治）：消耗 2 AP，让一个濒危单位立即稳定。",
-     "source": "docs/system/01-内核CORE.md:716"},
+     "source": "docs/system/01-core.md:716"},
     {"id": "repair", "rule": "修复机会：拥有【技术】【手艺】技能的角色可以为同伴的装备回复耐久。",
-     "source": "docs/system/01-内核CORE.md:717"}
+     "source": "docs/system/01-core.md:717"}
   ]
 }

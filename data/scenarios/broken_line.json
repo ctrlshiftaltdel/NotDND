@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S6-断线-战争前线.md:1",
+  "source": "docs/scenario/s6-broken-line-war-front.md:1",
   "meta": {
     "world": "broken_line",
     "engine": "tactics",
@@ -22,7 +22,7 @@
         "Q-11",
         "Q-12"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3800",
+      "source": "docs/scenario/s6-broken-line-war-front.md:3800",
       "scenes": [
         "1-1",
         "1-2",
@@ -44,7 +44,7 @@
         "Q-11",
         "Q-12"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3821",
+      "source": "docs/scenario/s6-broken-line-war-front.md:3821",
       "scenes": [
         "2-1",
         "2-2",
@@ -65,7 +65,7 @@
         "Q-11",
         "Q-12"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3844",
+      "source": "docs/scenario/s6-broken-line-war-front.md:3844",
       "scenes": [
         "3-1",
         "3-2",
@@ -85,7 +85,7 @@
         "Q-11",
         "Q-12"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3867",
+      "source": "docs/scenario/s6-broken-line-war-front.md:3867",
       "scenes": [
         "4-1",
         "4-2",
@@ -105,7 +105,7 @@
         "Q-11",
         "Q-12"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3890",
+      "source": "docs/scenario/s6-broken-line-war-front.md:3890",
       "scenes": [
         "5-1",
         "5-2",
@@ -127,7 +127,7 @@
         "旱季 · H-7 哨线 · 静态对峙",
         "Q-01 哑塔"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3757"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3757"
     },
     {
       "id": "camp-act-2",
@@ -142,7 +142,7 @@
         "晨线行动第二阶段",
         "Q-02 测绘 114 → Q-03 磨石岗西坡"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3763"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3763"
     },
     {
       "id": "camp-frontier-advance",
@@ -155,7 +155,7 @@
       "marks": [
         "士气 +2"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3770"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3770"
     },
     {
       "id": "camp-frontier-retreat",
@@ -168,7 +168,7 @@
       "marks": [
         "纪律 −2 士气 −2"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3770"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3770"
     },
     {
       "id": "camp-act-3",
@@ -183,7 +183,7 @@
         "flag.heiyang_rivalry ≥ 2 ──> 柏岩抢功分支",
         "flag.river_crossing ──> 敌后路线开启"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3775"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3775"
     },
     {
       "id": "camp-act-4",
@@ -197,7 +197,7 @@
         "Q-08 后仓岭 → 岑砚作战计划（C-22）",
         "flag.captured ──> 俘虏分支（结局 C 前置）"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3782"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3782"
     },
     {
       "id": "camp-act-5",
@@ -215,37 +215,37 @@
         "Q-10 缝合 · Q-09 听证会（条件分支）",
         "五种结局（见 12.7）"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3788"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3788"
     },
     {
       "id": "camp-ending-a",
       "name": "结局 A",
       "act": "act-5",
-      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3794"
     },
     {
       "id": "camp-ending-b",
       "name": "结局 B",
       "act": "act-5",
-      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3794"
     },
     {
       "id": "camp-ending-c",
       "name": "结局 C",
       "act": "act-5",
-      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3794"
     },
     {
       "id": "camp-ending-d",
       "name": "结局 D",
       "act": "act-5",
-      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3794"
     },
     {
       "id": "camp-ending-e",
       "name": "结局 E",
       "act": "act-5",
-      "source": "docs/scenario/S6-断线-战争前线.md:3794"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3794"
     },
     {
       "id": "unl-01",
@@ -270,7 +270,7 @@
         "flag.chapter>=4 且 flag.river_crossing──> [后仓岭]",
         "[任一队员濒危]────> [白棚]"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2965"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2965"
     },
     {
       "id": "unl-02",
@@ -278,13 +278,13 @@
       "next": [
         "unl-03"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2966"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2966"
     },
     {
       "id": "unl-03",
       "name": "命令链延迟分支",
       "unlock": "flag.battery_diverted",
-      "source": "docs/scenario/S6-断线-战争前线.md:2966"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2966"
     },
     {
       "id": "unl-04",
@@ -299,7 +299,7 @@
         "人脉 DF14──> [洄城档案馆]",
         "flag.investigation──> [听证会]（见 unl-28 边）"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2967"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2967"
     },
     {
       "id": "unl-05",
@@ -308,13 +308,13 @@
       "next": [
         "unl-06"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2967"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2967"
     },
     {
       "id": "unl-06",
       "name": "补给 +2",
       "unlock": "flag.railmap",
-      "source": "docs/scenario/S6-断线-战争前线.md:2967"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2967"
     },
     {
       "id": "unl-07",
@@ -323,12 +323,12 @@
       "next": [
         "unl-08"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2968"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2968"
     },
     {
       "id": "unl-08",
       "name": "C-05/C-11",
-      "source": "docs/scenario/S6-断线-战争前线.md:2968"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2968"
     },
     {
       "id": "unl-09",
@@ -340,7 +340,7 @@
       "marks": [
         "潜行 DF14──> [磨石岗 114]"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2969"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2969"
     },
     {
       "id": "unl-10",
@@ -349,7 +349,7 @@
       "next": [
         "unl-11"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2969"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2969"
     },
     {
       "id": "unl-11",
@@ -358,7 +358,7 @@
       "next": [
         "unl-33"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2969"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2969"
     },
     {
       "id": "unl-12",
@@ -366,12 +366,12 @@
       "next": [
         "unl-13"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2970"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2970"
     },
     {
       "id": "unl-13",
       "name": "渭军前沿 铁砧棱线",
-      "source": "docs/scenario/S6-断线-战争前线.md:2970"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2970"
     },
     {
       "id": "unl-14",
@@ -383,7 +383,7 @@
       "marks": [
         "柳阿婆──> [河湾浅滩]"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2971"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2971"
     },
     {
       "id": "unl-15",
@@ -392,13 +392,13 @@
       "next": [
         "unl-16"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2971"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2971"
     },
     {
       "id": "unl-16",
       "name": "flag.river_crossing",
       "unlock": "rep.riverfolk>=+2",
-      "source": "docs/scenario/S6-断线-战争前线.md:2972"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2972"
     },
     {
       "id": "unl-17",
@@ -407,7 +407,7 @@
       "next": [
         "unl-18"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2973"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2973"
     },
     {
       "id": "unl-18",
@@ -416,12 +416,12 @@
       "next": [
         "unl-19"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2973"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2973"
     },
     {
       "id": "unl-19",
       "name": "C-01 存根",
-      "source": "docs/scenario/S6-断线-战争前线.md:2973"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2973"
     },
     {
       "id": "unl-20",
@@ -433,13 +433,13 @@
       "marks": [
         "工兵排水──> [1192 输送车残骸]"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2974"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2974"
     },
     {
       "id": "unl-21",
       "name": "1192 输送车残骸",
       "unlock": "工兵排水",
-      "source": "docs/scenario/S6-断线-战争前线.md:2974"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2974"
     },
     {
       "id": "unl-22",
@@ -448,7 +448,7 @@
       "next": [
         "unl-23"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2975"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2975"
     },
     {
       "id": "unl-23",
@@ -456,12 +456,12 @@
       "next": [
         "unl-24"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2975"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2975"
     },
     {
       "id": "unl-24",
       "name": "Q-08",
-      "source": "docs/scenario/S6-断线-战争前线.md:2975"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2975"
     },
     {
       "id": "unl-25",
@@ -470,7 +470,7 @@
       "next": [
         "unl-26"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2976"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2976"
     },
     {
       "id": "unl-26",
@@ -479,12 +479,12 @@
       "next": [
         "unl-27"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2976"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2976"
     },
     {
       "id": "unl-27",
       "name": "C-18/C-34",
-      "source": "docs/scenario/S6-断线-战争前线.md:2976"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2976"
     },
     {
       "id": "unl-28",
@@ -493,12 +493,12 @@
       "next": [
         "unl-29"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2978"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2978"
     },
     {
       "id": "unl-29",
       "name": "结局 B / C",
-      "source": "docs/scenario/S6-断线-战争前线.md:2978"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2978"
     },
     {
       "id": "unl-30",
@@ -506,7 +506,7 @@
       "next": [
         "unl-31"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2979"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2979"
     },
     {
       "id": "unl-31",
@@ -515,12 +515,12 @@
       "next": [
         "unl-32"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2979"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2979"
     },
     {
       "id": "unl-32",
       "name": "结局 D",
-      "source": "docs/scenario/S6-断线-战争前线.md:2979"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2979"
     },
     {
       "id": "unl-33",
@@ -529,18 +529,18 @@
       "next": [
         "unl-34"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2980"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2980"
     },
     {
       "id": "unl-34",
       "name": "flag.command_1192",
-      "source": "docs/scenario/S6-断线-战争前线.md:2980"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2980"
     },
     {
       "id": "unl-35",
       "name": "结局 A",
       "unlock": "flag.command_1192",
-      "source": "docs/scenario/S6-断线-战争前线.md:2980"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2980"
     },
     {
       "id": "order-chain",
@@ -608,7 +608,7 @@
           "condition": "欺骗判定 DF 14，成功则记为 succeeded（假），失败则 flag.defiance_record = true"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2754",
+      "source": "docs/scenario/s6-broken-line-war-front.md:2754",
       "note": "标题原文：命令链状态机（本册最重要的一台机器）；括注为状态序列说明"
     },
     {
@@ -647,7 +647,7 @@
           "condition": "进入第二幕未完成 → 命令链在第二幕全程走\"延迟\"分支"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2815"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2815"
     },
     {
       "id": "Q-02",
@@ -675,7 +675,7 @@
           "condition": "测绘被俘或被毁 → 第二幕所有导航判定 DF +3"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2825"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2825"
     },
     {
       "id": "Q-03",
@@ -708,7 +708,7 @@
           "condition": "接到\"立即撤回\"的更高优先级命令（第三幕的黑杨抢功分支）"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2832"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2832"
     },
     {
       "id": "Q-04",
@@ -731,7 +731,7 @@
           "condition": "补给未到达 → 该幕四轨继续下降，负担 +1"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2840"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2840"
     },
     {
       "id": "Q-05",
@@ -759,7 +759,7 @@
           "condition": "rep.riverfolk <= −1 → 河民向渭军通报，穿越判定 DF +4"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2846"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2846"
     },
     {
       "id": "Q-06",
@@ -787,7 +787,7 @@
           "condition": "第四幕开始未完成 → 谈判筹码归零"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2853"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2853"
     },
     {
       "id": "Q-07",
@@ -820,7 +820,7 @@
           "condition": "转化（祁五支线）→ 获得一名 NPC，纪律 −1（私藏敌方人员）"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2860"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2860"
     },
     {
       "id": "Q-08",
@@ -853,7 +853,7 @@
           "condition": "空手而归 → 第五幕失去谈判筹码"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2867"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2867"
     },
     {
       "id": "Q-09",
@@ -881,7 +881,7 @@
           "condition": "论战失败但 rep.whiteflag >= +2 → 结局 B（代价惨重）"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2875"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2875"
     },
     {
       "id": "Q-10",
@@ -909,7 +909,7 @@
           "condition": "铁路接通 → 结局 D（活下来但输了）"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2881"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2881"
     },
     {
       "id": "Q-11",
@@ -932,7 +932,7 @@
           "condition": "编制缺口保留 → 所有战斗遭遇预算上限 −10%"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2887"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2887"
     },
     {
       "id": "Q-12",
@@ -950,7 +950,7 @@
           "condition": "玩家为一名死者举行纪念并说出具体细节 → 士气 +1，全队负担 −1"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:2893"
+      "source": "docs/scenario/s6-broken-line-war-front.md:2893"
     }
   ],
   "threads": [
@@ -972,25 +972,25 @@
         {
           "path": "A（物理）",
           "detail": "中站下层调度室挖出货运单存根",
-          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3743"
         },
         {
           "path": "B（文档）",
           "detail": "洄城档案馆调阅 1183 年运输记录",
-          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3743"
         },
         {
           "path": "C（人证）",
           "detail": "麻姑／老卓口述",
-          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3743"
         },
         {
           "path": "D（推理）",
           "detail": "由通达行的账目与渭军换防时间推出",
-          "source": "docs/scenario/S6-断线-战争前线.md:3743"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3743"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3701"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3701"
     },
     {
       "id": "C-02",
@@ -1010,25 +1010,25 @@
         {
           "path": "A（物理）",
           "detail": "温书迟的废纸篓",
-          "source": "docs/scenario/S6-断线-战争前线.md:3744"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3744"
         },
         {
           "path": "B（文档）",
           "detail": "331 号之前的编号缺口",
-          "source": "docs/scenario/S6-断线-战争前线.md:3744"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3744"
         },
         {
           "path": "C（人证）",
           "detail": "苏勉的真图背面",
-          "source": "docs/scenario/S6-断线-战争前线.md:3702"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3702"
         },
         {
           "path": "D（推理）",
           "detail": "由三道命令的时间与兵力矛盾推出",
-          "source": "docs/scenario/S6-断线-战争前线.md:3744"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3744"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3702"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3702"
     },
     {
       "id": "C-03",
@@ -1049,25 +1049,25 @@
         {
           "path": "A（物理）",
           "detail": "黑杨军官的私下通话",
-          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3745"
         },
         {
           "path": "B（文档）",
           "detail": "战果申报口径差异",
-          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3745"
         },
         {
           "path": "C（人证）",
           "detail": "柏岩的抱怨",
-          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3745"
         },
         {
           "path": "D（推理）",
           "detail": "由两次推进的时间重合推出",
-          "source": "docs/scenario/S6-断线-战争前线.md:3745"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3745"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3703"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3703"
     },
     {
       "id": "C-04",
@@ -1083,7 +1083,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3704"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3704"
     },
     {
       "id": "C-05",
@@ -1099,7 +1099,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3705"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3705"
     },
     {
       "id": "C-06",
@@ -1115,7 +1115,7 @@
       "tasks": [
         "Q-06"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3706"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3706"
     },
     {
       "id": "C-07",
@@ -1130,7 +1130,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3707"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3707"
     },
     {
       "id": "C-08",
@@ -1145,7 +1145,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3708"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3708"
     },
     {
       "id": "C-09",
@@ -1160,7 +1160,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3709"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3709"
     },
     {
       "id": "C-10",
@@ -1175,7 +1175,7 @@
       "tasks": [
         "Q-06"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3710"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3710"
     },
     {
       "id": "C-11",
@@ -1195,25 +1195,25 @@
         {
           "path": "A（物理）",
           "detail": "岗顶铁盒（L-06 掉落）",
-          "source": "docs/scenario/S6-断线-战争前线.md:3235"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3235"
         },
         {
           "path": "B（文档）",
           "detail": "1186／1192 两层守备日志",
-          "source": "docs/scenario/S6-断线-战争前线.md:3746"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3746"
         },
         {
           "path": "C（人证）",
           "detail": "费岭的弟弟、柏岩的调令",
-          "source": "docs/scenario/S6-断线-战争前线.md:3746"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3746"
         },
         {
           "path": "D（推理）",
           "detail": "由烈士名册上被划掉的两个名字推出",
-          "source": "docs/scenario/S6-断线-战争前线.md:3746"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3746"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3711"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3711"
     },
     {
       "id": "C-12",
@@ -1228,7 +1228,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3712"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3712"
     },
     {
       "id": "C-13",
@@ -1244,7 +1244,7 @@
       "tasks": [
         "Q-06"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3713"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3713"
     },
     {
       "id": "C-14",
@@ -1260,7 +1260,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3714"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3714"
     },
     {
       "id": "C-15",
@@ -1276,7 +1276,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3715"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3715"
     },
     {
       "id": "C-16",
@@ -1291,7 +1291,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3716"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3716"
     },
     {
       "id": "C-17",
@@ -1306,7 +1306,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3717"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3717"
     },
     {
       "id": "C-18",
@@ -1321,7 +1321,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3718"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3718"
     },
     {
       "id": "C-19",
@@ -1336,7 +1336,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3719"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3719"
     },
     {
       "id": "C-20",
@@ -1351,7 +1351,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3720"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3720"
     },
     {
       "id": "C-21",
@@ -1366,7 +1366,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3721"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3721"
     },
     {
       "id": "C-22",
@@ -1386,25 +1386,25 @@
         {
           "path": "A（物理）",
           "detail": "岑砚指挥所的作战计划",
-          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3747"
         },
         {
           "path": "B（文档）",
           "detail": "后仓岭工程进度表",
-          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3747"
         },
         {
           "path": "C（人证）",
           "detail": "卫铮的口头透露",
-          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3747"
         },
         {
           "path": "D（推理）",
           "detail": "由渭军冬装与工程物资的到货时间推出",
-          "source": "docs/scenario/S6-断线-战争前线.md:3747"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3747"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3722"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3722"
     },
     {
       "id": "C-23",
@@ -1419,7 +1419,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3723"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3723"
     },
     {
       "id": "C-24",
@@ -1434,7 +1434,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3724"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3724"
     },
     {
       "id": "C-25",
@@ -1449,7 +1449,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3725"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3725"
     },
     {
       "id": "C-26",
@@ -1465,7 +1465,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3726"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3726"
     },
     {
       "id": "C-27",
@@ -1480,7 +1480,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3727"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3727"
     },
     {
       "id": "C-28",
@@ -1495,7 +1495,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3728"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3728"
     },
     {
       "id": "C-29",
@@ -1510,7 +1510,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3729"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3729"
     },
     {
       "id": "C-30",
@@ -1525,7 +1525,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3730"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3730"
     },
     {
       "id": "C-31",
@@ -1540,7 +1540,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3731"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3731"
     },
     {
       "id": "C-32",
@@ -1556,7 +1556,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3732"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3732"
     },
     {
       "id": "C-33",
@@ -1571,7 +1571,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3733"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3733"
     },
     {
       "id": "C-34",
@@ -1591,25 +1591,25 @@
         {
           "path": "A（物理）",
           "detail": "蔺禾的记录簿",
-          "source": "docs/scenario/S6-断线-战争前线.md:952"
+          "source": "docs/scenario/s6-broken-line-war-front.md:952"
         },
         {
           "path": "B（文档）",
           "detail": "洄城白楼的入住登记",
-          "source": "docs/scenario/S6-断线-战争前线.md:3748"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3748"
         },
         {
           "path": "C（人证）",
           "detail": "殷其雷知道的\"谁收过钱\"",
-          "source": "docs/scenario/S6-断线-战争前线.md:3748"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3748"
         },
         {
           "path": "D（推理）",
           "detail": "由双方同时减少炮击频率推出",
-          "source": "docs/scenario/S6-断线-战争前线.md:3748"
+          "source": "docs/scenario/s6-broken-line-war-front.md:3748"
         }
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3734"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3734"
     },
     {
       "id": "C-35",
@@ -1624,7 +1624,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3735"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3735"
     },
     {
       "id": "C-36",
@@ -1640,7 +1640,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3736"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3736"
     },
     {
       "id": "C-37",
@@ -1656,7 +1656,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S6-断线-战争前线.md:3737"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3737"
     }
   ],
   "npcs": [
@@ -1681,7 +1681,7 @@
         "C-09"
       ],
       "if_dead_or_betrayed": "参谋派群龙无首，前线派的骆敬接管命令链；灰鸢从此收到的命令会变得更保守但更送死（因为前线派需要用战果证明自己），且 C-05 线索永久关闭。",
-      "source": "docs/scenario/S6-断线-战争前线.md:362"
+      "source": "docs/scenario/s6-broken-line-war-front.md:362"
     },
     {
       "id": "npc-02",
@@ -1704,7 +1704,7 @@
         "C-11"
       ],
       "if_dead_or_betrayed": "第九混成旅失去在战区的唯一辩护人，第三幕起旅部被拆编并入黑杨支队，玩家编制归属改变，所有\"三营\"相关 flag 重新结算。",
-      "source": "docs/scenario/S6-断线-战争前线.md:373"
+      "source": "docs/scenario/s6-broken-line-war-front.md:373"
     },
     {
       "id": "npc-03",
@@ -1726,7 +1726,7 @@
         "C-12"
       ],
       "if_dead_or_betrayed": "命令链失去唯一会解释理由的人，此后所有命令只给时间与坐标，不给理由；但也意味着玩家可以更容易伪造命令（技术/欺骗 DF −4）。",
-      "source": "docs/scenario/S6-断线-战争前线.md:384"
+      "source": "docs/scenario/s6-broken-line-war-front.md:384"
     },
     {
       "id": "npc-04",
@@ -1748,7 +1748,7 @@
         "C-13"
       ],
       "if_dead_or_betrayed": "督战队换一名更年轻、更想立功的继任者，第三幕起所有抗命判定 DF +4，且纪律轴每月自动 −1。",
-      "source": "docs/scenario/S6-断线-战争前线.md:395"
+      "source": "docs/scenario/s6-broken-line-war-front.md:395"
     },
     {
       "id": "npc-05",
@@ -1770,7 +1770,7 @@
         "C-14"
       ],
       "if_dead_or_betrayed": "配给改为由营部直接发放，数量更准确但频率减半；且配给四轨的\"私储\"判定 DF +4（新配给官不收贿赂，也不通融）。",
-      "source": "docs/scenario/S6-断线-战争前线.md:410"
+      "source": "docs/scenario/s6-broken-line-war-front.md:410"
     },
     {
       "id": "npc-06",
@@ -1792,7 +1792,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "转运棚关闭三日，四轨全部 −2；且她藏的那本副账会在三日后出现在郗鹤年手上，C-04 永久关闭但玩家的\"知情\"事实被记录（纪律 −1）。",
-      "source": "docs/scenario/S6-断线-战争前线.md:421"
+      "source": "docs/scenario/s6-broken-line-war-front.md:421"
     },
     {
       "id": "npc-07",
@@ -1815,7 +1815,7 @@
         "C-11"
       ],
       "if_dead_or_betrayed": "分队指挥权转入玩家手中（或由补兵秦九思接任，见下），士气轴 −2，纪律轴 +1（上级认为新的指挥更听话）；C-37 的一半内容随他下葬，需从洄城档案馆重建。",
-      "source": "docs/scenario/S6-断线-战争前线.md:436"
+      "source": "docs/scenario/s6-broken-line-war-front.md:436"
     },
     {
       "id": "npc-08",
@@ -1836,7 +1836,7 @@
         "C-16"
       ],
       "if_dead_or_betrayed": "C-11 与 C-16 线索全部关闭；若玩家隐瞒真相而他还活着，第四幕他会私自前往中站，成为一次必须去救的支线（且他会带走分队的一份配给）。",
-      "source": "docs/scenario/S6-断线-战争前线.md:447"
+      "source": "docs/scenario/s6-broken-line-war-front.md:447"
     },
     {
       "id": "npc-09",
@@ -1858,7 +1858,7 @@
         "C-17"
       ],
       "if_dead_or_betrayed": "士气轴 −2（他是分队里唯一会讲笑话的人）；他的服役金单据会寄到洄城的一个地址，那里住着一个不姓柳的女人——这是一条纯叙事支线。",
-      "source": "docs/scenario/S6-断线-战争前线.md:458"
+      "source": "docs/scenario/s6-broken-line-war-front.md:458"
     },
     {
       "id": "npc-10",
@@ -1880,7 +1880,7 @@
         "C-19"
       ],
       "if_dead_or_betrayed": "全队医疗判定 DF +4，且每次濒危稳定判定失败计数 +1；C-19 关闭；白旗会的蔺禾（见下）会主动找上玩家并给出一次无偿帮助。",
-      "source": "docs/scenario/S6-断线-战争前线.md:469"
+      "source": "docs/scenario/s6-broken-line-war-front.md:469"
     },
     {
       "id": "npc-11",
@@ -1902,7 +1902,7 @@
         "C-20"
       ],
       "if_dead_or_betrayed": "黑杨支队由一个更愿意合作的上尉接管，第三幕起玩家可获得一次真实的友军支援；但柏岩手里那份关于 1192 年的材料会被公开，导致骆敬的仕途崩塌（连带影响命令链）。",
-      "source": "docs/scenario/S6-断线-战争前线.md:484"
+      "source": "docs/scenario/s6-broken-line-war-front.md:484"
     },
     {
       "id": "npc-12",
@@ -1924,7 +1924,7 @@
         "C-21"
       ],
       "if_dead_or_betrayed": "C-20 关闭；他随身的那份材料会在下一次战斗中出现在渭军手里（被拾获），导致第四幕的谈判筹码归零。",
-      "source": "docs/scenario/S6-断线-战争前线.md:495"
+      "source": "docs/scenario/s6-broken-line-war-front.md:495"
     },
     {
       "id": "npc-13",
@@ -1946,7 +1946,7 @@
         "C-24"
       ],
       "if_dead_or_betrayed": "渭军第三集群陷入三天的指挥混乱，玩家获得一次宝贵的窗口（战役级）；但岑砚的副手卫铮接管后会执行更激进的方案，第五幕难度上调一档。",
-      "source": "docs/scenario/S6-断线-战争前线.md:512"
+      "source": "docs/scenario/s6-broken-line-war-front.md:512"
     },
     {
       "id": "npc-14",
@@ -1967,7 +1967,7 @@
         "C-25"
       ],
       "if_dead_or_betrayed": "渭军在走廊中段的协调下降一档（所有协同判定 −1 骰），但三天后由一名更年轻的参谋接管，自动化平台的使用频率翻倍。",
-      "source": "docs/scenario/S6-断线-战争前线.md:523"
+      "source": "docs/scenario/s6-broken-line-war-front.md:523"
     },
     {
       "id": "npc-15",
@@ -1989,7 +1989,7 @@
         "C-21"
       ],
       "if_dead_or_betrayed": "C-21 关闭；若他曾被玩家善待而后被己方处决，士气轴 −2（分队里有人会记住这件事），并在第五幕以\"变形回响\"的形式出现。",
-      "source": "docs/scenario/S6-断线-战争前线.md:534"
+      "source": "docs/scenario/s6-broken-line-war-front.md:534"
     },
     {
       "id": "npc-16",
@@ -2011,7 +2011,7 @@
         "C-27"
       ],
       "if_dead_or_betrayed": "渭军前沿出现一次短暂的军纪松弛（征召兵士气 +1 档，部分单位会投降而非死战）；但胡兰亭的名册落入玩家手中后，郗鹤年会要求\"按同样标准处理己方人员\"，触发一次道德抉择。",
-      "source": "docs/scenario/S6-断线-战争前线.md:545"
+      "source": "docs/scenario/s6-broken-line-war-front.md:545"
     },
     {
       "id": "npc-17",
@@ -2033,7 +2033,7 @@
         "C-30"
       ],
       "if_dead_or_betrayed": "渭渡关闭，河民全部撤入地下；穿越无人区的判定 DF +4 且失去唯一的安全路线；C-28 关闭。",
-      "source": "docs/scenario/S6-断线-战争前线.md:560"
+      "source": "docs/scenario/s6-broken-line-war-front.md:560"
     },
     {
       "id": "npc-18",
@@ -2055,7 +2055,7 @@
         "C-31"
       ],
       "if_dead_or_betrayed": "自卫团分裂，一半投渭军，一半散伙；C-31 关闭，敌后路线（第 12 节第四幕）需要重新规划，难度上调。",
-      "source": "docs/scenario/S6-断线-战争前线.md:571"
+      "source": "docs/scenario/s6-broken-line-war-front.md:571"
     },
     {
       "id": "npc-19",
@@ -2077,7 +2077,7 @@
         "C-32"
       ],
       "if_dead_or_betrayed": "通达行撤出走廊，黑市补给全部中断（配给四轨只能靠正式配额）；且他手上的那份\"通敌证据\"会在第三幕寄给郗鹤年，指向玩家。",
-      "source": "docs/scenario/S6-断线-战争前线.md:586"
+      "source": "docs/scenario/s6-broken-line-war-front.md:586"
     },
     {
       "id": "npc-20",
@@ -2099,7 +2099,7 @@
         "C-33"
       ],
       "if_dead_or_betrayed": "通达行停止向灰鸢出售任何非配额物资；C-33 关闭；他的兄弟会在第四幕以敌体\"渭军辎重官\"的身份出现，且带着一张玩家的照片。",
-      "source": "docs/scenario/S6-断线-战争前线.md:597"
+      "source": "docs/scenario/s6-broken-line-war-front.md:597"
     },
     {
       "id": "npc-21",
@@ -2122,7 +2122,7 @@
         "C-35"
       ],
       "if_dead_or_betrayed": "白旗会撤出走廊，所有中立救护停止；她的册子会由另一名专员带走，第五幕以\"外部证据\"的形式出现——如果玩家做过脏事，那本册子会成为结局判定的关键。",
-      "source": "docs/scenario/S6-断线-战争前线.md:612"
+      "source": "docs/scenario/s6-broken-line-war-front.md:612"
     },
     {
       "id": "npc-22",
@@ -2144,7 +2144,7 @@
         "C-36"
       ],
       "if_dead_or_betrayed": "白棚改用纯资历排序，玩家队伍的伤员后送优先级降到最后；C-36 关闭，且\"晨线行动\"的政治正当性无法被质疑。",
-      "source": "docs/scenario/S6-断线-战争前线.md:623"
+      "source": "docs/scenario/s6-broken-line-war-front.md:623"
     },
     {
       "id": "npc-23",
@@ -2155,7 +2155,7 @@
       "lever": "他私藏了一组新电池",
       "tell": "听到电流声时会跟着哼",
       "if_dead_or_betrayed": "哑塔彻底失效，命令链第三幕强制走\"延迟\"分支",
-      "source": "docs/scenario/S6-断线-战争前线.md:642"
+      "source": "docs/scenario/s6-broken-line-war-front.md:642"
     },
     {
       "id": "npc-24",
@@ -2166,7 +2166,7 @@
       "lever": "他画了，但不敢交",
       "tell": "交图时手指会压住某个坐标",
       "if_dead_or_betrayed": "真图失踪，玩家需自己测绘（DF +2）",
-      "source": "docs/scenario/S6-断线-战争前线.md:643"
+      "source": "docs/scenario/s6-broken-line-war-front.md:643"
     },
     {
       "id": "npc-25",
@@ -2177,7 +2177,7 @@
       "lever": "他欠通达行一笔钱",
       "tell": "每次过弯都骂同一句话",
       "if_dead_or_betrayed": "补给到达表权重恶化，四轨 −1",
-      "source": "docs/scenario/S6-断线-战争前线.md:644"
+      "source": "docs/scenario/s6-broken-line-war-front.md:644"
     },
     {
       "id": "npc-26",
@@ -2188,7 +2188,7 @@
       "lever": "他的观测记录是己方最想要的东西",
       "tell": "换班时会数自己的子弹",
       "if_dead_or_betrayed": "渭军前沿观测失效一幕，炮击频率减半",
-      "source": "docs/scenario/S6-断线-战争前线.md:645"
+      "source": "docs/scenario/s6-broken-line-war-front.md:645"
     },
     {
       "id": "npc-27",
@@ -2199,7 +2199,7 @@
       "lever": "她知道滩上哪里埋着什么",
       "tell": "说谎时会报一个太大的数字",
       "if_dead_or_betrayed": "碎镜滩的战壕发现表结果降级一档",
-      "source": "docs/scenario/S6-断线-战争前线.md:646"
+      "source": "docs/scenario/s6-broken-line-war-front.md:646"
     },
     {
       "id": "npc-28",
@@ -2210,7 +2210,7 @@
       "lever": "他见过 1192 年那辆车",
       "tell": "每次说\"我不是逃兵\"",
       "if_dead_or_betrayed": "C-08 关闭；督战队会在骡道设卡，玩家后续穿越 DF +3",
-      "source": "docs/scenario/S6-断线-战争前线.md:647"
+      "source": "docs/scenario/s6-broken-line-war-front.md:647"
     }
   ],
   "locations": [
@@ -2229,7 +2229,7 @@
       "encounters": "纠缠 40%（夜间渗透组 d20=5–6 时）、标准 70%（敌方巡逻接触）、严酷 100%（磨石岗反击的余波）",
       "resources": "配给发放点（每幕一次）、营部命令投递、班用物资、前任班长遗留物",
       "if_botched": "支撑点被放弃后，整条 H-7 哨线后撤至 2 带以南，米线终点暴露在直射火力下，第三幕起所有补给到达判定 DF +4",
-      "source": "docs/scenario/S6-断线-战争前线.md:171"
+      "source": "docs/scenario/s6-broken-line-war-front.md:171"
     },
     {
       "id": "loc-02",
@@ -2245,7 +2245,7 @@
       "encounters": "巡逻遭遇（标准 70%）、敌方渗透组（纠缠 40%）、自动化平台（随机）",
       "resources": "双方阵亡者的遗物、未爆弹药（可做爆破材料）、尸体上的身份牌（情报）",
       "if_botched": "若在此地被俘或留下明显痕迹，渭军会修正对 H-7 的火力标定，第二幕起哨线每日遭受一次额外炮击（负担 +1/日）",
-      "source": "docs/scenario/S6-断线-战争前线.md:185"
+      "source": "docs/scenario/s6-broken-line-war-front.md:185"
     },
     {
       "id": "loc-03",
@@ -2261,7 +2261,7 @@
       "encounters": "严酷 100%（争夺战）、致命 140%（渭军投入装甲时）",
       "resources": "观测权（战役级收益）、1186/1192 年守备日志（三条主线线索之一）、渭军丢弃的装备",
       "if_botched": "若高地丢失且玩家未能撤回，整个第二幕的战线判定向东移动一格，晨线行动第二阶段失败，第三幕起己方上级对灰鸢的信任（= 纪律）−2",
-      "source": "docs/scenario/S6-断线-战争前线.md:198"
+      "source": "docs/scenario/s6-broken-line-war-front.md:198"
     },
     {
       "id": "loc-04",
@@ -2277,7 +2277,7 @@
       "encounters": "标准 70%（渭军警戒分队）、纠缠 40%（拾荒者）",
       "resources": "1183 年煤车事件的货运单存根（主线关键线索）、战前铁路图纸（可使米线的补给到达 +1）、废铁（工兵材料）",
       "if_botched": "若在此引发大规模交火，白旗会宣布该区域不再是中立救护点，第四幕起所有己方伤员后送 DF +4",
-      "source": "docs/scenario/S6-断线-战争前线.md:211"
+      "source": "docs/scenario/s6-broken-line-war-front.md:211"
     },
     {
       "id": "loc-05",
@@ -2293,7 +2293,7 @@
       "encounters": "纠缠 40%（劫道的逃兵）、标准 70%（炮击封锁）",
       "resources": "补给（四轨的主要来源）、通达行的黑市、逃兵情报",
       "if_botched": "若米线被切断超过 3 日，四轨全部每日 −1，且士气每日 −1；若玩家抢劫通达行车队，声望（通达行）−3，此后所有补给需额外 DF",
-      "source": "docs/scenario/S6-断线-战争前线.md:224"
+      "source": "docs/scenario/s6-broken-line-war-front.md:224"
     },
     {
       "id": "loc-06",
@@ -2310,7 +2310,7 @@
       "encounters": "无战斗遭遇；交涉论战为主（`03` 第二节）",
       "resources": "休整（负担 −2）、情报、补给采购、命令的上游来源、政治支线",
       "if_botched": "若在洄城造成公开丑闻，纪律 −2，且第七战区会把灰鸢\"借调\"给最危险的任务（第 10 节命令表的权重改变）",
-      "source": "docs/scenario/S6-断线-战争前线.md:237"
+      "source": "docs/scenario/s6-broken-line-war-front.md:237"
     },
     {
       "id": "loc-07",
@@ -2326,7 +2326,7 @@
       "encounters": "纠缠 40%（自卫团的盘查）、标准 70%（渭军巡逻艇）",
       "resources": "河民的向导（穿越无人区 DF −4）、地方情报、一条不被双方记录的路线（战役级）",
       "if_botched": "若对河民使用暴力，声望（河民）−3，此后所有穿越无人区的判定 DF +4，且河民会向渭军通报玩家的行踪",
-      "source": "docs/scenario/S6-断线-战争前线.md:251"
+      "source": "docs/scenario/s6-broken-line-war-front.md:251"
     },
     {
       "id": "loc-08",
@@ -2342,7 +2342,7 @@
       "encounters": "严酷 100%、致命 140%（若触发警报）",
       "resources": "渭军部署图（主线关键）、渭军装备（可逆向）、俘虏",
       "if_botched": "若在此被俘且未逃脱，进入\"俘虏\"支线（见第 12 节第四幕分支），战线推进图对玩家不可见",
-      "source": "docs/scenario/S6-断线-战争前线.md:264"
+      "source": "docs/scenario/s6-broken-line-war-front.md:264"
     },
     {
       "id": "loc-09",
@@ -2358,7 +2358,7 @@
       "encounters": "标准 70%（后方警卫）、严酷 100%（若被发现）",
       "resources": "岑砚的作战计划（主线终局线索）、爆破机会、渭军的药品（己方最缺的东西）",
       "if_botched": "若在敌后被俘，直接进入第 12 节的灰色结局分支之一",
-      "source": "docs/scenario/S6-断线-战争前线.md:277"
+      "source": "docs/scenario/s6-broken-line-war-front.md:277"
     },
     {
       "id": "loc-10",
@@ -2374,7 +2374,7 @@
       "encounters": "纠缠 40%（敌方渗透组专门来剪线）",
       "resources": "通信权（= 命令链的\"执行\"分支能否成功的关键）、敌方通信监听（情报）、电池（可挪用为其他用途——这是第 5 节的经典道德困境）",
       "if_botched": "若电池被挪用或塔被炸，命令链状态机在接下来一幕内强制走\"执行失败\"分支，且营部会派一名联络官来\"协助\"（实际上监视）",
-      "source": "docs/scenario/S6-断线-战争前线.md:290"
+      "source": "docs/scenario/s6-broken-line-war-front.md:290"
     },
     {
       "id": "loc-11",
@@ -2391,7 +2391,7 @@
       "encounters": "无战斗；交涉与道德抉择为主",
       "resources": "医疗（负担 −1、创伤 −1）、白旗会的记录簿（情报）、与渭军伤员的接触（分支来源）",
       "if_botched": "若强行抢夺后送席位或袭击白旗会，声望（白旗会）−3，此后所有己方伤员不再被中立区接收",
-      "source": "docs/scenario/S6-断线-战争前线.md:303"
+      "source": "docs/scenario/s6-broken-line-war-front.md:303"
     },
     {
       "id": "loc-12",
@@ -2407,7 +2407,7 @@
       "encounters": "标准 70%（陷车时被巡逻发现）",
       "resources": "1192 年输送车的货（配给四轨的大额补给）、工兵材料、随机情报",
       "if_botched": "若在泥沼段被围困超过 4 小时，全员获得 1 层【疲惫】与 +1 负担，且装备损坏风险判定（每次移动一次）",
-      "source": "docs/scenario/S6-断线-战争前线.md:317"
+      "source": "docs/scenario/s6-broken-line-war-front.md:317"
     }
   ],
   "endings": [
@@ -2417,7 +2417,7 @@
       "type": "最好结局",
       "requirements": "阻止缝合 且 flag.command_1192 = true（取得 1192 年撤退命令） 且 减员 ≤ 1/3 且 flag.dirty_hands ≤ 1 且 flag.whiteflag_record ≥ 2",
       "result": "铁路没接上。撤退命令被交到了谈判代表手上——它不是用来定罪的，是用来证明\"这段战线从来不是被攻下来的\"。谈判在雪后第七日开始，D–F 段被划为非军事区。灰鸢分队被解散，成员分别复员。他们在洄城车站分别，谁也没说\"再见\"，因为这个词在十一年里已经被用坏了。这是本册最好的结局，而它依然不是胜利——它只是：你们活下来了，而且还是你们自己。",
-      "source": "docs/scenario/S6-断线-战争前线.md:3916"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3916"
     },
     {
       "id": "ending-b",
@@ -2425,7 +2425,7 @@
       "type": "惨胜",
       "requirements": "阻止了缝合（或拖延到冬天）但：己方减员 ≥ 半数，或 flag.dirty_hands ≥ 3，或 flag.witness_massacre = true",
       "result": "铁路没接上。第一场雪下了，工程停了。你们守住了 D–E 段，代价是分队从十二人变成五人。韩熠在报告上签字时手是抖的。桑白把最后一个药品包留给了别人。第二年，有人在磨石岗的西坡立了一块木牌，上面刻着七个名字，其中两个是错的——因为没人记得清。你们改变了战线，但再也变不回自己。",
-      "source": "docs/scenario/S6-断线-战争前线.md:3915"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3915"
     },
     {
       "id": "ending-c",
@@ -2433,7 +2433,7 @@
       "type": "灰色结局",
       "requirements": "flag.defiance_record = true 且 flag.investigation = true 且 Q-09 失败，或 flag.captured 后逃脱且拒绝归队",
       "result": "你们没有叛国，你们只是没有执行一道命令。但文件上不是这么写的。灰鸢分队被撤销，成员被分别调往不同的前哨——有些人去了。有些人没有。没有去的那些，在洄城的旧粮仓区有一个共同的住处，用假名字。战争结束那天，他们的名字不在任何一份名单上。他们赢了那一次战斗，也失去了自己的名字。",
-      "source": "docs/scenario/S6-断线-战争前线.md:3914"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3914"
     },
     {
       "id": "ending-d",
@@ -2441,7 +2441,7 @@
       "type": "失败存活",
       "requirements": "flag.rail_sewn = true",
       "result": "铁路接通了。渭军的重载列车第一次开过中站。你们被撤回二线，活了下来，编制完整，甚至补了新兵。第二年春天，上级发给你们一份嘉奖，理由是\"在困难条件下维持了阵地\"。你们谁也没把那份嘉奖挂在墙上。你们活着，但那条线不再断着——这是你们没能阻止的事。",
-      "source": "docs/scenario/S6-断线-战争前线.md:3913"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3913"
     },
     {
       "id": "ending-e",
@@ -2449,11 +2449,11 @@
       "type": "彻底失败",
       "requirements": "士气 = 0 且 统率 DF 18 失败，或全队覆灭",
       "result": "灰鸢分队从编制上被划掉。名字出现在洄城的一面墙上，与另外 4,000 多个名字在一起。没有人为他们说话，除了蔺禾——她在册子上为他们写了一整页，但那一页上没有战果，只有名字。这是本册唯一的\"彻底失败\"结局。",
-      "source": "docs/scenario/S6-断线-战争前线.md:3912"
+      "source": "docs/scenario/s6-broken-line-war-front.md:3912"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S6-断线-战争前线.md:2899",
+    "source": "docs/scenario/s6-broken-line-war-front.md:2899",
     "declared_flag_count": 36,
     "actual_flag_count": 36,
     "flag": [
@@ -2465,7 +2465,7 @@
         "readers": "全部任务状态机、区域解锁",
         "effect": "幕次主控",
         "universal": true,
-        "source": "docs/scenario/S6-断线-战争前线.md:2905"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2905"
       },
       {
         "id": "flag.day",
@@ -2474,7 +2474,7 @@
         "write": "每个\"日\"结束",
         "readers": "配给四轨结算",
         "effect": "断供天数",
-        "source": "docs/scenario/S6-断线-战争前线.md:2906"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2906"
       },
       {
         "id": "flag.frontline_col",
@@ -2483,7 +2483,7 @@
         "write": "每幕战线结算",
         "readers": "战线推进图、区域解锁",
         "effect": "玩家所在地段",
-        "source": "docs/scenario/S6-断线-战争前线.md:2907"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2907"
       },
       {
         "id": "flag.ms_gang_owner",
@@ -2492,7 +2492,7 @@
         "write": "磨石岗争夺结算",
         "readers": "Q-03、观测判定",
         "effect": "高地归属",
-        "source": "docs/scenario/S6-断线-战争前线.md:2908"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2908"
       },
       {
         "id": "flag.mid_station_control",
@@ -2501,7 +2501,7 @@
         "write": "中站争夺结算",
         "readers": "Q-06、谈判筹码",
         "effect": "断口归属",
-        "source": "docs/scenario/S6-断线-战争前线.md:2909"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2909"
       },
       {
         "id": "flag.rail_sewn",
@@ -2510,7 +2510,7 @@
         "write": "渭军铺轨达 60 米",
         "readers": "Q-10、结局判定",
         "effect": "结局 D",
-        "source": "docs/scenario/S6-断线-战争前线.md:2910"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2910"
       },
       {
         "id": "flag.rail_progress",
@@ -2519,7 +2519,7 @@
         "write": "每幕渭军工程推进",
         "readers": "Q-10",
         "effect": "倒计时",
-        "source": "docs/scenario/S6-断线-战争前线.md:2911"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2911"
       },
       {
         "id": "flag.dirty_hands",
@@ -2528,7 +2528,7 @@
         "write": "每次灰色行为",
         "readers": "结局判定、蔺禾记录",
         "effect": "结局质量",
-        "source": "docs/scenario/S6-断线-战争前线.md:2912"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2912"
       },
       {
         "id": "flag.defiance_record",
@@ -2537,7 +2537,7 @@
         "write": "抗命失败/伪造失败",
         "readers": "郗鹤年对白树、Q-09",
         "effect": "调查启动条件",
-        "source": "docs/scenario/S6-断线-战争前线.md:2913"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2913"
       },
       {
         "id": "flag.unreliable_unit",
@@ -2546,7 +2546,7 @@
         "write": "士气≥5 且 纪律≤2，或抗命灾难",
         "readers": "G-04 督战队登场、命令表权重",
         "effect": "督战队随队",
-        "source": "docs/scenario/S6-断线-战争前线.md:2914"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2914"
       },
       {
         "id": "flag.broken_spirit",
@@ -2555,7 +2555,7 @@
         "write": "纪律≥5 且 士气≤1",
         "readers": "所有非战斗判定",
         "effect": "凯旋降级",
-        "source": "docs/scenario/S6-断线-战争前线.md:2915"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2915"
       },
       {
         "id": "flag.investigation",
@@ -2564,7 +2564,7 @@
         "write": "flag.defiance_record 且 rep.command ≤ 0",
         "readers": "Q-09 开启",
         "effect": "第五幕分支",
-        "source": "docs/scenario/S6-断线-战争前线.md:2916"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2916"
       },
       {
         "id": "flag.mid_station_lead",
@@ -2573,7 +2573,7 @@
         "write": "获得中站线索",
         "readers": "Q-06 前置",
         "effect": "提前解锁中站",
-        "source": "docs/scenario/S6-断线-战争前线.md:2917"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2917"
       },
       {
         "id": "flag.river_people_contact",
@@ -2582,7 +2582,7 @@
         "write": "与河民交涉",
         "readers": "Q-05、区域 7 解锁",
         "effect": "河民关系",
-        "source": "docs/scenario/S6-断线-战争前线.md:2918"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2918"
       },
       {
         "id": "flag.river_crossing",
@@ -2591,7 +2591,7 @@
         "write": "成功渡河",
         "readers": "Q-08 前置",
         "effect": "敌后路线",
-        "source": "docs/scenario/S6-断线-战争前线.md:2919"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2919"
       },
       {
         "id": "flag.behind_lines",
@@ -2600,7 +2600,7 @@
         "write": "进入后仓岭",
         "readers": "区域 8/9 解锁",
         "effect": "敌后场景",
-        "source": "docs/scenario/S6-断线-战争前线.md:2920"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2920"
       },
       {
         "id": "flag.supply_route_known",
@@ -2609,7 +2609,7 @@
         "write": "得知米线",
         "readers": "区域 5 解锁",
         "effect": "补给线可用",
-        "source": "docs/scenario/S6-断线-战争前线.md:2921"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2921"
       },
       {
         "id": "flag.railmap",
@@ -2618,7 +2618,7 @@
         "write": "取得战前铁路图纸",
         "readers": "补给到达表 +2",
         "effect": "补给效率",
-        "source": "docs/scenario/S6-断线-战争前线.md:2922"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2922"
       },
       {
         "id": "flag.real_map_made",
@@ -2627,7 +2627,7 @@
         "write": "Q-02 成功",
         "readers": "命令荒谬度 −2",
         "effect": "命令质量",
-        "source": "docs/scenario/S6-断线-战争前线.md:2923"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2923"
       },
       {
         "id": "flag.real_map_hidden",
@@ -2636,7 +2636,7 @@
         "write": "Q-02 succeeded_dirty",
         "readers": "rep.command −1",
         "effect": "隐藏收益",
-        "source": "docs/scenario/S6-断线-战争前线.md:2924"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2924"
       },
       {
         "id": "flag.tower_fixed",
@@ -2645,7 +2645,7 @@
         "write": "Q-01 成功",
         "readers": "命令链\"执行\"分支",
         "effect": "通信可用",
-        "source": "docs/scenario/S6-断线-战争前线.md:2925"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2925"
       },
       {
         "id": "flag.battery_diverted",
@@ -2654,7 +2654,7 @@
         "write": "挪用哑塔电池",
         "readers": "燃料轨 −2、命令链延迟",
         "effect": "道德账",
-        "source": "docs/scenario/S6-断线-战争前线.md:2926"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2926"
       },
       {
         "id": "flag.heiyang_rivalry",
@@ -2663,7 +2663,7 @@
         "write": "与黑杨支队互动",
         "readers": "Q-03 aborted 分支",
         "effect": "抢功冲突",
-        "source": "docs/scenario/S6-断线-战争前线.md:2927"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2927"
       },
       {
         "id": "flag.heiyang_evidence",
@@ -2672,7 +2672,7 @@
         "write": "取得 1192 年材料",
         "readers": "G-06 柏岩对白树",
         "effect": "可敌对化",
-        "source": "docs/scenario/S6-断线-战争前线.md:2928"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2928"
       },
       {
         "id": "flag.qiwu_recruited",
@@ -2681,7 +2681,7 @@
         "write": "Q-07 recruited",
         "readers": "第四幕、结局",
         "effect": "祁五成为队友",
-        "source": "docs/scenario/S6-断线-战争前线.md:2929"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2929"
       },
       {
         "id": "flag.qiwu_killed",
@@ -2690,7 +2690,7 @@
         "write": "祁五被己方处决",
         "readers": "士气 −2、回响",
         "effect": "第五幕变形回响",
-        "source": "docs/scenario/S6-断线-战争前线.md:2930"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2930"
       },
       {
         "id": "flag.looting_done",
@@ -2699,7 +2699,7 @@
         "write": "首次掠夺",
         "readers": "R-09 掠夺后遗症表",
         "effect": "声望与士气",
-        "source": "docs/scenario/S6-断线-战争前线.md:2931"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2931"
       },
       {
         "id": "flag.whiteflag_record",
@@ -2708,7 +2708,7 @@
         "write": "与蔺禾的每次交涉",
         "readers": "结局判定（正面证据）",
         "effect": "抵消 dirty_hands",
-        "source": "docs/scenario/S6-断线-战争前线.md:2932"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2932"
       },
       {
         "id": "flag.command_1192",
@@ -2717,7 +2717,7 @@
         "write": "取得未上报的撤退命令",
         "readers": "Q-09、L-06 掉落",
         "effect": "最强谈判筹码",
-        "source": "docs/scenario/S6-断线-战争前线.md:2933"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2933"
       },
       {
         "id": "flag.captured",
@@ -2726,7 +2726,7 @@
         "write": "在敌后被俘",
         "readers": "第四幕分支",
         "effect": "灰色结局",
-        "source": "docs/scenario/S6-断线-战争前线.md:2934"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2934"
       },
       {
         "id": "flag.witness_massacre",
@@ -2735,7 +2735,7 @@
         "write": "目睹或参与屠杀",
         "readers": "士气 −3、蔺禾记录 2 行",
         "effect": "结局 B/C",
-        "source": "docs/scenario/S6-断线-战争前线.md:2935"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2935"
       },
       {
         "id": "flag.supply_cut_days",
@@ -2744,7 +2744,7 @@
         "write": "米线被切断的日数",
         "readers": "四轨、士气",
         "effect": "崩溃风险",
-        "source": "docs/scenario/S6-断线-战争前线.md:2936"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2936"
       },
       {
         "id": "flag.stash_discovered",
@@ -2753,7 +2753,7 @@
         "write": "突击检查发现私储",
         "readers": "纪律 −2",
         "effect": "调查链",
-        "source": "docs/scenario/S6-断线-战争前线.md:2937"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2937"
       },
       {
         "id": "flag.tongda_debt",
@@ -2762,7 +2762,7 @@
         "write": "欠通达行的账",
         "readers": "每幕 +25%",
         "effect": "债务事件",
-        "source": "docs/scenario/S6-断线-战争前线.md:2938"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2938"
       },
       {
         "id": "flag.weijun_adaptation",
@@ -2771,7 +2771,7 @@
         "write": "玩家重复同一打法",
         "readers": "遭遇组建",
         "effect": "敌方反制",
-        "source": "docs/scenario/S6-断线-战争前线.md:2939"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2939"
       },
       {
         "id": "flag.winter",
@@ -2780,7 +2780,7 @@
         "write": "第五幕开始",
         "readers": "冬装、泥沼冻结",
         "effect": "终局条件",
-        "source": "docs/scenario/S6-断线-战争前线.md:2940"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2940"
       }
     ],
     "rep": [
@@ -2791,7 +2791,7 @@
         "write": "上级评价、擅自改令",
         "readers": "补给优先级、处罚分支",
         "effect": "命令链是否\"执行\"",
-        "source": "docs/scenario/S6-断线-战争前线.md:2916"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2916"
       },
       {
         "id": "rep.logistics",
@@ -2800,7 +2800,7 @@
         "write": "补给到达、征用物资",
         "readers": "第四轨补给表",
         "effect": "每周配额",
-        "source": "docs/scenario/S6-断线-战争前线.md:2947"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2947"
       },
       {
         "id": "rep.battalion",
@@ -2809,7 +2809,7 @@
         "write": "灰鸢内部处置、抢功冲突",
         "readers": "Q-03 aborted 分支",
         "effect": "分队是否听令",
-        "source": "docs/scenario/S6-断线-战争前线.md:2948"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2948"
       },
       {
         "id": "rep.heiyang",
@@ -2818,7 +2818,7 @@
         "write": "与黑杨支队的互动",
         "readers": "第四幕分支",
         "effect": "是否被友军抢功",
-        "source": "docs/scenario/S6-断线-战争前线.md:2949"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2949"
       },
       {
         "id": "rep.weijun",
@@ -2827,7 +2827,7 @@
         "write": "敌后行动、俘虏处置",
         "readers": "被俘判定 DF",
         "effect": "谈判起点",
-        "source": "docs/scenario/S6-断线-战争前线.md:2950"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2950"
       },
       {
         "id": "rep.riverfolk",
@@ -2836,7 +2836,7 @@
         "write": "渡河、征用、告密处理",
         "readers": "河民摆渡与否",
         "effect": "是否给向导",
-        "source": "docs/scenario/S6-断线-战争前线.md:2951"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2951"
       },
       {
         "id": "rep.tongda",
@@ -2845,7 +2845,7 @@
         "write": "采购、欠账、走私",
         "readers": "补给到达表 +2",
         "effect": "通达行是否再赊",
-        "source": "docs/scenario/S6-断线-战争前线.md:2952"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2952"
       },
       {
         "id": "rep.whiteflag",
@@ -2854,13 +2854,13 @@
         "write": "与蔺禾的每次交涉",
         "readers": "结局判定",
         "effect": "抵消 flag.dirty_hands",
-        "source": "docs/scenario/S6-断线-战争前线.md:2953"
+        "source": "docs/scenario/s6-broken-line-war-front.md:2953"
       }
     ],
     "clock": []
   },
   "ledger_template": {
-    "source": "docs/scenario/S6-断线-战争前线.md:3925",
+    "source": "docs/scenario/s6-broken-line-war-front.md:3925",
     "meta": {
       "world": "broken_line",
       "world_name": "砚洲 · 断线走廊",

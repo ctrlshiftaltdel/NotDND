@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.growth）",
-  "description": "成长总纲：12 级三层制、升级条件、每级固定收益、熟练加值量表 3 档、成长选择 6 类、通用专长 30 项；源自 docs/system/01-内核CORE.md 第十四节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "成长总纲：12 级三层制、升级条件、每级固定收益、熟练加值量表 3 档、成长选择 6 类、通用专长 30 项；源自 docs/system/01-core.md 第十四节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "tiers", "levelup", "per_level", "proficiency_bonus", "choices", "choice_restriction", "choice_restriction_source", "feat_categories", "feats"],
   "properties": {

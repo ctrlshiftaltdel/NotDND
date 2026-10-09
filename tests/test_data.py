@@ -134,14 +134,14 @@ def check_system_schema_validation():
         schema = json.load(handle)
     good = {
         "schema_version": 1, "kind": "system.attributes",
-        "source": "docs/system/01-内核CORE.md:30",
+        "source": "docs/system/01-core.md:30",
         "attributes": [{"id": "MGT", "name": "力道", "en": "Might",
                         "question": "你能施加多大的外力？",
-                        "source": "docs/system/01-内核CORE.md:36"}],
+                        "source": "docs/system/01-core.md:36"}],
         "levels": [{"value": 1, "label": "严重缺陷",
-                    "source": "docs/system/01-内核CORE.md:49"}],
+                    "source": "docs/system/01-core.md:49"}],
         "modifiers": [{"value": 1, "modifier": -2,
-                       "source": "docs/system/01-内核CORE.md:64"}],
+                       "source": "docs/system/01-core.md:64"}],
     }
     assert not validate_data.check_schema(good, schema, SCHEMA_DIR), \
         "合法样本被判失败"
@@ -156,20 +156,20 @@ def check_family_schemas():
     samples = {
         "world.schema.json": {
             "schema_version": 1, "kind": "world.module",
-            "source": "docs/scenario/05-世界模组I-阈界都市.md:27",
+            "source": "docs/scenario/05-world-module-i-threshold.md:27",
             "world": {"key": "threshold", "name": "阈界都市", "engine": "tactics"},
             "factions": [], "tracks": [], "careers": [], "abilities": [],
             "equipment": [], "enemies": [], "random_tables": [],
         },
         "random_tables.schema.json": {
             "schema_version": 1, "kind": "random_tables.catalog",
-            "source": "docs/scenario/S7-随机生成器.md:2702",
+            "source": "docs/scenario/s7-random-generator.md:2702",
             "resource": "prism.random_tables", "tables": [], "generators": [],
             "ledger_bridge": {},
         },
         "scenario.schema.json": {
             "schema_version": 1, "kind": "scenario.campaign",
-            "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2423",
+            "source": "docs/scenario/s5-foundered-strata-ruins-and-caverns.md:2423",
             "meta": {"world": "foundered-strata", "engine": "tactics"},
             "acts": [], "threads": [],
             "ledger_template": {
@@ -272,7 +272,7 @@ def check_file_errors_attributed():
 
 def check_source_line_boundary():
     """source 行号 == 文件总行数允许；> 总行数报错。"""
-    doc = os.path.join(ROOT, "docs", "system", "01-内核CORE.md")
+    doc = os.path.join(ROOT, "docs", "system", "01-core.md")
     with open(doc, encoding="utf-8") as handle:
         total = sum(1 for _ in handle)
     base = json.load(open(os.path.join(FIXTURES, "good", "system_attributes_min.json"),
@@ -281,7 +281,7 @@ def check_source_line_boundary():
         cases = {}
         for name, line in (("at", total), ("over", total + 1)):
             data = json.loads(json.dumps(base))
-            data["attributes"][0]["source"] = "docs/system/01-内核CORE.md:%d" % line
+            data["attributes"][0]["source"] = "docs/system/01-core.md:%d" % line
             cases[name] = os.path.join(tmp, "%s.json" % name)
             with open(cases[name], "w", encoding="utf-8") as handle:
                 json.dump(data, handle, ensure_ascii=False)

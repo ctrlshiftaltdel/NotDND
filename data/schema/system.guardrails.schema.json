@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.guardrails）",
-  "description": "导引者操作系统第十四节：内容护栏（边界清单、三种终止机制）与一致性护栏（八项场景自检、数值 / 事实不变式、NPC 一致性）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "导引者操作系统第十四节：内容护栏（边界清单、三种终止机制）与一致性护栏（八项场景自检、数值 / 事实不变式、NPC 一致性）。源自 docs/system/04-conductor-os.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "boundary_checklist", "termination", "boundary_supplements", "scene_self_check", "numeric_invariants", "fact_invariant", "npc_consistency"],
   "properties": {

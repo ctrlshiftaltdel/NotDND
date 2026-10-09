@@ -1,40 +1,40 @@
 {
   "schema_version": 1,
   "kind": "system.build_stress",
-  "source": "docs/system/02B-构建引擎.md:184",
+  "source": "docs/system/02b-forge-engine.md:184",
   "declared": {"gain_sources": 5, "penalty_bands": 4, "reduction_methods": 4, "overload_steps": 4},
   "cap": {
     "formula": "应力上限 = 体魄 + 心智 + 5",
     "typical_range": "13–21",
-    "source": "docs/system/02B-构建引擎.md:191"
+    "source": "docs/system/02b-forge-engine.md:191"
   },
   "gain": [
-    {"behaviour": "超载一次判定（宣布后重掷全池，取第二次结果）", "amount": 2, "source": "docs/system/02B-构建引擎.md:200"},
-    {"behaviour": "受到一次超过自身活力上限 1/4 的伤害", "amount": 1, "source": "docs/system/02B-构建引擎.md:201"},
-    {"behaviour": "连续第二次宣布超载（同一场景内）", "amount": 3, "source": "docs/system/02B-构建引擎.md:202"},
-    {"behaviour": "使用超出自身能力等级的资源（强行动用未掌握的能力）", "amount": 2, "source": "docs/system/02B-构建引擎.md:203"},
-    {"behaviour": "处于濒危状态", "amount": 2, "source": "docs/system/02B-构建引擎.md:204"}
+    {"behaviour": "超载一次判定（宣布后重掷全池，取第二次结果）", "amount": 2, "source": "docs/system/02b-forge-engine.md:200"},
+    {"behaviour": "受到一次超过自身活力上限 1/4 的伤害", "amount": 1, "source": "docs/system/02b-forge-engine.md:201"},
+    {"behaviour": "连续第二次宣布超载（同一场景内）", "amount": 3, "source": "docs/system/02b-forge-engine.md:202"},
+    {"behaviour": "使用超出自身能力等级的资源（强行动用未掌握的能力）", "amount": 2, "source": "docs/system/02b-forge-engine.md:203"},
+    {"behaviour": "处于濒危状态", "amount": 2, "source": "docs/system/02b-forge-engine.md:204"}
   ],
   "penalty_bands": [
-    {"band": "0–49%", "effect": "无", "source": "docs/system/02B-构建引擎.md:210"},
-    {"band": "50–79%", "effect": "所有判定骰池 −1 枚；描述上表现出紧张、急促、手抖", "source": "docs/system/02B-构建引擎.md:211"},
-    {"band": "80–99%", "effect": "骰池 −2 枚；每次开始回合需通过耐受判定（需求成功 3），失败则失去 1 AP", "source": "docs/system/02B-构建引擎.md:212"},
-    {"band": "100%", "effect": "崩溃", "source": "docs/system/02B-构建引擎.md:213"}
+    {"band": "0–49%", "effect": "无", "source": "docs/system/02b-forge-engine.md:210"},
+    {"band": "50–79%", "effect": "所有判定骰池 −1 枚；描述上表现出紧张、急促、手抖", "source": "docs/system/02b-forge-engine.md:211"},
+    {"band": "80–99%", "effect": "骰池 −2 枚；每次开始回合需通过耐受判定（需求成功 3），失败则失去 1 AP", "source": "docs/system/02b-forge-engine.md:212"},
+    {"band": "100%", "effect": "崩溃", "source": "docs/system/02b-forge-engine.md:213"}
   ],
   "overload_event": {
     "trigger": "应力达到上限时立即触发。",
-    "trigger_source": "docs/system/02B-构建引擎.md:217",
+    "trigger_source": "docs/system/02b-forge-engine.md:217",
     "steps": [
-      {"order": 1, "step": "角色失去本回合所有 AP，且必须演出崩溃的具体表现（导引者与玩家共同决定，玩家优先）", "source": "docs/system/02B-构建引擎.md:219"},
-      {"order": 2, "step": "获得 3 层【疲惫】与 1 点负担", "source": "docs/system/02B-构建引擎.md:220"},
-      {"order": 3, "step": "所有进行中的超载效果立即中断", "source": "docs/system/02B-构建引擎.md:221"},
-      {"order": 4, "step": "应力回落至上限的 50%", "source": "docs/system/02B-构建引擎.md:222"}
+      {"order": 1, "step": "角色失去本回合所有 AP，且必须演出崩溃的具体表现（导引者与玩家共同决定，玩家优先）", "source": "docs/system/02b-forge-engine.md:219"},
+      {"order": 2, "step": "获得 3 层【疲惫】与 1 点负担", "source": "docs/system/02b-forge-engine.md:220"},
+      {"order": 3, "step": "所有进行中的超载效果立即中断", "source": "docs/system/02b-forge-engine.md:221"},
+      {"order": 4, "step": "应力回落至上限的 50%", "source": "docs/system/02b-forge-engine.md:222"}
     ]
   },
   "reduction": [
-    {"method": "短歇", "amount": -2, "source": "docs/system/02B-构建引擎.md:230"},
-    {"method": "长歇", "amount": -4, "note": "在安全据点 −6", "source": "docs/system/02B-构建引擎.md:231"},
-    {"method": "完成一次角色驱动相关的目标", "amount": -2, "source": "docs/system/02B-构建引擎.md:232"},
-    {"method": "特定能力／道具", "amount": null, "note": "见具体描述", "source": "docs/system/02B-构建引擎.md:233"}
+    {"method": "短歇", "amount": -2, "source": "docs/system/02b-forge-engine.md:230"},
+    {"method": "长歇", "amount": -4, "note": "在安全据点 −6", "source": "docs/system/02b-forge-engine.md:231"},
+    {"method": "完成一次角色驱动相关的目标", "amount": -2, "source": "docs/system/02b-forge-engine.md:232"},
+    {"method": "特定能力／道具", "amount": null, "note": "见具体描述", "source": "docs/system/02b-forge-engine.md:233"}
   ]
 }

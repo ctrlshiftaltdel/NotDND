@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "kind": "system.camping",
-  "source": "docs/system/03-互动层.md:90",
+  "source": "docs/system/03-interaction-layer.md:90",
   "note": "如果队伍需要在非据点的地方长歇，选择营地；不同选择改变夜袭风险池与恢复效果。",
   "declared": {"camps": 4},
   "camps": [
-    {"id": "exposed", "name": "露天", "effect": "无保护；夜袭风险池 +2 骰；恢复效果减半", "source": "docs/system/03-互动层.md:96"},
-    {"id": "sheltered", "name": "有遮蔽", "effect": "夜袭风险池 +0；正常恢复", "source": "docs/system/03-互动层.md:97"},
-    {"id": "watch", "name": "有哨戒安排（至少一人守夜）", "effect": "夜袭风险池 −2 骰，但该守夜者黎明前获得 1 层【疲惫】", "source": "docs/system/03-互动层.md:98"},
-    {"id": "traps", "name": "有陷阱与警戒圈", "effect": "夜袭者在接近时须通过潜行 DF 15，失败则全队获得预警", "source": "docs/system/03-互动层.md:99"}
+    {"id": "exposed", "name": "露天", "effect": "无保护；夜袭风险池 +2 骰；恢复效果减半", "source": "docs/system/03-interaction-layer.md:96"},
+    {"id": "sheltered", "name": "有遮蔽", "effect": "夜袭风险池 +0；正常恢复", "source": "docs/system/03-interaction-layer.md:97"},
+    {"id": "watch", "name": "有哨戒安排（至少一人守夜）", "effect": "夜袭风险池 −2 骰，但该守夜者黎明前获得 1 层【疲惫】", "source": "docs/system/03-interaction-layer.md:98"},
+    {"id": "traps", "name": "有陷阱与警戒圈", "effect": "夜袭者在接近时须通过潜行 DF 15，失败则全队获得预警", "source": "docs/system/03-interaction-layer.md:99"}
   ]
 }

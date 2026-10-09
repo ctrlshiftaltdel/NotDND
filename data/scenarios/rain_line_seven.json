@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/09-起步战役.md:61",
+  "source": "docs/scenario/09-three-openings.md:61",
   "meta": {
     "world": "threshold",
     "engine": "tactics",
@@ -23,7 +23,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:101"
+      "source": "docs/scenario/09-three-openings.md:101"
     },
     {
       "id": "act-2",
@@ -38,14 +38,14 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:120"
+      "source": "docs/scenario/09-three-openings.md:120"
     },
     {
       "id": "act-3",
       "name": "第三幕：摊牌",
       "level_range": "1–3",
       "summary": "目标：在青龙寺站做一个决定。高潮三要素：代价的可能性（处理失败会有角色被留在站台上）；知情的选择；无法回头（七号线此后永远多停一站）。",
-      "source": "docs/scenario/09-起步战役.md:141"
+      "source": "docs/scenario/09-three-openings.md:141"
     }
   ],
   "nodes": [
@@ -56,7 +56,7 @@
       "next": [
         "N12"
       ],
-      "source": "docs/scenario/09-起步战役.md:105"
+      "source": "docs/scenario/09-three-openings.md:105"
     },
     {
       "id": "N12",
@@ -65,7 +65,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/09-起步战役.md:106"
+      "source": "docs/scenario/09-three-openings.md:106"
     },
     {
       "id": "N13",
@@ -81,7 +81,7 @@
         "牵连",
         "回响"
       ],
-      "source": "docs/scenario/09-起步战役.md:107"
+      "source": "docs/scenario/09-three-openings.md:107"
     },
     {
       "id": "N21",
@@ -90,7 +90,7 @@
       "next": [
         "N23"
       ],
-      "source": "docs/scenario/09-起步战役.md:124"
+      "source": "docs/scenario/09-three-openings.md:124"
     },
     {
       "id": "N22",
@@ -99,7 +99,7 @@
       "next": [
         "N23"
       ],
-      "source": "docs/scenario/09-起步战役.md:125"
+      "source": "docs/scenario/09-three-openings.md:125"
     },
     {
       "id": "N23",
@@ -109,7 +109,7 @@
         "N31"
       ],
       "unlock": "确认「站台上的东西不是沈砚」任一途径",
-      "source": "docs/scenario/09-起步战役.md:126"
+      "source": "docs/scenario/09-three-openings.md:126"
     },
     {
       "id": "N31",
@@ -120,7 +120,7 @@
         "ending-liaojie",
         "ending-chenmo"
       ],
-      "source": "docs/scenario/09-起步战役.md:143"
+      "source": "docs/scenario/09-three-openings.md:143"
     },
     {
       "id": "Q-00",
@@ -168,7 +168,7 @@
         "silence"
       ],
       "act": "act-1",
-      "source": "docs/scenario/09-起步战役.md:101"
+      "source": "docs/scenario/09-three-openings.md:101"
     }
   ],
   "threads": [
@@ -191,20 +191,20 @@
         {
           "path": "回响",
           "detail": "找到老孟，他讲出 1984 年第三隧道事件的一部分，并提到「车不会停在没人叫的站」——必须主动叫站，它才会停",
-          "source": "docs/scenario/09-起步战役.md:115"
+          "source": "docs/scenario/09-three-openings.md:115"
         },
         {
           "path": "代价",
           "detail": "走进站台，与沈砚第一次对话。他非常友好，并请你们「下周三晚上再来，还差一个」",
-          "source": "docs/scenario/09-起步战役.md:111"
+          "source": "docs/scenario/09-three-openings.md:111"
         },
         {
           "path": "观察",
           "detail": "他从不眨眼，也从不踩到水——因为他没有倒影也没有重量",
-          "source": "docs/scenario/09-起步战役.md:79"
+          "source": "docs/scenario/09-three-openings.md:79"
         }
       ],
-      "source": "docs/scenario/09-起步战役.md:68"
+      "source": "docs/scenario/09-three-openings.md:68"
     },
     {
       "id": "C-02",
@@ -221,20 +221,20 @@
         {
           "path": "人证",
           "detail": "老孟会说出「三年里七号线停过两次青龙寺，那两次都有人消失」",
-          "source": "docs/scenario/09-起步战役.md:129"
+          "source": "docs/scenario/09-three-openings.md:129"
         },
         {
           "path": "观察",
           "detail": "站台上的他没有倒影，且从不踩到积水",
-          "source": "docs/scenario/09-起步战役.md:130"
+          "source": "docs/scenario/09-three-openings.md:130"
         },
         {
           "path": "文档",
           "detail": "办公厅 1984 年的档案里有完全一样的记录",
-          "source": "docs/scenario/09-起步战役.md:131"
+          "source": "docs/scenario/09-three-openings.md:131"
         }
       ],
-      "source": "docs/scenario/09-起步战役.md:128"
+      "source": "docs/scenario/09-three-openings.md:128"
     },
     {
       "id": "C-03",
@@ -250,7 +250,7 @@
         "Q-00"
       ],
       "note": "编号为本册册内编号；与 S8 各则及主册的 C-xx 不通用。",
-      "source": "docs/scenario/09-起步战役.md:70"
+      "source": "docs/scenario/09-three-openings.md:70"
     }
   ],
   "npcs": [
@@ -266,7 +266,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/09-起步战役.md:75"
+      "source": "docs/scenario/09-three-openings.md:75"
     },
     {
       "id": "npc-02",
@@ -277,7 +277,7 @@
       "lever": "她已经花了三年，愿意付出任何代价",
       "mask": "干练、理性、不谈私事",
       "tell": "讲到第三年时会改用过去时，然后自己纠正",
-      "source": "docs/scenario/09-起步战役.md:82"
+      "source": "docs/scenario/09-three-openings.md:82"
     },
     {
       "id": "npc-03",
@@ -287,7 +287,7 @@
       "lever": "他其实也想弄清楚青龙寺站到底发生了什么",
       "mask": "公事公办，且总是很累",
       "tell": "提到「1984 年第三隧道」时会停顿",
-      "source": "docs/scenario/09-起步战役.md:88"
+      "source": "docs/scenario/09-three-openings.md:88"
     },
     {
       "id": "npc-04",
@@ -300,7 +300,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/09-起步战役.md:94"
+      "source": "docs/scenario/09-three-openings.md:94"
     }
   ],
   "locations": [
@@ -308,7 +308,7 @@
       "id": "loc-01",
       "name": "七号线夜班车厢",
       "purpose": "六名乘客在同一节车厢看见对面站台站着一个人",
-      "source": "docs/scenario/09-起步战役.md:105"
+      "source": "docs/scenario/09-three-openings.md:105"
     },
     {
       "id": "loc-02",
@@ -318,13 +318,13 @@
         "对面站台（沈砚所在处）",
         "积水覆盖的月台"
       ],
-      "source": "docs/scenario/09-起步战役.md:107"
+      "source": "docs/scenario/09-three-openings.md:107"
     },
     {
       "id": "loc-03",
       "name": "办公厅档案库",
       "purpose": "1984 年的档案里有完全一样的记录",
-      "source": "docs/scenario/09-起步战役.md:131"
+      "source": "docs/scenario/09-three-openings.md:131"
     }
   ],
   "endings": [
@@ -334,7 +334,7 @@
       "type": "代价",
       "requirements": "有人自愿进入站台，把沈砚换出来",
       "result": "沈砚以某种不完整的状态回来；那位自愿者成为新的「站台上的东西」，且他会继续等七个",
-      "source": "docs/scenario/09-起步战役.md:155"
+      "source": "docs/scenario/09-three-openings.md:155"
     },
     {
       "id": "ending-liaojie",
@@ -342,7 +342,7 @@
       "type": "安息",
       "requirements": "让妹妹与他告别，站台失去「被等待」的意义",
       "result": "沈砚消散。妹妹得到答案。青龙寺站永久停用，且从此地图上不再有它",
-      "source": "docs/scenario/09-起步战役.md:156"
+      "source": "docs/scenario/09-three-openings.md:156"
     },
     {
       "id": "ending-chenmo",
@@ -350,11 +350,11 @@
       "type": "掩盖",
       "requirements": "什么都不做，让办公厅接管",
       "result": "陶铮完成敷面。事件被掩盖。三人组中的老孟此后不再说话——这是最沉重也最真实的结局",
-      "source": "docs/scenario/09-起步战役.md:157"
+      "source": "docs/scenario/09-three-openings.md:157"
     }
   ],
   "flags": {
-    "source": "docs/scenario/09-起步战役.md:61",
+    "source": "docs/scenario/09-three-openings.md:61",
     "declared_flag_count": 0,
     "actual_flag_count": 4,
     "flag": [
@@ -366,7 +366,7 @@
         "readers": "Q-00",
         "effect": "开启主线",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:106"
+        "source": "docs/scenario/09-three-openings.md:106"
       },
       {
         "id": "flag.witness_count",
@@ -376,7 +376,7 @@
         "readers": "C-03/Q-00",
         "effect": "需七个活人同时看见，列车才会停靠青龙寺站",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:70"
+        "source": "docs/scenario/09-three-openings.md:70"
       },
       {
         "id": "flag.station_open",
@@ -386,7 +386,7 @@
         "readers": "Q-00",
         "effect": "站台可进入",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:107"
+        "source": "docs/scenario/09-three-openings.md:107"
       },
       {
         "id": "flag.sealed_again",
@@ -396,7 +396,7 @@
         "readers": "N13",
         "effect": "必须想办法绕过封锁，或者与陶铮交易",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:113"
+        "source": "docs/scenario/09-three-openings.md:113"
       }
     ],
     "rep": [
@@ -408,7 +408,7 @@
         "readers": "act-2/act-3",
         "effect": "办公厅行动组态度",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:125"
+        "source": "docs/scenario/09-three-openings.md:125"
       }
     ],
     "clock": [
@@ -420,7 +420,7 @@
         "readers": "Q-00",
         "effect": "陶铮要在三天内完成一次「敷面」",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:89"
+        "source": "docs/scenario/09-three-openings.md:89"
       }
     ]
   },
@@ -487,6 +487,6 @@
       "rep_tao": 0,
       "deadline": 3
     },
-    "source": "docs/scenario/09-起步战役.md:61"
+    "source": "docs/scenario/09-three-openings.md:61"
   }
 }

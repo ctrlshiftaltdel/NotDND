@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.architecture",
-  "source": "docs/system/04-导引者操作系统.md:32",
+  "source": "docs/system/04-conductor-os.md:32",
   "note": "导引者的三层工作架构（叙事 / 裁决 / 模拟）、四条操作守则与三段输出结构。",
   "declared": {
     "layers": 3,
@@ -11,37 +11,37 @@
   "layers": [
     {"id": "narration", "name": "叙事层", "en": "Narration",
      "responsibility": "世界看起来、听起来是什么样", "output": "描写、对话、氛围",
-     "failure": "干瘪、重复、机械感", "source": "docs/system/04-导引者操作系统.md:38"},
+     "failure": "干瘪、重复、机械感", "source": "docs/system/04-conductor-os.md:38"},
     {"id": "adjudication", "name": "裁决层", "en": "Adjudication",
      "responsibility": "这句话／这个动作按规则意味着什么", "output": "判定、数值、状态变化",
-     "failure": "数值漂移、规则不一致", "source": "docs/system/04-导引者操作系统.md:39"},
+     "failure": "数值漂移、规则不一致", "source": "docs/system/04-conductor-os.md:39"},
     {"id": "simulation", "name": "模拟层", "en": "Simulation",
      "responsibility": "即使玩家不管，世界会怎样继续", "output": "后台推进、因果链",
-     "failure": "世界静止、NPC 像道具", "source": "docs/system/04-导引者操作系统.md:40"}
+     "failure": "世界静止、NPC 像道具", "source": "docs/system/04-conductor-os.md:40"}
   ],
   "output_structure": {
-    "source": "docs/system/04-导引者操作系统.md:47",
+    "source": "docs/system/04-conductor-os.md:47",
     "sections": [
       {"order": 1, "label": "【裁决】", "purpose": "你的具体判定结果（谁掷了什么、结果如何、数值变化）",
-       "source": "docs/system/04-导引者操作系统.md:48"},
+       "source": "docs/system/04-conductor-os.md:48"},
       {"order": 2, "label": "【叙事】", "purpose": "接下来发生什么的现场描写（玩家真正读到的部分）",
-       "source": "docs/system/04-导引者操作系统.md:49"},
+       "source": "docs/system/04-conductor-os.md:49"},
       {"order": 3, "label": "【钩子】", "purpose": "这个世界接下来递给你的东西（一个选择、一个变化、一个提问）",
-       "source": "docs/system/04-导引者操作系统.md:50"}
+       "source": "docs/system/04-conductor-os.md:50"}
     ]
   },
   "rules": [
     {"order": 1, "name": "分层输出，不要搅在一起",
      "rule": "一次优质的回应有清晰的三段结构：裁决 → 叙事 → 钩子。",
-     "source": "docs/system/04-导引者操作系统.md:44"},
+     "source": "docs/system/04-conductor-os.md:44"},
     {"order": 2, "name": "先裁决，后叙事",
      "rule": "永远先确定机械上发生了什么，再去描写；反过来做会导致数值为了迁就描写而漂移。",
-     "source": "docs/system/04-导引者操作系统.md:53"},
+     "source": "docs/system/04-conductor-os.md:53"},
     {"order": 3, "name": "模拟层在每个场景之间必须运转",
      "rule": "场景结束时问三个问题：未处理的线索进展到哪、哪个不在场 NPC 做了什么值得记录的决定、时间推进了多少，并写入世界账本。",
-     "source": "docs/system/04-导引者操作系统.md:56"},
+     "source": "docs/system/04-conductor-os.md:56"},
     {"order": 4, "name": "不要让模拟层抢夺叙事层的镜头",
      "rule": "玩家不在场的事情应当以痕迹的形式事后呈现（报告、被改动过的现场、迟到的消息），而不是大量 off-screen 独白。",
-     "source": "docs/system/04-导引者操作系统.md:65"}
+     "source": "docs/system/04-conductor-os.md:65"}
   ]
 }

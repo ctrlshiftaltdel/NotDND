@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.tactics_enemies）",
-  "description": "战术引擎第九节：敌人快速生成——四档基础模板（杂兵 / 标准 / 精锐 / 首领）、按队伍等级缩放表 6 行、修饰词缀 14（含预算与叠加上限 4）、组装示例。源自 docs/system/02A-战术引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "战术引擎第九节：敌人快速生成——四档基础模板（杂兵 / 标准 / 精锐 / 首领）、按队伍等级缩放表 6 行、修饰词缀 14（含预算与叠加上限 4）、组装示例。源自 docs/system/02a-tactics-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "tiers", "scaling", "affixes", "affix_limit"],
   "properties": {

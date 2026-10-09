@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "random_tables.catalog",
-  "source": "docs/system/08-随机生成器.md:1",
+  "source": "docs/system/08-universal-generators.md:1",
   "resource": "prism.random_tables",
   "tables": [
     {
@@ -13,106 +13,106 @@
         {
           "roll": 1,
           "result": "看门人／保安",
-          "source": "docs/system/08-随机生成器.md:54"
+          "source": "docs/system/08-universal-generators.md:54"
         },
         {
           "roll": 2,
           "result": "商贩",
-          "source": "docs/system/08-随机生成器.md:55"
+          "source": "docs/system/08-universal-generators.md:55"
         },
         {
           "roll": 3,
           "result": "医生／技师",
-          "source": "docs/system/08-随机生成器.md:56"
+          "source": "docs/system/08-universal-generators.md:56"
         },
         {
           "roll": 4,
           "result": "司机／搬运工",
-          "source": "docs/system/08-随机生成器.md:57"
+          "source": "docs/system/08-universal-generators.md:57"
         },
         {
           "roll": 5,
           "result": "教师／研究者",
-          "source": "docs/system/08-随机生成器.md:58"
+          "source": "docs/system/08-universal-generators.md:58"
         },
         {
           "roll": 6,
           "result": "官僚／办事员",
-          "source": "docs/system/08-随机生成器.md:59"
+          "source": "docs/system/08-universal-generators.md:59"
         },
         {
           "roll": 7,
           "result": "修理匠",
-          "source": "docs/system/08-随机生成器.md:60"
+          "source": "docs/system/08-universal-generators.md:60"
         },
         {
           "roll": 8,
           "result": "孩子",
-          "source": "docs/system/08-随机生成器.md:61"
+          "source": "docs/system/08-universal-generators.md:61"
         },
         {
           "roll": 9,
           "result": "老人",
-          "source": "docs/system/08-随机生成器.md:62"
+          "source": "docs/system/08-universal-generators.md:62"
         },
         {
           "roll": 10,
           "result": "宗教人员",
-          "source": "docs/system/08-随机生成器.md:63"
+          "source": "docs/system/08-universal-generators.md:63"
         },
         {
           "roll": 11,
           "result": "艺人／表演者",
-          "source": "docs/system/08-随机生成器.md:64"
+          "source": "docs/system/08-universal-generators.md:64"
         },
         {
           "roll": 12,
           "result": "退伍者／前从业者",
-          "source": "docs/system/08-随机生成器.md:65"
+          "source": "docs/system/08-universal-generators.md:65"
         },
         {
           "roll": 13,
           "result": "债务人／欠债的人",
-          "source": "docs/system/08-随机生成器.md:66"
+          "source": "docs/system/08-universal-generators.md:66"
         },
         {
           "roll": 14,
           "result": "记者／记录者",
-          "source": "docs/system/08-随机生成器.md:67"
+          "source": "docs/system/08-universal-generators.md:67"
         },
         {
           "roll": 15,
           "result": "中介／掮客",
-          "source": "docs/system/08-随机生成器.md:68"
+          "source": "docs/system/08-universal-generators.md:68"
         },
         {
           "roll": 16,
           "result": "失主（丢了什么东西的人）",
-          "source": "docs/system/08-随机生成器.md:69"
+          "source": "docs/system/08-universal-generators.md:69"
         },
         {
           "roll": 17,
           "result": "侍者／服务人员",
-          "source": "docs/system/08-随机生成器.md:70"
+          "source": "docs/system/08-universal-generators.md:70"
         },
         {
           "roll": 18,
           "result": "流浪者",
-          "source": "docs/system/08-随机生成器.md:71"
+          "source": "docs/system/08-universal-generators.md:71"
         },
         {
           "roll": 19,
           "result": "执法者",
-          "source": "docs/system/08-随机生成器.md:72"
+          "source": "docs/system/08-universal-generators.md:72"
         },
         {
           "roll": 20,
           "result": "继承人",
-          "source": "docs/system/08-随机生成器.md:73"
+          "source": "docs/system/08-universal-generators.md:73"
         }
       ],
       "use": "与 d20 欲望、d20 秘密组合成 NPC。",
-      "source": "docs/system/08-随机生成器.md:50"
+      "source": "docs/system/08-universal-generators.md:50"
     },
     {
       "id": "npc_desire",
@@ -123,106 +123,106 @@
         {
           "roll": 1,
           "result": "想让某个人回来",
-          "source": "docs/system/08-随机生成器.md:79"
+          "source": "docs/system/08-universal-generators.md:79"
         },
         {
           "roll": 2,
           "result": "想还清一笔钱",
-          "source": "docs/system/08-随机生成器.md:80"
+          "source": "docs/system/08-universal-generators.md:80"
         },
         {
           "roll": 3,
           "result": "想被承认",
-          "source": "docs/system/08-随机生成器.md:81"
+          "source": "docs/system/08-universal-generators.md:81"
         },
         {
           "roll": 4,
           "result": "想让某件事被忘记",
-          "source": "docs/system/08-随机生成器.md:82"
+          "source": "docs/system/08-universal-generators.md:82"
         },
         {
           "roll": 5,
           "result": "想找到一个答案",
-          "source": "docs/system/08-随机生成器.md:83"
+          "source": "docs/system/08-universal-generators.md:83"
         },
         {
           "roll": 6,
           "result": "想离开这个地方",
-          "source": "docs/system/08-随机生成器.md:84"
+          "source": "docs/system/08-universal-generators.md:84"
         },
         {
           "roll": 7,
           "result": "想保护某个人",
-          "source": "docs/system/08-随机生成器.md:85"
+          "source": "docs/system/08-universal-generators.md:85"
         },
         {
           "roll": 8,
           "result": "想报复",
-          "source": "docs/system/08-随机生成器.md:86"
+          "source": "docs/system/08-universal-generators.md:86"
         },
         {
           "roll": 9,
           "result": "想被爱",
-          "source": "docs/system/08-随机生成器.md:87"
+          "source": "docs/system/08-universal-generators.md:87"
         },
         {
           "roll": 10,
           "result": "想活过这个月",
-          "source": "docs/system/08-随机生成器.md:88"
+          "source": "docs/system/08-universal-generators.md:88"
         },
         {
           "roll": 11,
           "result": "想完成一件未完成的事",
-          "source": "docs/system/08-随机生成器.md:89"
+          "source": "docs/system/08-universal-generators.md:89"
         },
         {
           "roll": 12,
           "result": "想知道真相",
-          "source": "docs/system/08-随机生成器.md:90"
+          "source": "docs/system/08-universal-generators.md:90"
         },
         {
           "roll": 13,
           "result": "想证明自己是对的",
-          "source": "docs/system/08-随机生成器.md:91"
+          "source": "docs/system/08-universal-generators.md:91"
         },
         {
           "roll": 14,
           "result": "想守住一个秘密",
-          "source": "docs/system/08-随机生成器.md:92"
+          "source": "docs/system/08-universal-generators.md:92"
         },
         {
           "roll": 15,
           "result": "想让某人付出代价",
-          "source": "docs/system/08-随机生成器.md:93"
+          "source": "docs/system/08-universal-generators.md:93"
         },
         {
           "roll": 16,
           "result": "想被人记得",
-          "source": "docs/system/08-随机生成器.md:94"
+          "source": "docs/system/08-universal-generators.md:94"
         },
         {
           "roll": 17,
           "result": "想不再害怕",
-          "source": "docs/system/08-随机生成器.md:95"
+          "source": "docs/system/08-universal-generators.md:95"
         },
         {
           "roll": 18,
           "result": "想还清一份人情",
-          "source": "docs/system/08-随机生成器.md:96"
+          "source": "docs/system/08-universal-generators.md:96"
         },
         {
           "roll": 19,
           "result": "想有一个家",
-          "source": "docs/system/08-随机生成器.md:97"
+          "source": "docs/system/08-universal-generators.md:97"
         },
         {
           "roll": 20,
           "result": "想让一切都停下来",
-          "source": "docs/system/08-随机生成器.md:98"
+          "source": "docs/system/08-universal-generators.md:98"
         }
       ],
       "use": "与 d20 身份、d20 秘密组合成 NPC。",
-      "source": "docs/system/08-随机生成器.md:75"
+      "source": "docs/system/08-universal-generators.md:75"
     },
     {
       "id": "npc_secret",
@@ -233,106 +233,106 @@
         {
           "roll": 1,
           "result": "他拿了不该拿的东西",
-          "source": "docs/system/08-随机生成器.md:104"
+          "source": "docs/system/08-universal-generators.md:104"
         },
         {
           "roll": 2,
           "result": "他做过一次伪证",
-          "source": "docs/system/08-随机生成器.md:105"
+          "source": "docs/system/08-universal-generators.md:105"
         },
         {
           "roll": 3,
           "result": "他有两个家庭",
-          "source": "docs/system/08-随机生成器.md:106"
+          "source": "docs/system/08-universal-generators.md:106"
         },
         {
           "roll": 4,
           "result": "他曾经救过一个人，从未提起",
-          "source": "docs/system/08-随机生成器.md:107"
+          "source": "docs/system/08-universal-generators.md:107"
         },
         {
           "roll": 5,
           "result": "他的名字是假的",
-          "source": "docs/system/08-随机生成器.md:108"
+          "source": "docs/system/08-universal-generators.md:108"
         },
         {
           "roll": 6,
           "result": "他知道一件事的真相，但说出来会害死自己",
-          "source": "docs/system/08-随机生成器.md:109"
+          "source": "docs/system/08-universal-generators.md:109"
         },
         {
           "roll": 7,
           "result": "他曾经告发过别人",
-          "source": "docs/system/08-随机生成器.md:110"
+          "source": "docs/system/08-universal-generators.md:110"
         },
         {
           "roll": 8,
           "result": "他一直在资助某个人",
-          "source": "docs/system/08-随机生成器.md:111"
+          "source": "docs/system/08-universal-generators.md:111"
         },
         {
           "roll": 9,
           "result": "他杀过人，且从未被怀疑",
-          "source": "docs/system/08-随机生成器.md:112"
+          "source": "docs/system/08-universal-generators.md:112"
         },
         {
           "roll": 10,
           "result": "他欠一个不该欠的人人情",
-          "source": "docs/system/08-随机生成器.md:113"
+          "source": "docs/system/08-universal-generators.md:113"
         },
         {
           "roll": 11,
           "result": "他正在被人勒索",
-          "source": "docs/system/08-随机生成器.md:114"
+          "source": "docs/system/08-universal-generators.md:114"
         },
         {
           "roll": 12,
           "result": "他见过某个不该存在的东西",
-          "source": "docs/system/08-随机生成器.md:115"
+          "source": "docs/system/08-universal-generators.md:115"
         },
         {
           "roll": 13,
           "result": "他伪造了自己的身份",
-          "source": "docs/system/08-随机生成器.md:116"
+          "source": "docs/system/08-universal-generators.md:116"
         },
         {
           "roll": 14,
           "result": "他把某样东西藏在这里",
-          "source": "docs/system/08-随机生成器.md:117"
+          "source": "docs/system/08-universal-generators.md:117"
         },
         {
           "roll": 15,
           "result": "他其实知道玩家在找什么",
-          "source": "docs/system/08-随机生成器.md:118"
+          "source": "docs/system/08-universal-generators.md:118"
         },
         {
           "roll": 16,
           "result": "他每天都在等一个不会来的人",
-          "source": "docs/system/08-随机生成器.md:119"
+          "source": "docs/system/08-universal-generators.md:119"
         },
         {
           "roll": 17,
           "result": "他记得一件所有人都忘了的事",
-          "source": "docs/system/08-随机生成器.md:120"
+          "source": "docs/system/08-universal-generators.md:120"
         },
         {
           "roll": 18,
           "result": "他有一段被删除的记忆",
-          "source": "docs/system/08-随机生成器.md:121"
+          "source": "docs/system/08-universal-generators.md:121"
         },
         {
           "roll": 19,
           "result": "他不属于这里",
-          "source": "docs/system/08-随机生成器.md:122"
+          "source": "docs/system/08-universal-generators.md:122"
         },
         {
           "roll": 20,
           "result": "他打算今晚就走",
-          "source": "docs/system/08-随机生成器.md:123"
+          "source": "docs/system/08-universal-generators.md:123"
         }
       ],
       "use": "与 d20 身份、d20 欲望组合成 NPC。",
-      "source": "docs/system/08-随机生成器.md:100"
+      "source": "docs/system/08-universal-generators.md:100"
     },
     {
       "id": "npc_feature",
@@ -343,106 +343,106 @@
         {
           "roll": 1,
           "result": "说话时会重复最后三个字",
-          "source": "docs/system/08-随机生成器.md:129"
+          "source": "docs/system/08-universal-generators.md:129"
         },
         {
           "roll": 2,
           "result": "从不摘下手套",
-          "source": "docs/system/08-随机生成器.md:130"
+          "source": "docs/system/08-universal-generators.md:130"
         },
         {
           "roll": 3,
           "result": "身上有股药味",
-          "source": "docs/system/08-随机生成器.md:131"
+          "source": "docs/system/08-universal-generators.md:131"
         },
         {
           "roll": 4,
           "result": "总是先看对方的鞋",
-          "source": "docs/system/08-随机生成器.md:132"
+          "source": "docs/system/08-universal-generators.md:132"
         },
         {
           "roll": 5,
           "result": "从不直视别人",
-          "source": "docs/system/08-随机生成器.md:133"
+          "source": "docs/system/08-universal-generators.md:133"
         },
         {
           "roll": 6,
           "result": "手指上有旧伤",
-          "source": "docs/system/08-随机生成器.md:134"
+          "source": "docs/system/08-universal-generators.md:134"
         },
         {
           "roll": 7,
           "result": "讲话非常小声",
-          "source": "docs/system/08-随机生成器.md:135"
+          "source": "docs/system/08-universal-generators.md:135"
         },
         {
           "roll": 8,
           "result": "笑声比正常大",
-          "source": "docs/system/08-随机生成器.md:136"
+          "source": "docs/system/08-universal-generators.md:136"
         },
         {
           "roll": 9,
           "result": "随身携带一件不属于自己的东西",
-          "source": "docs/system/08-随机生成器.md:137"
+          "source": "docs/system/08-universal-generators.md:137"
         },
         {
           "roll": 10,
           "result": "左手无名指上有戒痕",
-          "source": "docs/system/08-随机生成器.md:138"
+          "source": "docs/system/08-universal-generators.md:138"
         },
         {
           "roll": 11,
           "result": "从不说自己姓什么",
-          "source": "docs/system/08-随机生成器.md:139"
+          "source": "docs/system/08-universal-generators.md:139"
         },
         {
           "roll": 12,
           "result": "总是迟到三分钟",
-          "source": "docs/system/08-随机生成器.md:140"
+          "source": "docs/system/08-universal-generators.md:140"
         },
         {
           "roll": 13,
           "result": "手里一直捏着什么东西",
-          "source": "docs/system/08-随机生成器.md:141"
+          "source": "docs/system/08-universal-generators.md:141"
         },
         {
           "roll": 14,
           "result": "对某个词特别敏感",
-          "source": "docs/system/08-随机生成器.md:142"
+          "source": "docs/system/08-universal-generators.md:142"
         },
         {
           "roll": 15,
           "result": "走路没有声音",
-          "source": "docs/system/08-随机生成器.md:143"
+          "source": "docs/system/08-universal-generators.md:143"
         },
         {
           "roll": 16,
           "result": "总在数东西",
-          "source": "docs/system/08-随机生成器.md:144"
+          "source": "docs/system/08-universal-generators.md:144"
         },
         {
           "roll": 17,
           "result": "有一个口头禅",
-          "source": "docs/system/08-随机生成器.md:145"
+          "source": "docs/system/08-universal-generators.md:145"
         },
         {
           "roll": 18,
           "result": "从不在某个时段出门",
-          "source": "docs/system/08-随机生成器.md:146"
+          "source": "docs/system/08-universal-generators.md:146"
         },
         {
           "roll": 19,
           "result": "记得所有人的名字",
-          "source": "docs/system/08-随机生成器.md:147"
+          "source": "docs/system/08-universal-generators.md:147"
         },
         {
           "roll": 20,
           "result": "有一处旧伤，阴天会疼",
-          "source": "docs/system/08-随机生成器.md:148"
+          "source": "docs/system/08-universal-generators.md:148"
         }
       ],
       "use": "作为 NPC 三段式的可选第四掷。",
-      "source": "docs/system/08-随机生成器.md:125"
+      "source": "docs/system/08-universal-generators.md:125"
     },
     {
       "id": "relation_nature",
@@ -453,66 +453,66 @@
         {
           "roll": 1,
           "result": "欠债与债主",
-          "source": "docs/system/08-随机生成器.md:158"
+          "source": "docs/system/08-universal-generators.md:158"
         },
         {
           "roll": 2,
           "result": "旧日同僚，如今立场相反",
-          "source": "docs/system/08-随机生成器.md:159"
+          "source": "docs/system/08-universal-generators.md:159"
         },
         {
           "roll": 3,
           "result": "同父异母的兄弟，互不知情",
-          "source": "docs/system/08-随机生成器.md:160"
+          "source": "docs/system/08-universal-generators.md:160"
         },
         {
           "roll": 4,
           "result": "师徒，但徒弟超过了师父",
-          "source": "docs/system/08-随机生成器.md:161"
+          "source": "docs/system/08-universal-generators.md:161"
         },
         {
           "roll": 5,
           "result": "曾经订过婚",
-          "source": "docs/system/08-随机生成器.md:162"
+          "source": "docs/system/08-universal-generators.md:162"
         },
         {
           "roll": 6,
           "result": "一起做过一件不能说的事",
-          "source": "docs/system/08-随机生成器.md:163"
+          "source": "docs/system/08-universal-generators.md:163"
         },
         {
           "roll": 7,
           "result": "一方救过另一方的命，且从未提及",
-          "source": "docs/system/08-随机生成器.md:164"
+          "source": "docs/system/08-universal-generators.md:164"
         },
         {
           "roll": 8,
           "result": "互相掌握对方的把柄",
-          "source": "docs/system/08-随机生成器.md:165"
+          "source": "docs/system/08-universal-generators.md:165"
         },
         {
           "roll": 9,
           "result": "长期邻居，从未说过话",
-          "source": "docs/system/08-随机生成器.md:166"
+          "source": "docs/system/08-universal-generators.md:166"
         },
         {
           "roll": 10,
           "result": "情敌（其中一人早已放弃）",
-          "source": "docs/system/08-随机生成器.md:167"
+          "source": "docs/system/08-universal-generators.md:167"
         },
         {
           "roll": 11,
           "result": "一方一直在模仿另一方",
-          "source": "docs/system/08-随机生成器.md:168"
+          "source": "docs/system/08-universal-generators.md:168"
         },
         {
           "roll": 12,
           "result": "血缘关系，只有一人知道",
-          "source": "docs/system/08-随机生成器.md:169"
+          "source": "docs/system/08-universal-generators.md:169"
         }
       ],
       "use": "与 d10 关系张力组合成一段正在发热的关系。",
-      "source": "docs/system/08-随机生成器.md:156"
+      "source": "docs/system/08-universal-generators.md:156"
     },
     {
       "id": "relation_tension",
@@ -523,56 +523,56 @@
         {
           "roll": 1,
           "result": "其中一人正准备离开",
-          "source": "docs/system/08-随机生成器.md:175"
+          "source": "docs/system/08-universal-generators.md:175"
         },
         {
           "roll": 2,
           "result": "其中一人病了，且没有告诉对方",
-          "source": "docs/system/08-随机生成器.md:176"
+          "source": "docs/system/08-universal-generators.md:176"
         },
         {
           "roll": 3,
           "result": "有人欠的钱今天到期",
-          "source": "docs/system/08-随机生成器.md:177"
+          "source": "docs/system/08-universal-generators.md:177"
         },
         {
           "roll": 4,
           "result": "其中一人的秘密快藏不住了",
-          "source": "docs/system/08-随机生成器.md:178"
+          "source": "docs/system/08-universal-generators.md:178"
         },
         {
           "roll": 5,
           "result": "有人即将获得一件对方想要的东西",
-          "source": "docs/system/08-随机生成器.md:179"
+          "source": "docs/system/08-universal-generators.md:179"
         },
         {
           "roll": 6,
           "result": "第三方正在挑拨",
-          "source": "docs/system/08-随机生成器.md:180"
+          "source": "docs/system/08-universal-generators.md:180"
         },
         {
           "roll": 7,
           "result": "一个旧伤被重新提起",
-          "source": "docs/system/08-随机生成器.md:181"
+          "source": "docs/system/08-universal-generators.md:181"
         },
         {
           "roll": 8,
           "result": "其中一人准备坦白",
-          "source": "docs/system/08-随机生成器.md:182"
+          "source": "docs/system/08-universal-generators.md:182"
         },
         {
           "roll": 9,
           "result": "其中一人准备陷害",
-          "source": "docs/system/08-随机生成器.md:183"
+          "source": "docs/system/08-universal-generators.md:183"
         },
         {
           "roll": 10,
           "result": "他们被迫合作",
-          "source": "docs/system/08-随机生成器.md:184"
+          "source": "docs/system/08-universal-generators.md:184"
         }
       ],
       "use": "与 d12 关系组合，说明此刻的张力。",
-      "source": "docs/system/08-随机生成器.md:171"
+      "source": "docs/system/08-universal-generators.md:171"
     },
     {
       "id": "scene_atmosphere",
@@ -583,65 +583,65 @@
         {
           "roll": 1,
           "result": "安静得过分",
-          "source": "docs/system/08-随机生成器.md:194"
+          "source": "docs/system/08-universal-generators.md:194"
         },
         {
           "roll": 2,
           "result": "太吵，听不清彼此",
-          "source": "docs/system/08-随机生成器.md:195"
+          "source": "docs/system/08-universal-generators.md:195"
         },
         {
           "roll": 3,
           "result": "有一种刚刚结束的感觉",
-          "source": "docs/system/08-随机生成器.md:196"
+          "source": "docs/system/08-universal-generators.md:196"
         },
         {
           "roll": 4,
           "result": "所有人都在赶时间",
-          "source": "docs/system/08-随机生成器.md:197"
+          "source": "docs/system/08-universal-generators.md:197"
         },
         {
           "roll": 5,
           "result": "有什么正在发生，但没人说",
-          "source": "docs/system/08-随机生成器.md:198"
+          "source": "docs/system/08-universal-generators.md:198"
         },
         {
           "roll": 6,
           "result": "这里刚刚被清理过",
-          "source": "docs/system/08-随机生成器.md:199"
+          "source": "docs/system/08-universal-generators.md:199"
         },
         {
           "roll": 7,
           "result": "温暖、日常、让人放松警惕",
-          "source": "docs/system/08-随机生成器.md:200"
+          "source": "docs/system/08-universal-generators.md:200"
         },
         {
           "roll": 8,
           "result": "有一种等待的感觉",
-          "source": "docs/system/08-随机生成器.md:201"
+          "source": "docs/system/08-universal-generators.md:201"
         },
         {
           "roll": 9,
           "result": "有人在监视",
-          "source": "docs/system/08-随机生成器.md:202"
+          "source": "docs/system/08-universal-generators.md:202"
         },
         {
           "roll": 10,
           "result": "这个地方不属于现在",
-          "source": "docs/system/08-随机生成器.md:203"
+          "source": "docs/system/08-universal-generators.md:203"
         },
         {
           "roll": 11,
           "result": "所有人都在笑，且不知道在笑什么",
-          "source": "docs/system/08-随机生成器.md:204"
+          "source": "docs/system/08-universal-generators.md:204"
         },
         {
           "roll": 12,
           "result": "这里很旧，且有人一直在这里维护它",
-          "source": "docs/system/08-随机生成器.md:205"
+          "source": "docs/system/08-universal-generators.md:205"
         }
       ],
-      "source": "docs/system/08-随机生成器.md:190"
+      "source": "docs/system/08-universal-generators.md:190"
     },
     {
       "id": "weather",
@@ -653,70 +653,70 @@
           "roll": 1,
           "result": "大雨",
           "effect": "远程 −1 骰；声音被掩盖（潜行 +1 骰）",
-          "source": "docs/system/08-随机生成器.md:211"
+          "source": "docs/system/08-universal-generators.md:211"
         },
         {
           "roll": 2,
           "result": "雾",
           "effect": "10 米外视线受阻；所有人可获得【隐匿】机会",
-          "source": "docs/system/08-随机生成器.md:212"
+          "source": "docs/system/08-universal-generators.md:212"
         },
         {
           "roll": 3,
           "result": "酷热",
           "effect": "每两小时需耐受判定，失败获得 1 层【疲惫】",
-          "source": "docs/system/08-随机生成器.md:213"
+          "source": "docs/system/08-universal-generators.md:213"
         },
         {
           "roll": 4,
           "result": "严寒",
           "effect": "同上；火源变得重要",
-          "source": "docs/system/08-随机生成器.md:214"
+          "source": "docs/system/08-universal-generators.md:214"
         },
         {
           "roll": 5,
           "result": "大风",
           "effect": "远程 −2 骰；移动 AP +1",
-          "source": "docs/system/08-随机生成器.md:215"
+          "source": "docs/system/08-universal-generators.md:215"
         },
         {
           "roll": 6,
           "result": "阴天，无雨",
           "effect": "无影响",
-          "source": "docs/system/08-随机生成器.md:216"
+          "source": "docs/system/08-universal-generators.md:216"
         },
         {
           "roll": 7,
           "result": "暴雨后的积水",
           "effect": "电击伤害范围扩大；移动减半",
-          "source": "docs/system/08-随机生成器.md:217"
+          "source": "docs/system/08-universal-generators.md:217"
         },
         {
           "roll": 8,
           "result": "夜晚，无月",
           "effect": "无夜视者 −2 骰；潜行 +2 骰",
-          "source": "docs/system/08-随机生成器.md:218"
+          "source": "docs/system/08-universal-generators.md:218"
         },
         {
           "roll": 9,
           "result": "正午，刺眼",
           "effect": "面向阳光的远程 −1 骰",
-          "source": "docs/system/08-随机生成器.md:219"
+          "source": "docs/system/08-universal-generators.md:219"
         },
         {
           "roll": 10,
           "result": "天气刚刚变了",
           "effect": "演出角色们的反应",
-          "source": "docs/system/08-随机生成器.md:220"
+          "source": "docs/system/08-universal-generators.md:220"
         }
       ],
       "use": "机械影响一列为可选，掷到后按内核结算。",
       "interface": {
         "type": "weather_effect",
-        "state_ref": "01-内核CORE.md 第五节",
-        "edge_ref": "02A-战术引擎.md"
+        "state_ref": "01-core.md 第五节",
+        "edge_ref": "02a-tactics-engine.md"
       },
-      "source": "docs/system/08-随机生成器.md:207"
+      "source": "docs/system/08-universal-generators.md:207"
     },
     {
       "id": "site_elements_ext",
@@ -730,7 +730,7 @@
           "tag": "机动",
           "df": 11,
           "effect": "可荡过去，也可被砍断使对手坠落",
-          "source": "docs/system/08-随机生成器.md:230"
+          "source": "docs/system/08-universal-generators.md:230"
         },
         {
           "roll": 2,
@@ -738,7 +738,7 @@
           "tag": "危险",
           "df": 12,
           "effect": "内容物可能是水、油、化学品或别的",
-          "source": "docs/system/08-随机生成器.md:231"
+          "source": "docs/system/08-universal-generators.md:231"
         },
         {
           "roll": 3,
@@ -746,7 +746,7 @@
           "tag": "危险",
           "df": 13,
           "effect": "每回合对相邻单位造成 1d8，可被关闭",
-          "source": "docs/system/08-随机生成器.md:232"
+          "source": "docs/system/08-universal-generators.md:232"
         },
         {
           "roll": 4,
@@ -754,7 +754,7 @@
           "tag": "掩体",
           "df": null,
           "effect": "提供中度掩体，可被推倒",
-          "source": "docs/system/08-随机生成器.md:233"
+          "source": "docs/system/08-universal-generators.md:233"
         },
         {
           "roll": 5,
@@ -762,7 +762,7 @@
           "tag": "增幅",
           "df": null,
           "effect": "远程攻击可利用反射绕过掩体",
-          "source": "docs/system/08-随机生成器.md:234"
+          "source": "docs/system/08-universal-generators.md:234"
         },
         {
           "roll": 6,
@@ -770,7 +770,7 @@
           "tag": "机动",
           "df": null,
           "effect": "只能容一人通过，是天然的防线",
-          "source": "docs/system/08-随机生成器.md:235"
+          "source": "docs/system/08-universal-generators.md:235"
         },
         {
           "roll": 7,
@@ -778,7 +778,7 @@
           "tag": "机动",
           "df": 10,
           "effect": "占据高处者获得【高地】",
-          "source": "docs/system/08-随机生成器.md:236"
+          "source": "docs/system/08-universal-generators.md:236"
         },
         {
           "roll": 8,
@@ -786,7 +786,7 @@
           "tag": "掩体",
           "df": null,
           "effect": "轻度掩体，随手可得",
-          "source": "docs/system/08-随机生成器.md:237"
+          "source": "docs/system/08-universal-generators.md:237"
         },
         {
           "roll": 9,
@@ -794,7 +794,7 @@
           "tag": "危险",
           "df": 12,
           "effect": "击落后砸下，2d8 钝击",
-          "source": "docs/system/08-随机生成器.md:238"
+          "source": "docs/system/08-universal-generators.md:238"
         },
         {
           "roll": 10,
@@ -802,7 +802,7 @@
           "tag": "增幅",
           "df": null,
           "effect": "电击伤害范围扩大；地面湿滑（移动 −1 米）",
-          "source": "docs/system/08-随机生成器.md:239"
+          "source": "docs/system/08-universal-generators.md:239"
         },
         {
           "roll": 11,
@@ -810,7 +810,7 @@
           "tag": "机动",
           "df": 11,
           "effect": "可以躲藏，也可以抄近路",
-          "source": "docs/system/08-随机生成器.md:240"
+          "source": "docs/system/08-universal-generators.md:240"
         },
         {
           "roll": 12,
@@ -818,7 +818,7 @@
           "tag": "掩体",
           "df": null,
           "effect": "重型掩体，可被引爆或推动",
-          "source": "docs/system/08-随机生成器.md:241"
+          "source": "docs/system/08-universal-generators.md:241"
         },
         {
           "roll": 13,
@@ -826,7 +826,7 @@
           "tag": "危险",
           "df": null,
           "effect": "相邻每回合 1d6 火焰，可扩散",
-          "source": "docs/system/08-随机生成器.md:242"
+          "source": "docs/system/08-universal-generators.md:242"
         },
         {
           "roll": 14,
@@ -834,7 +834,7 @@
           "tag": "机关",
           "df": 12,
           "effect": "可以分割战场；是关键的位置要素",
-          "source": "docs/system/08-随机生成器.md:243"
+          "source": "docs/system/08-universal-generators.md:243"
         },
         {
           "roll": 15,
@@ -842,7 +842,7 @@
           "tag": "机关",
           "df": 13,
           "effect": "操作它可以改变场景（升降、照明、门禁）",
-          "source": "docs/system/08-随机生成器.md:244"
+          "source": "docs/system/08-universal-generators.md:244"
         },
         {
           "roll": 16,
@@ -850,7 +850,7 @@
           "tag": "掩体",
           "df": 10,
           "effect": "阻挡视线；可被点燃或扯下",
-          "source": "docs/system/08-随机生成器.md:245"
+          "source": "docs/system/08-universal-generators.md:245"
         },
         {
           "roll": 17,
@@ -858,7 +858,7 @@
           "tag": "危险",
           "df": 12,
           "effect": "承重有限，多人同时踩会塌陷",
-          "source": "docs/system/08-随机生成器.md:246"
+          "source": "docs/system/08-universal-generators.md:246"
         },
         {
           "roll": 18,
@@ -866,7 +866,7 @@
           "tag": "情绪",
           "df": null,
           "effect": "伤害他们会带来严重的后果",
-          "source": "docs/system/08-随机生成器.md:247"
+          "source": "docs/system/08-universal-generators.md:247"
         },
         {
           "roll": 19,
@@ -874,7 +874,7 @@
           "tag": "情绪",
           "df": 12,
           "effect": "触发后 N 回合内引来增援",
-          "source": "docs/system/08-随机生成器.md:248"
+          "source": "docs/system/08-universal-generators.md:248"
         },
         {
           "roll": 20,
@@ -882,16 +882,16 @@
           "tag": "增幅",
           "df": 10,
           "effect": "一次性的恢复或补给，仅可使用一次",
-          "source": "docs/system/08-随机生成器.md:249"
+          "source": "docs/system/08-universal-generators.md:249"
         }
       ],
-      "use": "想要更具体的场景时使用；基础 d20 表见 01-内核CORE.md 第 10 节。",
+      "use": "想要更具体的场景时使用；基础 d20 表见 01-core.md 第 10 节。",
       "interface": {
         "type": "site_element",
-        "base_table_ref": "01-内核CORE.md 第十节",
-        "df_ref": "01-内核CORE.md 第十节"
+        "base_table_ref": "01-core.md 第十节",
+        "df_ref": "01-core.md 第十节"
       },
-      "source": "docs/system/08-随机生成器.md:228"
+      "source": "docs/system/08-universal-generators.md:228"
     },
     {
       "id": "encounter_type",
@@ -902,110 +902,110 @@
         {
           "roll": 1,
           "result": "一场战斗（按预算生成敌人）",
-          "source": "docs/system/08-随机生成器.md:259"
+          "source": "docs/system/08-universal-generators.md:259"
         },
         {
           "roll": 2,
           "result": "有人正在被追赶，需要你决定帮谁",
-          "source": "docs/system/08-随机生成器.md:260"
+          "source": "docs/system/08-universal-generators.md:260"
         },
         {
           "roll": 3,
           "result": "一处刚刚发生的事故现场，还有幸存者",
-          "source": "docs/system/08-随机生成器.md:261"
+          "source": "docs/system/08-universal-generators.md:261"
         },
         {
           "roll": 4,
           "result": "一场争执，双方都要求你评理",
-          "source": "docs/system/08-随机生成器.md:262"
+          "source": "docs/system/08-universal-generators.md:262"
         },
         {
           "roll": 5,
           "result": "一个需要帮助的人，且他给出的理由不太成立",
-          "source": "docs/system/08-随机生成器.md:263"
+          "source": "docs/system/08-universal-generators.md:263"
         },
         {
           "roll": 6,
           "result": "一队巡逻／检查，需要你通过",
-          "source": "docs/system/08-随机生成器.md:264"
+          "source": "docs/system/08-universal-generators.md:264"
         },
         {
           "roll": 7,
           "result": "有人认出了你们中的一位",
-          "source": "docs/system/08-随机生成器.md:265"
+          "source": "docs/system/08-universal-generators.md:265"
         },
         {
           "roll": 8,
           "result": "一件被遗弃的重要物品",
-          "source": "docs/system/08-随机生成器.md:266"
+          "source": "docs/system/08-universal-generators.md:266"
         },
         {
           "roll": 9,
           "result": "一具尸体（且不是刚刚死的）",
-          "source": "docs/system/08-随机生成器.md:267"
+          "source": "docs/system/08-universal-generators.md:267"
         },
         {
           "roll": 10,
           "result": "一个路障或封锁线",
-          "source": "docs/system/08-随机生成器.md:268"
+          "source": "docs/system/08-universal-generators.md:268"
         },
         {
           "roll": 11,
           "result": "有人在交易，而交易的东西不太对",
-          "source": "docs/system/08-随机生成器.md:269"
+          "source": "docs/system/08-universal-generators.md:269"
         },
         {
           "roll": 12,
           "result": "一场表演／集会／仪式",
-          "source": "docs/system/08-随机生成器.md:270"
+          "source": "docs/system/08-universal-generators.md:270"
         },
         {
           "roll": 13,
           "result": "天气或环境突然恶化",
-          "source": "docs/system/08-随机生成器.md:271"
+          "source": "docs/system/08-universal-generators.md:271"
         },
         {
           "roll": 14,
           "result": "一只不属于这里的动物",
-          "source": "docs/system/08-随机生成器.md:272"
+          "source": "docs/system/08-universal-generators.md:272"
         },
         {
           "roll": 15,
           "result": "有人向你们求救，而且是陷阱",
-          "source": "docs/system/08-随机生成器.md:273"
+          "source": "docs/system/08-universal-generators.md:273"
         },
         {
           "roll": 16,
           "result": "一段刚刚留下的线索，还热着",
-          "source": "docs/system/08-随机生成器.md:274"
+          "source": "docs/system/08-universal-generators.md:274"
         },
         {
           "roll": 17,
           "result": "一个孩子，他不该在这里",
-          "source": "docs/system/08-随机生成器.md:275"
+          "source": "docs/system/08-universal-generators.md:275"
         },
         {
           "roll": 18,
           "result": "你们被误认为是别人",
-          "source": "docs/system/08-随机生成器.md:276"
+          "source": "docs/system/08-universal-generators.md:276"
         },
         {
           "roll": 19,
           "result": "有人递给你们一样东西，然后走了",
-          "source": "docs/system/08-随机生成器.md:277"
+          "source": "docs/system/08-universal-generators.md:277"
         },
         {
           "roll": 20,
           "result": "什么都没有发生——但有人一直在看着你们",
-          "source": "docs/system/08-随机生成器.md:278"
+          "source": "docs/system/08-universal-generators.md:278"
         }
       ],
       "use": "当你需要「路上发生了什么」时掷 d20。",
       "interface": {
         "type": "encounter",
-        "budget_ref": "02A-战术引擎.md 第九、十节"
+        "budget_ref": "02a-tactics-engine.md 第九、十节"
       },
-      "source": "docs/system/08-随机生成器.md:257"
+      "source": "docs/system/08-universal-generators.md:257"
     },
     {
       "id": "scene_distortion",
@@ -1016,66 +1016,66 @@
         {
           "roll": 1,
           "result": "时间在这里向前跳了一小时，没有人注意到",
-          "source": "docs/system/08-随机生成器.md:288"
+          "source": "docs/system/08-universal-generators.md:288"
         },
         {
           "roll": 2,
           "result": "房间里所有能反光的表面都比实际少一个人",
-          "source": "docs/system/08-随机生成器.md:289"
+          "source": "docs/system/08-universal-generators.md:289"
         },
         {
           "roll": 3,
           "result": "你一走进来就听见有人在念一段数字",
-          "source": "docs/system/08-随机生成器.md:290"
+          "source": "docs/system/08-universal-generators.md:290"
         },
         {
           "roll": 4,
           "result": "所有的门都通向同一个房间",
-          "source": "docs/system/08-随机生成器.md:291"
+          "source": "docs/system/08-universal-generators.md:291"
         },
         {
           "roll": 5,
           "result": "声音可以看见：说话时嘴边有光",
-          "source": "docs/system/08-随机生成器.md:292"
+          "source": "docs/system/08-universal-generators.md:292"
         },
         {
           "roll": 6,
           "result": "水渍的形状是昨天在这里站过的人",
-          "source": "docs/system/08-随机生成器.md:293"
+          "source": "docs/system/08-universal-generators.md:293"
         },
         {
           "roll": 7,
           "result": "所有钟表都停在三小时后的那个时刻",
-          "source": "docs/system/08-随机生成器.md:294"
+          "source": "docs/system/08-universal-generators.md:294"
         },
         {
           "roll": 8,
           "result": "光线变得有厚度，影子边缘有第二个轮廓",
-          "source": "docs/system/08-随机生成器.md:295"
+          "source": "docs/system/08-universal-generators.md:295"
         },
         {
           "roll": 9,
           "result": "一小段路无论如何也走不到尽头",
-          "source": "docs/system/08-随机生成器.md:296"
+          "source": "docs/system/08-universal-generators.md:296"
         },
         {
           "roll": 10,
           "result": "你闻到了雨的气味，但外面是晴天",
-          "source": "docs/system/08-随机生成器.md:297"
+          "source": "docs/system/08-universal-generators.md:297"
         },
         {
           "roll": 11,
           "result": "一个正在发生的事同时在这里与别处进行，两处的版本不同",
-          "source": "docs/system/08-随机生成器.md:298"
+          "source": "docs/system/08-universal-generators.md:298"
         },
         {
           "roll": 12,
           "result": "你的同伴说了句什么，而他的嘴没有动",
-          "source": "docs/system/08-随机生成器.md:299"
+          "source": "docs/system/08-universal-generators.md:299"
         }
       ],
       "use": "用于把一个普通场景变得「不太对」，尤其适合与三个世界模组配合。",
-      "source": "docs/system/08-随机生成器.md:286"
+      "source": "docs/system/08-universal-generators.md:286"
     },
     {
       "id": "valuable_finds",
@@ -1086,105 +1086,105 @@
         {
           "roll": 1,
           "result": "一份写了一半的信",
-          "source": "docs/system/08-随机生成器.md:309"
+          "source": "docs/system/08-universal-generators.md:309"
         },
         {
           "roll": 2,
           "result": "一把钥匙，标签上的门牌号已经不存在了",
-          "source": "docs/system/08-随机生成器.md:310"
+          "source": "docs/system/08-universal-generators.md:310"
         },
         {
           "roll": 3,
           "result": "一张合影，其中一张脸被刮掉了",
-          "source": "docs/system/08-随机生成器.md:311"
+          "source": "docs/system/08-universal-generators.md:311"
         },
         {
           "roll": 4,
           "result": "一枚不属于任何人的徽章",
-          "source": "docs/system/08-随机生成器.md:312"
+          "source": "docs/system/08-universal-generators.md:312"
         },
         {
           "roll": 5,
           "result": "一段录音，背景里有第三个人的声音",
-          "source": "docs/system/08-随机生成器.md:313"
+          "source": "docs/system/08-universal-generators.md:313"
         },
         {
           "roll": 6,
           "result": "一本账簿，最后一笔的日期是明天",
-          "source": "docs/system/08-随机生成器.md:314"
+          "source": "docs/system/08-universal-generators.md:314"
         },
         {
           "roll": 7,
           "result": "一件被仔细包裹的私人物品",
-          "source": "docs/system/08-随机生成器.md:315"
+          "source": "docs/system/08-universal-generators.md:315"
         },
         {
           "roll": 8,
           "result": "一份名单，上面有你认识的名字",
-          "source": "docs/system/08-随机生成器.md:316"
+          "source": "docs/system/08-universal-generators.md:316"
         },
         {
           "roll": 9,
           "result": "一张过期的票据，上面的金额被改过",
-          "source": "docs/system/08-随机生成器.md:317"
+          "source": "docs/system/08-universal-generators.md:317"
         },
         {
           "roll": 10,
           "result": "一张地图，标着一个不存在的地点",
-          "source": "docs/system/08-随机生成器.md:318"
+          "source": "docs/system/08-universal-generators.md:318"
         },
         {
           "roll": 11,
           "result": "一份遗嘱，受益人不是亲属",
-          "source": "docs/system/08-随机生成器.md:319"
+          "source": "docs/system/08-universal-generators.md:319"
         },
         {
           "roll": 12,
           "result": "一枚戒指，内圈刻着两个名字",
-          "source": "docs/system/08-随机生成器.md:320"
+          "source": "docs/system/08-universal-generators.md:320"
         },
         {
           "roll": 13,
           "result": "一个存储设备，里面只有一个文件",
-          "source": "docs/system/08-随机生成器.md:321"
+          "source": "docs/system/08-universal-generators.md:321"
         },
         {
           "roll": 14,
           "result": "一件孩子的衣物，尺寸不对",
-          "source": "docs/system/08-随机生成器.md:322"
+          "source": "docs/system/08-universal-generators.md:322"
         },
         {
           "roll": 15,
           "result": "一份医疗记录，患者名字被涂改",
-          "source": "docs/system/08-随机生成器.md:323"
+          "source": "docs/system/08-universal-generators.md:323"
         },
         {
           "roll": 16,
           "result": "一张收据，购买的东西无法被确认",
-          "source": "docs/system/08-随机生成器.md:324"
+          "source": "docs/system/08-universal-generators.md:324"
         },
         {
           "roll": 17,
           "result": "一封没有寄出的信",
-          "source": "docs/system/08-随机生成器.md:325"
+          "source": "docs/system/08-universal-generators.md:325"
         },
         {
           "roll": 18,
           "result": "一把武器，上面有不属于它的血迹",
-          "source": "docs/system/08-随机生成器.md:326"
+          "source": "docs/system/08-universal-generators.md:326"
         },
         {
           "roll": 19,
           "result": "一份日程表，最后一天被圈了起来",
-          "source": "docs/system/08-随机生成器.md:327"
+          "source": "docs/system/08-universal-generators.md:327"
         },
         {
           "roll": 20,
           "result": "一张照片，拍摄角度是从你的房间里往外看",
-          "source": "docs/system/08-随机生成器.md:328"
+          "source": "docs/system/08-universal-generators.md:328"
         }
       ],
-      "source": "docs/system/08-随机生成器.md:305"
+      "source": "docs/system/08-universal-generators.md:305"
     },
     {
       "id": "item_quality",
@@ -1195,65 +1195,65 @@
         {
           "roll": 1,
           "result": "它被小心翼翼地保存着",
-          "source": "docs/system/08-随机生成器.md:334"
+          "source": "docs/system/08-universal-generators.md:334"
         },
         {
           "roll": 2,
           "result": "它显然被用过很久",
-          "source": "docs/system/08-随机生成器.md:335"
+          "source": "docs/system/08-universal-generators.md:335"
         },
         {
           "roll": 3,
           "result": "它是崭新的，这不合理",
-          "source": "docs/system/08-随机生成器.md:336"
+          "source": "docs/system/08-universal-generators.md:336"
         },
         {
           "roll": 4,
           "result": "上面有别人的指纹，且不止一个人",
-          "source": "docs/system/08-随机生成器.md:337"
+          "source": "docs/system/08-universal-generators.md:337"
         },
         {
           "roll": 5,
           "result": "它被人刻意损坏过",
-          "source": "docs/system/08-随机生成器.md:338"
+          "source": "docs/system/08-universal-generators.md:338"
         },
         {
           "roll": 6,
           "result": "它比看上去更有价值",
-          "source": "docs/system/08-随机生成器.md:339"
+          "source": "docs/system/08-universal-generators.md:339"
         },
         {
           "roll": 7,
           "result": "它比看上去更危险",
-          "source": "docs/system/08-随机生成器.md:340"
+          "source": "docs/system/08-universal-generators.md:340"
         },
         {
           "roll": 8,
           "result": "它属于某个仍然在找它的人",
-          "source": "docs/system/08-随机生成器.md:341"
+          "source": "docs/system/08-universal-generators.md:341"
         },
         {
           "roll": 9,
           "result": "它上面有某种记号",
-          "source": "docs/system/08-随机生成器.md:342"
+          "source": "docs/system/08-universal-generators.md:342"
         },
         {
           "roll": 10,
           "result": "它不该在这里出现",
-          "source": "docs/system/08-随机生成器.md:343"
+          "source": "docs/system/08-universal-generators.md:343"
         },
         {
           "roll": 11,
           "result": "它和你有某种联系（由导引者决定是什么）",
-          "source": "docs/system/08-随机生成器.md:344"
+          "source": "docs/system/08-universal-generators.md:344"
         },
         {
           "roll": 12,
           "result": "它是假的，但做得非常好",
-          "source": "docs/system/08-随机生成器.md:345"
+          "source": "docs/system/08-universal-generators.md:345"
         }
       ],
-      "source": "docs/system/08-随机生成器.md:330"
+      "source": "docs/system/08-universal-generators.md:330"
     },
     {
       "id": "chinese_surname",
@@ -1264,986 +1264,986 @@
         {
           "roll": 1,
           "result": "林",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 2,
           "result": "陈",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 3,
           "result": "周",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 4,
           "result": "吴",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 5,
           "result": "郑",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 6,
           "result": "王",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 7,
           "result": "冯",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 8,
           "result": "褚",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 9,
           "result": "卫",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 10,
           "result": "蒋",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 11,
           "result": "沈",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 12,
           "result": "韩",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 13,
           "result": "杨",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 14,
           "result": "朱",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 15,
           "result": "秦",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 16,
           "result": "许",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 17,
           "result": "何",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 18,
           "result": "吕",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 19,
           "result": "施",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 20,
           "result": "张",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 21,
           "result": "孔",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 22,
           "result": "曹",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 23,
           "result": "严",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 24,
           "result": "华",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 25,
           "result": "金",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 26,
           "result": "魏",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 27,
           "result": "陶",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 28,
           "result": "姜",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 29,
           "result": "戚",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 30,
           "result": "谢",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 31,
           "result": "邹",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 32,
           "result": "喻",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 33,
           "result": "柏",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 34,
           "result": "窦",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 35,
           "result": "章",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 36,
           "result": "云",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 37,
           "result": "苏",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 38,
           "result": "潘",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 39,
           "result": "葛",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 40,
           "result": "范",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 41,
           "result": "彭",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 42,
           "result": "鲁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 43,
           "result": "韦",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 44,
           "result": "马",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 45,
           "result": "方",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 46,
           "result": "俞",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 47,
           "result": "任",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 48,
           "result": "袁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 49,
           "result": "柳",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 50,
           "result": "岑",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 51,
           "result": "柯",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 52,
           "result": "沈",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 53,
           "result": "路",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 54,
           "result": "迟",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 55,
           "result": "时",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 56,
           "result": "宁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 57,
           "result": "常",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 58,
           "result": "乐",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 59,
           "result": "于",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 60,
           "result": "傅",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 61,
           "result": "皮",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 62,
           "result": "齐",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 63,
           "result": "康",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 64,
           "result": "伍",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 65,
           "result": "余",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 66,
           "result": "元",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 67,
           "result": "卜",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 68,
           "result": "顾",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 69,
           "result": "孟",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 70,
           "result": "平",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 71,
           "result": "黄",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 72,
           "result": "穆",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 73,
           "result": "萧",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 74,
           "result": "尹",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 75,
           "result": "江",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 76,
           "result": "钟",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 77,
           "result": "徐",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 78,
           "result": "邱",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 79,
           "result": "骆",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 80,
           "result": "高",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 81,
           "result": "夏",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 82,
           "result": "蔡",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 83,
           "result": "田",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 84,
           "result": "樊",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 85,
           "result": "胡",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 86,
           "result": "凌",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 87,
           "result": "霍",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 88,
           "result": "虞",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 89,
           "result": "万",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 90,
           "result": "支",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 91,
           "result": "柯",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 92,
           "result": "昝",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 93,
           "result": "管",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 94,
           "result": "卢",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 95,
           "result": "莫",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 96,
           "result": "房",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 97,
           "result": "解",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 98,
           "result": "应",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 99,
           "result": "丁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 100,
           "result": "宣",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 101,
           "result": "贲",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 102,
           "result": "邓",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 103,
           "result": "郁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 104,
           "result": "单",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 105,
           "result": "杭",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 106,
           "result": "洪",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 107,
           "result": "包",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 108,
           "result": "诸",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 109,
           "result": "左",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 110,
           "result": "石",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 111,
           "result": "崔",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 112,
           "result": "吉",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 113,
           "result": "钮",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 114,
           "result": "龚",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 115,
           "result": "程",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 116,
           "result": "嵇",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 117,
           "result": "邢",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 118,
           "result": "滑",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 119,
           "result": "裴",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 120,
           "result": "陆",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 121,
           "result": "荣",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 122,
           "result": "翁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 123,
           "result": "荀",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 124,
           "result": "羊",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 125,
           "result": "甄",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 126,
           "result": "封",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 127,
           "result": "芮",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 128,
           "result": "储",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 129,
           "result": "靳",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 130,
           "result": "汲",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 131,
           "result": "邴",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 132,
           "result": "糜",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 133,
           "result": "松",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 134,
           "result": "井",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 135,
           "result": "段",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 136,
           "result": "富",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 137,
           "result": "巫",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 138,
           "result": "乌",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 139,
           "result": "焦",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 140,
           "result": "巴",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 141,
           "result": "弓",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 142,
           "result": "牧",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 143,
           "result": "隗",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 144,
           "result": "山",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 145,
           "result": "谷",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 146,
           "result": "车",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 147,
           "result": "侯",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 148,
           "result": "宓",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 149,
           "result": "蓬",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 150,
           "result": "全",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 151,
           "result": "郗",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 152,
           "result": "班",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 153,
           "result": "仰",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 154,
           "result": "秋",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 155,
           "result": "仲",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 156,
           "result": "宫",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 157,
           "result": "宁",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 158,
           "result": "仇",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 159,
           "result": "栾",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 160,
           "result": "暴",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 161,
           "result": "甘",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 162,
           "result": "钭",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 163,
           "result": "厉",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 164,
           "result": "戎",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 165,
           "result": "祖",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 166,
           "result": "武",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 167,
           "result": "符",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 168,
           "result": "刘",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 169,
           "result": "景",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 170,
           "result": "詹",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 171,
           "result": "束",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 172,
           "result": "龙",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 173,
           "result": "叶",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 174,
           "result": "幸",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 175,
           "result": "司",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 176,
           "result": "韶",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 177,
           "result": "郜",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 178,
           "result": "黎",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 179,
           "result": "蓟",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 180,
           "result": "薄",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 181,
           "result": "印",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 182,
           "result": "宿",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 183,
           "result": "白",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 184,
           "result": "怀",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 185,
           "result": "蒲",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 186,
           "result": "从",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 187,
           "result": "鄂",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 188,
           "result": "索",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 189,
           "result": "咸",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 190,
           "result": "赖",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 191,
           "result": "卓",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 192,
           "result": "蔺",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 193,
           "result": "屠",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 194,
           "result": "池",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 195,
           "result": "乔",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         },
         {
           "roll": 196,
           "result": "郭",
-          "source": "docs/system/08-随机生成器.md:353"
+          "source": "docs/system/08-universal-generators.md:353"
         }
       ],
       "use": "原表未编号，本表按出现顺序编号 roll 1–196；仿原文「任选其一」。",
-      "source": "docs/system/08-随机生成器.md:353"
+      "source": "docs/system/08-universal-generators.md:353"
     },
     {
       "id": "chinese_given_name",
@@ -2254,291 +2254,291 @@
         {
           "roll": 1,
           "result": "砚",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 2,
           "result": "昭",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 3,
           "result": "岫",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 4,
           "result": "铭",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 5,
           "result": "澜",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 6,
           "result": "弋",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 7,
           "result": "沁",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 8,
           "result": "牧",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 9,
           "result": "衡",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 10,
           "result": "辙",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 11,
           "result": "宁",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 12,
           "result": "溯",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 13,
           "result": "筌",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 14,
           "result": "青",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 15,
           "result": "白",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 16,
           "result": "舟",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 17,
           "result": "言",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 18,
           "result": "迟",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 19,
           "result": "缓",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 20,
           "result": "岁",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 21,
           "result": "禾",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 22,
           "result": "舍",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 23,
           "result": "桐",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 24,
           "result": "慎",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 25,
           "result": "照",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 26,
           "result": "临",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 27,
           "result": "柏",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 28,
           "result": "霜",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 29,
           "result": "霁",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 30,
           "result": "禾",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 31,
           "result": "壤",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 32,
           "result": "烬",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 33,
           "result": "灰",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 34,
           "result": "岑",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 35,
           "result": "零",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 36,
           "result": "七",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 37,
           "result": "未",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 38,
           "result": "弦",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 39,
           "result": "默",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 40,
           "result": "钟",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 41,
           "result": "断",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 42,
           "result": "析",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 43,
           "result": "余",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 44,
           "result": "望",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 45,
           "result": "知",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 46,
           "result": "行",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 47,
           "result": "止",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 48,
           "result": "归",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 49,
           "result": "远",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 50,
           "result": "寒",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 51,
           "result": "暖",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 52,
           "result": "安",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 53,
           "result": "危",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 54,
           "result": "平",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 55,
           "result": "静",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 56,
           "result": "深",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         },
         {
           "roll": 57,
           "result": "浅",
-          "source": "docs/system/08-随机生成器.md:355"
+          "source": "docs/system/08-universal-generators.md:355"
         }
       ],
       "use": "原表未编号，本表按出现顺序编号 roll 1–57；仿原文「任选其一」。",
-      "source": "docs/system/08-随机生成器.md:355"
+      "source": "docs/system/08-universal-generators.md:355"
     },
     {
       "id": "org_name_prefix",
@@ -2549,66 +2549,66 @@
         {
           "roll": 1,
           "result": "灰",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 2,
           "result": "铁",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 3,
           "result": "白",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 4,
           "result": "未",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 5,
           "result": "长",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 6,
           "result": "静",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 7,
           "result": "第",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 8,
           "result": "无",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 9,
           "result": "断",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 10,
           "result": "旧",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 11,
           "result": "半",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         },
         {
           "roll": 12,
           "result": "玄",
-          "source": "docs/system/08-随机生成器.md:363"
+          "source": "docs/system/08-universal-generators.md:363"
         }
       ],
       "use": "掷两次：前缀 + 后缀（例：灰+烬会=灰烬会）。",
-      "source": "docs/system/08-随机生成器.md:363"
+      "source": "docs/system/08-universal-generators.md:363"
     },
     {
       "id": "org_name_suffix",
@@ -2619,66 +2619,66 @@
         {
           "roll": 1,
           "result": "烬会",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 2,
           "result": "墙",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 3,
           "result": "骨行",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 4,
           "result": "名区",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 5,
           "result": "夜社",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 6,
           "result": "七厅",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 7,
           "result": "三处",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 8,
           "result": "声社",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 9,
           "result": "线党",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 10,
           "result": "约",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 11,
           "result": "塔",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         },
         {
           "roll": 12,
           "result": "渡",
-          "source": "docs/system/08-随机生成器.md:364"
+          "source": "docs/system/08-universal-generators.md:364"
         }
       ],
       "use": "掷两次：前缀 + 后缀（例：铁+墙=铁墙）。",
-      "source": "docs/system/08-随机生成器.md:364"
+      "source": "docs/system/08-universal-generators.md:364"
     },
     {
       "id": "rift_event",
@@ -2689,106 +2689,106 @@
         {
           "roll": 1,
           "result": "一座城市的地下出现了一段不属于这里的隧道，隧道里有根系",
-          "source": "docs/system/08-随机生成器.md:386"
+          "source": "docs/system/08-universal-generators.md:386"
         },
         {
           "roll": 2,
           "result": "一份古老的档案被数字化后，在网中被读取出来，且它是活的",
-          "source": "docs/system/08-随机生成器.md:387"
+          "source": "docs/system/08-universal-generators.md:387"
         },
         {
           "roll": 3,
           "result": "一处阈界薄处里出现了数据化的结构",
-          "source": "docs/system/08-随机生成器.md:388"
+          "source": "docs/system/08-universal-generators.md:388"
         },
         {
           "roll": 4,
           "result": "一段被删除的记忆出现在了某人的梦境里，且它是三十一年前的",
-          "source": "docs/system/08-随机生成器.md:389"
+          "source": "docs/system/08-universal-generators.md:389"
         },
         {
           "roll": 5,
           "result": "一台服务器开始产生余烬",
-          "source": "docs/system/08-随机生成器.md:390"
+          "source": "docs/system/08-universal-generators.md:390"
         },
         {
           "roll": 6,
           "result": "一个回响体念出了一段第四纪的祈祷文",
-          "source": "docs/system/08-随机生成器.md:391"
+          "source": "docs/system/08-universal-generators.md:391"
         },
         {
           "roll": 7,
           "result": "有人在熵网的最深处看到了一棵树",
-          "source": "docs/system/08-随机生成器.md:392"
+          "source": "docs/system/08-universal-generators.md:392"
         },
         {
           "roll": 8,
           "result": "一个矮人的后代出现在了环港区，且他带着静林的档案",
-          "source": "docs/system/08-随机生成器.md:393"
+          "source": "docs/system/08-universal-generators.md:393"
         },
         {
           "roll": 9,
           "result": "一次渗溢把一整栋楼送进了外场废墟",
-          "source": "docs/system/08-随机生成器.md:394"
+          "source": "docs/system/08-universal-generators.md:394"
         },
         {
           "roll": 10,
           "result": "一份身份备份里存着一个从未存在过的人，而他正在路上",
-          "source": "docs/system/08-随机生成器.md:395"
+          "source": "docs/system/08-universal-generators.md:395"
         },
         {
           "roll": 11,
           "result": "灰潮出现在了中枢城的下水道，而没人知道它是怎么来的",
-          "source": "docs/system/08-随机生成器.md:396"
+          "source": "docs/system/08-universal-generators.md:396"
         },
         {
           "roll": 12,
           "result": "一名网潜者在网里遇到了一个自称是神的东西",
-          "source": "docs/system/08-随机生成器.md:397"
+          "source": "docs/system/08-universal-generators.md:397"
         },
         {
           "roll": 13,
           "result": "有人在白骨荒野挖出了一台仍能运行的终端",
-          "source": "docs/system/08-随机生成器.md:398"
+          "source": "docs/system/08-universal-generators.md:398"
         },
         {
           "roll": 14,
           "result": "熵网中出现了一个可以被\"献祭\"的机制",
-          "source": "docs/system/08-随机生成器.md:399"
+          "source": "docs/system/08-universal-generators.md:399"
         },
         {
           "roll": 15,
           "result": "一个义体部件自己长出了根系",
-          "source": "docs/system/08-随机生成器.md:400"
+          "source": "docs/system/08-universal-generators.md:400"
         },
         {
           "roll": 16,
           "result": "一位焚行者的祭司声称：神在网里回答了他",
-          "source": "docs/system/08-随机生成器.md:401"
+          "source": "docs/system/08-universal-generators.md:401"
         },
         {
           "roll": 17,
           "result": "一处遗迹的墙上刻着现代汉语",
-          "source": "docs/system/08-随机生成器.md:402"
+          "source": "docs/system/08-universal-generators.md:402"
         },
         {
           "roll": 18,
           "result": "一名档案人被证实是三十一年前坍缩时失踪的人",
-          "source": "docs/system/08-随机生成器.md:403"
+          "source": "docs/system/08-universal-generators.md:403"
         },
         {
           "roll": 19,
           "result": "有人同时在三个世界里被看到",
-          "source": "docs/system/08-随机生成器.md:404"
+          "source": "docs/system/08-universal-generators.md:404"
         },
         {
           "roll": 20,
           "result": "一扇门被打开了。它通向哪里，取决于你们先跑过哪套模组",
-          "source": "docs/system/08-随机生成器.md:405"
+          "source": "docs/system/08-universal-generators.md:405"
         }
       ],
       "use": "掷 d20 决定什么东西越过了边界；建议至少跑过两个完整故事线后再启用。",
-      "source": "docs/system/08-随机生成器.md:382"
+      "source": "docs/system/08-universal-generators.md:382"
     }
   ],
   "generators": [
@@ -2815,7 +2815,7 @@
       "optional_flavor": [
         "npc_feature"
       ],
-      "source": "docs/system/08-随机生成器.md:46"
+      "source": "docs/system/08-universal-generators.md:46"
     },
     {
       "id": "relationship",
@@ -2832,7 +2832,7 @@
           "role": "当前张力"
         }
       ],
-      "source": "docs/system/08-随机生成器.md:152"
+      "source": "docs/system/08-universal-generators.md:152"
     },
     {
       "id": "chinese_name",
@@ -2849,7 +2849,7 @@
           "role": "名"
         }
       ],
-      "source": "docs/system/08-随机生成器.md:351"
+      "source": "docs/system/08-universal-generators.md:351"
     },
     {
       "id": "org_name",
@@ -2866,7 +2866,7 @@
           "role": "后缀"
         }
       ],
-      "source": "docs/system/08-随机生成器.md:359"
+      "source": "docs/system/08-universal-generators.md:359"
     }
   ],
   "ledger_bridge": {

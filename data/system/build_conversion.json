@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.build_conversion",
-  "source": "docs/system/02B-构建引擎.md:468",
+  "source": "docs/system/02b-forge-engine.md:468",
   "declared": {
     "switch_scenarios": 5,
     "attribute_rows": 5,
@@ -14,69 +14,69 @@
     "mixing_limits": 3
   },
   "note": "两套引擎共用同一份内核（属性定义、技能列表、状态、AP、破韧、连携、场地要素、资源框架），因此一个角色、一个敌人、一个剧情都可以在两套引擎之间迁移，而不必重建。",
-  "note_source": "docs/system/02B-构建引擎.md:470",
+  "note_source": "docs/system/02b-forge-engine.md:470",
   "when_to_switch": [
-    {"situation": "团里有新玩家加入，且他对复杂数值有压力", "advice": "战术 → 更简单，但如果是构建团，建议让他用预先配好的角色卡", "source": "docs/system/02B-构建引擎.md:476"},
-    {"situation": "大家觉得「每次都在掷同一个骰子，没变化」", "advice": "换构建引擎", "source": "docs/system/02B-构建引擎.md:477"},
-    {"situation": "大家觉得「每次都要数一堆骰子，太慢」", "advice": "换战术引擎", "source": "docs/system/02B-构建引擎.md:478"},
-    {"situation": "战役中途想换", "advice": "建议等到章节分界点，避免中途换算造成混乱", "source": "docs/system/02B-构建引擎.md:479"},
-    {"situation": "主持人是 AI 且上下文有限", "advice": "战术引擎表达更紧凑，优先考虑", "source": "docs/system/02B-构建引擎.md:480"}
+    {"situation": "团里有新玩家加入，且他对复杂数值有压力", "advice": "战术 → 更简单，但如果是构建团，建议让他用预先配好的角色卡", "source": "docs/system/02b-forge-engine.md:476"},
+    {"situation": "大家觉得「每次都在掷同一个骰子，没变化」", "advice": "换构建引擎", "source": "docs/system/02b-forge-engine.md:477"},
+    {"situation": "大家觉得「每次都要数一堆骰子，太慢」", "advice": "换战术引擎", "source": "docs/system/02b-forge-engine.md:478"},
+    {"situation": "战役中途想换", "advice": "建议等到章节分界点，避免中途换算造成混乱", "source": "docs/system/02b-forge-engine.md:479"},
+    {"situation": "主持人是 AI 且上下文有限", "advice": "战术引擎表达更紧凑，优先考虑", "source": "docs/system/02b-forge-engine.md:480"}
   ],
   "attribute_conversion": [
-    {"value_range": "1–3", "tactics_use": "修正 −2 ~ −1", "build_use": "骰池枚数 = 属性（1~3 枚）", "source": "docs/system/02B-构建引擎.md:488"},
-    {"value_range": "4–5", "tactics_use": "修正 +0", "build_use": "骰池枚数 = 属性（4~5 枚）", "source": "docs/system/02B-构建引擎.md:489"},
-    {"value_range": "6–7", "tactics_use": "修正 +1", "build_use": "骰池枚数 = 属性（6~7 枚）", "source": "docs/system/02B-构建引擎.md:490"},
-    {"value_range": "8–9", "tactics_use": "修正 +2", "build_use": "骰池枚数 = 属性（8~9 枚）", "source": "docs/system/02B-构建引擎.md:491"},
-    {"value_range": "10", "tactics_use": "修正 +3", "build_use": "骰池枚数 = 10 枚", "source": "docs/system/02B-构建引擎.md:492"}
+    {"value_range": "1–3", "tactics_use": "修正 −2 ~ −1", "build_use": "骰池枚数 = 属性（1~3 枚）", "source": "docs/system/02b-forge-engine.md:488"},
+    {"value_range": "4–5", "tactics_use": "修正 +0", "build_use": "骰池枚数 = 属性（4~5 枚）", "source": "docs/system/02b-forge-engine.md:489"},
+    {"value_range": "6–7", "tactics_use": "修正 +1", "build_use": "骰池枚数 = 属性（6~7 枚）", "source": "docs/system/02b-forge-engine.md:490"},
+    {"value_range": "8–9", "tactics_use": "修正 +2", "build_use": "骰池枚数 = 属性（8~9 枚）", "source": "docs/system/02b-forge-engine.md:491"},
+    {"value_range": "10", "tactics_use": "修正 +3", "build_use": "骰池枚数 = 10 枚", "source": "docs/system/02b-forge-engine.md:492"}
   ],
   "proficiency_conversion": [
-    {"item": "熟练（+2）", "tactics": "+2 固定加值", "build": "骰池 +1 枚", "source": "docs/system/02B-构建引擎.md:498"},
-    {"item": "熟练（+3）", "tactics": "+3 固定加值", "build": "骰池 +2 枚", "source": "docs/system/02B-构建引擎.md:499"},
-    {"item": "熟练（+4）", "tactics": "+4 固定加值", "build": "骰池 +2 枚，且该骰池整体骰阶 +1", "source": "docs/system/02B-构建引擎.md:500"},
-    {"item": "专精", "tactics": "额外 +1，自然最高值时 +2", "build": "骰池额外 +1 枚", "source": "docs/system/02B-构建引擎.md:501"}
+    {"item": "熟练（+2）", "tactics": "+2 固定加值", "build": "骰池 +1 枚", "source": "docs/system/02b-forge-engine.md:498"},
+    {"item": "熟练（+3）", "tactics": "+3 固定加值", "build": "骰池 +2 枚", "source": "docs/system/02b-forge-engine.md:499"},
+    {"item": "熟练（+4）", "tactics": "+4 固定加值", "build": "骰池 +2 枚，且该骰池整体骰阶 +1", "source": "docs/system/02b-forge-engine.md:500"},
+    {"item": "专精", "tactics": "额外 +1，自然最高值时 +2", "build": "骰池额外 +1 枚", "source": "docs/system/02b-forge-engine.md:501"}
   ],
   "difficulty_conversion": [
-    {"tactics_df": "6–8", "build_need": 1, "name": "平凡", "source": "docs/system/02B-构建引擎.md:507"},
-    {"tactics_df": "10", "build_need": 2, "name": "简易", "source": "docs/system/02B-构建引擎.md:508"},
-    {"tactics_df": "12", "build_need": 3, "name": "常规", "source": "docs/system/02B-构建引擎.md:509"},
-    {"tactics_df": "14", "build_need": 4, "name": "有挑战", "source": "docs/system/02B-构建引擎.md:510"},
-    {"tactics_df": "16", "build_need": 5, "name": "困难", "source": "docs/system/02B-构建引擎.md:511"},
-    {"tactics_df": "18", "build_need": 6, "name": "严峻", "source": "docs/system/02B-构建引擎.md:512"},
-    {"tactics_df": "20", "build_need": 8, "name": "极限", "source": "docs/system/02B-构建引擎.md:513"},
-    {"tactics_df": "24", "build_need": 10, "name": "传说", "source": "docs/system/02B-构建引擎.md:514"}
+    {"tactics_df": "6–8", "build_need": 1, "name": "平凡", "source": "docs/system/02b-forge-engine.md:507"},
+    {"tactics_df": "10", "build_need": 2, "name": "简易", "source": "docs/system/02b-forge-engine.md:508"},
+    {"tactics_df": "12", "build_need": 3, "name": "常规", "source": "docs/system/02b-forge-engine.md:509"},
+    {"tactics_df": "14", "build_need": 4, "name": "有挑战", "source": "docs/system/02b-forge-engine.md:510"},
+    {"tactics_df": "16", "build_need": 5, "name": "困难", "source": "docs/system/02b-forge-engine.md:511"},
+    {"tactics_df": "18", "build_need": 6, "name": "严峻", "source": "docs/system/02b-forge-engine.md:512"},
+    {"tactics_df": "20", "build_need": 8, "name": "极限", "source": "docs/system/02b-forge-engine.md:513"},
+    {"tactics_df": "24", "build_need": 10, "name": "传说", "source": "docs/system/02b-forge-engine.md:514"}
   ],
   "difficulty_note": "中间的 DF（如 13、15）在构建引擎里取较高的一档需求成功数，并给玩家 1 枚额外骰作补偿。",
-  "difficulty_note_source": "docs/system/02B-构建引擎.md:516",
+  "difficulty_note_source": "docs/system/02b-forge-engine.md:516",
   "edge_conversion": [
-    {"tactics": "1 枚助势骰（+1d6）", "build": "骰池 +1 枚", "source": "docs/system/02B-构建引擎.md:522"},
-    {"tactics": "2 枚助势骰（+2d6）", "build": "骰池 +2 枚", "source": "docs/system/02B-构建引擎.md:523"},
-    {"tactics": "3 枚助势骰（+3d6）", "build": "骰池 +3 枚", "source": "docs/system/02B-构建引擎.md:524"},
-    {"tactics": "每层劣势（−1d6）", "build": "骰池 −1 枚", "source": "docs/system/02B-构建引擎.md:525"}
+    {"tactics": "1 枚助势骰（+1d6）", "build": "骰池 +1 枚", "source": "docs/system/02b-forge-engine.md:522"},
+    {"tactics": "2 枚助势骰（+2d6）", "build": "骰池 +2 枚", "source": "docs/system/02b-forge-engine.md:523"},
+    {"tactics": "3 枚助势骰（+3d6）", "build": "骰池 +3 枚", "source": "docs/system/02b-forge-engine.md:524"},
+    {"tactics": "每层劣势（−1d6）", "build": "骰池 −1 枚", "source": "docs/system/02b-forge-engine.md:525"}
   ],
   "enemy_defense_conversion": [
-    {"tactics_guard": "10–11", "build_dodge": 2, "source": "docs/system/02B-构建引擎.md:533"},
-    {"tactics_guard": "12–13", "build_dodge": 3, "source": "docs/system/02B-构建引擎.md:534"},
-    {"tactics_guard": "14–15", "build_dodge": 4, "source": "docs/system/02B-构建引擎.md:535"},
-    {"tactics_guard": "16–17", "build_dodge": 5, "source": "docs/system/02B-构建引擎.md:536"},
-    {"tactics_guard": "18 以上", "build_dodge": 6, "source": "docs/system/02B-构建引擎.md:537"}
+    {"tactics_guard": "10–11", "build_dodge": 2, "source": "docs/system/02b-forge-engine.md:533"},
+    {"tactics_guard": "12–13", "build_dodge": 3, "source": "docs/system/02b-forge-engine.md:534"},
+    {"tactics_guard": "14–15", "build_dodge": 4, "source": "docs/system/02b-forge-engine.md:535"},
+    {"tactics_guard": "16–17", "build_dodge": 5, "source": "docs/system/02b-forge-engine.md:536"},
+    {"tactics_guard": "18 以上", "build_dodge": 6, "source": "docs/system/02b-forge-engine.md:537"}
   ],
   "damage_conversion": [
-    {"tactics_result": "暴击（超出 Guard 10+）", "build_match": "D ≥ +3，多次命中", "source": "docs/system/02B-构建引擎.md:545"},
-    {"tactics_result": "重击（超出 6–9）", "build_match": "D = +2", "source": "docs/system/02B-构建引擎.md:546"},
-    {"tactics_result": "命中（超出 0–5）", "build_match": "D = 0 ~ +1", "source": "docs/system/02B-构建引擎.md:547"},
-    {"tactics_result": "擦过（低 1–2）", "build_match": "D = −1", "source": "docs/system/02B-构建引擎.md:548"},
-    {"tactics_result": "落空（低 3+）", "build_match": "D ≤ −2", "source": "docs/system/02B-构建引擎.md:549"}
+    {"tactics_result": "暴击（超出 Guard 10+）", "build_match": "D ≥ +3，多次命中", "source": "docs/system/02b-forge-engine.md:545"},
+    {"tactics_result": "重击（超出 6–9）", "build_match": "D = +2", "source": "docs/system/02b-forge-engine.md:546"},
+    {"tactics_result": "命中（超出 0–5）", "build_match": "D = 0 ~ +1", "source": "docs/system/02b-forge-engine.md:547"},
+    {"tactics_result": "擦过（低 1–2）", "build_match": "D = −1", "source": "docs/system/02b-forge-engine.md:548"},
+    {"tactics_result": "落空（低 3+）", "build_match": "D ≤ −2", "source": "docs/system/02b-forge-engine.md:549"}
   ],
   "migration_steps": [
-    {"order": 1, "step": "保留六维属性值、背景标签、驱动、背景故事、关系网（这些与引擎无关）", "source": "docs/system/02B-构建引擎.md:557"},
-    {"order": 2, "step": "重算派生值：活力上限公式不变；构建引擎额外计算应力上限", "source": "docs/system/02B-构建引擎.md:558"},
-    {"order": 3, "step": "重述技能：把每项熟练换算为骰池枚数或固定加值", "source": "docs/system/02B-构建引擎.md:559"},
-    {"order": 4, "step": "重述能力：把伤害骰与效果保留，只是改变「如何判定成功」", "source": "docs/system/02B-构建引擎.md:560"},
-    {"order": 5, "step": "符纹拆分：若从构建引擎迁往战术引擎，把每枚符纹转化为一个等价的机动或专长", "source": "docs/system/02B-构建引擎.md:561"}
+    {"order": 1, "step": "保留六维属性值、背景标签、驱动、背景故事、关系网（这些与引擎无关）", "source": "docs/system/02b-forge-engine.md:557"},
+    {"order": 2, "step": "重算派生值：活力上限公式不变；构建引擎额外计算应力上限", "source": "docs/system/02b-forge-engine.md:558"},
+    {"order": 3, "step": "重述技能：把每项熟练换算为骰池枚数或固定加值", "source": "docs/system/02b-forge-engine.md:559"},
+    {"order": 4, "step": "重述能力：把伤害骰与效果保留，只是改变「如何判定成功」", "source": "docs/system/02b-forge-engine.md:560"},
+    {"order": 5, "step": "符纹拆分：若从构建引擎迁往战术引擎，把每枚符纹转化为一个等价的机动或专长", "source": "docs/system/02b-forge-engine.md:561"}
   ],
   "mixing_limits": [
-    {"rule": "同一个团的所有人应当使用同一套引擎。混用会让导引者在不同角色之间来回换算，容易出错。", "source": "docs/system/02B-构建引擎.md:565"},
-    {"rule": "同一场战斗中不允许部分人用 d20、另一部分人用骰池。", "source": "docs/system/02B-构建引擎.md:566"},
-    {"rule": "世界模组的内容两套引擎都可读：三套世界观里的所有敌人、职途、能力与装备，都同时提供两套引擎所需的数值标注。", "source": "docs/system/02B-构建引擎.md:567"}
+    {"rule": "同一个团的所有人应当使用同一套引擎。混用会让导引者在不同角色之间来回换算，容易出错。", "source": "docs/system/02b-forge-engine.md:565"},
+    {"rule": "同一场战斗中不允许部分人用 d20、另一部分人用骰池。", "source": "docs/system/02b-forge-engine.md:566"},
+    {"rule": "世界模组的内容两套引擎都可读：三套世界观里的所有敌人、职途、能力与装备，都同时提供两套引擎所需的数值标注。", "source": "docs/system/02b-forge-engine.md:567"}
   ]
 }

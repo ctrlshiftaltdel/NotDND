@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.tags）",
-  "description": "伤害标签 11 + 性质标签 33 + 标签交互裁定原则；源自 docs/system/01-内核CORE.md 第四节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "伤害标签 11 + 性质标签 33 + 标签交互裁定原则；源自 docs/system/01-core.md 第四节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "damage_tags", "property_tags", "interaction_principles"],
   "properties": {

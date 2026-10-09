@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.ledger_spec）",
-  "description": "导引者操作系统第四节：世界账本的更新规则、格式指向与最小可行版本。账本骨架复用 common.schema.json 的 $defs.ledger，此处不重复定义字段。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "导引者操作系统第四节：世界账本的更新规则、格式指向与最小可行版本。账本骨架复用 common.schema.json 的 $defs.ledger，此处不重复定义字段。源自 docs/system/04-conductor-os.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "ledger_schema_ref", "rules", "min_viable"],
   "properties": {

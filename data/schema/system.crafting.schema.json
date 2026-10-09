@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.crafting）",
-  "description": "互动层第四节：制作三要素、物品等级 4、品质五档、改造 5、三世界风味 3。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "互动层第四节：制作三要素、物品等级 4、品质五档、改造 5、三世界风味 3。源自 docs/system/03-interaction-layer.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "components", "tiers", "quality_grades", "modifications", "mod_limit", "world_flavors"],
   "properties": {
