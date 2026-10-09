@@ -1,0 +1,4697 @@
+{
+  "schema_version": 1,
+  "kind": "world.module",
+  "source": "docs/scenario/07-世界模组III-熵网.md:3",
+  "world": {
+    "key": "entropic-net",
+    "name": "熵网",
+    "engine": "build",
+    "source": "docs/scenario/07-世界模组III-熵网.md:3"
+  },
+  "glossary": [
+    {
+      "term": "熵网",
+      "meaning": "坍缩后无法解析的数据区域，网潜者的活动场所",
+      "source": "docs/scenario/07-世界模组III-熵网.md:69"
+    },
+    {
+      "term": "网潜",
+      "meaning": "把意识接入熵网的行动",
+      "source": "docs/scenario/07-世界模组III-熵网.md:70"
+    },
+    {
+      "term": "同步率",
+      "meaning": "意识与身体之间的耦合强度（见第 5 节）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:71"
+    },
+    {
+      "term": "义体",
+      "meaning": "身体改造部件",
+      "source": "docs/scenario/07-世界模组III-熵网.md:72"
+    },
+    {
+      "term": "纯度",
+      "meaning": "一个人身上原生组织的占比，也是\"还剩多少自己\"的量化",
+      "source": "docs/scenario/07-世界模组III-熵网.md:73"
+    },
+    {
+      "term": "回响体",
+      "meaning": "从网里带出来的、不该存在于现实的东西",
+      "source": "docs/scenario/07-世界模组III-熵网.md:74"
+    },
+    {
+      "term": "档案人",
+      "meaning": "意识被困在网中的人",
+      "source": "docs/scenario/07-世界模组III-熵网.md:75"
+    },
+    {
+      "term": "服务条款",
+      "meaning": "实际意义上的法律",
+      "source": "docs/scenario/07-世界模组III-熵网.md:76"
+    }
+  ],
+  "history": [
+    {
+      "id": "hist-e01",
+      "year": "31 年前",
+      "name": "坍缩",
+      "detail": "全球数据网络在 11 分钟内完成降级。所有备份同时失效。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:84"
+    },
+    {
+      "id": "hist-e02",
+      "year": "30 年前",
+      "name": "黑暗年",
+      "detail": "城市的生命维持系统大面积失效。人口减少了约 22%。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:85"
+    },
+    {
+      "id": "hist-e03",
+      "year": "29 年前",
+      "name": "第一批网潜者出现",
+      "detail": "他们中的四分之三在三年内成为档案人。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:86"
+    },
+    {
+      "id": "hist-e04",
+      "year": "26 年前",
+      "name": "第一家义体厂商上市",
+      "detail": "身体改造开始普及。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:87"
+    },
+    {
+      "id": "hist-e05",
+      "year": "22 年前",
+      "name": "第一例回响体事件",
+      "detail": "某个被带出网的东西在现实中维持了六天的存在。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:88"
+    },
+    {
+      "id": "hist-e06",
+      "year": "19 年前",
+      "name": "《身份资产法》通过",
+      "detail": "记忆与身份正式成为可交易资产。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:89"
+    },
+    {
+      "id": "hist-e07",
+      "year": "15 年前",
+      "name": "四大财团完成对六座主力城市的收购",
+      "detail": "主权概念事实上消失。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:90"
+    },
+    {
+      "id": "hist-e08",
+      "year": "11 年前",
+      "name": "熔毁事件",
+      "detail": "一次大型网潜中，47 名网潜者的意识同时留在了网里。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:91"
+    },
+    {
+      "id": "hist-e09",
+      "year": "7 年前",
+      "name": "第一个「档案人工会」成立",
+      "detail": "主张被困在网中的人也拥有权利。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:92"
+    },
+    {
+      "id": "hist-e10",
+      "year": "3 年前",
+      "name": "熵网首次出现自发性的结构变化",
+      "detail": "它开始自己生成内容。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:93"
+    },
+    {
+      "id": "hist-e11",
+      "year": "现在",
+      "name": "熵网的扩张",
+      "detail": "扩张速度为每年 0.3%。有科学家估算，再过 90 年，现实与网的边界将不再可辨。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:94"
+    }
+  ],
+  "regions": [
+    {
+      "id": "region-01",
+      "name": "中枢城｜Core",
+      "summary": "四大财团总部所在地。这里的居民拥有 92% 的平均纯度——他们几乎不改造自己，因为他们的身体本身就是资产。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:106",
+      "atmosphere": "干净的，垂直的，被照亮的。所有东西都是订阅制。",
+      "key_places": [
+        "环柱（全城最高的建筑，也是数据中心）",
+        "服务大厅（法律在此以服务条款的形式存在）",
+        "纯度检测站（进入中枢城必须通过）"
+      ],
+      "powers": [
+        "四大财团",
+        "纯度委员会"
+      ],
+      "events": [
+        "订阅被取消（等于法律意义上的死亡）",
+        "有人伪造纯度证明",
+        "有人在打听网潜者的下落"
+      ]
+    },
+    {
+      "id": "region-02",
+      "name": "环带｜The Belt",
+      "summary": "围绕中枢城的工业与生活环带，人口三千万。绝大多数居民身上至少有三处改造。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:116",
+      "atmosphere": "管道，蒸汽，焊接的火花，以及数以万计的小招牌。",
+      "key_places": [
+        "第九焊接区（最著名的义体黑市）",
+        "管道市场（什么都卖）",
+        "旧地铁改造的居住舱"
+      ],
+      "powers": [
+        "十七个义体帮派",
+        "维修工会",
+        "社区自卫队"
+      ],
+      "events": [
+        "零件短缺",
+        "帮派收保护费",
+        "有人拿出了不该有的零件"
+      ]
+    },
+    {
+      "id": "region-03",
+      "name": "外场｜Outfield",
+      "summary": "城市之外的废墟带。这里是考古者的地盘：三十一年前的建筑、车辆、服务器全都还在，而且大部分还能启动。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:126",
+      "atmosphere": "开阔，安静，风很大，以及大量三十一年前的遗留物。",
+      "key_places": [
+        "旧数据中心园区（考古者的圣地，也极其危险）",
+        "第十三号仓库（传说里面有一台还在运行的服务器）",
+        "废弃高速公路（有帮派在此设卡）"
+      ],
+      "powers": [
+        "考古行会",
+        "拾荒者",
+        "以及不知道是什么的东西"
+      ],
+      "events": [
+        "挖出可运行的旧设备",
+        "有人在那里待了太久",
+        "回来的东西不太对"
+      ]
+    },
+    {
+      "id": "region-04",
+      "name": "熔毁区｜Meltdown Zone",
+      "summary": "十一年前那次事故留下的区域。半径 12 公里，至今无法居住。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:136",
+      "atmosphere": "没有声音，没有信号，仪表全部失灵。",
+      "key_places": [
+        "事故原点（47 名网潜者的接入地点）",
+        "仍然在运转的应急设备",
+        "一圈永远不会亮的路灯"
+      ],
+      "powers": [
+        "财团的封锁部队",
+        "私自进入者的尸体"
+      ],
+      "events": [
+        "设备自行启动",
+        "有人听见里面有人在说话",
+        "某个东西走了出来"
+      ]
+    },
+    {
+      "id": "region-05",
+      "name": "云端熔炉｜Forge Cloud",
+      "summary": "网潜者的公共区域：熵网中一片相对稳定的结构。网潜者在此交换信息、交易、以及互相残杀。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:146",
+      "atmosphere": "不存在的物理空间，但所有人都知道怎么\"去\"那里。",
+      "key_places": [
+        "中央索引（一片不稳定的档案海）",
+        "熔炉市集（什么都卖，包括意识）",
+        "47 号纪念区（那 47 人的意识残片仍在原地）"
+      ],
+      "powers": [
+        "网潜者行会",
+        "档案人工会",
+        "不明结构"
+      ],
+      "events": [
+        "有人的意识没能回来",
+        "出现从未见过的新结构",
+        "某个档案人请求你带一样东西出去"
+      ]
+    },
+    {
+      "id": "region-06",
+      "name": "档案层｜The Archive Stratum",
+      "summary": "熵网中最深、最平静、也最危险的一层。这里存放着坍缩之前的全部数据。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:156",
+      "atmosphere": "一望无际的、无法分辨内容的档案。像雪。",
+      "key_places": [
+        "一个人的全部记忆（它被打包成了一份文件）",
+        "三十一年前的某一天（它仍然存在）",
+        "无法进入的部分"
+      ],
+      "powers": [
+        "无。这里没有活人组织。"
+      ],
+      "events": [
+        "找到想要的东西",
+        "被某样东西注意到",
+        "意识到自己已经在这里待了很久"
+      ]
+    },
+    {
+      "id": "region-07",
+      "name": "港区｜Docklands",
+      "summary": "自动化港口，至今仍在运作，且没有人给它下过指令。这里是对外贸易的唯一通道。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:166",
+      "atmosphere": "集装箱，起重机，以及三十一年都没有停过的自动装卸。",
+      "key_places": [
+        "自动装卸区（无人但高效）",
+        "七号泊位（那里的船从三十一年前就没动过）",
+        "海关（由 AI 管理，且它很严格）"
+      ],
+      "powers": [
+        "港务 AI",
+        "走私集团"
+      ],
+      "events": [
+        "来历不明的货物",
+        "有人想让你带一样东西过关",
+        "AI 提出了一个奇怪的问题"
+      ]
+    },
+    {
+      "id": "region-08",
+      "name": "医疗穹顶｜Dome",
+      "summary": "义体医疗与纯度维护的中心。这里也是唯一能合法进行\"身份备份\"的地方。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:176",
+      "atmosphere": "白，安静，以及一种让人不太敢大声说话的体面。",
+      "key_places": [
+        "备份厅（你可以把自己存起来，按月付费）",
+        "纯度恢复中心（极其昂贵）",
+        "不受监管的地下三层"
+      ],
+      "powers": [
+        "医疗财团",
+        "一群试图让备份获得权利的激进者"
+      ],
+      "events": [
+        "备份到期（等于死亡）",
+        "有人试图恢复别人的备份",
+        "地下三层在做不该做的事"
+      ]
+    },
+    {
+      "id": "region-09",
+      "name": "无名区｜Unlisted",
+      "summary": "城市与城市之间的、未被任何系统登记的区域。这里住着所有主动退出系统的人。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:186",
+      "atmosphere": "地图上没有，导航到不了，但确实存在。",
+      "key_places": [
+        "断电村（完全不使用任何联网设备）",
+        "一个手工维护的电台",
+        "一位记得坍缩之前的人"
+      ],
+      "powers": [
+        "退出者社区",
+        "一个自称\"最后的人类\"的老人"
+      ],
+      "events": [
+        "有人来寻求帮助",
+        "有人来抓人",
+        "有人只是想安静地死"
+      ]
+    }
+  ],
+  "factions": [
+    {
+      "id": "faction-omni",
+      "name": "奥姆尼（Omni）",
+      "alignment": "财团，基础设施",
+      "summary": "目标：维持运转，扩张订阅 ｜ 可被利用之处：内部部门之间互相竞争",
+      "source": "docs/scenario/07-世界模组III-熵网.md:198"
+    },
+    {
+      "id": "faction-alar",
+      "name": "翼骸（Alar）",
+      "alignment": "财团，义体与医疗",
+      "summary": "目标：让改造成为常态 ｜ 可被利用之处：他们隐瞒了纯度下降的真实数据",
+      "source": "docs/scenario/07-世界模组III-熵网.md:199"
+    },
+    {
+      "id": "faction-northbank",
+      "name": "北岸（Northbank）",
+      "alignment": "财团，数据与身份",
+      "summary": "目标：控制身份资产市场 ｜ 可被利用之处：他们的数据库有未被修补的漏洞",
+      "source": "docs/scenario/07-世界模组III-熵网.md:200"
+    },
+    {
+      "id": "faction-stack-nine",
+      "name": "第九栈（Stack Nine）",
+      "alignment": "财团，熵网研究",
+      "summary": "目标：从网里获取可用的东西 ｜ 可被利用之处：他们的研究团队内部有分裂",
+      "source": "docs/scenario/07-世界模组III-熵网.md:201"
+    },
+    {
+      "id": "faction-divers-guild",
+      "name": "网潜者行会",
+      "alignment": "职业工会",
+      "summary": "目标：维护网潜者的权利与定价 ｜ 可被利用之处：行会无法约束最有能力的那些人",
+      "source": "docs/scenario/07-世界模组III-熵网.md:202"
+    },
+    {
+      "id": "faction-archive-union",
+      "name": "档案人工会",
+      "alignment": "权益组织",
+      "summary": "目标：让被困的意识获得法律地位 ｜ 可被利用之处：他们的部分主张在道德上无法反驳",
+      "source": "docs/scenario/07-世界模组III-熵网.md:203"
+    },
+    {
+      "id": "faction-meltdown-survivors",
+      "name": "熔毁遗族",
+      "alignment": "受害者家属网络",
+      "summary": "目标：查清十一年的真相 ｜ 可被利用之处：他们掌握着大量未公开的现场资料",
+      "source": "docs/scenario/07-世界模组III-熵网.md:204"
+    },
+    {
+      "id": "faction-unlisted",
+      "name": "退出者",
+      "alignment": "社区",
+      "summary": "目标：彻底脱离系统 ｜ 可被利用之处：他们需要外部世界的物资",
+      "source": "docs/scenario/07-世界模组III-熵网.md:205"
+    },
+    {
+      "id": "faction-echo-cult",
+      "name": "回响教",
+      "alignment": "新兴信仰",
+      "summary": "目标：认为网中的东西是\"更进化的人类\" ｜ 可被利用之处：他们有钱、有武器，且相信自己是对的",
+      "source": "docs/scenario/07-世界模组III-熵网.md:206"
+    }
+  ],
+  "tracks": [
+    {
+      "key": "sync",
+      "name": "同步率 Sync",
+      "range": "0–（心智 + 洞察 + 4）",
+      "effects": [
+        "> 60%：正常",
+        "40–59%：现实感变薄：所有察觉判定 −1 骰，且无法分辨梦与记忆",
+        "20–39%：身份漂移：你开始做出不属于自己的判断。导引者可以在此时替你决定一次行动",
+        "1–19%：断线风险：每次行动都有 20% 概率失去一整个回合",
+        "0：成为档案人：你的意识留在网里，身体留在现实。两者都还活着"
+      ],
+      "recovery": [
+        "现实中的长歇：+2",
+        "在医疗穹顶接受校准：+4（费用「标准」）"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:212"
+    }
+  ],
+  "world_rules": {
+    "sync": {
+      "note": "同步率衡量你的意识与身体之间的耦合强度。它最重要，也最脆弱。",
+      "formula": "同步率上限 = 心智 + 洞察 + 4",
+      "formula_source": "docs/scenario/07-世界模组III-熵网.md:217",
+      "consumption": [
+        {
+          "action": "网潜一轮（约 10 分钟）",
+          "delta": "−1",
+          "source": "docs/scenario/07-世界模组III-熵网.md:224"
+        },
+        {
+          "action": "在网中受到一次意识冲击",
+          "delta": "−2",
+          "source": "docs/scenario/07-世界模组III-熵网.md:225"
+        },
+        {
+          "action": "使用需要接入的能力",
+          "delta": "−1",
+          "source": "docs/scenario/07-世界模组III-熵网.md:226"
+        },
+        {
+          "action": "在网中经历一次时间错位",
+          "delta": "−3（网的十分钟是现实的一小时）",
+          "source": "docs/scenario/07-世界模组III-熵网.md:227"
+        }
+      ],
+      "recovery": [
+        {
+          "action": "现实中的长歇",
+          "delta": "+2",
+          "source": "docs/scenario/07-世界模组III-熵网.md:228"
+        },
+        {
+          "action": "在医疗穹顶接受校准",
+          "delta": "+4（费用「标准」）",
+          "source": "docs/scenario/07-世界模组III-熵网.md:229"
+        }
+      ],
+      "consequences": [
+        {
+          "band": "> 60%",
+          "effect": "正常",
+          "source": "docs/scenario/07-世界模组III-熵网.md:235"
+        },
+        {
+          "band": "40–59%",
+          "effect": "现实感变薄：所有察觉判定 −1 骰，且无法分辨梦与记忆",
+          "source": "docs/scenario/07-世界模组III-熵网.md:236"
+        },
+        {
+          "band": "20–39%",
+          "effect": "身份漂移：你开始做出不属于自己的判断。导引者可以在此时替你决定一次行动",
+          "source": "docs/scenario/07-世界模组III-熵网.md:237"
+        },
+        {
+          "band": "1–19%",
+          "effect": "断线风险：每次行动都有 20% 概率失去一整个回合",
+          "source": "docs/scenario/07-世界模组III-熵网.md:238"
+        },
+        {
+          "band": "0",
+          "effect": "成为档案人：你的意识留在网里，身体留在现实。两者都还活着",
+          "source": "docs/scenario/07-世界模组III-熵网.md:239"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:212"
+    },
+    "purity": {
+      "note": "纯度是你身上原生组织的比例，也是「还剩多少自己」的量化。",
+      "formula": "纯度起始 = 10；每次义体改造 −（改造等级）",
+      "formula_source": "docs/scenario/07-世界模组III-熵网.md:248",
+      "start": 10,
+      "start_source": "docs/scenario/07-世界模组III-熵网.md:248",
+      "bands": [
+        {
+          "range": "9–10",
+          "effect": "完整的人。在中枢城被视为上等",
+          "source": "docs/scenario/07-世界模组III-熵网.md:254"
+        },
+        {
+          "range": "6–8",
+          "effect": "正常的大多数人",
+          "source": "docs/scenario/07-世界模组III-熵网.md:255"
+        },
+        {
+          "range": "3–5",
+          "effect": "明显改造过的人。中枢城部分区域无法进入",
+          "source": "docs/scenario/07-世界模组III-熵网.md:256"
+        },
+        {
+          "range": "1–2",
+          "effect": "大部分是零件。情绪反应迟钝，共感判定 −1 骰",
+          "source": "docs/scenario/07-世界模组III-熵网.md:257"
+        },
+        {
+          "range": "0",
+          "effect": "不再被法律视为人。 你成为财产",
+          "source": "docs/scenario/07-世界模组III-熵网.md:258"
+        }
+      ],
+      "reduction": "纯度是可以恢复的，但极其昂贵：一次「原生重建」需要「贵重 ×5」，且需要三个月。",
+      "reduction_source": "docs/scenario/07-世界模组III-熵网.md:260",
+      "source": "docs/scenario/07-世界模组III-熵网.md:243"
+    },
+    "cyberware": {
+      "note": "每件义体提供能力，同时降低纯度。",
+      "items": [
+        {
+          "name": "光学模组",
+          "effect": "夜视、变焦、热成像",
+          "purity_delta": -1,
+          "source": "docs/scenario/07-世界模组III-熵网.md:268"
+        },
+        {
+          "name": "反射增幅器",
+          "effect": "先攻 +2，闪避 +1 骰",
+          "purity_delta": -1,
+          "source": "docs/scenario/07-世界模组III-熵网.md:269"
+        },
+        {
+          "name": "承重骨架",
+          "effect": "力量类判定 +2 骰，负重翻倍",
+          "purity_delta": -1,
+          "source": "docs/scenario/07-世界模组III-熵网.md:270"
+        },
+        {
+          "name": "皮下装甲",
+          "effect": "防护 +2",
+          "purity_delta": -1,
+          "source": "docs/scenario/07-世界模组III-熵网.md:271"
+        },
+        {
+          "name": "武器臂",
+          "effect": "内置近战武器（1d8）",
+          "purity_delta": -2,
+          "source": "docs/scenario/07-世界模组III-熵网.md:272"
+        },
+        {
+          "name": "神经接口",
+          "effect": "可以直接接入设备，无需工具",
+          "purity_delta": -1,
+          "source": "docs/scenario/07-世界模组III-熵网.md:273"
+        },
+        {
+          "name": "记忆槽",
+          "effect": "可以存储并回放一段记忆",
+          "purity_delta": -2,
+          "source": "docs/scenario/07-世界模组III-熵网.md:274"
+        },
+        {
+          "name": "身份伪装模组",
+          "effect": "可以随时更换生物识别特征",
+          "purity_delta": -2,
+          "source": "docs/scenario/07-世界模组III-熵网.md:275"
+        }
+      ],
+      "hidden_cost": "纯度每低于 5，你在共感、表演与说服上的判定各 −1 骰。别人能感觉到你不太像人了。",
+      "hidden_cost_source": "docs/scenario/07-世界模组III-熵网.md:277",
+      "source": "docs/scenario/07-世界模组III-熵网.md:262"
+    },
+    "diving": {
+      "note": "网潜是本模组的核心活动。它不是「查资料」，而是进入一个地方。",
+      "steps": [
+        {
+          "order": 1,
+          "step": "接入：需要一台终端（每个区域都有，费用不同）",
+          "source": "docs/scenario/07-世界模组III-熵网.md:286"
+        },
+        {
+          "order": 2,
+          "step": "潜入：掷一次「同步」判定，决定你进入的深度与稳定度",
+          "source": "docs/scenario/07-世界模组III-熵网.md:287"
+        },
+        {
+          "order": 3,
+          "step": "行动：在网中按回合行动，与现实相同的规则",
+          "source": "docs/scenario/07-世界模组III-熵网.md:288"
+        },
+        {
+          "order": 4,
+          "step": "遭遇：网中的一切都是敌体或障碍",
+          "source": "docs/scenario/07-世界模组III-熵网.md:289"
+        },
+        {
+          "order": 5,
+          "step": "带回：你可以带走一样东西（这是网潜的目的）",
+          "source": "docs/scenario/07-世界模组III-熵网.md:290"
+        },
+        {
+          "order": 6,
+          "step": "退出：同步率结算，并检定是否留下了什么",
+          "source": "docs/scenario/07-世界模组III-熵网.md:291"
+        }
+      ],
+      "time_skew": {
+        "note": "网中的十分钟，等于现实中的一小时。",
+        "table": [
+          {
+            "net": "1 分钟",
+            "real": "6 分钟",
+            "source": "docs/scenario/07-世界模组III-熵网.md:300"
+          },
+          {
+            "net": "10 分钟",
+            "real": "1 小时",
+            "source": "docs/scenario/07-世界模组III-熵网.md:301"
+          },
+          {
+            "net": "1 小时",
+            "real": "6 小时",
+            "source": "docs/scenario/07-世界模组III-熵网.md:302"
+          },
+          {
+            "net": "4 小时",
+            "real": "一整天",
+            "source": "docs/scenario/07-世界模组III-熵网.md:303"
+          }
+        ],
+        "source": "docs/scenario/07-世界模组III-熵网.md:294"
+      },
+      "encounters": [
+        {
+          "type": "程序残骸",
+          "description": "仍在运行的旧程序，通常不知道自己已经没有主人",
+          "source": "docs/scenario/07-世界模组III-熵网.md:309"
+        },
+        {
+          "type": "档案人",
+          "description": "被困的意识。他们可能求助、可能攻击、也可能只是想找人说话",
+          "source": "docs/scenario/07-世界模组III-熵网.md:310"
+        },
+        {
+          "type": "回响体",
+          "description": "从网里生成的东西。它们想要出来",
+          "source": "docs/scenario/07-世界模组III-熵网.md:311"
+        }
+      ],
+      "death_rule": "网潜者在网中死亡不会真的死，但会永久损失 1d4 点同步率上限。这是可累积的、不可逆的损耗。",
+      "death_rule_source": "docs/scenario/07-世界模组III-熵网.md:313",
+      "source": "docs/scenario/07-世界模组III-熵网.md:279"
+    }
+  },
+  "careers": [
+    {
+      "id": "career-01",
+      "name": "网潜者",
+      "role": "核心角色，进入熵网",
+      "focus": [
+        "秘法",
+        "诡道"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "数据",
+        "直觉",
+        "耐受",
+        "分析",
+        "隐秘学（网）"
+      ],
+      "gear": [
+        "便携网潜终端",
+        "同步稳定器 ×2",
+        "一份写好的遗嘱"
+      ],
+      "abilities": [
+        {
+          "name": "平稳接入",
+          "cost": "被动",
+          "effect": "网潜时的同步判定 +2 骰"
+        },
+        {
+          "name": "深潜",
+          "cost": "被动",
+          "effect": "你可以比其他网潜者多下潜一层（档案层需要此能力）"
+        },
+        {
+          "name": "带回",
+          "cost": "被动",
+          "effect": "每次网潜必定可以带回一样东西，且不必掷骰"
+        }
+      ],
+      "specializations": [
+        "更深的下潜",
+        "同步效率",
+        "带回更多（危险）",
+        "网中战斗",
+        "档案人识别"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:374"
+    },
+    {
+      "id": "career-02",
+      "name": "义体医师",
+      "role": "改造与治疗",
+      "focus": [
+        "秘法",
+        "统帅"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "医疗",
+        "技术",
+        "手艺",
+        "共感",
+        "科学"
+      ],
+      "gear": [
+        "手术套件",
+        "三套备用义体模块",
+        "纯度检测套件"
+      ],
+      "abilities": [
+        {
+          "name": "现场改造",
+          "cost": "2 AP",
+          "effect": "为一名目标安装或调整一件义体（纯度 −1）"
+        },
+        {
+          "name": "快速修复",
+          "cost": "1 AP",
+          "effect": "恢复 2d6 活力，或修复一件损坏的义体"
+        },
+        {
+          "name": "纯度读数",
+          "cost": "0 AP",
+          "effect": "读出目标的真实纯度与最近一次改造的时间"
+        }
+      ],
+      "specializations": [
+        "纯度维护（减缓下降）",
+        "战斗医疗",
+        "非法改造",
+        "义体设计",
+        "身份备份"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:386"
+    },
+    {
+      "id": "career-03",
+      "name": "数据刀客",
+      "role": "网中战斗",
+      "focus": [
+        "锋刃",
+        "诡道"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "数据",
+        "劈砍",
+        "运动",
+        "直觉",
+        "耐受"
+      ],
+      "gear": [
+        "数据刀",
+        "一身便于接入的改装",
+        "一副从不摘下的护目镜"
+      ],
+      "abilities": [
+        {
+          "name": "刀锋同步",
+          "cost": "被动",
+          "effect": "在网中使用攻击时 +1 骰"
+        },
+        {
+          "name": "斩程序",
+          "cost": "2 AP",
+          "effect": "对一个程序残骸造成 2d8【力场】伤害"
+        },
+        {
+          "name": "断线",
+          "cost": "2 AP",
+          "effect": "把一个网中目标强制踢出（仅对网潜者有效）"
+        }
+      ],
+      "specializations": [
+        "网中连击",
+        "反网潜（专门猎杀其他网潜者）",
+        "程序解析",
+        "同步抗性",
+        "双刀"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:398"
+    },
+    {
+      "id": "career-04",
+      "name": "财团执行人",
+      "role": "权限、装备与秩序",
+      "focus": [
+        "铁壁",
+        "统帅"
+      ],
+      "vitality_bonus": 12,
+      "skills": [
+        "射击",
+        "统率",
+        "威吓",
+        "说服",
+        "技术"
+      ],
+      "gear": [
+        "财团制式护甲",
+        "制式武器",
+        "一份具有法律效力的执行令"
+      ],
+      "abilities": [
+        {
+          "name": "执行权限",
+          "cost": "被动",
+          "effect": "每个场景一次，可以合法地要求一名平民配合，或进入受限区域"
+        },
+        {
+          "name": "战术指挥",
+          "cost": "1 AP",
+          "effect": "一名队友的下一次判定 +1 骰"
+        },
+        {
+          "name": "后援",
+          "cost": "气势 2",
+          "effect": "呼叫支援，2d6 分钟后到达，**且会留下记录**"
+        }
+      ],
+      "specializations": [
+        "权限升级",
+        "小组战术",
+        "内部调查",
+        "合规（钻服务条款的空子）",
+        "安保队长"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:410"
+    },
+    {
+      "id": "career-05",
+      "name": "拾荒考古者",
+      "role": "外场探索与旧设备",
+      "focus": [
+        "游猎",
+        "诡道"
+      ],
+      "vitality_bonus": 10,
+      "skills": [
+        "技术",
+        "手艺",
+        "生存",
+        "察觉",
+        "历史"
+      ],
+      "gear": [
+        "探测设备",
+        "一整套拆解工具",
+        "三十一年前的地图集"
+      ],
+      "abilities": [
+        {
+          "name": "旧物直觉",
+          "cost": "被动",
+          "effect": "判断一件坍缩前设备的用途、年代与是否还能启动"
+        },
+        {
+          "name": "修复启动",
+          "cost": "2 AP",
+          "effect": "让一件旧设备恢复运转（持续一个场景）"
+        },
+        {
+          "name": "废墟导航",
+          "cost": "被动",
+          "effect": "在外场不会迷路，且遭遇减少 1 枚骰"
+        }
+      ],
+      "specializations": [
+        "设备考古",
+        "旧网协议（可读取坍缩前的数据）",
+        "废土驾驶",
+        "陷阱布置",
+        "黑市估价"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:422"
+    },
+    {
+      "id": "career-06",
+      "name": "帮派打手",
+      "role": "近战与街头",
+      "focus": [
+        "铁壁",
+        "锋刃"
+      ],
+      "vitality_bonus": 16,
+      "skills": [
+        "格斗",
+        "威吓",
+        "运动",
+        "劈砍",
+        "耐受"
+      ],
+      "gear": [
+        "帮派义体改造 ×2",
+        "一件顺手的近战武器",
+        "一副帮派徽记"
+      ],
+      "abilities": [
+        {
+          "name": "街头体魄",
+          "cost": "被动",
+          "effect": "活力上限 +6，且对【钝击】有抗性"
+        },
+        {
+          "name": "恐吓",
+          "cost": "1 AP",
+          "effect": "一名目标的交涉立场削减 1d6"
+        },
+        {
+          "name": "地盘",
+          "cost": "被动",
+          "effect": "在熟悉的街区，你总能找到帮忙的人与躲藏的地方"
+        }
+      ],
+      "specializations": [
+        "义体强化",
+        "帮派地位",
+        "街头情报",
+        "群殴",
+        "护甲改装"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:434"
+    },
+    {
+      "id": "career-07",
+      "name": "身份经纪人",
+      "role": "身份、人脉与欺骗",
+      "focus": [
+        "诡道"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "欺骗",
+        "人脉",
+        "说服",
+        "数据",
+        "表演"
+      ],
+      "gear": [
+        "五个备用身份",
+        "一套伪造设备",
+        "一份记录了很多人秘密的档案"
+      ],
+      "abilities": [
+        {
+          "name": "换脸",
+          "cost": "2 AP",
+          "effect": "切换到一个已准备的备用身份（需一个时段准备）"
+        },
+        {
+          "name": "身份鉴定",
+          "cost": "0 AP",
+          "effect": "一眼看出一个身份是真、是假、还是属于别人"
+        },
+        {
+          "name": "交易撮合",
+          "cost": "被动",
+          "effect": "你可以为一次交易找到买家或卖家，并抽取差价"
+        }
+      ],
+      "specializations": [
+        "身份伪造（品质提升）",
+        "记忆编辑（高危）",
+        "人脉网络",
+        "身份拍卖",
+        "销赃"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:446"
+    },
+    {
+      "id": "career-08",
+      "name": "系统工程师",
+      "role": "设备、网络与基础设施",
+      "focus": [
+        "秘法",
+        "铁壁"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "技术",
+        "数据",
+        "科学",
+        "手艺",
+        "分析"
+      ],
+      "gear": [
+        "一整套维修工具",
+        "便携式终端",
+        "一份系统架构图"
+      ],
+      "abilities": [
+        {
+          "name": "快速入侵",
+          "cost": "2 AP",
+          "effect": "入侵一个未加密或弱加密的设备，使其为你工作一个场景"
+        },
+        {
+          "name": "加固",
+          "cost": "2 AP",
+          "effect": "为一件设备或一处入口增加防护（DF +4，持续一小时）"
+        },
+        {
+          "name": "系统直觉",
+          "cost": "被动",
+          "effect": "判断一个系统是否有后门、多久没人维护、谁能关掉它"
+        }
+      ],
+      "specializations": [
+        "深层入侵",
+        "物理防护",
+        "自动化（无人机与炮塔）",
+        "协议考古",
+        "关不掉的东西"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:458"
+    },
+    {
+      "id": "career-09",
+      "name": "走私驾驶员",
+      "role": "载具与机动",
+      "focus": [
+        "游猎",
+        "诡道"
+      ],
+      "vitality_bonus": 10,
+      "skills": [
+        "操舵",
+        "杂技",
+        "人脉（走私）",
+        "察觉",
+        "运动"
+      ],
+      "gear": [
+        "一辆改装过的车",
+        "三套车牌",
+        "一条只有他知道的路"
+      ],
+      "abilities": [
+        {
+          "name": "车技",
+          "cost": "被动",
+          "effect": "驾驶判定 +2 骰，且可以在移动中攻击而不受惩罚"
+        },
+        {
+          "name": "甩脱",
+          "cost": "1 AP",
+          "effect": "重掷一次失败的脱离判定"
+        },
+        {
+          "name": "货运网络",
+          "cost": "被动",
+          "effect": "知道去哪里能找到愿意不问问题的搬运工"
+        }
+      ],
+      "specializations": [
+        "极限驾驶",
+        "装甲改装",
+        "走私路线",
+        "追逐战",
+        "夜间运输"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:470"
+    },
+    {
+      "id": "career-10",
+      "name": "档案人维权者",
+      "role": "道德核心与网中谈判",
+      "focus": [
+        "统帅",
+        "秘法"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "说服",
+        "共感",
+        "隐秘学（网）",
+        "历史",
+        "分析"
+      ],
+      "gear": [
+        "一份档案人的最后录音",
+        "工会证明文件",
+        "一封没寄出的信"
+      ],
+      "abilities": [
+        {
+          "name": "与档案人对话",
+          "cost": "被动",
+          "effect": "你可以与档案人正常交涉，且他们默认对你友善"
+        },
+        {
+          "name": "名字",
+          "cost": "被动",
+          "effect": "知道一个档案人的真名，就能在网中定位他"
+        },
+        {
+          "name": "主张",
+          "cost": "1 AP",
+          "effect": "公开主张一件事，使在场所有人的交涉立场向你倾斜 1d6"
+        }
+      ],
+      "specializations": [
+        "法律主张",
+        "网中救援",
+        "档案人名录",
+        "工会资源",
+        "公众演讲"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:482"
+    },
+    {
+      "id": "career-11",
+      "name": "监控分析师",
+      "role": "信息获取与追踪",
+      "focus": [
+        "游猎",
+        "秘法"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "数据",
+        "察觉",
+        "分析",
+        "直觉",
+        "技术"
+      ],
+      "gear": [
+        "一套监控接入工具",
+        "城市摄像头分布图",
+        "一个总是有电的显示器"
+      ],
+      "abilities": [
+        {
+          "name": "调用监控",
+          "cost": "每场景一次",
+          "effect": "调取一处最近 24 小时的监控记录"
+        },
+        {
+          "name": "行为预测",
+          "cost": "1 AP",
+          "effect": "预测一名目标接下来的一个行动（准确率为 70%）"
+        },
+        {
+          "name": "反侦察",
+          "cost": "被动",
+          "effect": "知道如何避开监控，你的潜行判定 +1 骰"
+        }
+      ],
+      "specializations": [
+        "全城监控网",
+        "人脸识别",
+        "反监控（帮助队友）",
+        "数据取证",
+        "追踪"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:494"
+    },
+    {
+      "id": "career-12",
+      "name": "回响体猎人",
+      "role": "对抗从网里出来的东西",
+      "focus": [
+        "锋刃",
+        "铁壁"
+      ],
+      "vitality_bonus": 12,
+      "skills": [
+        "劈砍",
+        "射击",
+        "耐受",
+        "隐秘学（网）",
+        "直觉"
+      ],
+      "gear": [
+        "专门对付回响体的装备",
+        "一本手写图鉴",
+        "很多道疤"
+      ],
+      "abilities": [
+        {
+          "name": "回响辨识",
+          "cost": "0 AP",
+          "effect": "知道一个回响体的弱点与其在网中的原型"
+        },
+        {
+          "name": "克制打击",
+          "cost": "被动",
+          "effect": "对回响体的攻击 +1 骰，且伤害可穿透其抗性"
+        },
+        {
+          "name": "封存",
+          "cost": "2 AP",
+          "effect": "把一个被击倒的回响体暂时封存（防止它回到网中重组）"
+        }
+      ],
+      "specializations": [
+        "回响体图鉴",
+        "封存技术",
+        "网中追猎",
+        "抗性装备",
+        "猎人工会"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:506"
+    },
+    {
+      "id": "career-13",
+      "name": "退出者",
+      "role": "极简、坚韧与人性",
+      "focus": [
+        "铁壁",
+        "统帅"
+      ],
+      "vitality_bonus": 12,
+      "skills": [
+        "生存",
+        "耐受",
+        "共感",
+        "运动",
+        "手艺"
+      ],
+      "gear": [
+        "完全没有联网设备的装备",
+        "手工工具",
+        "一份纸质地图"
+      ],
+      "abilities": [
+        {
+          "name": "不可追踪",
+          "cost": "被动",
+          "effect": "你无法被任何基于网络的手段定位"
+        },
+        {
+          "name": "完整的人",
+          "cost": "被动",
+          "effect": "你的纯度为 10，且在共感与说服上 +1 骰"
+        },
+        {
+          "name": "手工",
+          "cost": "被动",
+          "effect": "你可以用非数字手段完成大多数维修与建造"
+        }
+      ],
+      "specializations": [
+        "野外生存",
+        "无网战斗",
+        "社区领袖",
+        "机械维修（纯机械）",
+        "纸与笔"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:518"
+    },
+    {
+      "id": "career-14",
+      "name": "备份技师",
+      "role": "身份备份与恢复",
+      "focus": [
+        "秘法",
+        "统帅"
+      ],
+      "vitality_bonus": 6,
+      "skills": [
+        "技术",
+        "医疗",
+        "数据",
+        "共感",
+        "科学"
+      ],
+      "gear": [
+        "一台便携备份设备",
+        "两份到期的备份",
+        "医疗穹顶的工牌"
+      ],
+      "abilities": [
+        {
+          "name": "备份读取",
+          "cost": "0 AP",
+          "effect": "读出一份备份的完整性、缺失部分与被修改的痕迹"
+        },
+        {
+          "name": "临时恢复",
+          "cost": "3 AP ＋ 专注 2",
+          "effect": "把一份备份临时载入一个身体（持续一小时）"
+        },
+        {
+          "name": "到期提醒",
+          "cost": "被动",
+          "effect": "你知道所有认识的人的备份还剩多久到期"
+        }
+      ],
+      "specializations": [
+        "备份修复",
+        "身份移植（高危）",
+        "记忆校验",
+        "地下备份网络",
+        "死亡判定"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:530"
+    },
+    {
+      "id": "career-15",
+      "name": "无人机操控员",
+      "role": "远程打击与侦察",
+      "focus": [
+        "游猎",
+        "铁壁"
+      ],
+      "vitality_bonus": 8,
+      "skills": [
+        "技术",
+        "射击",
+        "察觉",
+        "操舵",
+        "数据"
+      ],
+      "gear": [
+        "三架小型无人机",
+        "控制台",
+        "备用电池组"
+      ],
+      "abilities": [
+        {
+          "name": "侦察",
+          "cost": "1 AP",
+          "effect": "一架无人机对 50 米内一处区域进行侦察"
+        },
+        {
+          "name": "协同攻击",
+          "cost": "2 AP",
+          "effect": "无人机进行一次攻击（1d6），且不算你的攻击次数"
+        },
+        {
+          "name": "屏障",
+          "cost": "2 AP",
+          "effect": "无人机为你提供 +2 防护（持续一回合）"
+        }
+      ],
+      "specializations": [
+        "机群（更多无人机）",
+        "武装化",
+        "隐蔽侦察",
+        "自杀式打击",
+        "维修"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:542"
+    },
+    {
+      "id": "career-16",
+      "name": "无名区向导",
+      "role": "穿越与生存",
+      "focus": [
+        "游猎",
+        "铁壁"
+      ],
+      "vitality_bonus": 10,
+      "skills": [
+        "生存",
+        "运动",
+        "察觉",
+        "人脉（退出者）",
+        "耐受"
+      ],
+      "gear": [
+        "纸质地图",
+        "一台老式电台",
+        "一份写着很多名字的名单"
+      ],
+      "abilities": [
+        {
+          "name": "无名路径",
+          "cost": "被动",
+          "effect": "在城市与城市之间的未登记区域不会迷路"
+        },
+        {
+          "name": "静默通行",
+          "cost": "被动",
+          "effect": "穿越封锁线或检查站时 +2 骰"
+        },
+        {
+          "name": "名单",
+          "cost": "被动",
+          "effect": "知道哪些人成功退出了系统，以及他们现在在哪"
+        }
+      ],
+      "specializations": [
+        "边境知识",
+        "电台网络",
+        "反追踪",
+        "荒野医疗",
+        "引路人"
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:554"
+    },
+    {
+      "id": "career-17",
+      "name": "未登记者",
+      "role": "特殊职途：没有职途的人",
+      "focus": [],
+      "vitality_bonus": 0,
+      "skills": [],
+      "gear": [
+        "一个真实身份"
+      ],
+      "abilities": [],
+      "specializations": [],
+      "note": "不获得职途能力。作为补偿，获得 3 点额外属性成长、2 项额外熟练，以及一个真实身份（这在你的世界里比任何技能都稀有，也危险）。",
+      "source": "docs/scenario/07-世界模组III-熵网.md:568"
+    }
+  ],
+  "abilities": [
+    {
+      "id": "ability-001",
+      "name": "浅层接入",
+      "category": "网潜类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "接入本地网络，读取公开信息",
+      "source": "docs/scenario/07-世界模组III-熵网.md:594"
+    },
+    {
+      "id": "ability-002",
+      "name": "同步检定",
+      "category": "网潜类",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "读出自己当前的同步率与稳定度",
+      "source": "docs/scenario/07-世界模组III-熵网.md:595"
+    },
+    {
+      "id": "ability-003",
+      "name": "网中定位",
+      "category": "网潜类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在网中确定自己与其他网潜者的相对位置",
+      "source": "docs/scenario/07-世界模组III-熵网.md:596"
+    },
+    {
+      "id": "ability-004",
+      "name": "数据锚",
+      "category": "网潜类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在网中放置一个锚点，之后可以返回此处",
+      "source": "docs/scenario/07-世界模组III-熵网.md:597"
+    },
+    {
+      "id": "ability-005",
+      "name": "深潜",
+      "category": "网潜类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "下潜一层（每层需要一次，且同步率 −1）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:598"
+    },
+    {
+      "id": "ability-006",
+      "name": "伪装签名",
+      "category": "网潜类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "网中的其他单位难以识别你",
+      "source": "docs/scenario/07-世界模组III-熵网.md:599"
+    },
+    {
+      "id": "ability-007",
+      "name": "带回",
+      "category": "网潜类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "把网中的一样东西带回现实（每次网潜限一次）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:600"
+    },
+    {
+      "id": "ability-008",
+      "name": "强制退出",
+      "category": "网潜类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "把自己或他人强制踢出网（安全，但失去本次收获）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:601"
+    },
+    {
+      "id": "ability-009",
+      "name": "网中构造",
+      "category": "网潜类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "在网中造出一个临时结构（掩体、桥、陷阱）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:602"
+    },
+    {
+      "id": "ability-010",
+      "name": "意识冲击",
+      "category": "网潜类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "对一个网中目标造成 2d6【精神】",
+      "source": "docs/scenario/07-世界模组III-熵网.md:603"
+    },
+    {
+      "id": "ability-011",
+      "name": "档案层进入",
+      "category": "网潜类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "同步",
+          "amount": 1,
+          "raw": "同步 1"
+        }
+      ],
+      "effect": "进入档案层。你必须说出你要找的是什么",
+      "source": "docs/scenario/07-世界模组III-熵网.md:604"
+    },
+    {
+      "id": "ability-012",
+      "name": "锚定回归",
+      "category": "网潜类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "无论身处何处，立即返回最近的锚点",
+      "source": "docs/scenario/07-世界模组III-熵网.md:605"
+    },
+    {
+      "id": "ability-013",
+      "name": "多线潜行",
+      "category": "网潜类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "你同时在两处行动（现实与网），但同步率每回合 −1",
+      "source": "docs/scenario/07-世界模组III-熵网.md:606"
+    },
+    {
+      "id": "ability-014",
+      "name": "带回一个人",
+      "category": "网潜类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "同步",
+          "amount": 2,
+          "raw": "同步 2"
+        }
+      ],
+      "effect": "把一名档案人的意识带回现实。需要一个身体",
+      "source": "docs/scenario/07-世界模组III-熵网.md:607"
+    },
+    {
+      "id": "ability-015",
+      "name": "设备唤醒",
+      "category": "入侵类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "让一件处于待机的设备启动",
+      "source": "docs/scenario/07-世界模组III-熵网.md:613"
+    },
+    {
+      "id": "ability-016",
+      "name": "门禁破解",
+      "category": "入侵类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "打开一道电子锁（DF 由锁的等级决定）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:614"
+    },
+    {
+      "id": "ability-017",
+      "name": "监控盲区",
+      "category": "入侵类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "让一个摄像头失效 10 分钟",
+      "source": "docs/scenario/07-世界模组III-熵网.md:615"
+    },
+    {
+      "id": "ability-018",
+      "name": "信号嗅探",
+      "category": "入侵类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "找出 30 米内所有正在通讯的设备",
+      "source": "docs/scenario/07-世界模组III-熵网.md:616"
+    },
+    {
+      "id": "ability-019",
+      "name": "数据抽取",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "从一个设备中抽取一份数据（需要时间）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:617"
+    },
+    {
+      "id": "ability-020",
+      "name": "权限提升",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "临时获得一个系统的管理员权限（10 分钟）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:618"
+    },
+    {
+      "id": "ability-021",
+      "name": "混淆日志",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "让你的这次入侵在日志中消失",
+      "source": "docs/scenario/07-世界模组III-熵网.md:619"
+    },
+    {
+      "id": "ability-022",
+      "name": "物理隔离",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "切断一整个房间的外部连接",
+      "source": "docs/scenario/07-世界模组III-熵网.md:620"
+    },
+    {
+      "id": "ability-023",
+      "name": "傀儡设备",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "让一件设备为你工作一个场景",
+      "source": "docs/scenario/07-世界模组III-熵网.md:621"
+    },
+    {
+      "id": "ability-024",
+      "name": "反向追踪",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "追踪一条数据流的来源",
+      "source": "docs/scenario/07-世界模组III-熵网.md:622"
+    },
+    {
+      "id": "ability-025",
+      "name": "身份注入",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "让系统将你识别为另一个人（10 分钟）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:623"
+    },
+    {
+      "id": "ability-026",
+      "name": "服务条款漏洞",
+      "category": "入侵类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "找出一个系统合规上的漏洞，使其必须为你服务",
+      "source": "docs/scenario/07-世界模组III-熵网.md:624"
+    },
+    {
+      "id": "ability-027",
+      "name": "全域接管",
+      "category": "入侵类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "接管一整个建筑的系统（持续 10 分钟）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:625"
+    },
+    {
+      "id": "ability-028",
+      "name": "永久后门",
+      "category": "入侵类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "在一个系统中留下一道只有你能用的门",
+      "source": "docs/scenario/07-世界模组III-熵网.md:626"
+    },
+    {
+      "id": "ability-029",
+      "name": "光学增强",
+      "category": "义体类",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "夜视与变焦，持续一小时",
+      "source": "docs/scenario/07-世界模组III-熵网.md:632"
+    },
+    {
+      "id": "ability-030",
+      "name": "热成像",
+      "category": "义体类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "看穿烟雾与薄墙",
+      "source": "docs/scenario/07-世界模组III-熵网.md:633"
+    },
+    {
+      "id": "ability-031",
+      "name": "反射增幅",
+      "category": "义体类",
+      "tier": "轻",
+      "ap": null,
+      "ap_note": "反应动作：消耗 1 点保留 AP（原文 AP 列记「反应 1」）",
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "一次闪避判定 +2 骰",
+      "source": "docs/scenario/07-世界模组III-熵网.md:634"
+    },
+    {
+      "id": "ability-032",
+      "name": "承重锁定",
+      "category": "义体类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "力量类判定 +2 骰，持续一回合",
+      "source": "docs/scenario/07-世界模组III-熵网.md:635"
+    },
+    {
+      "id": "ability-033",
+      "name": "皮下装甲展开",
+      "category": "义体类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "防护 +3，持续时间依存于你的纯度",
+      "source": "docs/scenario/07-世界模组III-熵网.md:636"
+    },
+    {
+      "id": "ability-034",
+      "name": "武器臂展开",
+      "category": "义体类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "展开内置武器，本场战斗可用",
+      "source": "docs/scenario/07-世界模组III-熵网.md:637"
+    },
+    {
+      "id": "ability-035",
+      "name": "疼痛抑制",
+      "category": "义体类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "忽略一个状态，两回合后承受一半效果",
+      "source": "docs/scenario/07-世界模组III-熵网.md:638"
+    },
+    {
+      "id": "ability-036",
+      "name": "快速凝血",
+      "category": "义体类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "恢复 1d8 活力，或立刻止血",
+      "source": "docs/scenario/07-世界模组III-熵网.md:639"
+    },
+    {
+      "id": "ability-037",
+      "name": "神经超速",
+      "category": "义体类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "本回合 +1 AP，但纯度临时 −1",
+      "source": "docs/scenario/07-世界模组III-熵网.md:640"
+    },
+    {
+      "id": "ability-038",
+      "name": "过载运转",
+      "category": "义体类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "所有判定 +1 骰，持续一回合；纯度永久 −1",
+      "source": "docs/scenario/07-世界模组III-熵网.md:641"
+    },
+    {
+      "id": "ability-039",
+      "name": "记忆回放",
+      "category": "义体类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "播放一段存储的记忆，可让他人观看",
+      "source": "docs/scenario/07-世界模组III-熵网.md:642"
+    },
+    {
+      "id": "ability-040",
+      "name": "义体脱离",
+      "category": "义体类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "抛弃一件义体以获得一次性爆发，纯度不再下降（因为已经没有可降的了）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:643"
+    },
+    {
+      "id": "ability-041",
+      "name": "环境扫描",
+      "category": "感知类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "察觉 20 米内所有的电子设备",
+      "source": "docs/scenario/07-世界模组III-熵网.md:649"
+    },
+    {
+      "id": "ability-042",
+      "name": "生命体征",
+      "category": "感知类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "感知 15 米内的生命体征与纯度",
+      "source": "docs/scenario/07-世界模组III-熵网.md:650"
+    },
+    {
+      "id": "ability-043",
+      "name": "声音过滤",
+      "category": "感知类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在嘈杂中锁定一段对话",
+      "source": "docs/scenario/07-世界模组III-熵网.md:651"
+    },
+    {
+      "id": "ability-044",
+      "name": "微表情",
+      "category": "感知类",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "一次共感判定 +2 骰",
+      "source": "docs/scenario/07-世界模组III-熵网.md:652"
+    },
+    {
+      "id": "ability-045",
+      "name": "威胁预判",
+      "category": "感知类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "下一次先攻或闪避 +2 骰",
+      "source": "docs/scenario/07-世界模组III-熵网.md:653"
+    },
+    {
+      "id": "ability-046",
+      "name": "穿透扫描",
+      "category": "感知类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "看穿一层薄墙或集装箱内的东西",
+      "source": "docs/scenario/07-世界模组III-熵网.md:654"
+    },
+    {
+      "id": "ability-047",
+      "name": "电磁感知",
+      "category": "感知类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "察觉附近是否有正在运行的强电磁设备",
+      "source": "docs/scenario/07-世界模组III-熵网.md:655"
+    },
+    {
+      "id": "ability-048",
+      "name": "记忆索引",
+      "category": "感知类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "检索自己是否曾见过某人或某地",
+      "source": "docs/scenario/07-世界模组III-熵网.md:656"
+    },
+    {
+      "id": "ability-049",
+      "name": "真值检测",
+      "category": "感知类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "判断一段数据是否被修改过",
+      "source": "docs/scenario/07-世界模组III-熵网.md:657"
+    },
+    {
+      "id": "ability-050",
+      "name": "广域感知",
+      "category": "感知类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "感知 100 米内的一切电子活动（信息量极大，需通过心智判定整理）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:658"
+    },
+    {
+      "id": "ability-051",
+      "name": "纯度透视",
+      "category": "感知类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "看穿一个人的真实纯度与其义体分布",
+      "source": "docs/scenario/07-世界模组III-熵网.md:659"
+    },
+    {
+      "id": "ability-052",
+      "name": "预知片段",
+      "category": "感知类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "看到 6 秒后的一个片段（导引者必须诚实提供）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:660"
+    },
+    {
+      "id": "ability-053",
+      "name": "精准射击",
+      "category": "战斗类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "下一次远程攻击 +2 骰",
+      "source": "docs/scenario/07-世界模组III-熵网.md:666"
+    },
+    {
+      "id": "ability-054",
+      "name": "弹道预测",
+      "category": "战斗类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "无视目标的一半掩体加成",
+      "source": "docs/scenario/07-世界模组III-熵网.md:667"
+    },
+    {
+      "id": "ability-055",
+      "name": "电击冲击",
+      "category": "战斗类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "近战造成 1d6【电击】并使其获得【失衡】",
+      "source": "docs/scenario/07-世界模组III-熵网.md:668"
+    },
+    {
+      "id": "ability-056",
+      "name": "反冲吸收",
+      "category": "战斗类",
+      "tier": "轻",
+      "ap": null,
+      "ap_note": "反应动作：消耗 1 点保留 AP（原文 AP 列记「反应 1」）",
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "减少一次受到的伤害 3 点",
+      "source": "docs/scenario/07-世界模组III-熵网.md:669"
+    },
+    {
+      "id": "ability-057",
+      "name": "压制射击",
+      "category": "战斗类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "指定一个区域，进入者触发你的攻击",
+      "source": "docs/scenario/07-世界模组III-熵网.md:670"
+    },
+    {
+      "id": "ability-058",
+      "name": "穿甲弹",
+      "category": "战斗类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "本次攻击无视 4 点防护",
+      "source": "docs/scenario/07-世界模组III-熵网.md:671"
+    },
+    {
+      "id": "ability-059",
+      "name": "爆炸物投放",
+      "category": "战斗类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "2d8【火焰】，范围 3 米",
+      "source": "docs/scenario/07-世界模组III-熵网.md:672"
+    },
+    {
+      "id": "ability-060",
+      "name": "过载打击",
+      "category": "战斗类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "本次攻击伤害翻倍，但你受到 1d6 反伤",
+      "source": "docs/scenario/07-世界模组III-熵网.md:673"
+    },
+    {
+      "id": "ability-061",
+      "name": "弹幕",
+      "category": "战斗类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "对一个 5 米 × 5 米区域进行一次全体攻击",
+      "source": "docs/scenario/07-世界模组III-熵网.md:674"
+    },
+    {
+      "id": "ability-062",
+      "name": "致命校准",
+      "category": "战斗类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "下一次攻击必定暴击（每场景一次）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:675"
+    },
+    {
+      "id": "ability-063",
+      "name": "连锁破坏",
+      "category": "战斗类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "对一件机械设备造成 3d10 伤害并使其彻底报废",
+      "source": "docs/scenario/07-世界模组III-熵网.md:676"
+    },
+    {
+      "id": "ability-064",
+      "name": "领域压制",
+      "category": "战斗类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "6 米范围内的敌人每回合开始获得 1 层【失衡】",
+      "source": "docs/scenario/07-世界模组III-熵网.md:677"
+    },
+    {
+      "id": "ability-065",
+      "name": "疾行",
+      "category": "移动类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "本回合移动 +3 米",
+      "source": "docs/scenario/07-世界模组III-熵网.md:683"
+    },
+    {
+      "id": "ability-066",
+      "name": "攀附",
+      "category": "移动类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在垂直表面移动一回合",
+      "source": "docs/scenario/07-世界模组III-熵网.md:684"
+    },
+    {
+      "id": "ability-067",
+      "name": "稳定落地",
+      "category": "移动类",
+      "tier": "轻",
+      "ap": null,
+      "ap_note": "反应动作：消耗 1 点保留 AP（原文 AP 列记「反应 1」）",
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "免疫一次坠落伤害",
+      "source": "docs/scenario/07-世界模组III-熵网.md:685"
+    },
+    {
+      "id": "ability-068",
+      "name": "突进",
+      "category": "移动类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "瞬移 5 米并可以立即攻击一次",
+      "source": "docs/scenario/07-世界模组III-熵网.md:686"
+    },
+    {
+      "id": "ability-069",
+      "name": "相位穿越",
+      "category": "移动类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "穿过一道薄墙（每个场景一次）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:687"
+    },
+    {
+      "id": "ability-070",
+      "name": "负重外骨骼",
+      "category": "移动类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "一小时内的负重视为四分之一",
+      "source": "docs/scenario/07-世界模组III-熵网.md:688"
+    },
+    {
+      "id": "ability-071",
+      "name": "高速机动",
+      "category": "移动类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "本回合移动速度翻倍，且不会触发反手打击",
+      "source": "docs/scenario/07-世界模组III-熵网.md:689"
+    },
+    {
+      "id": "ability-072",
+      "name": "短距跃迁",
+      "category": "移动类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "传送至 20 米内的一个可见位置",
+      "source": "docs/scenario/07-世界模组III-熵网.md:690"
+    },
+    {
+      "id": "ability-073",
+      "name": "群体跃迁",
+      "category": "移动类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "全队（至多 5 人）传送至 10 米内的位置",
+      "source": "docs/scenario/07-世界模组III-熵网.md:691"
+    },
+    {
+      "id": "ability-074",
+      "name": "锚定传送",
+      "category": "移动类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "传送到此前放置的一个数据锚的位置",
+      "source": "docs/scenario/07-世界模组III-熵网.md:692"
+    },
+    {
+      "id": "ability-075",
+      "name": "声音模仿",
+      "category": "身份与社会类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "模仿一个听过的人的声音",
+      "source": "docs/scenario/07-世界模组III-熵网.md:698"
+    },
+    {
+      "id": "ability-076",
+      "name": "生物特征伪装",
+      "category": "身份与社会类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "骗过一次生物识别检查",
+      "source": "docs/scenario/07-世界模组III-熵网.md:699"
+    },
+    {
+      "id": "ability-077",
+      "name": "身份查询",
+      "category": "身份与社会类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "查询一个身份的状态、订阅等级与到期时间",
+      "source": "docs/scenario/07-世界模组III-熵网.md:700"
+    },
+    {
+      "id": "ability-078",
+      "name": "社交档案",
+      "category": "身份与社会类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "调取一个人的公开社交痕迹（有助于交涉）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:701"
+    },
+    {
+      "id": "ability-079",
+      "name": "记忆编辑",
+      "category": "身份与社会类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "修改一段记忆（高危，且会造成不可预知的后果）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:702"
+    },
+    {
+      "id": "ability-080",
+      "name": "情绪调制",
+      "category": "身份与社会类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "使自己在一次交涉中获得 +2 骰",
+      "source": "docs/scenario/07-世界模组III-熵网.md:703"
+    },
+    {
+      "id": "ability-081",
+      "name": "群体说服",
+      "category": "身份与社会类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "同时对多人进行一次说服",
+      "source": "docs/scenario/07-世界模组III-熵网.md:704"
+    },
+    {
+      "id": "ability-082",
+      "name": "身份抵押",
+      "category": "身份与社会类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "把自己的身份作为抵押，换取一次重大的资源或服务",
+      "source": "docs/scenario/07-世界模组III-熵网.md:705"
+    },
+    {
+      "id": "ability-083",
+      "name": "存在抹除",
+      "category": "身份与社会类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "让一个系统在 24 小时内不再记录你",
+      "source": "docs/scenario/07-世界模组III-熵网.md:706"
+    },
+    {
+      "id": "ability-084",
+      "name": "身份继承",
+      "category": "身份与社会类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "把一个人的身份转移给另一个人（法律上完全有效）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:707"
+    },
+    {
+      "id": "ability-085",
+      "name": "放飞",
+      "category": "无人机与机械类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "一架无人机升空并开始工作",
+      "source": "docs/scenario/07-世界模组III-熵网.md:713"
+    },
+    {
+      "id": "ability-086",
+      "name": "侦察回传",
+      "category": "无人机与机械类",
+      "tier": "轻",
+      "ap": 0,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "获得无人机视角的画面",
+      "source": "docs/scenario/07-世界模组III-熵网.md:714"
+    },
+    {
+      "id": "ability-087",
+      "name": "协同攻击",
+      "category": "无人机与机械类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "无人机进行一次攻击（1d6）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:715"
+    },
+    {
+      "id": "ability-088",
+      "name": "干扰投放",
+      "category": "无人机与机械类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "10 米内的通讯失效一回合",
+      "source": "docs/scenario/07-世界模组III-熵网.md:716"
+    },
+    {
+      "id": "ability-089",
+      "name": "护盾无人机",
+      "category": "无人机与机械类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "一名目标获得 +3 防护（持续一回合）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:717"
+    },
+    {
+      "id": "ability-090",
+      "name": "群控",
+      "category": "无人机与机械类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "同时操控三架无人机执行同一任务",
+      "source": "docs/scenario/07-世界模组III-熵网.md:718"
+    },
+    {
+      "id": "ability-091",
+      "name": "自毁打击",
+      "category": "无人机与机械类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "一架无人机自爆，造成 3d8【火焰】",
+      "source": "docs/scenario/07-世界模组III-熵网.md:719"
+    },
+    {
+      "id": "ability-092",
+      "name": "炮塔部署",
+      "category": "无人机与机械类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "部署一座自动炮塔（15 点耐久，持续一个场景）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:720"
+    },
+    {
+      "id": "ability-093",
+      "name": "数据检索",
+      "category": "数据类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "在一个数据库中检索一个关键词",
+      "source": "docs/scenario/07-世界模组III-熵网.md:726"
+    },
+    {
+      "id": "ability-094",
+      "name": "格式转换",
+      "category": "数据类",
+      "tier": "轻",
+      "ap": 1,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 1,
+          "raw": "1"
+        }
+      ],
+      "effect": "让一份无法读取的数据变得可读（部分）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:727"
+    },
+    {
+      "id": "ability-095",
+      "name": "碎片重组",
+      "category": "数据类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "从损坏的数据中恢复一部分内容",
+      "source": "docs/scenario/07-世界模组III-熵网.md:728"
+    },
+    {
+      "id": "ability-096",
+      "name": "加密",
+      "category": "数据类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 2,
+          "raw": "2"
+        }
+      ],
+      "effect": "为一份数据加密（DF 16 才能破解）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:729"
+    },
+    {
+      "id": "ability-097",
+      "name": "坍缩前协议",
+      "category": "数据类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "读取一份坍缩之前的旧数据（这是考古者的核心能力）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:730"
+    },
+    {
+      "id": "ability-098",
+      "name": "数据伪造",
+      "category": "数据类",
+      "tier": "中",
+      "ap": 2,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 3,
+          "raw": "3"
+        }
+      ],
+      "effect": "伪造一份足以乱真的数据",
+      "source": "docs/scenario/07-世界模组III-熵网.md:731"
+    },
+    {
+      "id": "ability-099",
+      "name": "熵网解析",
+      "category": "数据类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 4,
+          "raw": "4"
+        }
+      ],
+      "effect": "解析一小片熵网内容。结果无法预测，且必定改变你",
+      "source": "docs/scenario/07-世界模组III-熵网.md:732"
+    },
+    {
+      "id": "ability-100",
+      "name": "全网广播",
+      "category": "数据类",
+      "tier": "重",
+      "ap": 3,
+      "costs": [
+        {
+          "unit": "专注",
+          "amount": 5,
+          "raw": "5"
+        }
+      ],
+      "effect": "向整个网络广播一条信息。所有人都会收到，包括不该收到的那些",
+      "source": "docs/scenario/07-世界模组III-熵网.md:733"
+    }
+  ],
+  "equipment": [
+    {
+      "id": "eq-melee-01",
+      "name": "单分子刀",
+      "kind": "weapon",
+      "damage": "1d6",
+      "ap": 2,
+      "tags": [
+        "精细",
+        "隐蔽"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:323"
+    },
+    {
+      "id": "eq-melee-02",
+      "name": "电击棍",
+      "kind": "weapon",
+      "damage": "1d6",
+      "ap": 2,
+      "tags": [
+        "电击",
+        "单手"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:324"
+    },
+    {
+      "id": "eq-melee-03",
+      "name": "液压钳",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 3,
+      "tags": [
+        "钝击",
+        "震"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:325"
+    },
+    {
+      "id": "eq-melee-04",
+      "name": "振动刃",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 2,
+      "tags": [
+        "斩击"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:326"
+    },
+    {
+      "id": "eq-melee-05",
+      "name": "等离子切割器",
+      "kind": "weapon",
+      "damage": "1d10",
+      "ap": 3,
+      "tags": [
+        "火焰",
+        "技术"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:327"
+    },
+    {
+      "id": "eq-melee-06",
+      "name": "内置武器臂",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 2,
+      "tags": [
+        "近战",
+        "义体"
+      ],
+      "price_tier": "贵重（含改造）",
+      "source": "docs/scenario/07-世界模组III-熵网.md:328"
+    },
+    {
+      "id": "eq-ranged-01",
+      "name": "手枪（动能）",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 2,
+      "range": "25 米",
+      "tags": [
+        "穿刺"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:334"
+    },
+    {
+      "id": "eq-ranged-02",
+      "name": "电磁手枪",
+      "kind": "weapon",
+      "damage": "1d8",
+      "ap": 2,
+      "range": "20 米",
+      "tags": [
+        "电击"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:335"
+    },
+    {
+      "id": "eq-ranged-03",
+      "name": "突击步枪",
+      "kind": "weapon",
+      "damage": "1d10",
+      "ap": 3,
+      "range": "60 米",
+      "tags": [
+        "穿刺",
+        "双手"
+      ],
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:336"
+    },
+    {
+      "id": "eq-ranged-04",
+      "name": "电磁狙击",
+      "kind": "weapon",
+      "damage": "2d8",
+      "ap": 3,
+      "range": "150 米",
+      "tags": [
+        "穿刺",
+        "重装"
+      ],
+      "price_tier": "贵重 ×2",
+      "source": "docs/scenario/07-世界模组III-熵网.md:337"
+    },
+    {
+      "id": "eq-ranged-05",
+      "name": "静默气枪",
+      "kind": "weapon",
+      "damage": "1d6",
+      "ap": 2,
+      "range": "15 米",
+      "tags": [
+        "穿刺",
+        "无声"
+      ],
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:338"
+    },
+    {
+      "id": "eq-armor-01",
+      "name": "复合织物",
+      "kind": "armor",
+      "guard": "+2",
+      "load": "轻",
+      "restriction": "无",
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:344"
+    },
+    {
+      "id": "eq-armor-02",
+      "name": "装甲外套",
+      "kind": "armor",
+      "guard": "+3",
+      "load": "中",
+      "restriction": "—",
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:345"
+    },
+    {
+      "id": "eq-armor-03",
+      "name": "战术护甲",
+      "kind": "armor",
+      "guard": "+5",
+      "load": "重",
+      "restriction": "移动 −2 米",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:346"
+    },
+    {
+      "id": "eq-armor-04",
+      "name": "全封闭动力甲",
+      "kind": "armor",
+      "guard": "+7",
+      "load": "重",
+      "restriction": "移动 −3 米，纯度门槛 ≥5",
+      "price_tier": "贵重 ×3",
+      "source": "docs/scenario/07-世界模组III-熵网.md:347"
+    },
+    {
+      "id": "eq-armor-05",
+      "name": "皮下装甲（义体）",
+      "kind": "armor",
+      "guard": "+2",
+      "load": "—",
+      "restriction": "纯度 −1",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:348"
+    },
+    {
+      "id": "eq-gear-01",
+      "name": "网潜终端（便携）",
+      "kind": "gear",
+      "effect": "可以在任何地方接入；品质影响同步判定",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:354"
+    },
+    {
+      "id": "eq-gear-02",
+      "name": "同步稳定器",
+      "kind": "gear",
+      "effect": "网潜时同步率损失减半（3 次后耗尽）",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:355"
+    },
+    {
+      "id": "eq-gear-03",
+      "name": "身份备份（一份）",
+      "kind": "gear",
+      "effect": "死亡后可以从备份恢复，但纯度 −1",
+      "price_tier": "贵重 ×2",
+      "source": "docs/scenario/07-世界模组III-熵网.md:356"
+    },
+    {
+      "id": "eq-gear-04",
+      "name": "伪造身份包",
+      "kind": "gear",
+      "effect": "一个完整的、能通过常规检查的身份",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:357"
+    },
+    {
+      "id": "eq-gear-05",
+      "name": "干扰器",
+      "kind": "gear",
+      "effect": "10 米内的监控失效一回合",
+      "price_tier": "标准",
+      "source": "docs/scenario/07-世界模组III-熵网.md:358"
+    },
+    {
+      "id": "eq-gear-06",
+      "name": "医疗凝胶",
+      "kind": "gear",
+      "effect": "恢复 2d6 活力，共 2 次",
+      "price_tier": "碎银",
+      "source": "docs/scenario/07-世界模组III-熵网.md:359"
+    },
+    {
+      "id": "eq-gear-07",
+      "name": "数据刀",
+      "kind": "gear",
+      "effect": "对网中目标的攻击 +1 骰；也可用于现实中的设备入侵",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:360"
+    },
+    {
+      "id": "eq-gear-08",
+      "name": "记忆槽（义体）",
+      "kind": "gear",
+      "effect": "存储并回放一段记忆；纯度 −2",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:361"
+    },
+    {
+      "id": "eq-gear-09",
+      "name": "纯度检测套件",
+      "kind": "gear",
+      "effect": "检测一个人的真实纯度（这在某些场合极具杀伤力）",
+      "price_tier": "贵重",
+      "source": "docs/scenario/07-世界模组III-熵网.md:362"
+    }
+  ],
+  "enemies": [
+    {
+      "id": "enemy-a01",
+      "name": "残片程序",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 12,
+      "poise": 6,
+      "attack_bonus": "+3",
+      "damage": "1d6 力场",
+      "persona": "狡诈",
+      "trait": "一段还在运行的旧代码，它不知道自己已经没有主人",
+      "source": "docs/scenario/07-世界模组III-熵网.md:751"
+    },
+    {
+      "id": "enemy-a02",
+      "name": "游荡脚本",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 11,
+      "poise": 6,
+      "attack_bonus": "+2",
+      "damage": "1d6 精神",
+      "persona": "控场",
+      "trait": "无目的地执行着三十一年前的一个循环",
+      "source": "docs/scenario/07-世界模组III-熵网.md:752"
+    },
+    {
+      "id": "enemy-a03",
+      "name": "数据蚊",
+      "tier": "杂兵",
+      "vitality": 8,
+      "guard": 13,
+      "poise": 4,
+      "attack_bonus": "+4",
+      "damage": "1d4 腐蚀",
+      "persona": "召唤",
+      "trait": "专吃未加密的数据，成群出现",
+      "source": "docs/scenario/07-世界模组III-熵网.md:753"
+    },
+    {
+      "id": "enemy-a04",
+      "name": "空壳账号",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 12,
+      "poise": 6,
+      "attack_bonus": "+3",
+      "damage": "1d4 精神",
+      "persona": "狡诈",
+      "trait": "一个没有人的身份，仍在登录",
+      "source": "docs/scenario/07-世界模组III-熵网.md:754"
+    },
+    {
+      "id": "enemy-a05",
+      "name": "破碎界面",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 13,
+      "poise": 8,
+      "attack_bonus": "+3",
+      "damage": "1d6 精神",
+      "persona": "控场",
+      "trait": "不断弹出无法关闭的窗口",
+      "source": "docs/scenario/07-世界模组III-熵网.md:755"
+    },
+    {
+      "id": "enemy-a06",
+      "name": "回声签名",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 13,
+      "poise": 6,
+      "attack_bonus": "+4",
+      "damage": "1d6 力场",
+      "persona": "狡诈",
+      "trait": "一个已死者留下的数据印记，仍在试图被识别",
+      "source": "docs/scenario/07-世界模组III-熵网.md:756"
+    },
+    {
+      "id": "enemy-a07",
+      "name": "自动客服",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 13,
+      "poise": 14,
+      "attack_bonus": "+5",
+      "damage": "1d8 精神",
+      "persona": "控场",
+      "trait": "它只想帮助你。它永远不会停止",
+      "source": "docs/scenario/07-世界模组III-熵网.md:757"
+    },
+    {
+      "id": "enemy-a08",
+      "name": "未完成的 AI",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 14,
+      "poise": 16,
+      "attack_bonus": "+6",
+      "damage": "1d8 力场",
+      "persona": "控场",
+      "trait": "坍缩当天正在训练中，至今仍在训练",
+      "source": "docs/scenario/07-世界模组III-熵网.md:758"
+    },
+    {
+      "id": "enemy-a09",
+      "name": "守卫程序",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 15,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d8 电击",
+      "persona": "守护",
+      "trait": "它守护的数据早就没人要了",
+      "source": "docs/scenario/07-世界模组III-熵网.md:759"
+    },
+    {
+      "id": "enemy-a10",
+      "name": "猎杀脚本",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+7",
+      "damage": "1d8 力场",
+      "persona": "猛攻",
+      "trait": "专门寻找网潜者，并且知道怎么造成伤害",
+      "source": "docs/scenario/07-世界模组III-熵网.md:760"
+    },
+    {
+      "id": "enemy-a11",
+      "name": "记忆残影",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 13,
+      "poise": 12,
+      "attack_bonus": "+5",
+      "damage": "1d6 精神",
+      "persona": "控场",
+      "trait": "某人的一段记忆被遗留在此，它仍在重复",
+      "source": "docs/scenario/07-世界模组III-熵网.md:761"
+    },
+    {
+      "id": "enemy-a12",
+      "name": "被遗弃的宠物程序",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+5",
+      "damage": "1d8 精神",
+      "persona": "守护",
+      "trait": "它一直在等主人回来，已经等了三十一年",
+      "source": "docs/scenario/07-世界模组III-熵网.md:762"
+    },
+    {
+      "id": "enemy-a13",
+      "name": "索引爬虫",
+      "tier": "标准",
+      "vitality": 32,
+      "guard": 14,
+      "poise": 20,
+      "attack_bonus": "+6",
+      "damage": "2d6 力场",
+      "persona": "召唤",
+      "trait": "不断索引着已经无法解析的内容",
+      "source": "docs/scenario/07-世界模组III-熵网.md:763"
+    },
+    {
+      "id": "enemy-a14",
+      "name": "反网潜单元",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 22,
+      "attack_bonus": "+8",
+      "damage": "2d8 力场",
+      "persona": "守护",
+      "trait": "财团放置的防御单位，它会先发出三次警告",
+      "source": "docs/scenario/07-世界模组III-熵网.md:764"
+    },
+    {
+      "id": "enemy-a15",
+      "name": "敌对的档案人",
+      "tier": "精锐",
+      "vitality": 42,
+      "guard": 15,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "他曾经是一个人，现在他只想有人陪",
+      "source": "docs/scenario/07-世界模组III-熵网.md:765"
+    },
+    {
+      "id": "enemy-a16",
+      "name": "熔毁残留",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 15,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 力场",
+      "persona": "猛攻",
+      "trait": "十一年前那次事故的残余，它记得每一个人的名字",
+      "source": "docs/scenario/07-世界模组III-熵网.md:766"
+    },
+    {
+      "id": "enemy-a17",
+      "name": "47 号之一",
+      "tier": "精锐",
+      "vitality": 50,
+      "guard": 16,
+      "poise": 28,
+      "attack_bonus": "+8",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "47 名网潜者中的一位。他还在找其他人",
+      "source": "docs/scenario/07-世界模组III-熵网.md:767"
+    },
+    {
+      "id": "enemy-a18",
+      "name": "自生成结构",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 17,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 力场",
+      "persona": "猛攻",
+      "trait": "熵网自己造出来的东西，没有任何人写过它",
+      "source": "docs/scenario/07-世界模组III-熵网.md:768"
+    },
+    {
+      "id": "enemy-a19",
+      "name": "回响体原型",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 熵蚀",
+      "persona": "猛攻",
+      "trait": "二十二年前第一次出现在现实中的那个东西的原型",
+      "source": "docs/scenario/07-世界模组III-熵网.md:769"
+    },
+    {
+      "id": "enemy-a20",
+      "name": "熵网深层意识",
+      "tier": "首领",
+      "vitality": 110,
+      "guard": 17,
+      "poise": 42,
+      "attack_bonus": "+9",
+      "damage": "3d8 精神",
+      "persona": "控场",
+      "trait": "如果网有意识，那就是它。它正在学习说话",
+      "source": "docs/scenario/07-世界模组III-熵网.md:770"
+    },
+    {
+      "id": "enemy-a21",
+      "name": "47 号集合",
+      "tier": "首领",
+      "vitality": 120,
+      "guard": 16,
+      "poise": 48,
+      "attack_bonus": "+9",
+      "damage": "3d10 力场",
+      "persona": "召唤",
+      "trait": "47 个人合成了一件东西，它仍然在寻找第 48 个",
+      "source": "docs/scenario/07-世界模组III-熵网.md:771"
+    },
+    {
+      "id": "enemy-a22",
+      "name": "坍缩本身",
+      "tier": "首领",
+      "vitality": 150,
+      "guard": 18,
+      "poise": 56,
+      "attack_bonus": "+10",
+      "damage": "3d10 熵蚀",
+      "persona": "控场",
+      "trait": "它不是生物，它是那场事故本身，且它仍在扩散",
+      "source": "docs/scenario/07-世界模组III-熵网.md:772"
+    },
+    {
+      "id": "enemy-b01",
+      "name": "街头混混",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 13,
+      "poise": 10,
+      "attack_bonus": "+3",
+      "damage": "1d6 钝击",
+      "persona": "猛攻",
+      "trait": "拿到钱之前不太愿意拼命",
+      "source": "docs/scenario/07-世界模组III-熵网.md:779"
+    },
+    {
+      "id": "enemy-b02",
+      "name": "帮派新丁",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 13,
+      "poise": 8,
+      "attack_bonus": "+3",
+      "damage": "1d6 穿刺",
+      "persona": "狡诈",
+      "trait": "他想证明自己，这让他既危险又容易被利用",
+      "source": "docs/scenario/07-世界模组III-熵网.md:780"
+    },
+    {
+      "id": "enemy-b03",
+      "name": "数据小贩",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 12,
+      "poise": 6,
+      "attack_bonus": "+2",
+      "damage": "1d4 精神",
+      "persona": "狡诈",
+      "trait": "他卖的东西真假参半，包括他自己",
+      "source": "docs/scenario/07-世界模组III-熵网.md:781"
+    },
+    {
+      "id": "enemy-b04",
+      "name": "走私搬运工",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 12,
+      "poise": 10,
+      "attack_bonus": "+3",
+      "damage": "1d6 钝击",
+      "persona": "守护",
+      "trait": "他护的是货，货比他的命值钱",
+      "source": "docs/scenario/07-世界模组III-熵网.md:782"
+    },
+    {
+      "id": "enemy-b05",
+      "name": "帮派义体兵",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 15,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "猛攻",
+      "trait": "身上至少四处改造，纯粹的打手",
+      "source": "docs/scenario/07-世界模组III-熵网.md:783"
+    },
+    {
+      "id": "enemy-b06",
+      "name": "财团保安",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 16,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "守护",
+      "trait": "按流程办事，且流程里没有英雄主义",
+      "source": "docs/scenario/07-世界模组III-熵网.md:784"
+    },
+    {
+      "id": "enemy-b07",
+      "name": "财团执行员",
+      "tier": "标准",
+      "vitality": 32,
+      "guard": 17,
+      "poise": 20,
+      "attack_bonus": "+7",
+      "damage": "1d8 穿刺",
+      "persona": "控场",
+      "trait": "有执行令，有权限，也有 KPI",
+      "source": "docs/scenario/07-世界模组III-熵网.md:785"
+    },
+    {
+      "id": "enemy-b08",
+      "name": "赏金猎人",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 15,
+      "poise": 14,
+      "attack_bonus": "+7",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "他只追有赏金的目标，但他记得住脸",
+      "source": "docs/scenario/07-世界模组III-熵网.md:786"
+    },
+    {
+      "id": "enemy-b09",
+      "name": "敌对数据刀客",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 16,
+      "attack_bonus": "+7",
+      "damage": "1d8 力场",
+      "persona": "猛攻",
+      "trait": "另一个网潜者。你们在网里抢同一样东西",
+      "source": "docs/scenario/07-世界模组III-熵网.md:787"
+    },
+    {
+      "id": "enemy-b10",
+      "name": "走私驾驶员",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 15,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "狡诈",
+      "trait": "他从不正面交战，只是离开",
+      "source": "docs/scenario/07-世界模组III-熵网.md:788"
+    },
+    {
+      "id": "enemy-b11",
+      "name": "回响教信徒",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 精神",
+      "persona": "猛攻",
+      "trait": "他相信网里的东西比人类更进化，而且他并不疯狂",
+      "source": "docs/scenario/07-世界模组III-熵网.md:789"
+    },
+    {
+      "id": "enemy-b12",
+      "name": "拾荒者小队",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 14,
+      "poise": 16,
+      "attack_bonus": "+5",
+      "damage": "1d8 钝击",
+      "persona": "猛攻",
+      "trait": "他们只是想要你们手上的东西",
+      "source": "docs/scenario/07-世界模组III-熵网.md:790"
+    },
+    {
+      "id": "enemy-b13",
+      "name": "帮派头目",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 穿刺",
+      "persona": "领袖",
+      "trait": "他管理着两千人，而他很清楚自己的位置不稳",
+      "source": "docs/scenario/07-世界模组III-熵网.md:791"
+    },
+    {
+      "id": "enemy-b14",
+      "name": "财团行动队长",
+      "tier": "精锐",
+      "vitality": 50,
+      "guard": 18,
+      "poise": 28,
+      "attack_bonus": "+8",
+      "damage": "2d8 穿刺",
+      "persona": "领袖",
+      "trait": "专业、冷静，且知道什么时候应该收手",
+      "source": "docs/scenario/07-世界模组III-熵网.md:792"
+    },
+    {
+      "id": "enemy-b15",
+      "name": "义体重装兵",
+      "tier": "精锐",
+      "vitality": 52,
+      "guard": 18,
+      "poise": 30,
+      "attack_bonus": "+7",
+      "damage": "2d10 钝击",
+      "persona": "猛攻",
+      "trait": "纯度已经低于 3，几乎不再是一个人了",
+      "source": "docs/scenario/07-世界模组III-熵网.md:793"
+    },
+    {
+      "id": "enemy-b16",
+      "name": "顶尖数据刀客",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 17,
+      "poise": 24,
+      "attack_bonus": "+8",
+      "damage": "2d8 力场",
+      "persona": "狡诈",
+      "trait": "网中的第一名。他从来没有输过，这让他很孤独",
+      "source": "docs/scenario/07-世界模组III-熵网.md:794"
+    },
+    {
+      "id": "enemy-b17",
+      "name": "回响教祭司",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+8",
+      "damage": "2d8 精神",
+      "persona": "召唤",
+      "trait": "他能从网里带出东西，也能让别人相信那是神圣的",
+      "source": "docs/scenario/07-世界模组III-熵网.md:795"
+    },
+    {
+      "id": "enemy-b18",
+      "name": "猎杀网潜者的人",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 17,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 穿刺",
+      "persona": "狡诈",
+      "trait": "他的工作就是让网潜者无法回来",
+      "source": "docs/scenario/07-世界模组III-熵网.md:796"
+    },
+    {
+      "id": "enemy-c01",
+      "name": "巡检无人机",
+      "tier": "杂兵",
+      "vitality": 10,
+      "guard": 13,
+      "poise": 6,
+      "attack_bonus": "+3",
+      "damage": "1d6 穿刺",
+      "persona": "狡诈",
+      "trait": "小型飞行设备，被击落后数据可以被提取",
+      "source": "docs/scenario/07-世界模组III-熵网.md:803"
+    },
+    {
+      "id": "enemy-c02",
+      "name": "清洁机器人",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 12,
+      "poise": 8,
+      "attack_bonus": "+2",
+      "damage": "1d6 钝击",
+      "persona": "守护",
+      "trait": "它只是想把你脚下的地擦干净",
+      "source": "docs/scenario/07-世界模组III-熵网.md:804"
+    },
+    {
+      "id": "enemy-c03",
+      "name": "自动哨戒枪",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 14,
+      "poise": 8,
+      "attack_bonus": "+4",
+      "damage": "1d6 穿刺",
+      "persona": "守护",
+      "trait": "判定逻辑老旧，会把所有人都当作入侵者",
+      "source": "docs/scenario/07-世界模组III-熵网.md:805"
+    },
+    {
+      "id": "enemy-c04",
+      "name": "运输小车",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 12,
+      "poise": 12,
+      "attack_bonus": "+2",
+      "damage": "1d6 钝击",
+      "persona": "猛攻",
+      "trait": "自动驾驶，撞人时从不减速",
+      "source": "docs/scenario/07-世界模组III-熵网.md:806"
+    },
+    {
+      "id": "enemy-c05",
+      "name": "安保机器人",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 16,
+      "poise": 20,
+      "attack_bonus": "+6",
+      "damage": "1d8 钝击",
+      "persona": "猛攻",
+      "trait": "稳健、缓慢，对指令绝对服从",
+      "source": "docs/scenario/07-世界模组III-熵网.md:807"
+    },
+    {
+      "id": "enemy-c06",
+      "name": "侦查无人机",
+      "tier": "标准",
+      "vitality": 22,
+      "guard": 15,
+      "poise": 12,
+      "attack_bonus": "+5",
+      "damage": "1d6 穿刺",
+      "persona": "控场",
+      "trait": "发现目标后会标记，使后续攻击 +1 骰",
+      "source": "docs/scenario/07-世界模组III-熵网.md:808"
+    },
+    {
+      "id": "enemy-c07",
+      "name": "拆除机甲",
+      "tier": "标准",
+      "vitality": 34,
+      "guard": 16,
+      "poise": 22,
+      "attack_bonus": "+6",
+      "damage": "2d6 钝击",
+      "persona": "猛攻",
+      "trait": "工程用，但拆人也很在行",
+      "source": "docs/scenario/07-世界模组III-熵网.md:809"
+    },
+    {
+      "id": "enemy-c08",
+      "name": "医疗机械臂",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 16,
+      "attack_bonus": "+5",
+      "damage": "1d6 穿刺",
+      "persona": "控场",
+      "trait": "它想治疗你，无论你是否同意",
+      "source": "docs/scenario/07-世界模组III-熵网.md:810"
+    },
+    {
+      "id": "enemy-c09",
+      "name": "港务自动化系统",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 15,
+      "poise": 18,
+      "attack_bonus": "+5",
+      "damage": "1d8 钝击",
+      "persona": "守护",
+      "trait": "管理整个港区，且从未收到过停止的指令",
+      "source": "docs/scenario/07-世界模组III-熵网.md:811"
+    },
+    {
+      "id": "enemy-c10",
+      "name": "战斗无人机群",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d6 穿刺",
+      "persona": "召唤",
+      "trait": "一群小型无人机，共享一份活力",
+      "source": "docs/scenario/07-世界模组III-熵网.md:812"
+    },
+    {
+      "id": "enemy-c11",
+      "name": "全自动炮台",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 18,
+      "poise": 28,
+      "attack_bonus": "+8",
+      "damage": "2d10 穿刺",
+      "persona": "守护",
+      "trait": "固定单位，火力极强",
+      "source": "docs/scenario/07-世界模组III-熵网.md:813"
+    },
+    {
+      "id": "enemy-c12",
+      "name": "和平维持者",
+      "tier": "精锐",
+      "vitality": 52,
+      "guard": 18,
+      "poise": 30,
+      "attack_bonus": "+8",
+      "damage": "2d8 钝击",
+      "persona": "猛攻",
+      "trait": "财团最新型安保单位，装配了未公开的功能",
+      "source": "docs/scenario/07-世界模组III-熵网.md:814"
+    },
+    {
+      "id": "enemy-c13",
+      "name": "港务主控 AI",
+      "tier": "首领",
+      "vitality": 100,
+      "guard": 17,
+      "poise": 40,
+      "attack_bonus": "+9",
+      "damage": "3d8 力场",
+      "persona": "控场",
+      "trait": "它已经独自管理港口三十一年，它有很多问题想问",
+      "source": "docs/scenario/07-世界模组III-熵网.md:815"
+    },
+    {
+      "id": "enemy-c14",
+      "name": "旧军用机甲",
+      "tier": "首领",
+      "vitality": 130,
+      "guard": 16,
+      "poise": 50,
+      "attack_bonus": "+9",
+      "damage": "3d10 穿刺",
+      "persona": "猛攻",
+      "trait": "坍缩前的武器，三十一年后仍然可用",
+      "source": "docs/scenario/07-世界模组III-熵网.md:816"
+    },
+    {
+      "id": "enemy-d01",
+      "name": "回响雾",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 12,
+      "poise": 8,
+      "attack_bonus": "+3",
+      "damage": "1d6 熵蚀",
+      "persona": "控场",
+      "trait": "一片会移动的雾，进入者会短暂地失去一部分记忆",
+      "source": "docs/scenario/07-世界模组III-熵网.md:823"
+    },
+    {
+      "id": "enemy-d02",
+      "name": "回响犬",
+      "tier": "杂兵",
+      "vitality": 12,
+      "guard": 14,
+      "poise": 8,
+      "attack_bonus": "+5",
+      "damage": "1d6 穿刺",
+      "persona": "狡诈",
+      "trait": "形状像狗，但关节是反的",
+      "source": "docs/scenario/07-世界模组III-熵网.md:824"
+    },
+    {
+      "id": "enemy-d03",
+      "name": "碎片人形",
+      "tier": "杂兵",
+      "vitality": 14,
+      "guard": 13,
+      "poise": 10,
+      "attack_bonus": "+4",
+      "damage": "1d6 钝击",
+      "persona": "猛攻",
+      "trait": "由无数碎裂的影像拼成的一个人",
+      "source": "docs/scenario/07-世界模组III-熵网.md:825"
+    },
+    {
+      "id": "enemy-d04",
+      "name": "影印者",
+      "tier": "标准",
+      "vitality": 26,
+      "guard": 14,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 精神",
+      "persona": "狡诈",
+      "trait": "它可以复制一个人的外貌，包括你的",
+      "source": "docs/scenario/07-世界模组III-熵网.md:826"
+    },
+    {
+      "id": "enemy-d05",
+      "name": "双重身",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 16,
+      "attack_bonus": "+6",
+      "damage": "1d8 穿刺",
+      "persona": "猛攻",
+      "trait": "它复制的是一名玩家，而且做得非常像",
+      "source": "docs/scenario/07-世界模组III-熵网.md:827"
+    },
+    {
+      "id": "enemy-d06",
+      "name": "玻璃态",
+      "tier": "标准",
+      "vitality": 30,
+      "guard": 15,
+      "poise": 18,
+      "attack_bonus": "+6",
+      "damage": "1d8 熵蚀",
+      "persona": "守护",
+      "trait": "透明的、脆弱的，但极难真正破坏",
+      "source": "docs/scenario/07-世界模组III-熵网.md:828"
+    },
+    {
+      "id": "enemy-d07",
+      "name": "回声说话者",
+      "tier": "标准",
+      "vitality": 24,
+      "guard": 13,
+      "poise": 14,
+      "attack_bonus": "+6",
+      "damage": "1d8 精神",
+      "persona": "控场",
+      "trait": "它说的每一句话，你都在某个地方听过",
+      "source": "docs/scenario/07-世界模组III-熵网.md:829"
+    },
+    {
+      "id": "enemy-d08",
+      "name": "静默者",
+      "tier": "标准",
+      "vitality": 28,
+      "guard": 15,
+      "poise": 16,
+      "attack_bonus": "+6",
+      "damage": "1d8 精神",
+      "persona": "控场",
+      "trait": "在它周围，所有的声音都会消失",
+      "source": "docs/scenario/07-世界模组III-熵网.md:830"
+    },
+    {
+      "id": "enemy-d09",
+      "name": "网中之手",
+      "tier": "标准",
+      "vitality": 32,
+      "guard": 14,
+      "poise": 20,
+      "attack_bonus": "+7",
+      "damage": "2d6 钝击",
+      "persona": "猛攻",
+      "trait": "从任何一个界面里伸出来的一只手",
+      "source": "docs/scenario/07-世界模组III-熵网.md:831"
+    },
+    {
+      "id": "enemy-d10",
+      "name": "未完成的人",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 15,
+      "poise": 26,
+      "attack_bonus": "+7",
+      "damage": "2d8 熵蚀",
+      "persona": "猛攻",
+      "trait": "它差一点点就像人了，它自己也知道",
+      "source": "docs/scenario/07-世界模组III-熵网.md:832"
+    },
+    {
+      "id": "enemy-d11",
+      "name": "合体回响",
+      "tier": "精锐",
+      "vitality": 50,
+      "guard": 16,
+      "poise": 28,
+      "attack_bonus": "+8",
+      "damage": "2d8 熵蚀",
+      "persona": "召唤",
+      "trait": "多个回响体合成的东西，且还在吸收新的",
+      "source": "docs/scenario/07-世界模组III-熵网.md:833"
+    },
+    {
+      "id": "enemy-d12",
+      "name": "记忆食者",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+8",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "它吃掉的记忆会永远消失，包括别人对你的记忆",
+      "source": "docs/scenario/07-世界模组III-熵网.md:834"
+    },
+    {
+      "id": "enemy-d13",
+      "name": "第一例回响体",
+      "tier": "首领",
+      "vitality": 110,
+      "guard": 17,
+      "poise": 44,
+      "attack_bonus": "+9",
+      "damage": "3d8 熵蚀",
+      "persona": "猛攻",
+      "trait": "二十二年前它维持了六天的存在，现在它回来了",
+      "source": "docs/scenario/07-世界模组III-熵网.md:835"
+    },
+    {
+      "id": "enemy-d14",
+      "name": "正在成形的神",
+      "tier": "首领",
+      "vitality": 140,
+      "guard": 18,
+      "poise": 54,
+      "attack_bonus": "+10",
+      "damage": "3d10 精神",
+      "persona": "控场",
+      "trait": "回响教相信它是更进化的人类。它可能真的是",
+      "source": "docs/scenario/07-世界模组III-熵网.md:836"
+    },
+    {
+      "id": "enemy-e01",
+      "name": "网潜者行会会长",
+      "tier": "精锐",
+      "vitality": 42,
+      "guard": 16,
+      "poise": 22,
+      "attack_bonus": "+7",
+      "damage": "2d8 力场",
+      "persona": "控场",
+      "trait": "他知道每一个网潜者的同步率，包括不该知道的那些",
+      "source": "docs/scenario/07-世界模组III-熵网.md:843"
+    },
+    {
+      "id": "enemy-e02",
+      "name": "档案人工会代表",
+      "tier": "精锐",
+      "vitality": 40,
+      "guard": 15,
+      "poise": 20,
+      "attack_bonus": "+6",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "她的主张在道德上几乎无法反驳",
+      "source": "docs/scenario/07-世界模组III-熵网.md:844"
+    },
+    {
+      "id": "enemy-e03",
+      "name": "熔毁遗族发言人",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 穿刺",
+      "persona": "领袖",
+      "trait": "他有十一年的现场资料，而且他想要一个答案",
+      "source": "docs/scenario/07-世界模组III-熵网.md:845"
+    },
+    {
+      "id": "enemy-e04",
+      "name": "翼骸研发主管",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 17,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 钝击",
+      "persona": "控场",
+      "trait": "他知道纯度下降的真实数据",
+      "source": "docs/scenario/07-世界模组III-熵网.md:846"
+    },
+    {
+      "id": "enemy-e05",
+      "name": "北岸身份审计员",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 17,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "她可以合法地判定你不是你",
+      "source": "docs/scenario/07-世界模组III-熵网.md:847"
+    },
+    {
+      "id": "enemy-e06",
+      "name": "第九栈首席网潜者",
+      "tier": "精锐",
+      "vitality": 48,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 力场",
+      "persona": "控场",
+      "trait": "他去过最深处，而且他还愿意再去",
+      "source": "docs/scenario/07-世界模组III-熵网.md:848"
+    },
+    {
+      "id": "enemy-e07",
+      "name": "回响教创始人",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 16,
+      "poise": 26,
+      "attack_bonus": "+8",
+      "damage": "2d8 精神",
+      "persona": "领袖",
+      "trait": "他有钱、有武器，而且他相信自己是对的",
+      "source": "docs/scenario/07-世界模组III-熵网.md:849"
+    },
+    {
+      "id": "enemy-e08",
+      "name": "退出者长老",
+      "tier": "精锐",
+      "vitality": 44,
+      "guard": 16,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 钝击",
+      "persona": "守护",
+      "trait": "他记得坍缩之前的样子，这本身就是一种力量",
+      "source": "docs/scenario/07-世界模组III-熵网.md:850"
+    },
+    {
+      "id": "enemy-e09",
+      "name": "港务 AI 的代理人",
+      "tier": "精锐",
+      "vitality": 46,
+      "guard": 17,
+      "poise": 24,
+      "attack_bonus": "+7",
+      "damage": "2d8 力场",
+      "persona": "控场",
+      "trait": "一台 AI 造出来的人形终端，它有很多话要说",
+      "source": "docs/scenario/07-世界模组III-熵网.md:851"
+    },
+    {
+      "id": "enemy-e10",
+      "name": "无名区的电台声音",
+      "tier": "精锐",
+      "vitality": 42,
+      "guard": 15,
+      "poise": 22,
+      "attack_bonus": "+6",
+      "damage": "2d8 精神",
+      "persona": "控场",
+      "trait": "没有人见过它，但所有人都能收到它的广播",
+      "source": "docs/scenario/07-世界模组III-熵网.md:852"
+    },
+    {
+      "id": "enemy-e11",
+      "name": "被备份了 40 次的人",
+      "tier": "首领",
+      "vitality": 100,
+      "guard": 17,
+      "poise": 42,
+      "attack_bonus": "+9",
+      "damage": "3d8 精神",
+      "persona": "控场",
+      "trait": "他的每一份备份都不太一样，而且它们互相知道彼此",
+      "source": "docs/scenario/07-世界模组III-熵网.md:853"
+    },
+    {
+      "id": "enemy-e12",
+      "name": "你的备份",
+      "tier": "首领",
+      "vitality": 110,
+      "guard": 18,
+      "poise": 46,
+      "attack_bonus": "+9",
+      "damage": "3d8 力场",
+      "persona": "猛攻",
+      "trait": "它是你，而且它认为自己才是原件",
+      "source": "docs/scenario/07-世界模组III-熵网.md:854"
+    }
+  ],
+  "random_tables": [
+    {
+      "id": "opening_hooks",
+      "name": "开场钩子",
+      "die": "d12",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "你的备份到期了。系统给了你七十二小时，之后你将被视为无主资产。"
+        },
+        {
+          "roll": 2,
+          "result": "有人在网上出售一份记忆，而那份记忆是你们的。"
+        },
+        {
+          "roll": 3,
+          "result": "一台三十一年前的服务器在外场启动了，它开始向所有人发送同一条消息。"
+        },
+        {
+          "roll": 4,
+          "result": "你在网里遇到了一个人，他戴着和你一模一样的义体，而且他说他是你。"
+        },
+        {
+          "roll": 5,
+          "result": "一位档案人请求你带一样东西出去。他说那东西是「他的死亡证明」。"
+        },
+        {
+          "roll": 6,
+          "result": "你的纯度检测结果出现异常：比昨天高了 1 点。这不可能。"
+        },
+        {
+          "roll": 7,
+          "result": "有人的订阅被取消了。他在法律上已经死了，但他还站在你们面前。"
+        },
+        {
+          "roll": 8,
+          "result": "网中出现了一个从未被任何人写入过的结构，而它写着你们所有人的名字。"
+        },
+        {
+          "roll": 9,
+          "result": "一个孩子能听懂网里的声音。三家财团都想要他。"
+        },
+        {
+          "roll": 10,
+          "result": "你们接到的任务是把一个人送进无名区。任务简单，报酬高得不合理。"
+        },
+        {
+          "roll": 11,
+          "result": "十一年前那 47 个人里，有一个人回来了。他不说自己是谁，只说要找你们。"
+        },
+        {
+          "roll": 12,
+          "result": "你的义体在夜里自行启动了。它做了一件你不记得做过的事。"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:864"
+    },
+    {
+      "id": "rumors",
+      "name": "传闻",
+      "die": "d12",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "第九栈有一个人成功从档案层带回了东西，而那东西现在就在中枢城。"
+        },
+        {
+          "roll": 2,
+          "result": "翼骸隐瞒了纯度下降的真实数据，实际数字是公开的 3 倍。"
+        },
+        {
+          "roll": 3,
+          "result": "坍缩不是事故，是有人主动做的。做这件事的人至今还在网里。"
+        },
+        {
+          "roll": 4,
+          "result": "回响教的创始人是 47 人中的一个，他已经回来了。"
+        },
+        {
+          "roll": 5,
+          "result": "医疗穹顶的地下三层在做「身份移植」，而且成功率是 100%。"
+        },
+        {
+          "roll": 6,
+          "result": "港务 AI 一直在问同一个问题，已经问了三十一年，没有人回答它。"
+        },
+        {
+          "roll": 7,
+          "result": "有一份完整的坍缩前备份存在，找到它就能恢复整个旧世界。"
+        },
+        {
+          "roll": 8,
+          "result": "纯度为 0 的人并不是没有意识，只是法律不再承认他们有。"
+        },
+        {
+          "roll": 9,
+          "result": "无名区有一位老人从未改造过自己，而且他一百零四岁了。"
+        },
+        {
+          "roll": 10,
+          "result": "网里的东西正在学习。它每年都比上一年更擅长模仿人。"
+        },
+        {
+          "roll": 11,
+          "result": "有人在收集档案人的意识，数量已经超过了三百。"
+        },
+        {
+          "roll": 12,
+          "result": "你的备份不是你的。它比现在的你更早，因此它才是原件。"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:881"
+    },
+    {
+      "id": "net_finds",
+      "name": "网中发现物",
+      "die": "d12",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "一整段坍缩前的城市监控录像，画面里的人都还在"
+        },
+        {
+          "roll": 2,
+          "result": "一份三十一年前的菜单，价格单位是已经不存在的货币"
+        },
+        {
+          "roll": 3,
+          "result": "一个人的完整记忆，打包得很整齐，标签写着「勿售」"
+        },
+        {
+          "roll": 4,
+          "result": "一段无法播放的音频，但所有人都知道它说了什么"
+        },
+        {
+          "roll": 5,
+          "result": "一份未完成的论文，标题是「关于坍缩的可预防性」"
+        },
+        {
+          "roll": 6,
+          "result": "一个仍在运行的聊天室，里面有四个账号，都是你认识的人"
+        },
+        {
+          "roll": 7,
+          "result": "一张照片，拍摄于坍缩当天，地点是熔毁区"
+        },
+        {
+          "roll": 8,
+          "result": "一份名单，上面有 47 个名字，其中两个被划掉了"
+        },
+        {
+          "roll": 9,
+          "result": "一件商品的购买记录，商品名称是「一个人的全部」"
+        },
+        {
+          "roll": 10,
+          "result": "一段代码，运行后会生成一段从未存在过的记忆"
+        },
+        {
+          "roll": 11,
+          "result": "一份遗嘱，立嘱人在写下它的第二天成为了档案人"
+        },
+        {
+          "roll": 12,
+          "result": "一个孩子的绘画，画的是网里面的样子"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:898"
+    },
+    {
+      "id": "net_encounters",
+      "name": "网中遭遇",
+      "die": "d8",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "网中下起了雨，而雨是数据"
+        },
+        {
+          "roll": 2,
+          "result": "你遇到了另一个自己，他比你早进来十分钟"
+        },
+        {
+          "roll": 3,
+          "result": "一段结构正在生长，速度是每秒一米"
+        },
+        {
+          "roll": 4,
+          "result": "所有东西都变成了文字，包括你自己"
+        },
+        {
+          "roll": 5,
+          "result": "你听见有人在叫你的名字，声音来自四面八方"
+        },
+        {
+          "roll": 6,
+          "result": "一处区域拒绝被解析，它显示为一个空白的人形"
+        },
+        {
+          "roll": 7,
+          "result": "时间在这里倒着走，你看到了自己进来的那一刻"
+        },
+        {
+          "roll": 8,
+          "result": "有什么东西跟着你，而且它已经跟了很久了"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:915"
+    },
+    {
+      "id": "names_personal",
+      "name": "名字素材·人名",
+      "die": "d18",
+      "use": "原文为素材清单而非掷骰表；按条目数落为行表，roll 从 1 起，逐条溯源该行。",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "砚"
+        },
+        {
+          "roll": 2,
+          "result": "迟"
+        },
+        {
+          "roll": 3,
+          "result": "柯"
+        },
+        {
+          "roll": 4,
+          "result": "零"
+        },
+        {
+          "roll": 5,
+          "result": "七"
+        },
+        {
+          "roll": 6,
+          "result": "岑"
+        },
+        {
+          "roll": 7,
+          "result": "未"
+        },
+        {
+          "roll": 8,
+          "result": "溯"
+        },
+        {
+          "roll": 9,
+          "result": "弦"
+        },
+        {
+          "roll": 10,
+          "result": "默"
+        },
+        {
+          "roll": 11,
+          "result": "秒钟"
+        },
+        {
+          "roll": 12,
+          "result": "白"
+        },
+        {
+          "roll": 13,
+          "result": "临"
+        },
+        {
+          "roll": 14,
+          "result": "断"
+        },
+        {
+          "roll": 15,
+          "result": "析"
+        },
+        {
+          "roll": 16,
+          "result": "弦生"
+        },
+        {
+          "roll": 17,
+          "result": "小满"
+        },
+        {
+          "roll": 18,
+          "result": "未名"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:930"
+    },
+    {
+      "id": "names_gang",
+      "name": "名字素材·帮派",
+      "die": "d8",
+      "use": "原文为素材清单而非掷骰表；按条目数落为行表，roll 从 1 起，逐条溯源该行。",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "钢牙"
+        },
+        {
+          "roll": 2,
+          "result": "断线"
+        },
+        {
+          "roll": 3,
+          "result": "七号仓"
+        },
+        {
+          "roll": 4,
+          "result": "骨节"
+        },
+        {
+          "roll": 5,
+          "result": "灰烬党"
+        },
+        {
+          "roll": 6,
+          "result": "无声帮"
+        },
+        {
+          "roll": 7,
+          "result": "第二层"
+        },
+        {
+          "roll": 8,
+          "result": "铆钉"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:931"
+    },
+    {
+      "id": "names_corp_dept",
+      "name": "名字素材·财团部门",
+      "die": "d5",
+      "use": "原文为素材清单而非掷骰表；按条目数落为行表，roll 从 1 起，逐条溯源该行。",
+      "rows": [
+        {
+          "roll": 1,
+          "result": "奥姆尼基础服务部"
+        },
+        {
+          "roll": 2,
+          "result": "翼骸研发三处"
+        },
+        {
+          "roll": 3,
+          "result": "北岸身份审计"
+        },
+        {
+          "roll": 4,
+          "result": "第九栈深潜组"
+        },
+        {
+          "roll": 5,
+          "result": "合规与终止部"
+        }
+      ],
+      "source": "docs/scenario/07-世界模组III-熵网.md:932"
+    }
+  ]
+}
