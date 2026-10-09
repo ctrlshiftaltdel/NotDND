@@ -8,6 +8,8 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
   · 静态资源服务（目录穿越防护 + MIME）
   · 监听与端口约定（NOTDND_HOST / NOTDND_PORT，回退通用 PORT）
   · 存档骨架：原子写 + 惰性迁移 + 缓存锁 + 列表 + 改名 / 删除边界
+  · 规则会话接线：持有 prism_core.RuleSession 的快照（规则态的唯一真相在
+    prism_core），老档惰性迁移出空规则会话，GET /api/session 只读拉取
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -23,6 +25,7 @@ MND / PRE）补齐，本文件不臆造字段与数值。
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import pathlib
@@ -32,6 +35,8 @@ import threading
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import prism_core
 
 HERE = pathlib.Path(__file__).resolve().parent
 STATIC_DIR = HERE / "static"
@@ -55,13 +60,30 @@ SAVE_LIST_LIMIT = int(os.environ.get("NOTDND_SAVE_LIST_LIMIT") or "40")
 # （不含路径分隔符与点号，杜绝 ../ 拼接）。
 SID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 
+
+def _empty_rules_snapshot(sid: str = "") -> dict:
+    """空规则会话的落盘快照；零参调用即 `_SESSION_DEFAULTS` 的默认值工厂。
+
+    规则态的形状归 prism_core 定义，本文件只调用它的快照 / 还原接口，
+    不另写一份字段名——两边各维护一套必然漂移。
+
+    TODO(M3)：起始场景 / 起始队伍随剧本数据落地后，在这里按世界模组生成，
+    老存档仍走「只补不覆盖」的惰性迁移拿到它。
+    """
+    return prism_core.RuleSession(str(sid or "")).snapshot()
+
+
 # 会话字段默认值表：load() 的惰性迁移按此补缺。M3 新增 PRISM 字段时
 # 在这里加一行并同步 Session.to_dict，老存档即自动获得默认值。
+# 值 = 字面量（不可变）或**零参工厂**（可变）：工厂每次现造一个**新**对象，
+# 绝不把同一个 list / dict 借给多个存档——否则一个存档的改动会顺着默认值
+# 漏进另一个老存档，且这种串档在单存档测试里看不出来。
 _SESSION_DEFAULTS: dict[str, object] = {
-    "created": 0.0,     # 建局时间戳；老档缺失按 0（未知）
-    "log": [],          # 叙事流条目
-    "seq": 0,           # 日志序号游标（增量拉取用）
-    "save_name": "",    # 玩家自定义展示名
+    "created": 0.0,                     # 建局时间戳；老档缺失按 0（未知）
+    "log": list,                        # 叙事流条目（工厂：现造空列表）
+    "seq": 0,                           # 日志序号游标（增量拉取用）
+    "save_name": "",                    # 玩家自定义展示名
+    "rules": _empty_rules_snapshot,     # PRISM 规则会话快照（工厂：现造空会话）
 }
 
 
@@ -91,17 +113,39 @@ def _text_or(value: object, limit: int = 0) -> str:
     return out[:limit] if limit else out
 
 
+def _restore_rules(raw: object, sid: str) -> dict:
+    """把落盘的规则快照还原成规范形状；坏值降级为空会话，不抛。
+
+    往返路径固定为 `from_snapshot()` → `snapshot()`：字段形状以 prism_core
+    为准，存档层只负责调用（顺手把未知键剔掉），不在这里二次清洗。
+    """
+    if isinstance(raw, dict):
+        try:
+            snapshot = prism_core.RuleSession.from_snapshot(raw).snapshot()
+        except Exception:
+            snapshot = None      # 脏快照（如 pressure 是文字）→ 落到空会话
+        if snapshot is not None:
+            # 只补不覆盖：快照没写 sid 时与存档 sid 对齐，写了就不动。
+            if not snapshot.get("sid"):
+                snapshot["sid"] = str(sid)
+            return snapshot
+    return _empty_rules_snapshot(sid)
+
+
 # --------------------------------------------------------------------------
 # 存档骨架
 # --------------------------------------------------------------------------
 
 
 class Session:
-    """一局游戏的持久化骨架。
+    """一局游戏的持久化骨架（**存档容器**，不是规则运行时）。
 
-    本类只定义**工程字段**（标识 / 日志 / 展示名）。PRISM 业务字段
-    （角色卡六维、场景、资源……）留 TODO(M3)：新增字段时必须同时给出
-    默认值（同步 _SESSION_DEFAULTS），load() 的惰性迁移会自动为老存档补齐。
+    本类只定义**工程字段**（标识 / 日志 / 展示名）与 `rules` 快照。
+    规则态没有第二套字段：角色卡六维、场景、战斗、压力……全都收在
+    `rules` 里，形状由 prism_core.RuleSession 定义（规则运行时真相在那边，
+    本类只负责把它原子落盘、惰性迁移、按请求透出）。
+    新增字段时必须同时给出默认值（同步 _SESSION_DEFAULTS），load() 的
+    惰性迁移会自动为老存档补齐。
     """
 
     def __init__(self, sid: str):
@@ -114,8 +158,9 @@ class Session:
         # ⚠️ 改名只动这个字段，**不动磁盘文件名、也不动 self.sid**——
         # sid 是内存缓存的键、也是请求头里的值，动它会让在途请求全部失败。
         self.save_name = ""
-        # TODO(M3)：在此定义 PRISM 会话字段（六维 MGT / FIN / VIG / INS /
-        # MND / PRE、场景、资源……），并同步 to_dict 与 _SESSION_DEFAULTS。
+        # 规则会话快照（JSON 可序列化）：新建即空规则会话，落盘 / 载入由
+        # load() 与 to_dict() 负责，本类不解释其中的规则语义。
+        self.rules: dict = _empty_rules_snapshot(sid)
 
     # ── 持久化 ────────────────────────────────────────────
     def to_dict(self) -> dict:
@@ -126,6 +171,7 @@ class Session:
             "log": self.log,
             "seq": self.seq,
             "save_name": self.save_name,
+            "rules": self.rules,
         }
 
     def save(self) -> None:
@@ -167,8 +213,10 @@ class Session:
 
         # 惰性迁移：原始 JSON 缺字段时在内存里补默认值（setdefault 语义：
         # 只补缺、不覆盖），无需在磁盘上跑迁移脚本。
+        # 默认值是**工厂**时现造一个（可变默认值不共享，见 _SESSION_DEFAULTS）。
         for key, default in _SESSION_DEFAULTS.items():
-            d.setdefault(key, default)
+            if key not in d:
+                d[key] = default() if callable(default) else default
 
         s = cls(sid)
         # —— 逐字段清洗：类型不对就退回默认值（脏值降级）——
@@ -181,7 +229,12 @@ class Session:
         if s.log:
             s.seq = max(s.seq, max((_int_or(e.get("seq"), 0) for e in s.log), default=0))
         s.save_name = _text_or(d.get("save_name"), 40)
-        # TODO(M3)：PRISM 业务字段的迁移规则加在这里（同样：只补不覆盖）。
+        # 规则会话：老档（缺 rules）在这一刻拿到空规则会话，形状按 prism_core
+        # 的契约还原（未知键剔掉、脏值降级），不就地改写磁盘上的老档。
+        s.rules = _restore_rules(d.get("rules"), sid)
+        # TODO(M3)：PRISM 存档层字段（世界 id / 进度索引等**索引 / 展示**用途的
+        # 派生字段）的迁移规则加在这里（同样：只补不覆盖）；规则态本身不进这里，
+        # 统一放 s.rules。
         return s
 
     # ── 日志 ──────────────────────────────────────────────
@@ -281,6 +334,30 @@ def list_saves() -> tuple[list[dict], int]:
     rows.sort(key=lambda r: -r["mtime"])
     total = len(rows)
     return rows[:SAVE_LIST_LIMIT], total
+
+
+def rules_view(session: Session) -> dict:
+    """规则会话的只读视图（`GET /api/session` 直接吃这份）。
+
+    字段形状**全部**来自 prism_core.RuleSession.snapshot()（party / scene /
+    active_unit_id / log / done_actions / action_fails / pressure / combat），
+    这里只做深拷贝——存档层另立一套字段名就必然与规则层漂移。可见性由
+    规则层决定：当前还没有需要隐藏的内部字段，故不做额外裁剪。
+
+    额外附一个 `save` 块：规则视图本身不带展示名 / 日志游标，前端拿到
+    整局视图时不必再多打一次 /api/saves。
+    """
+    rules = session.rules if isinstance(session.rules, dict) else {}
+    view = copy.deepcopy(rules)
+    view.setdefault("sid", session.sid)
+    view["save"] = {
+        "name": session.save_name or default_display_name(session.sid),
+        "named": bool(session.save_name),
+        "created": session.created,
+        "seq": session.seq,
+        "log_count": len(session.log),
+    }
+    return view
 
 
 # --------------------------------------------------------------------------
@@ -391,7 +468,16 @@ class Handler(BaseHTTPRequestHandler):
                 since = _int_or((q.get("since") or ["0"])[0], 0)
                 return self._json(
                     {"log": [e for e in s.log if _int_or(e.get("seq"), 0) > since]})
-            # TODO(M3)：PRISM 会话 / 世界等只读接口在此追加（路径 if 链）。
+            if path == "/api/session":
+                # 规则会话只读视图：sid 走 X-Session 头（同 /api/log），
+                # 未开会话由 _sess() 抛 ValueError → 既有的 400 语义。
+                # 取快照要在单局锁内：写盘 / 追日志是别的线程在做，
+                # 不然可能读到一个改了一半的回合。
+                s = self._sess()
+                with s.lock:
+                    view = rules_view(s)
+                return self._json(view)
+            # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
             if rel:
