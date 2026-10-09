@@ -7508,7 +7508,7 @@
       "on_repeat": "多个 NPC 共用同一类节点（都\"欠债\"）时，把其中一人的债主改成就在队伍里，制造直接压力；若节点在本世界不成立（无\"官差\"的社会），用 1.4 侧移保留结构（\"有合法暴力的人\"）。",
       "interface": {
         "type": "relation_node",
-        "ledger_field": "npcs / nemesis",
+        "ledger_field": "npcs / nemeses",
         "reputation_ref": "03-互动层.md 第六节"
       },
       "source": "docs/scenario/S7-随机生成器.md:1072"
@@ -7854,7 +7854,7 @@
       "on_repeat": "一次会话里多个 NPC 用同一种动机背叛，把其中一人的动机藏在另一条动机后面（表面为钱，实际为情）；若动机与秘密不一致，保留不一致——他自己对动机的理解也可能是错的。",
       "interface": {
         "type": "betrayal_motive",
-        "ledger_field": "nemesis",
+        "ledger_field": "nemeses",
         "nemesis_ref": "03-互动层.md 第六节"
       },
       "source": "docs/scenario/S7-随机生成器.md:1170"
@@ -13656,7 +13656,7 @@
       "on_repeat": "一个战役里不要出现两个同型反派，把第二个改成\"第一个的镜像\"（同为理想主义者，但选择相反的手段）；若反派太单薄，给他补一个\"他也会为某样东西心软\"的细节（表 3-9）。",
       "interface": {
         "type": "nemesis",
-        "ledger_field": "nemesis",
+        "ledger_field": "nemeses",
         "ledger_ref": "04-导引者操作系统.md 第四节"
       },
       "source": "docs/scenario/S7-随机生成器.md:2403"
@@ -14579,7 +14579,7 @@
     "debts": [
       "10-2"
     ],
-    "nemesis": [
+    "nemeses": [
       "9-5",
       "9-7",
       "9-8"
