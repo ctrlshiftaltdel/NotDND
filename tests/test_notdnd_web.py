@@ -11,6 +11,9 @@
   3. GET /api/session：真起服务（随机端口 + 临时存档目录，退出时必收摊），
      经 HTTP 拉取规则视图（party / combat / pressure 等），且该请求不改写存档；
      未开会话仍按既有 400 语义。
+  4. ATLAS 存档块（切片 I4，§3.4）：带块落盘 → 载入还原，位置还在；
+     老档没有块 → 按当前世界懒编译不报错；世界删掉了队伍所在地点 →
+     搬迁到仍存在的区域且日志有说明；HTTP 出口列表是文本，移动返回行程档。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -144,6 +147,20 @@ class _Server:
             response = conn.getresponse()
             body = response.read()
             return response.status, _load_json(body)
+        finally:
+            conn.close()
+
+    def post(self, path: str, payload: dict, sid: str = ""):
+        """发一次 POST，返回 (状态码, 解析后的 JSON)。"""
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
+        headers = {"Content-Type": "application/json; charset=utf-8"}
+        if sid:
+            headers["X-Session"] = sid
+        try:
+            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            conn.request("POST", path, body=body, headers=headers)
+            response = conn.getresponse()
+            return response.status, _load_json(response.read())
         finally:
             conn.close()
 
@@ -301,12 +318,163 @@ def check_api_session_without_session_400():
         assert status == 400, "/api/log 同样应 400，实际 %s" % status
 
 
+# --------------------------------------------------------------------------
+# ATLAS 存档块（切片 I4，§3.4）
+# --------------------------------------------------------------------------
+
+
+def _atlas_log_texts(session) -> list:
+    """会话日志里 kind=atlas 的条目文本（搬迁 / 懒编译说明走这条通道）。"""
+    return [e.get("text", "") for e in session.log if e.get("kind") == "atlas"]
+
+
+def check_atlas_snapshot_roundtrip():
+    """atlas 块随会话落盘 → 重新载入 → 队伍位置还在，移动也被记住。"""
+    sid = "atlas-roundtrip"
+    session = notdnd_web.Session(sid)
+    session.ensure_atlas()
+    block = session.to_dict()["atlas"]
+    assert isinstance(block, dict), "ensure_atlas 之后必须能导出 §3.4 存档块"
+    assert block["version"] == 1
+    assert set(block) >= {"world_key", "seed", "setting_rev",
+                          "party_locus", "frames"}, block.keys()
+    assert block["world_key"] == notdnd_web._default_world_key()
+
+    # 移动一次（出口列表来自视图，移动必然成功）
+    exits = session.atlas_view()["exits"]
+    assert exits, "编译出的世界至少要有一个出口"
+    moved = session.atlas_move(exits[0]["via"])
+    assert moved["status"] == "ok" and moved["band"] == exits[0]["band"]
+    place_after_move = moved["here"]["place_id"]
+
+    session.save()
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded is not None, "带 atlas 块的存档必须能载入"
+    reloaded.ensure_atlas()
+    assert reloaded.atlas_view()["here"]["place_id"] == place_after_move, \
+        "重新载入后队伍位置必须还在（§1 目标）"
+    assert not any("搬迁" in t for t in _atlas_log_texts(reloaded)), \
+        "位置仍在时不该出现搬迁说明"
+
+
+def check_atlas_legacy_save_lazy_compile():
+    """老档（无 atlas 块）懒编译：不报错、按当前世界编译，磁盘不动。"""
+    sid = "atlas-legacy"
+    legacy = {
+        "sid": sid,
+        "created": 1700000000.0,
+        "log": [],
+        "seq": 0,
+        "save_name": "老档",
+        "rules": prism_core.RuleSession(sid).snapshot(),
+    }
+    path = _save_path(sid)
+    _write_save(path, legacy)
+
+    session = notdnd_web.Session.load(sid)
+    view = session.atlas_view()          # 惰性编译发生在查看出口的路径上
+    assert view["here"]["place_id"], "懒编译后必须有队伍位置"
+    assert view["here"]["world_key"] == notdnd_web._default_world_key()
+    assert view["here"]["kind"] == "region", "新位置应是 authored 区域"
+    texts = _atlas_log_texts(session)
+    assert any("懒编译" in t for t in texts), "懒编译应写进会话日志：%s" % texts
+
+    # 迁移只发生在内存：磁盘上的老档保持原样
+    with open(path, encoding="utf-8") as handle:
+        assert json.load(handle) == legacy, "懒编译不得就地改写磁盘上的老档"
+
+
+def check_atlas_relocation_on_deleted_place():
+    """存档里的队伍位置在世界 JSON 里已不存在：搬迁到仍存在的锚点并写日志。"""
+    sid = "atlas-relocate"
+    world_key = notdnd_web._default_world_key()
+    world = notdnd_web._load_world(world_key)
+    key = world["world"]["key"]
+    real_region_ids = {r["id"] for r in world.get("regions", [])}
+    surface = "%s/surface" % key
+    block = {
+        "version": 1,
+        "world_key": world_key,
+        "seed": 12345,
+        "setting_rev": "stale-rev",
+        "party_locus": {"frame_id": surface,
+                        "place_id": "%s/gone-place" % key,
+                        "x": 3, "y": 3, "z": 0},
+        "frames": {surface: {"seed": None, "deltas": [
+            {"op": "set_trait", "place_id": "%s/also-gone" % key,
+             "payload": {"trait": "wilderness"}},
+        ]}},
+    }
+    _write_save(_save_path(sid), {
+        "sid": sid, "created": 1.0, "log": [], "seq": 0, "atlas": block,
+        "rules": prism_core.RuleSession(sid).snapshot(),
+    })
+
+    session = notdnd_web.Session.load(sid)
+    view = session.atlas_view()
+    place_id = view["here"]["place_id"]
+    assert place_id != "%s/gone-place" % key, "不能站在已删除的地点上"
+    assert place_id.rsplit("/", 1)[1] in real_region_ids, \
+        "搬迁目的地必须是当前世界仍存在的区域：%s" % place_id
+    texts = _atlas_log_texts(session)
+    assert any("搬迁" in t for t in texts), "搬迁必须写进会话日志：%s" % texts
+    assert any("丢弃增量" in t for t in texts), \
+        "指向已删除地点的增量应被丢弃并记录：%s" % texts
+    assert any("setting_rev" in t for t in texts), \
+        "setting_rev 变化应写进会话日志：%s" % texts
+
+
+def check_api_atlas_exits_and_move():
+    """HTTP 路径：出口列表是文本（不是图片），移动返回行程档与时段（§5.2）。"""
+    sid = "atlas-api"
+    session = notdnd_web.Session(sid)
+    session.ensure_atlas()
+    with _Server() as server:
+        # 存档要写进**服务端**的存档目录（子进程有自己的 NOTDND_SAVE）。
+        status, info = server.get("/api/saves")
+        assert status == 200, "服务未就绪：%s" % status
+        srv_path = os.path.join(info["save_dir"], "%s.json" % sid)
+        _write_save(srv_path, session.to_dict())
+        status, view = server.get("/api/atlas/exits", sid=sid)
+        assert status == 200, "出口查看应 200，实际 %s / %s" % (status, view)
+        assert view["text"].startswith("当前位置："), "返回必须带文本出口列表"
+        assert isinstance(view["exits"], list) and view["exits"]
+        for entry in view["exits"]:
+            assert set(entry) >= {"via", "name", "place_id", "band"}, entry
+            assert entry["hours"] == notdnd_web.BAND_HOURS.get(entry["band"], 0)
+
+        # 移动：优先挑一条带行程档的出口（跨区），否则退到第一条
+        target = next((e for e in view["exits"] if e["band"]), view["exits"][0])
+        status, moved = server.post("/api/atlas/move",
+                                    {"via": target["via"]}, sid=sid)
+        assert status == 200, "移动应 200，实际 %s / %s" % (status, moved)
+        assert moved["status"] == "ok"
+        assert moved["band"] == target["band"], "行程档应来自连接的 band"
+        assert moved["hours"] == notdnd_web.BAND_HOURS.get(target["band"], 0), \
+            "时段数必须与 §5.2 / travel.json 一致"
+        assert moved["here"]["place_id"] == target["place_id"]
+
+        # 移动结果要随存档块落盘（服务端目录）：重新读取后位置仍在
+        with open(srv_path, encoding="utf-8") as handle:
+            on_disk = json.load(handle)
+        assert on_disk["atlas"]["party_locus"]["place_id"] == target["place_id"], \
+            "移动后位置应随 atlas 块落盘"
+
+        # 没有这个出口 → 既有 400 语义
+        status, err = server.post("/api/atlas/move", {"via": "不存在方向"}, sid=sid)
+        assert status == 400 and err.get("error"), (status, err)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
     check_legacy_save_lazy_migration,
     check_api_session_view,
     check_api_session_without_session_400,
+    check_atlas_snapshot_roundtrip,
+    check_atlas_legacy_save_lazy_compile,
+    check_atlas_relocation_on_deleted_place,
+    check_api_atlas_exits_and_move,
 )
 
 

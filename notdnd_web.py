@@ -10,6 +10,10 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
   · 存档骨架：原子写 + 惰性迁移 + 缓存锁 + 列表 + 改名 / 删除边界
   · 规则会话接线：持有 prism_core.RuleSession 的快照（规则态的唯一真相在
     prism_core），老档惰性迁移出空规则会话，GET /api/session 只读拉取
+  · ATLAS 自动地图接线（切片 I4）：Session 顶层 atlas 存档块（§3.4，与
+    rules 平级，atlas.export_state / restore_state 进出），老档缺块时按
+    当前世界懒编译；GET /api/atlas/exits 看出口（纯文本列表），
+    POST /api/atlas/move 移动并返回行程档与时段
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -29,6 +33,7 @@ import copy
 import json
 import os
 import pathlib
+import random
 import re
 import socket
 import threading
@@ -36,6 +41,8 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import atlas as atlas_kernel
+import atlas_compile
 import prism_core
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -84,7 +91,101 @@ _SESSION_DEFAULTS: dict[str, object] = {
     "seq": 0,                           # 日志序号游标（增量拉取用）
     "save_name": "",                    # 玩家自定义展示名
     "rules": _empty_rules_snapshot,     # PRISM 规则会话快照（工厂：现造空会话）
+    "atlas": None,                      # ATLAS 存档块（§3.4）；老档缺失按 None，
+                                        # 第一次用到地图时按当前世界懒编译
 }
+
+
+# --------------------------------------------------------------------------
+# ATLAS 自动地图接线（切片 I4，Issue #66）
+# --------------------------------------------------------------------------
+
+#: 行程档 → 时段数（§5.2 / data/system/travel.json：短程 1、中程 2、
+#: 远程「全天」4、危险穿越 4 且每时段一次风险判定）。
+BAND_HOURS = {"short": 1, "medium": 2, "long": 4, "dangerous": 4}
+
+#: 行程档的显示名；band=None 是门 / 连接——地点内部的走动不是行程，不扣时段。
+BAND_NAMES = {"short": "短程", "medium": "中程", "long": "远程",
+              "dangerous": "危险穿越", None: "门内"}
+
+_LEXICON_CACHE: dict | None = None
+_WORLD_CACHE: dict[str, dict] = {}
+_DATA_LOCK = threading.Lock()
+
+
+def _load_lexicon() -> dict:
+    """读 data/atlas/lexicon.json（惰性 + 缓存：import 本模块不碰磁盘）。"""
+    global _LEXICON_CACHE
+    with _DATA_LOCK:
+        if _LEXICON_CACHE is None:
+            path = HERE / "data" / "atlas" / "lexicon.json"
+            _LEXICON_CACHE = json.loads(path.read_text(encoding="utf-8"))
+        return _LEXICON_CACHE
+
+
+def _load_world(world_key: str) -> dict:
+    """读 data/worlds/<key>.json（惰性 + 缓存）。
+
+    world_key 会拼进文件路径，先过与 sid 同样的白名单，杜绝 ../ 探测；
+    源码不出现任何世界的名字——默认世界由数据目录内容决定。
+    """
+    if not SID_RE.fullmatch(world_key or ""):
+        raise ValueError("未知世界: %r" % (world_key,))
+    with _DATA_LOCK:
+        world = _WORLD_CACHE.get(world_key)
+        if world is None:
+            path = HERE / "data" / "worlds" / f"{world_key}.json"
+            if not path.is_file():
+                raise ValueError("未知世界: %s" % world_key)
+            world = json.loads(path.read_text(encoding="utf-8"))
+            _WORLD_CACHE[world_key] = world
+        return world
+
+
+def _default_world_key() -> str:
+    """默认世界 = data/worlds/ 下字典序第一份世界模组。
+
+    TODO(M3)：世界 / 剧本选择落地后，这里换成会话自己选的世界；
+    存档块里已带 world_key 的局不受影响（还原一律按块里的来）。
+    """
+    names = sorted(p.stem for p in (HERE / "data" / "worlds").glob("*.json"))
+    if not names:
+        raise ValueError("data/worlds/ 下没有世界模组")
+    return names[0]
+
+
+def _compile_world(world_key: str, seed: int) -> dict:
+    """把一份世界模组编译成地图（atlas_compile.compile_world，纯数据）。"""
+    return atlas_compile.compile_world(_load_world(world_key),
+                                       _load_lexicon(), seed)
+
+
+def _new_seed() -> int:
+    """新局的地图种子：系统熵源，随存档块落盘后即可复现。"""
+    return random.SystemRandom().randrange(1, 2 ** 31)
+
+
+def _starting_locus(atlas: dict) -> dict:
+    """新地图的队伍起点：id 最小的 authored 区域；没有区域时退到
+    第一个 authored 地点。编译结果里连 authored 都没有就报错——
+    那是数据问题，不是会话层该兜的。"""
+    fallback = None
+    for fid in sorted(atlas["frames"]):
+        for pid in sorted(atlas["frames"][fid]["places"]):
+            place = atlas["frames"][fid]["places"][pid]
+            if place.get("source") != "authored":
+                continue
+            locus = {"frame_id": fid, "place_id": pid}
+            for axis in ("x", "y", "z"):
+                if axis in place:
+                    locus[axis] = place[axis]
+            if place.get("kind") == "region":
+                return locus
+            if fallback is None:
+                fallback = locus
+    if fallback is not None:
+        return fallback
+    raise ValueError("世界编译结果里没有任何 authored 地点")
 
 
 def _ensure_save_dir() -> None:
@@ -161,6 +262,12 @@ class Session:
         # 规则会话快照（JSON 可序列化）：新建即空规则会话，落盘 / 载入由
         # load() 与 to_dict() 负责，本类不解释其中的规则语义。
         self.rules: dict = _empty_rules_snapshot(sid)
+        # ATLAS 存档块（§3.4，与 rules 平级）：落盘的是「种子 + 增量 + 队伍
+        # 位置」；运行时地图（self._atlas / self._locus）由 ensure_atlas()
+        # 懒编译 / 还原，不直接落盘。to_dict() 把运行时折回存档块。
+        self.atlas_block: dict | None = None
+        self._atlas: dict | None = None      # 运行时地图（atlas.py 纯数据）
+        self._locus: dict | None = None      # 队伍位置 {frame_id, place_id, ...}
 
     # ── 持久化 ────────────────────────────────────────────
     def to_dict(self) -> dict:
@@ -172,7 +279,18 @@ class Session:
             "seq": self.seq,
             "save_name": self.save_name,
             "rules": self.rules,
+            "atlas": self._export_atlas_block(),
         }
+
+    def _export_atlas_block(self) -> dict | None:
+        """把运行时地图折回 §3.4 存档块（atlas.export_state）。
+
+        还没碰过地图（未 ensure_atlas）时原样返回已存的块（老档是 None），
+        不为序列化去触发编译——落盘不该有「顺手编译整个世界」的副作用。
+        """
+        if self._atlas is not None:
+            self.atlas_block = atlas_kernel.export_state(self._atlas, self._locus)
+        return copy.deepcopy(self.atlas_block)
 
     def save(self) -> None:
         """原子写：先写同目录 .tmp，再 os.replace 换名——中断不会留下半个 JSON。
@@ -232,6 +350,10 @@ class Session:
         # 规则会话：老档（缺 rules）在这一刻拿到空规则会话，形状按 prism_core
         # 的契约还原（未知键剔掉、脏值降级），不就地改写磁盘上的老档。
         s.rules = _restore_rules(d.get("rules"), sid)
+        # ATLAS 存档块：老档（缺块 / 脏值）按 None 处理，第一次用到地图时
+        # 由 ensure_atlas() 按当前世界懒编译，不报错、不改写磁盘老档。
+        block = d.get("atlas")
+        s.atlas_block = copy.deepcopy(block) if isinstance(block, dict) else None
         # TODO(M3)：PRISM 存档层字段（世界 id / 进度索引等**索引 / 展示**用途的
         # 派生字段）的迁移规则加在这里（同样：只补不覆盖）；规则态本身不进这里，
         # 统一放 s.rules。
@@ -259,6 +381,107 @@ class Session:
                 entry.update(extra)
             self.log.append(entry)
             return entry
+
+    # ── ATLAS 自动地图（切片 I4）──────────────────────────
+    def ensure_atlas(self) -> dict:
+        """拿到运行时地图：有存档块就按块还原，没有就按当前世界懒编译。
+
+        · 旧存档没有 atlas 块 → 懒编译默认世界，不报错，说明写进会话日志；
+        · 世界 JSON 删掉了队伍所在地点 → atlas.restore_state 把队伍搬迁到
+          坐标最接近的 authored 区域，搬迁说明写进会话日志（§3.4）；
+        · 存档块本身损坏（版本不支持等）→ 降级为按当前世界重编，不抛。
+        """
+        with self.lock:
+            if self._atlas is not None:
+                return self._atlas
+            notes: list[str] = []
+            block = self.atlas_block if isinstance(self.atlas_block, dict) else None
+            if block and block.get("world_key"):
+                fresh = _compile_world(str(block["world_key"]),
+                                       _int_or(block.get("seed"), 0))
+                try:
+                    restored = atlas_kernel.restore_state(fresh, block)
+                except Exception:
+                    restored = {"atlas": fresh, "locus": None,
+                                "notes": ["地图存档块损坏，已按当前世界重新编译"]}
+                self._atlas = restored["atlas"]
+                notes.extend(restored.get("notes") or [])
+                locus = restored.get("locus")
+                if locus is None:
+                    locus = _starting_locus(self._atlas)
+                    notes.append("存档没有可用的队伍位置，落到起始区域")
+                self._locus = locus
+            else:
+                world_key = _default_world_key()
+                self._atlas = _compile_world(world_key, _new_seed())
+                self._locus = _starting_locus(self._atlas)
+                notes.append("没有地图存档，按世界「%s」懒编译了自动地图" % world_key)
+            for note in notes:
+                self.add_log("atlas", note)
+            return self._atlas
+
+    def atlas_view(self) -> dict:
+        """出口查看视图：文本出口列表 + 结构化字段（GET /api/atlas/exits）。
+
+        返回纯文本与 JSON 字段，不含任何图片（§2：默认看出口列表）。
+        """
+        self.ensure_atlas()
+        with self.lock:
+            place = atlas_kernel.find_place(self._atlas,
+                                            self._locus.get("place_id"))
+            exits = atlas_kernel.exits(self._atlas, self._locus)
+            for entry in exits:
+                entry["hours"] = BAND_HOURS.get(entry["band"], 0)
+            frame = self._atlas["frames"][place["frame_id"]]
+            here = {
+                "place_id": place["id"],
+                "name": place["name"],
+                "kind": place["kind"],
+                "frame_id": place["frame_id"],
+                "space": frame["space"],
+                "cell": frame["cell"],
+                "world_key": self._atlas["world_key"],
+                "scale": self._atlas.get("scale"),
+            }
+            lines = ["当前位置：%s（%s）" % (place["name"], place["id"])]
+            if exits:
+                lines.append("出口：")
+                for entry in exits:
+                    label = BAND_NAMES.get(entry["band"], "门内")
+                    hours = "· %d 时段" % entry["hours"] if entry["hours"] else ""
+                    flag = "（不稳）" if entry["unstable"] else ""
+                    lines.append("  %s → %s（%s%s）%s"
+                                 % (entry["via"], entry["name"], label,
+                                    hours, flag))
+            else:
+                lines.append("这里没有已知出口。")
+            return {"here": here, "exits": exits, "text": "\n".join(lines)}
+
+    def atlas_move(self, via: object) -> dict:
+        """沿 via 移动队伍：返回行程档与时段（POST /api/atlas/move）。
+
+        行程档来自连接自身的 band（编译期定档，§5.2）；时段换算按
+        BAND_HOURS。内核（atlas.py）不改风险池，本层也暂不接风险判定——
+        dangerous 档「每时段一次风险判定」留给 M3 的移动接线
+        （prism_core.risk_roll 是纯函数，届时由移动层调用）。
+        """
+        via = str(via or "").strip()
+        if not via:
+            raise ValueError("缺少移动方向 via")
+        self.ensure_atlas()
+        with self.lock:
+            band = next((entry.get("band")
+                         for entry in atlas_kernel.exits(self._atlas, self._locus)
+                         if entry["via"] == via), None)
+            result = atlas_kernel.move(self._atlas, self._locus, via)
+            if result.get("error"):
+                raise ValueError(str(result["error"]))
+            self._locus = result["locus"]
+            view = self.atlas_view()
+            view["status"] = "ok"
+            view["band"] = band
+            view["hours"] = BAND_HOURS.get(band, 0)
+            return view
 
 
 _sessions: dict[str, Session] = {}
@@ -477,6 +700,11 @@ class Handler(BaseHTTPRequestHandler):
                 with s.lock:
                     view = rules_view(s)
                 return self._json(view)
+            if path == "/api/atlas/exits":
+                # 查看当前地点的出口：返回文本出口列表（不是图片，§2）。
+                # 只读接口：不 save()，不改写存档。
+                s = self._sess()
+                return self._json(s.atlas_view())
             # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
@@ -537,6 +765,14 @@ class Handler(BaseHTTPRequestHandler):
                 except OSError:
                     return self._err("删除失败", 500)
                 return self._json({"status": "ok", "sid": sid})
+
+            if path == "/api/atlas/move":
+                # 沿 via 移动队伍：返回行程档 + 时段 + 新位置的出口视图。
+                # 方向不存在 / 没有该出口时 atlas_move 抛 ValueError → 400。
+                s = self._sess()
+                result = s.atlas_move(b.get("via"))
+                s.save()        # 位置改变要落盘：重新加载后队伍还在原地
+                return self._json(result)
 
             # TODO(M3)：PRISM 会话 / 结算等写入接口在此追加（路径 if 链）。
             return self._err("未知接口", 404)
