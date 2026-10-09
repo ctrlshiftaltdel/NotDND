@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环与 pcm16 语音代理
-（G1 / G2 / G3 / G4）。
+"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环、pcm16 语音代理与战役绑定
+（G1 / G2 / G3 / G4 / G5）。
 
-设计依据：GUIDE-DESIGN.md（§2.2 角色行为与对白 / §4.3 已拍板 / §5.1 模块边界 /
-§5.2 回合怎么走 / §5.3 环境 / §5.4 缓存导向的提示词 / §5.5 思考策略 / §5.6 工具 /
-§5.9 语音管线 / §5.10 我们自己的 HTTP / §7 数据模型 / §10 可观测性 /
-PR Plan G1–G4）。
+设计依据：GUIDE-DESIGN.md（§2.1 走进地点的定义 / §2.2 角色行为与对白 /
+§4.3 已拍板 / §5.1 模块边界 / §5.2 回合怎么走 / §5.3 环境 / §5.4 缓存导向的提示词 /
+§5.5 思考策略 / §5.6 工具 / §5.9 语音管线 / §5.10 我们自己的 HTTP / §6 接口变化 /
+§7 数据模型 / §10 可观测性 / PR Plan G1–G5）。
 
 G1（前缀与离线骨架）：
 
@@ -54,6 +54,20 @@ G4（工具环，只调用已有公开入口）：
   同一个 `settle`，三种 `ValueError` 收成固定短语——状态行早已写出，工具失败
   只能把短语喂回模型，**不**产生第二行 HTTP 状态（§5.2）；
 - 预通行不读 `data/scenarios/` 猜测战役，也不新增第四只工具（§5.6）。
+
+G5（战役绑定与典范卡）：
+
+- `bind`：`POST /api/guide/bind` 记录**显式**的 `world_key` / `scenario_id`（§6）。
+  `scenario_id` 只能是 `data/scenarios/<id>.json` 的**文件名主干**；不扫描目录、
+  不按中文战役名搜索。文件里 `meta.world` 必须等于 `world_key`，否则「世界对不上」
+  并且**不写** `scenario_id`。幂等：同一对 id 再绑一次不重掷 salt；另一场则「已经绑定」；
+- `build_l1` / `l1_for`（§5.4）：绑定后 L1 才从那一份剧本文件（与可选世界文件）
+  生成典范卡——地点专名、NPC 的 id / 名字 / drive / secret / mask、战役节点的 id 与
+  名字、顶层线索的 id 与名字。**纯函数**，两次构建字节相同；salt 不进 L1；
+- `location_ok`：`turn` 的可选 `location_id` 必须等于已绑定剧本里某个地点的 `id`
+  （§2.1）。对不上在状态行之前 400「没有这个地点」，不叫模型；
+- `ensure_realization`：**G5 的函数体只有 `return`**——不打开套接字、不画街道。
+  G6 才替换这个函数体（锁内写 `pending` → 锁外读上游 → 校验 → 换图或要点退回）。
 
 密钥只放请求头 `api-key`，不进 URL、不进 JSON、不进状态字典、不进日志；
 异常字符串不携带上游响应体（§5.1 / §8）。
@@ -163,6 +177,35 @@ ENV_KEYS = ("BASE_URL", "MODEL", "API_KEY")
 
 _CHAT_PATH = "/chat/completions"
 _SALT_RE = re.compile(r"^[0-9a-f]{32}$")
+
+# ── §5.4 / §6 显式绑定与典范卡（G5）─────────────────────────────────────
+
+# 剧本 id 是**文件名主干**（§6）。它既是业务标识，也是磁盘文件名安全边界：
+# 只允许小写字母 / 数字 / `-` / `_`，杜绝 `../` 探测。世界 key 走同一张白名单
+# （它只用来拼 `data/worlds/<key>.json`，且必须与 `meta.world` 逐字相等）。
+SCENARIO_ID_RE = re.compile(r"^[a-z0-9_-]{1,64}$")
+
+# 绑定后才读的两个目录：`data/scenarios/<id>.json`（点名的那一份）与
+# `data/worlds/<key>.json`（存在才读，不存在不算失败，§5.12）。
+SCENARIO_DIR = pathlib.Path(__file__).resolve().parent / "data" / "scenarios"
+WORLD_DIR = pathlib.Path(__file__).resolve().parent / "data" / "worlds"
+
+# L1 的字符预算（§5.11）：未绑定的常量远小于 2_000，绑定路径用 8_000。
+L1_LIMIT = 8000
+
+# L1 里每个字段截到 120 个码位（§5.4）。秘密泄漏校验用文件全文，不用这句截断。
+L1_FIELD_LIMIT = 120
+
+# 世界文件里最多带几行「术语：含义」（§5.4）。
+L1_GLOSSARY_LIMIT = 8
+
+# 显式绑定的三种失败（§6）：前两种 400，第三种 409。网页层把它翻成固定 JSON。
+BIND_NO_SCENARIO = "没有这场战役"
+BIND_WORLD_MISMATCH = "世界对不上"
+BIND_ALREADY_BOUND = "已经绑定"
+
+# 实相占位的时间盒（§5.2）：活着的那次调用（含一次重试）不能被当成进程已死。
+REALIZATION_CLAIM_S = 120
 
 # ── §5.3 环境 ───────────────────────────────────────────────────────────
 
@@ -358,6 +401,164 @@ def ensure_l2(guide, rules):
     return guide["l2"]
 
 
+# ── §5.4 绑定后的典范卡（L1，G5）─────────────────────────────────────────
+#
+# 未绑定时 L1 就是那句常量；**只有** `guide.scenario_id` 非空时才读剧本目录，
+# 而且只读点名的这一份（§5.12：不扫描目录，不按中文战役名搜索）。
+
+# 剧本 / 世界文件按 id 缓存解析结果：同一进程里反复构建 L1 不再重复读盘。
+# 只在**读成功**时写入；读失败不写缓存（下次仍可重试）。
+_SCENARIO_CACHE: dict[str, dict] = {}
+_WORLD_CACHE: dict[str, dict] = {}
+
+
+def _read_data_json(directory, name, cache):
+    """读 `data/<directory>/<name>.json`：name 先过白名单，再惰性 + 缓存。
+
+    import 本模块**不碰磁盘**（只有在第一次绑定 / 构建 L1 时才读）。
+    文件缺失 / 读不了 / 顶层不是字典 → None；调用方把它翻成固定短语。
+    """
+    if not isinstance(name, str) or not SCENARIO_ID_RE.fullmatch(name):
+        return None
+    cached = cache.get(name)
+    if cached is not None:
+        return cached
+    try:
+        raw = json.loads((directory / (name + ".json")).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(raw, dict):
+        return None
+    cache[name] = raw
+    return raw
+
+
+def load_scenario(scenario_id):
+    """`data/scenarios/<id>.json`；读不到返回 None（**不**扫描目录找替代）。"""
+    return _read_data_json(SCENARIO_DIR, scenario_id, _SCENARIO_CACHE)
+
+
+def load_world(world_key):
+    """`data/worlds/<key>.json`；没有这份世界文件返回 None（不算绑定失败）。"""
+    return _read_data_json(WORLD_DIR, world_key, _WORLD_CACHE)
+
+
+def _clip(text, limit=L1_FIELD_LIMIT):
+    """各字段截到 120 个码位（§5.4）；脏值降级成空串。"""
+    return str(text or "")[:limit]
+
+
+def key_place_heads(location):
+    """`key_places` 条目的**专名**：第一个全角破折号 `——` 之前的子串。
+
+    没有破折号就用整串，两端去空白（§2.1）。条目按数组顺序，不去重、不排序。
+    """
+    heads = []
+    for entry in (location or {}).get("key_places") or []:
+        text = str(entry or "")
+        head = text.split("——", 1)[0].strip()
+        heads.append(head or text.strip())
+    return heads
+
+
+def _mask_for(npc, ledger_by_name):
+    """`mask`：npc 对象上有就用对象上的；没有才用账本模板里**同名**的那一条。
+
+    模板里的短 drive 不进这里，也不当「与典范矛盾」的对照句（§2.2）。
+    """
+    mask = (npc or {}).get("mask")
+    if isinstance(mask, str) and mask.strip():
+        return mask
+    other = ledger_by_name.get(str((npc or {}).get("name") or "")) or {}
+    return str(other.get("mask") or "")
+
+
+def build_l1(scenario_id, world_key=""):
+    """由**那一份**剧本文件与可选世界文件构建典范卡（L1）。**纯函数**。
+
+    §5.4：排序固定（地点 / NPC / 节点 / 线索都按 id，术语按 `term`）；去掉一切
+    `source` 键；不放 `encounters`；不放账本模板里的短 drive、短线索名；各字段
+    截到 120 码位。salt 不进 L1，`docs/` 路径也不进（`source` 全部丢掉）。
+
+    读不到剧本时退回未绑定常量：绑定路径已经验过文件存在，这只是防御性降级，
+    绝不改成「随便找一份来读」。
+    """
+    data = load_scenario(scenario_id)
+    if data is None:
+        return L1_UNBOUND
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    key = str(world_key or "") or str(meta.get("world") or "")
+
+    ledger_by_name = {}
+    for entry in (data.get("ledger_template") or {}).get("npcs") or []:
+        if isinstance(entry, dict):
+            ledger_by_name[str(entry.get("name") or "")] = entry
+
+    lines = ["【世界卡】",
+             "剧本：" + str(scenario_id or ""),
+             "战役：" + _clip(meta.get("campaign")),
+             "世界：" + _clip(meta.get("world")),
+             "引擎：" + _clip(meta.get("engine"))]
+
+    lines.append("术语：")
+    world = load_world(key)
+    terms = []
+    for entry in (world or {}).get("glossary") or []:
+        if not isinstance(entry, dict):
+            continue
+        terms.append((str(entry.get("term") or ""), _clip(entry.get("meaning"))))
+    terms.sort(key=lambda item: item[0])
+    for term, meaning in terms[:L1_GLOSSARY_LIMIT]:
+        lines.append(term + "：" + meaning)
+
+    lines.append("地点：")
+    locations = [item for item in (data.get("locations") or [])
+                 if isinstance(item, dict)]
+    for location in sorted(locations, key=lambda item: str(item.get("id") or "")):
+        head = "%s %s" % (str(location.get("id") or ""),
+                          _clip(location.get("name")))
+        for place in key_place_heads(location):
+            head += "｜" + _clip(place)
+        lines.append(head)
+
+    lines.append("人物：")
+    npcs = [item for item in (data.get("npcs") or []) if isinstance(item, dict)]
+    for npc in sorted(npcs, key=lambda item: str(item.get("id") or "")):
+        lines.append("｜".join([
+            "%s %s" % (str(npc.get("id") or ""), _clip(npc.get("name"))),
+            "欲望：" + _clip(npc.get("drive")),
+            "面具：" + _clip(_mask_for(npc, ledger_by_name)),
+            "秘密：" + _clip(npc.get("secret")),
+        ]))
+
+    lines.append("节点：")
+    nodes = [item for item in (data.get("nodes") or []) if isinstance(item, dict)]
+    for node in sorted(nodes, key=lambda item: str(item.get("id") or "")):
+        lines.append("%s %s" % (str(node.get("id") or ""),
+                                _clip(node.get("name"))))
+
+    lines.append("线索：")
+    threads = [item for item in (data.get("threads") or [])
+               if isinstance(item, dict)]
+    for thread in sorted(threads, key=lambda item: str(item.get("id") or "")):
+        lines.append("%s %s" % (str(thread.get("id") or ""),
+                                _clip(thread.get("name"))))
+
+    return ("\n".join(lines) + "\n")[:L1_LIMIT]
+
+
+def l1_for(guide):
+    """当前会话的 L1：未绑定仍是「尚未选择战役」，绑定后是这场剧本的典范卡。
+
+    只看 `scenario_id`——它非空即「已经绑定」，与 `l1_key` 同义（§7）。
+    """
+    guide = guide if isinstance(guide, dict) else {}
+    scenario_id = str(guide.get("scenario_id") or "")
+    if not scenario_id:
+        return L1_UNBOUND
+    return build_l1(scenario_id, str(guide.get("world_key") or ""))
+
+
 # ── §7 guide 状态字典 ───────────────────────────────────────────────────
 
 # stats 计数键（§7）。只在这些键上累加，不夹带别的东西。
@@ -440,6 +641,78 @@ def guide_from(raw):
             if isinstance(value, int) and not isinstance(value, bool):
                 guide["stats"][key] = value
     return guide
+
+
+# ── §6 显式绑定与焦点（G5）────────────────────────────────────────────────
+
+
+def bind(web_session, world_key, scenario_id):
+    """记录**显式**的 `world_key` / `scenario_id`（§6）。失败抛 `ValueError`。
+
+    「哪种失败对应哪个状态码」仍是网页层的合同，这里只抛固定短语：
+
+    · `scenario_id` 不是文件名主干（`^[a-z0-9_-]{1,64}$`）、或文件不存在 /
+      读不了 → `没有这场战役`；
+    · 文件里 `meta.world` 与 `world_key` 不逐字相等 → `世界对不上`，
+      并且**不写** `scenario_id`（绑定没有发生一半）；
+    · 已绑定**同一对** id：幂等返回，不重掷 salt、不重画实相；
+    · 已绑定**别的** id：`已经绑定`（换一场要开新存档）。
+
+    同时把 `l1_key` 置成 `scenario_id`（§7：绑定后 L1 的键就是它）。
+    没绑定的会话照旧不读剧本目录，L1 仍是那句常量。
+    """
+    world_key = str(world_key or "").strip()
+    scenario_id = str(scenario_id or "").strip()
+    guide = web_session.guide if isinstance(web_session.guide, dict) else {}
+    current = str(guide.get("scenario_id") or "")
+    if current:
+        same = (scenario_id == current
+                and world_key == str(guide.get("world_key") or ""))
+        if not same:
+            raise ValueError(BIND_ALREADY_BOUND)
+        return {"world_key": world_key, "scenario_id": scenario_id}
+    if not SCENARIO_ID_RE.fullmatch(scenario_id):
+        raise ValueError(BIND_NO_SCENARIO)
+    data = load_scenario(scenario_id)
+    if data is None:
+        raise ValueError(BIND_NO_SCENARIO)
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    if str(meta.get("world") or "") != world_key:
+        raise ValueError(BIND_WORLD_MISMATCH)
+    with web_session.lock:
+        web_session.guide["world_key"] = world_key
+        web_session.guide["scenario_id"] = scenario_id
+        web_session.guide["l1_key"] = scenario_id
+        web_session.save()
+    return {"world_key": world_key, "scenario_id": scenario_id}
+
+
+def location_ok(guide, location_id):
+    """`location_id` 必须等于**已绑定剧本**里某个地点的 `id`（§2.1）。**纯函数**。
+
+    没绑定就没有可对上的剧本，一律不合法——禁止从玩家散文里猜「他是不是进了白壁」。
+    """
+    scenario_id = str((guide or {}).get("scenario_id") or "")
+    wanted = str(location_id or "")
+    if not scenario_id or not wanted:
+        return False
+    data = load_scenario(scenario_id)
+    if data is None:
+        return False
+    for location in data.get("locations") or []:
+        if isinstance(location, dict) and str(location.get("id") or "") == wanted:
+            return True
+    return False
+
+
+def ensure_realization(web_session, location_id):
+    """确保焦点地点的实相（地点图）已经生成（§2.1 / §5.2）。
+
+    **G5 的函数体只有 `return`**：不打开套接字、不画街道、一个字都不写。
+    位置（在状态行之后、叙事之前调用）、写 `pending` 的顺序与 `claim` 的语义
+    由 G6 决定；G6 只替换这个函数体，不改 `notdnd_web.py`，也不再开 SSE 分支。
+    """
+    return
 
 
 # ── §10 可观测性 ────────────────────────────────────────────────────────
@@ -1247,14 +1520,15 @@ def build_l4(rules, guide, player_text, result=None):
 def build_narrative_messages(rules, guide, player_text, result=None):
     """叙事消息数组 L0–L4（§5.4）。
 
-    L1 在未绑定时**仍是**那句常量「尚未选择战役」（绑定属 G5）；
+    L1 未绑定时**仍是**那句常量「尚未选择战役」（`l1_for`），绑定之后换成这场
+    剧本的典范卡——同一剧本的每一局字节相同，salt 不进 L1；
     L2 取 `guide["l2"]`（由 `ensure_l2` 负责在 `scene.id` 变化时重写）；
     L3 只放 `guide["transcript"]`（审查之后的文本）。纯函数：不改 guide。
     """
     guide = guide if isinstance(guide, dict) else {}
     messages = [
         {"role": "system", "content": L0},
-        {"role": "user", "content": L1_UNBOUND},
+        {"role": "user", "content": l1_for(guide)},
         {"role": "assistant", "content": "已载入世界卡。"},
         {"role": "user", "content": str(guide.get("l2") or "")},
         {"role": "assistant", "content": "已载入检查点。"},

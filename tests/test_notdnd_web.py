@@ -25,6 +25,12 @@
      思考开且 `stream` 为 false 的调用，叙事请求保持思考关并重拼 L0–L4（无
      `role: tool` / 无 `reasoning_content`）；工具里的 `ValueError` 只变成固定
      短语，不产生第二行 HTTP 状态；叙事带 `tool_calls` 不再开一轮。
+  8. 导引者绑定与焦点（G5）：`POST /api/guide/bind` 的四种结果（400「没有这场
+     战役」/ 400「世界对不上」/ 200 幂等 / 409「已经绑定」）都基于真剧本文件；
+     绑定后叙事请求的第 2 条消息换成这场剧本的典范卡（含专名、无 salt / `docs/`），
+     同一剧本的两份存档 L1 全等；`turn` 的可选 `location_id` 在状态行之前校验
+     （非法 → 400「没有这个地点」且不开 SSE），合法时写入 `focus_location_id`
+     并落盘，且恰恰调用一次 `ensure_realization`（G5 是空实现，上游只有叙事那一次）。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -1393,6 +1399,187 @@ def check_guide_speak_rate_limit():
             assert len(fake.calls) == 30, "超限那一次不得调用传输"
 
 
+# --------------------------------------------------------------------------
+# 导引者绑定与焦点（G5，§2.1 / §6）
+# --------------------------------------------------------------------------
+
+
+def check_guide_bind_endpoint():
+    """`POST /api/guide/bind`：四种结果；绑定后 L1 才是这场剧本的典范卡。
+
+    绑定走**真文件**（`data/scenarios/yunji.json`，`meta.world` = `yunji`），
+    不伪造剧本；断言的都是「重启之后还在」的落盘状态。
+    """
+    sid = "g5-bind-1"
+    _guide_session(sid)
+    with _LocalServer() as server:
+        # 没有 X-Session → 400（不允许匿名绑定）。
+        status, body, _raw, _heads = server.post(
+            "/api/guide/bind", {"world_key": "yunji", "scenario_id": "yunji"})
+        assert status == 400 and body.get("error"), (status, body)
+
+        # 文件不存在 / id 不是文件名主干 → 400「没有这场战役」。
+        for bad in ("nope", "../etc/passwd", "Yunji", "九钥与元柜"):
+            status, body, _raw, _heads = server.post(
+                "/api/guide/bind", {"world_key": "yunji", "scenario_id": bad},
+                sid=sid)
+            assert status == 400 and body.get("error") == "没有这场战役", \
+                (bad, status, body)
+
+        # `world_key` 与 `meta.world` 不一致 → 400「世界对不上」，不写 scenario_id。
+        status, body, _raw, _heads = server.post(
+            "/api/guide/bind",
+            {"world_key": "threshold", "scenario_id": "yunji"}, sid=sid)
+        assert status == 400 and body.get("error") == "世界对不上", (status, body)
+        session = notdnd_web.get_session(sid)
+        assert session.guide["scenario_id"] == ""
+        assert session.guide["world_key"] == ""
+        assert session.guide["l1_key"] == "unloaded"
+        assert prism_guide.l1_for(session.guide) == prism_guide.L1_UNBOUND
+
+        salt = session.guide["salt"]
+        status, body, _raw, _heads = server.post(
+            "/api/guide/bind", {"world_key": "yunji", "scenario_id": "yunji"},
+            sid=sid)
+        assert status == 200, (status, body)
+        assert body == {"status": "ok", "world_key": "yunji",
+                        "scenario_id": "yunji"}, body
+        session = notdnd_web.get_session(sid)
+        assert session.guide["scenario_id"] == "yunji"
+        assert session.guide["l1_key"] == "yunji"
+        assert session.guide["salt"] == salt, "绑定不得重掷 salt"
+
+        # 幂等：同一对 id 再绑一次仍 200，salt 不变。
+        status, body, _raw, _heads = server.post(
+            "/api/guide/bind", {"world_key": "yunji", "scenario_id": "yunji"},
+            sid=sid)
+        assert status == 200, (status, body)
+        assert notdnd_web.get_session(sid).guide["salt"] == salt
+
+        # 另一场（three_wooden_boxes 的 meta.world 也是 yunji）→ 409「已经绑定」。
+        status, body, _raw, _heads = server.post(
+            "/api/guide/bind",
+            {"world_key": "yunji", "scenario_id": "three_wooden_boxes"}, sid=sid)
+        assert status == 409 and body.get("error") == "已经绑定", (status, body)
+        assert notdnd_web.get_session(sid).guide["scenario_id"] == "yunji"
+
+        # 绑定之后，叙事请求的第 2 条消息就是这场剧本的典范卡。
+        fake = _FakeTransport()
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+        assert status == 200, status
+        l1 = fake.calls[0]["payload"]["messages"][1]["content"]
+        assert l1 == prism_guide.l1_for(notdnd_web.get_session(sid).guide), l1[:80]
+        for needle in ("白壁", "绳会账房", "npc-01"):
+            assert needle in l1, needle
+        assert "尚未选择战役" not in l1
+        assert salt not in l1 and "docs/" not in l1
+
+    # 重启之后 binding 与焦点仍在（落盘为证）；两份存档的 L1 全等。
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded is not None
+    assert reloaded.guide["scenario_id"] == "yunji"
+    assert reloaded.guide["world_key"] == "yunji"
+    assert reloaded.guide["salt"] == salt
+    other = _guide_session("g5-bind-2")
+    other.guide["world_key"] = "yunji"
+    other.guide["scenario_id"] = "yunji"
+    other.save()
+    assert prism_guide.l1_for(reloaded.guide) == prism_guide.l1_for(other.guide), \
+        "同一剧本的两份存档，L1 必须全等"
+
+
+def check_guide_bind_no_module():
+    """导引者模块缺失：绑定给固定 400，不崩、不落盘。"""
+    with _LocalServer() as server:
+        saved_module = notdnd_web.prism_guide
+        notdnd_web.prism_guide = None
+        try:
+            sid = "g5-bind-nomod"
+            _guide_session(sid)
+            status, body, _raw, heads = server.post(
+                "/api/guide/bind",
+                {"world_key": "yunji", "scenario_id": "yunji"}, sid=sid)
+            assert status == 400 and body.get("error"), (status, body)
+            assert "event-stream" not in heads.get("content-type", "")
+            # 模块缺失时 `guide` 只有本地最小块：绑定当然没有落下任何 id。
+            assert not notdnd_web.Session.load(sid).guide.get("scenario_id")
+        finally:
+            notdnd_web.prism_guide = saved_module
+
+
+def check_guide_turn_location_focus():
+    """`turn` 的可选 `location_id`：状态行之前校验、写焦点、恰调用一次实相。"""
+    sid = "g5-focus-1"
+    _guide_session(sid)
+    seen = []
+    saved_realization = prism_guide.ensure_realization
+
+    def counting(session, location_id):
+        seen.append(location_id)
+        return saved_realization(session, location_id)
+
+    with _LocalServer() as server:
+        # 没绑定的会话带 location_id → 400（没有可对上的剧本），且不调用实相。
+        _guide_session("g5-focus-unbound")
+        prism_guide.ensure_realization = counting
+        try:
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn",
+                {"text": "我走进白壁", "location_id": "loc-02"},
+                sid="g5-focus-unbound")
+            assert status == 400 and body.get("error") == "没有这个地点", \
+                (status, body)
+            assert "event-stream" not in heads.get("content-type", ""), heads
+            assert seen == [], seen
+
+            status, body, _raw, _heads = server.post(
+                "/api/guide/bind",
+                {"world_key": "yunji", "scenario_id": "yunji"}, sid=sid)
+            assert status == 200, (status, body)
+
+            # 非法 id（包括战役节点名）→ 400，没有 SSE，实相没被调用。
+            for bad in ("loc-99", "whitewall", "白壁"):
+                status, body, _raw, heads = server.post(
+                    "/api/guide/turn",
+                    {"text": "我走进白壁", "location_id": bad}, sid=sid)
+                assert status == 400 and body.get("error") == "没有这个地点", \
+                    (bad, status, body)
+                assert "event-stream" not in heads.get("content-type", ""), heads
+            assert seen == [], seen
+
+            # 合法 id：状态行之后、叙事之前调用一次；上游只有叙事那一次。
+            fake = _FakeTransport()
+            with _guide_online(_ONLINE_ENV, fake):
+                status, _body, raw, _heads = server.post(
+                    "/api/guide/turn",
+                    {"text": "我走进白壁", "location_id": "loc-02"}, sid=sid)
+            assert status == 200, status
+            assert seen == ["loc-02"], seen
+            assert [name for name, _ in _parse_sse(raw)] == \
+                ["narration", "usage", "done"], _parse_sse(raw)
+            assert len(fake.calls) == 1, \
+                [call["payload"].get("stream") for call in fake.calls]
+            assert notdnd_web.get_session(sid).guide["focus_location_id"] == "loc-02"
+
+            # 不带 location_id：焦点不动，实相不再被调用。
+            seen.clear()
+            with _guide_online(_ONLINE_ENV, _FakeTransport()):
+                status, _body, _raw, _heads = server.post(
+                    "/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+            assert status == 200 and seen == [], seen
+            assert notdnd_web.get_session(sid).guide["focus_location_id"] == "loc-02"
+        finally:
+            prism_guide.ensure_realization = saved_realization
+
+    # 焦点落盘：重启之后（G6 的下一回合）还看得到队伍走到了哪里。
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded.guide["focus_location_id"] == "loc-02", \
+        reloaded.guide["focus_location_id"]
+    assert reloaded.guide["scenario_id"] == "yunji"
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -1420,6 +1607,9 @@ CHECKS = (
     check_guide_speak_validation,
     check_guide_speak_stream,
     check_guide_speak_rate_limit,
+    check_guide_bind_endpoint,
+    check_guide_bind_no_module,
+    check_guide_turn_location_focus,
 )
 
 

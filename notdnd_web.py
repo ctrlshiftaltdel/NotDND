@@ -15,10 +15,13 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     当前世界懒编译；GET /api/atlas/exits 看出口（纯文本列表），
     POST /api/atlas/move 移动并返回行程档与时段
   · 导引者接线（可选模块）：`guide` 状态块随存档落盘 / 按键还原；
-    GET /api/guide/status 三个布尔；POST /api/guide/turn 先结算、后叙事，
-    回合内按需在叙事数组上开一次工具预通行（思考开 / 非流式 / 最多 3 轮，
-    失败只把固定短语喂回模型），叙事走 HTTP/1.1 分块的事件流（上游失败只发
-    `fallback`，不再动 HTTP 状态）；
+    GET /api/guide/status 三个布尔；POST /api/guide/bind 记录显式的
+    `world_key` / `scenario_id`（绑定之后 L1 才是这场剧本的典范卡）；
+    POST /api/guide/turn 先结算、后叙事，回合内按需在叙事数组上开一次工具
+    预通行（思考开 / 非流式 / 最多 3 轮，失败只把固定短语喂回模型），
+    可选的 `location_id` 在状态行之前校验并写入 `focus_location_id`，
+    状态行之后、叙事之前调用一次 `ensure_realization`（G5 是空实现），
+    叙事走 HTTP/1.1 分块的事件流（上游失败只发 `fallback`，不再动 HTTP 状态）；
     POST /api/guide/speak 把上一回合存下的一拍读成 pcm16 流（24 kHz / mono /
     s16le，HTTP/1.1 分块、无 Content-Length；只接受 `last_beats` 里的全文）
 
@@ -113,6 +116,23 @@ GUIDE_SETTLE_ERRORS = {
     "战斗还没结束，先打完这场": ("战斗还没结束", 409),
 }
 GUIDE_SETTLE_DEFAULT = ("这次结算不能做", 400)
+
+# ── 导引者（G5）常量 ─────────────────────────────────────────────────────
+#
+# 显式绑定失败 → 固定短语 + HTTP 码（§6）。状态行之前返回，不打开 SSE。
+# 短语与 `prism_guide.bind` 抛的 `ValueError` 同文（跨模块锁）。
+GUIDE_BIND_ERRORS = {
+    "没有这场战役": 400,
+    "世界对不上": 400,
+    "已经绑定": 409,
+}
+GUIDE_BIND_DEFAULT = 400
+
+# `turn` 的 `location_id` 不是已绑定剧本里的地点 → 400「没有这个地点」（§2.1）。
+GUIDE_NO_LOCATION = "没有这个地点"
+
+# 导引者模块缺失时，绑定这一类**只有模块才能做**的路由给的固定错误短语（§5.1）。
+GUIDE_ABSENT_ERROR = "导引者不在席"
 
 # 模块缺失时的本地兜底句：与 `prism_guide.FALLBACK_NARRATION` 同文的常量
 # （§5.1：「兜底句是模块级常量，不向模型现编」）。模块在时以它为准。
@@ -892,6 +912,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/guide/turn":
                 return self._guide_turn(b)
 
+            if path == "/api/guide/bind":
+                return self._guide_bind(b)
+
             if path == "/api/guide/speak":
                 return self._guide_speak(b)
 
@@ -954,14 +977,44 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001
             self._err(f"服务器内部错误：{e}", 500)
 
+    # ── 导引者绑定（G5，§6）────────────────────────────────
+    def _guide_bind(self, body: dict):
+        """`POST /api/guide/bind`：记录显式的 `world_key` / `scenario_id`。
+
+        体只有 `{"world_key", "scenario_id"}`，都走 `X-Session` 那一局。
+        校验与写盘都归 `prism_guide.bind`（它自己加锁并 `save()`），这里只把
+        `ValueError` 翻成固定 JSON：`没有这场战役` / `世界对不上` 是 400，
+        `已经绑定` 是 409（§6）。没有 SSE，也没有第二套状态码。
+        """
+        sid = (self.headers.get("X-Session") or "").strip()
+        session = get_session(sid) if sid else None
+        if not session:
+            return self._err("会话不存在或已过期", 400)
+        if prism_guide is None:
+            return self._err(GUIDE_ABSENT_ERROR, 400)
+        world_key = str(body.get("world_key") or "").strip()
+        scenario_id = str(body.get("scenario_id") or "").strip()
+        try:
+            bound = prism_guide.bind(session, world_key, scenario_id)
+        except ValueError as exc:
+            return self._err(str(exc),
+                             GUIDE_BIND_ERRORS.get(str(exc), GUIDE_BIND_DEFAULT))
+        return self._json({"status": "ok", **bound})
+
     # ── 导引者回合（G2，§5.2 / §5.10）───────────────────────
     def _guide_turn(self, body: dict):
         """`POST /api/guide/turn`：先结算，后叙事。
 
         顺序（§5.2）：长度 → 会话 → 速率 → 淡出整句——四步都还没写状态行。
-        有 `action_id` 时在**状态行之前**结算：`ValueError` 变成固定 JSON。
-        只有这些通过之后才打开 HTTP/1.1 分块；头写出之后的失败一律走
-        `fallback` 事件，`_err` 不再出现（否则就是第二行 HTTP 状态）。
+        可选的 `location_id` 在**状态行之前**校验（不是已绑定剧本里的地点就是
+        400 `没有这个地点`，不叫模型）；有 `action_id` 时同样在状态行之前结算：
+        `ValueError` 变成固定 JSON。只有这些都通过之后才打开 HTTP/1.1 分块；
+        头写出之后的失败一律走 `fallback` 事件，`_err` 不再出现（否则就是第二行
+        HTTP 状态）。
+
+        `location_id` 非空时：写入 `focus_location_id` 并落盘（焦点是显式的，
+        不从玩家散文里猜），然后在状态行之后、叙事之前调用一次
+        `ensure_realization`（G5 是空实现，不会为实相再开一次 SSE 分支）。
         """
         text = str(body.get("text") or "")
         if len(text) > GUIDE_TEXT_LIMIT:
@@ -987,6 +1040,13 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"status": "offline",
                                "narration": {"text": FALLBACK_NARRATION}})
 
+        # 焦点的校验在状态行之前（§2.1 / §5.10）：不是已绑定剧本里的地点就是
+        # 400，不叫模型。合法时才在下面写 `focus_location_id`。
+        location_id = str(body.get("location_id") or "")
+        if location_id and not prism_guide.location_ok(session.guide,
+                                                       location_id):
+            return self._err(GUIDE_NO_LOCATION, 400)
+
         action_id = str(body.get("action_id") or "")
         result = None
         if action_id:
@@ -997,9 +1057,13 @@ class Handler(BaseHTTPRequestHandler):
                                                        GUIDE_SETTLE_DEFAULT)
                 return self._err(phrase, code)
 
-        # L2 只在 scene.id 变化时重写（并清空 L3）；写 guide 要在单局锁内。
+        # L2 只在 scene.id 变化时重写（并清空 L3）；焦点变化要立刻落盘——
+        # 这一回合即使叙事失败，G6 的下一回合也要看得到队伍走到了哪里。
         with session.lock:
             prism_guide.ensure_l2(session.guide, session.rules)
+            if location_id:
+                session.guide["focus_location_id"] = location_id
+                session.save()
 
         try:
             self._begin_stream()
@@ -1009,6 +1073,15 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if result is not None:
                 self._sse("result", result)
+            if location_id:
+                # 状态行已经写出、叙事之前（§5.2）：本回合的焦点是显式的，先让
+                # `ensure_realization` 管实相。G5 的函数体只有 `return`；G6 才在
+                # 函数体内读上游。实相失败**不**把整回合改成兜底句，所以这里吞掉
+                # 异常——真正的时间盒与降级都归 G6 自己管。
+                try:
+                    prism_guide.ensure_realization(session, location_id)
+                except Exception:      # noqa: BLE001
+                    pass
             completion = None
             try:
                 env = prism_guide.load_env()
