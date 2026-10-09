@@ -42,7 +42,7 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
 - **数据层**：`python3 tests/validate_data.py` → **79 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ `data/atlas/lexicon.json` + schema/registry）。
 - **回归**：`bash tests/run_all.sh` → **11 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel` / `test_atlas_compile` / `test_atlas_gen` / `test_atlas_ledger_pins` / `test_prism_guide`）。
-- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 ✅（PR #58 / #74 / #77 数据↔docs 对齐）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I6 全部完成 ✅（PR #75 / #79 / #81 / #95 / #93 / #80；后续修复 PR #91）** · **M5 导引者 G0–G2 ✅（PR #83 / #92 / #96）** · M4 / M2d / M6 待。
+- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 ✅（PR #58 / #74 / #77 数据↔docs 对齐）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I6 全部完成 ✅（PR #75 / #79 / #81 / #95 / #93 / #80；后续修复 PR #91）** · **M5 导引者 G0–G3 ✅（PR #83 / #92 / #96 / #99）** · M4 / M2d / M6 待。
 
 ---
 
@@ -106,7 +106,7 @@ bash tests/content_firewall.sh
 | **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ b 战斗 / 派生 / 成长 ✅（PR #70）/ c 构建引擎 ✅（PR #76）；M2d（符纹 / 插槽 / 构建点 / 互转）待 |
 | **M3** | 会话与存档 + 后端 API | a 规则快照接线 ✅（PR #56）/ b 写接口 / API 待 |
 | **M4** | 前端 UI（`static/`） | 待 |
-| **M5** | AI 导引者（可选模块，import 失败不影响离线）。方案见 `GUIDE-DESIGN.md` | **进行中**：G0–G2 ✅（PR #83 / #92 / #96）；G3–G7 已开单（#86–#90） |
+| **M5** | AI 导引者（可选模块，import 失败不影响离线）。方案见 `GUIDE-DESIGN.md` | **进行中**：G0–G3 ✅（PR #83 / #92 / #96 / #99）；G4–G7 已开单（#87–#90） |
 | **M6** | 测试与文档收口（README + HANDOVER + run_all 全量） | 待 |
 
 > **ATLAS（自动地图）切片**：`ATLAS-DESIGN.md` §8 的六条 Issue **I1–I6** 与 M2–M4 交叉
@@ -119,7 +119,7 @@ bash tests/content_firewall.sh
 > **导引者（GUIDE）切片**：`GUIDE-DESIGN.md` PR Plan 的八条 **G0–G7**（管道 G1–G4 → 绑定 / 实相 / 对白 G5–G7）。
 > 依赖链 **G0 → G1 → G2 → {G3 / G4 / G5} → G6 → G7**；**同文件串行**：G3↔G4↔G5 与 G6↔G7 都占 `prism_guide.py`；
 > G4 的前置 #67 已合并；G5 另占 `notdnd_web.py`，开工前确认无并行 PR。
-> **进度**：G0–G2 ✅（PR #83 / #92 / #96）；**G3 / G4 / G5 可开工（#86–#88，须串行）**；G6–G7 待办（#89–#90）。
+> **进度**：G0–G3 ✅（PR #83 / #92 / #96 / #99）；**G4 / G5 可开工（#87–#88，须串行）**；G6–G7 待办（#89–#90）。
 
 ---
 
@@ -137,9 +137,9 @@ bash tests/content_firewall.sh
 - **DNDWeb 脱敏迁移**（2026-10-09）：M2/M3 的**工程骨架**已由主管派的迁移 Agent 完成并合并
   （`prism_core.py` / `notdnd_web.py`，PR #49 / #48）；实现 Agent 直接在其上继续即可，
   **无需** DNDWeb 访问权（流程见 §3）。`DNDWEB-ASSETS.md` §1/§2 状态已改 ✅、§3 已改 🟡（结构）。
-- **阶段收口**（2026-10-09）：**M1.4 剧本 / M2（a–c）/ M3a / ATLAS I1–I6（全部）/ 导引者 G0–G2 已完成**
-  （PR #58 / #74 / #77 / #57 / #70 / #76 / #56 / #75 / #79 / #81 / #95 / #93 / #80 / #91 / #83 / #92 / #96）；
-  在办与待办：**导引者 G3–G7（#86–#90）**、M2d。
+- **阶段收口**（2026-10-09）：**M1.4 剧本 / M2（a–c）/ M3a / ATLAS I1–I6（全部）/ 导引者 G0–G3 已完成**
+  （PR #58 / #74 / #77 / #57 / #70 / #76 / #56 / #75 / #79 / #81 / #95 / #93 / #80 / #91 / #83 / #92 / #96 / #99）；
+  在办与待办：**导引者 G4–G7（#87–#90）**、M2d。
 - **自动地图（ATLAS）**（2026-10-09 拍板）：跨 M2–M4 的**方向性设计**，方案入库 `ATLAS-DESIGN.md`
   （见 §7 文档地图）；拆六条切片 **I1–I6**（依赖见 §4 注）。**影响面**：新增 `atlas.py` /
   `atlas_compile.py` / `atlas_gen.py` 与 `data/atlas/lexicon.json`（新 kind）；I4 给会话加快照块 `atlas`；
