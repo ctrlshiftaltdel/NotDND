@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.build_combat）",
-  "description": "构建引擎第六节：构建引擎的攻击结算（5 步流程）、目标闪避需求表（5 档）、掩体/态势加成、命中次数与伤害（D = 成功数 − 闪避需求，5 档结果）、溢出成功购买附加效果（4 项）。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "构建引擎第六节：构建引擎的攻击结算（5 步流程）、目标闪避需求表（5 档）、掩体/态势加成、命中次数与伤害（D = 成功数 − 闪避需求，5 档结果）、溢出成功购买附加效果（4 项）。源自 docs/system/02b-forge-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "note", "note_source", "attack_flow", "dodge", "hit_results", "overflow"],
   "properties": {

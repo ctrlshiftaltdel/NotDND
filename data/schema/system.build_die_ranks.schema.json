@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.build_die_ranks）",
-  "description": "构建引擎第三节：骰阶 I–V（d6/d8/d10/d12/d20，起始 d8）、属性↔骰阶对照、期望成功数速查（骰池 2–10 枚 × d8/d10/d12）、配装建议。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "构建引擎第三节：骰阶 I–V（d6/d8/d10/d12/d20，起始 d8）、属性↔骰阶对照、期望成功数速查（骰池 2–10 枚 × d8/d10/d12）、配装建议。源自 docs/system/02b-forge-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "note", "ranks", "starting", "starting_source", "expected_dice", "expected_successes", "advice", "advice_source"],
   "properties": {

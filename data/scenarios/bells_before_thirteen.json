@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S8-起步战役集.md:169",
+  "source": "docs/scenario/s8-starter-campaigns.md:169",
   "meta": {
     "world": "ashen-crown",
     "engine": "tactics",
@@ -26,7 +26,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:188"
+      "source": "docs/scenario/s8-starter-campaigns.md:188"
     },
     {
       "id": "act-2",
@@ -43,7 +43,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:223"
+      "source": "docs/scenario/s8-starter-campaigns.md:223"
     },
     {
       "id": "act-3",
@@ -56,7 +56,7 @@
         "3.3 冠炉／钟塔：停钟／改钟序／用冠证撬动守冠誓（技术或历史 DF 16；失败＝钟仍响，但获得提前准备下一次循环的机会）",
         "3.4 雾岬界墙（收束）：玩家选择离开、留下、或取代（无判定；无论选哪条，雾都会给出一个信号）"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:265"
+      "source": "docs/scenario/s8-starter-campaigns.md:265"
     }
   ],
   "nodes": [
@@ -67,7 +67,7 @@
       "next": [
         "N12"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:200"
+      "source": "docs/scenario/s8-starter-campaigns.md:200"
     },
     {
       "id": "N12",
@@ -76,7 +76,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:201"
+      "source": "docs/scenario/s8-starter-campaigns.md:201"
     },
     {
       "id": "N13",
@@ -85,7 +85,7 @@
       "next": [
         "N14"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:202"
+      "source": "docs/scenario/s8-starter-campaigns.md:202"
     },
     {
       "id": "N14",
@@ -94,7 +94,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:203"
+      "source": "docs/scenario/s8-starter-campaigns.md:203"
     },
     {
       "id": "N15",
@@ -103,7 +103,7 @@
       "next": [
         "N21"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:204"
+      "source": "docs/scenario/s8-starter-campaigns.md:204"
     },
     {
       "id": "N21",
@@ -112,7 +112,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:235"
+      "source": "docs/scenario/s8-starter-campaigns.md:235"
     },
     {
       "id": "N22",
@@ -121,7 +121,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:236"
+      "source": "docs/scenario/s8-starter-campaigns.md:236"
     },
     {
       "id": "N23",
@@ -130,7 +130,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:237"
+      "source": "docs/scenario/s8-starter-campaigns.md:237"
     },
     {
       "id": "N24",
@@ -139,7 +139,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:238"
+      "source": "docs/scenario/s8-starter-campaigns.md:238"
     },
     {
       "id": "N25",
@@ -149,7 +149,7 @@
         "N31"
       ],
       "unlock": "冠证≥2",
-      "source": "docs/scenario/S8-起步战役集.md:239"
+      "source": "docs/scenario/s8-starter-campaigns.md:239"
     },
     {
       "id": "N31",
@@ -160,7 +160,7 @@
         "N33",
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:277"
+      "source": "docs/scenario/s8-starter-campaigns.md:277"
     },
     {
       "id": "N32",
@@ -169,7 +169,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:278"
+      "source": "docs/scenario/s8-starter-campaigns.md:278"
     },
     {
       "id": "N33",
@@ -178,7 +178,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:279"
+      "source": "docs/scenario/s8-starter-campaigns.md:279"
     },
     {
       "id": "N34",
@@ -189,7 +189,7 @@
         "ending-replace",
         "ending-bargain"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:280"
+      "source": "docs/scenario/s8-starter-campaigns.md:280"
     },
     {
       "id": "Q-00",
@@ -237,7 +237,7 @@
         "bargain"
       ],
       "act": "act-1",
-      "source": "docs/scenario/S8-起步战役集.md:188"
+      "source": "docs/scenario/s8-starter-campaigns.md:188"
     }
   ],
   "threads": [
@@ -254,7 +254,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:183"
+      "source": "docs/scenario/s8-starter-campaigns.md:183"
     },
     {
       "id": "C-02",
@@ -276,21 +276,21 @@
         {
           "path": "物证",
           "detail": "哀市或修院里的钟序记录（分析／隐秘学 DF 14）",
-          "source": "docs/scenario/S8-起步战役集.md:248"
+          "source": "docs/scenario/s8-starter-campaigns.md:248"
         },
         {
           "path": "人证",
           "detail": "莱娅·温烛（无眠医师）保存的伊蕾芙加冕前最后一夜净忆（共感 DF 15）",
-          "source": "docs/scenario/S8-起步战役集.md:249"
+          "source": "docs/scenario/s8-starter-campaigns.md:249"
         },
         {
           "path": "亡者回声",
           "detail": "留名院里阿弥莎·无姓的证词（悼仪 DF 14）",
-          "source": "docs/scenario/S8-起步战役集.md:250"
+          "source": "docs/scenario/s8-starter-campaigns.md:250"
         }
       ],
       "note": "编号为本册册内编号，不与主册《灰冠无晓》的 C-xx 通用；主题与 S1 主册「冠主无法自行摘冠」「灰冕原为分责制度」同源。",
-      "source": "docs/scenario/S8-起步战役集.md:247"
+      "source": "docs/scenario/s8-starter-campaigns.md:247"
     },
     {
       "id": "C-03",
@@ -306,7 +306,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:288"
+      "source": "docs/scenario/s8-starter-campaigns.md:288"
     }
   ],
   "npcs": [
@@ -320,7 +320,7 @@
         "affinity": 0,
         "note": "会主动接触、试探、也真诚求助"
       },
-      "source": "docs/scenario/S8-起步战役集.md:208"
+      "source": "docs/scenario/s8-starter-campaigns.md:208"
     },
     {
       "id": "npc-02",
@@ -332,7 +332,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:209"
+      "source": "docs/scenario/s8-starter-campaigns.md:209"
     },
     {
       "id": "npc-03",
@@ -344,7 +344,7 @@
         "affinity": 0,
         "note": "避免无谓伤亡会 +1"
       },
-      "source": "docs/scenario/S8-起步战役集.md:210"
+      "source": "docs/scenario/s8-starter-campaigns.md:210"
     },
     {
       "id": "npc-04",
@@ -359,7 +359,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:243"
+      "source": "docs/scenario/s8-starter-campaigns.md:243"
     },
     {
       "id": "npc-05",
@@ -371,7 +371,7 @@
         "affinity": 1,
         "note": "认真参加留名礼 +2"
       },
-      "source": "docs/scenario/S8-起步战役集.md:244"
+      "source": "docs/scenario/s8-starter-campaigns.md:244"
     },
     {
       "id": "npc-06",
@@ -383,7 +383,7 @@
         "affinity": -1,
         "note": "本幕敌对，但可被反向利用"
       },
-      "source": "docs/scenario/S8-起步战役集.md:245"
+      "source": "docs/scenario/s8-starter-campaigns.md:245"
     },
     {
       "id": "npc-07",
@@ -396,7 +396,7 @@
         "C-02",
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:284"
+      "source": "docs/scenario/s8-starter-campaigns.md:284"
     },
     {
       "id": "npc-10",
@@ -407,7 +407,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:237"
+      "source": "docs/scenario/s8-starter-campaigns.md:237"
     },
     {
       "id": "npc-08",
@@ -416,7 +416,7 @@
       "role": "内堡总管",
       "drive": "让城堡在任何冠主之下继续运转",
       "note": "若玩家路线威胁城堡，他会反水",
-      "source": "docs/scenario/S8-起步战役集.md:285"
+      "source": "docs/scenario/s8-starter-campaigns.md:285"
     },
     {
       "id": "npc-09",
@@ -428,7 +428,7 @@
       "knows": [
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:286"
+      "source": "docs/scenario/s8-starter-campaigns.md:286"
     }
   ],
   "locations": [
@@ -436,55 +436,55 @@
       "id": "loc-01",
       "name": "返途驿",
       "atmosphere": "活雾封锁的谷地入口；路会被弯回原处，越过雾墙的人会从原处走回",
-      "source": "docs/scenario/S8-起步战役集.md:200"
+      "source": "docs/scenario/s8-starter-campaigns.md:200"
     },
     {
       "id": "loc-02",
       "name": "驿站遗址",
       "atmosphere": "有登记簿可读（辨忆或分析 DF 12）",
-      "source": "docs/scenario/S8-起步战役集.md:201"
+      "source": "docs/scenario/s8-starter-campaigns.md:201"
     },
     {
       "id": "loc-03",
       "name": "烬冠堡",
       "atmosphere": "谷地统治者的居所；守门盘查需说服或欺骗 DF 13",
-      "source": "docs/scenario/S8-起步战役集.md:203"
+      "source": "docs/scenario/s8-starter-campaigns.md:203"
     },
     {
       "id": "loc-04",
       "name": "哀市",
       "atmosphere": "可买净忆、查剪忆来源；债契掮客缪岑·空袋在此问路",
-      "source": "docs/scenario/S8-起步战役集.md:235"
+      "source": "docs/scenario/s8-starter-campaigns.md:235"
     },
     {
       "id": "loc-05",
       "name": "钟骨修院",
       "atmosphere": "灰砾修会所在；有钟序记录可偷",
-      "source": "docs/scenario/S8-起步战役集.md:236"
+      "source": "docs/scenario/s8-starter-campaigns.md:236"
     },
     {
       "id": "loc-06",
       "name": "留名院",
       "atmosphere": "妲芮·百名主持留名礼；可查未入册的亡者名",
-      "source": "docs/scenario/S8-起步战役集.md:237"
+      "source": "docs/scenario/s8-starter-campaigns.md:237"
     },
     {
       "id": "loc-07",
       "name": "白穗乡",
       "atmosphere": "农户旧约与修渠事务；钟烬庭密探素莱·轻灰在此活动",
-      "source": "docs/scenario/S8-起步战役集.md:238"
+      "source": "docs/scenario/s8-starter-campaigns.md:238"
     },
     {
       "id": "loc-08",
       "name": "冠炉／钟塔",
       "atmosphere": "停钟／改钟序／用冠证撬动守冠誓（技术或历史 DF 16）",
-      "source": "docs/scenario/S8-起步战役集.md:279"
+      "source": "docs/scenario/s8-starter-campaigns.md:279"
     },
     {
       "id": "loc-09",
       "name": "雾岬界墙",
       "atmosphere": "谷地边界；收束之处，无论选哪条，雾都会给出一个信号",
-      "source": "docs/scenario/S8-起步战役集.md:280"
+      "source": "docs/scenario/s8-starter-campaigns.md:280"
     }
   ],
   "endings": [
@@ -494,7 +494,7 @@
       "type": "解放",
       "requirements": "玩家用冠证与冠炉重写守冠誓",
       "result": "灰冕被拆解，伊蕾芙得以在黎明中睡去。→ 接 S1 正式战役的「终局路线一」",
-      "source": "docs/scenario/S8-起步战役集.md:291"
+      "source": "docs/scenario/s8-starter-campaigns.md:291"
     },
     {
       "id": "ending-replace",
@@ -502,7 +502,7 @@
       "type": "取代",
       "requirements": "玩家中一人主动戴冠",
       "result": "成为新的守门人。→ 接 S1 正式战役的「终局路线二」，且这一角色永久入册",
-      "source": "docs/scenario/S8-起步战役集.md:292"
+      "source": "docs/scenario/s8-starter-campaigns.md:292"
     },
     {
       "id": "ending-bargain",
@@ -510,11 +510,11 @@
       "type": "交易",
       "requirements": "玩家用冠证换取穿雾而出的权利",
       "result": "谷地循环照旧但被削弱。→ 接 S1 正式战役的「长期开放结局」",
-      "source": "docs/scenario/S8-起步战役集.md:293"
+      "source": "docs/scenario/s8-starter-campaigns.md:293"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S8-起步战役集.md:169",
+    "source": "docs/scenario/s8-starter-campaigns.md:169",
     "declared_flag_count": 4,
     "actual_flag_count": 4,
     "flag": [
@@ -525,7 +525,7 @@
         "write": "第一幕幕末：玩家已进入缄钟谷",
         "readers": "Q-00",
         "effect": "开启主线",
-        "source": "docs/scenario/S8-起步战役集.md:214"
+        "source": "docs/scenario/s8-starter-campaigns.md:214"
       },
       {
         "id": "flag.verdict_board_seen",
@@ -534,7 +534,7 @@
         "write": "第一幕幕末：看见了写有自己名字的讣告",
         "readers": "C-01",
         "effect": "入场钩子落地",
-        "source": "docs/scenario/S8-起步战役集.md:215"
+        "source": "docs/scenario/s8-starter-campaigns.md:215"
       },
       {
         "id": "flag.crownproofs",
@@ -543,7 +543,7 @@
         "write": "第二幕幕末：已收集冠证数量",
         "readers": "Q-00/C-02",
         "effect": "≥2 推进；三条全得则终局可开启「修复古约」路线",
-        "source": "docs/scenario/S8-起步战役集.md:255"
+        "source": "docs/scenario/s8-starter-campaigns.md:255"
       },
       {
         "id": "flag.migration_known",
@@ -552,7 +552,7 @@
         "write": "第二幕幕末：已知「摘冠会迁冠」",
         "readers": "Q-00/C-02",
         "effect": "杀死领主不是答案",
-        "source": "docs/scenario/S8-起步战役集.md:256"
+        "source": "docs/scenario/s8-starter-campaigns.md:256"
       }
     ],
     "rep": [
@@ -563,7 +563,7 @@
         "write": "守门成功 +1 / 强闯 −1",
         "readers": "act-1",
         "effect": "守冠庭态度",
-        "source": "docs/scenario/S8-起步战役集.md:216"
+        "source": "docs/scenario/s8-starter-campaigns.md:216"
       },
       {
         "id": "rep.sorrow_relic",
@@ -572,7 +572,7 @@
         "write": "认真参与守夜 +1",
         "readers": "act-2",
         "effect": "灰砾修会态度",
-        "source": "docs/scenario/S8-起步战役集.md:257"
+        "source": "docs/scenario/s8-starter-campaigns.md:257"
       },
       {
         "id": "rep.mourning_house",
@@ -581,7 +581,7 @@
         "write": "第二幕幕末记录",
         "readers": "act-2",
         "effect": "无名合唱团态度",
-        "source": "docs/scenario/S8-起步战役集.md:258"
+        "source": "docs/scenario/s8-starter-campaigns.md:258"
       }
     ],
     "clock": [
@@ -592,7 +592,7 @@
         "write": "每幕 −1（第一幕末 3／第二幕末 2）",
         "readers": "Q-00",
         "effect": "距第十三响的天数",
-        "source": "docs/scenario/S8-起步战役集.md:217"
+        "source": "docs/scenario/s8-starter-campaigns.md:217"
       }
     ]
   },
@@ -660,6 +660,6 @@
       "rep_sorrow_relic": 0,
       "rep_mourning_house": 0
     },
-    "source": "docs/scenario/S8-起步战役集.md:218"
+    "source": "docs/scenario/s8-starter-campaigns.md:218"
   }
 }

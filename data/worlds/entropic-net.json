@@ -1,53 +1,53 @@
 {
   "schema_version": 1,
   "kind": "world.module",
-  "source": "docs/scenario/07-世界模组III-熵网.md:3",
+  "source": "docs/scenario/07-world-module-iii-entropic-net.md:3",
   "world": {
     "key": "entropic-net",
     "name": "熵网",
     "engine": "build",
-    "source": "docs/scenario/07-世界模组III-熵网.md:3"
+    "source": "docs/scenario/07-world-module-iii-entropic-net.md:3"
   },
   "glossary": [
     {
       "term": "熵网",
       "meaning": "坍缩后无法解析的数据区域，网潜者的活动场所",
-      "source": "docs/scenario/07-世界模组III-熵网.md:69"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:69"
     },
     {
       "term": "网潜",
       "meaning": "把意识接入熵网的行动",
-      "source": "docs/scenario/07-世界模组III-熵网.md:70"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:70"
     },
     {
       "term": "同步率",
       "meaning": "意识与身体之间的耦合强度（见第 5 节）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:71"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:71"
     },
     {
       "term": "义体",
       "meaning": "身体改造部件",
-      "source": "docs/scenario/07-世界模组III-熵网.md:72"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:72"
     },
     {
       "term": "纯度",
       "meaning": "一个人身上原生组织的占比，也是\"还剩多少自己\"的量化",
-      "source": "docs/scenario/07-世界模组III-熵网.md:73"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:73"
     },
     {
       "term": "回响体",
       "meaning": "从网里带出来的、不该存在于现实的东西",
-      "source": "docs/scenario/07-世界模组III-熵网.md:74"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:74"
     },
     {
       "term": "档案人",
       "meaning": "意识被困在网中的人",
-      "source": "docs/scenario/07-世界模组III-熵网.md:75"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:75"
     },
     {
       "term": "服务条款",
       "meaning": "实际意义上的法律",
-      "source": "docs/scenario/07-世界模组III-熵网.md:76"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:76"
     }
   ],
   "history": [
@@ -56,77 +56,77 @@
       "year": "31 年前",
       "name": "坍缩",
       "detail": "全球数据网络在 11 分钟内完成降级。所有备份同时失效。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:84"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:84"
     },
     {
       "id": "hist-e02",
       "year": "30 年前",
       "name": "黑暗年",
       "detail": "城市的生命维持系统大面积失效。人口减少了约 22%。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:85"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:85"
     },
     {
       "id": "hist-e03",
       "year": "29 年前",
       "name": "第一批网潜者出现",
       "detail": "他们中的四分之三在三年内成为档案人。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:86"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:86"
     },
     {
       "id": "hist-e04",
       "year": "26 年前",
       "name": "第一家义体厂商上市",
       "detail": "身体改造开始普及。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:87"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:87"
     },
     {
       "id": "hist-e05",
       "year": "22 年前",
       "name": "第一例回响体事件",
       "detail": "某个被带出网的东西在现实中维持了六天的存在。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:88"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:88"
     },
     {
       "id": "hist-e06",
       "year": "19 年前",
       "name": "《身份资产法》通过",
       "detail": "记忆与身份正式成为可交易资产。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:89"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:89"
     },
     {
       "id": "hist-e07",
       "year": "15 年前",
       "name": "四大财团完成对六座主力城市的收购",
       "detail": "主权概念事实上消失。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:90"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:90"
     },
     {
       "id": "hist-e08",
       "year": "11 年前",
       "name": "熔毁事件",
       "detail": "一次大型网潜中，47 名网潜者的意识同时留在了网里。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:91"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:91"
     },
     {
       "id": "hist-e09",
       "year": "7 年前",
       "name": "第一个「档案人工会」成立",
       "detail": "主张被困在网中的人也拥有权利。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:92"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:92"
     },
     {
       "id": "hist-e10",
       "year": "3 年前",
       "name": "熵网首次出现自发性的结构变化",
       "detail": "它开始自己生成内容。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:93"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:93"
     },
     {
       "id": "hist-e11",
       "year": "现在",
       "name": "熵网的扩张",
       "detail": "扩张速度为每年 0.3%。有科学家估算，再过 90 年，现实与网的边界将不再可辨。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:94"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:94"
     }
   ],
   "regions": [
@@ -134,7 +134,7 @@
       "id": "region-01",
       "name": "中枢城｜Core",
       "summary": "四大财团总部所在地。这里的居民拥有 92% 的平均纯度——他们几乎不改造自己，因为他们的身体本身就是资产。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:106",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:106",
       "atmosphere": "干净的，垂直的，被照亮的。所有东西都是订阅制。",
       "key_places": [
         "环柱（全城最高的建筑，也是数据中心）",
@@ -155,7 +155,7 @@
       "id": "region-02",
       "name": "环带｜The Belt",
       "summary": "围绕中枢城的工业与生活环带，人口三千万。绝大多数居民身上至少有三处改造。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:116",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:116",
       "atmosphere": "管道，蒸汽，焊接的火花，以及数以万计的小招牌。",
       "key_places": [
         "第九焊接区（最著名的义体黑市）",
@@ -177,7 +177,7 @@
       "id": "region-03",
       "name": "外场｜Outfield",
       "summary": "城市之外的废墟带。这里是考古者的地盘：三十一年前的建筑、车辆、服务器全都还在，而且大部分还能启动。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:126",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:126",
       "atmosphere": "开阔，安静，风很大，以及大量三十一年前的遗留物。",
       "key_places": [
         "旧数据中心园区（考古者的圣地，也极其危险）",
@@ -199,7 +199,7 @@
       "id": "region-04",
       "name": "熔毁区｜Meltdown Zone",
       "summary": "十一年前那次事故留下的区域。半径 12 公里，至今无法居住。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:136",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:136",
       "atmosphere": "没有声音，没有信号，仪表全部失灵。",
       "key_places": [
         "事故原点（47 名网潜者的接入地点）",
@@ -220,7 +220,7 @@
       "id": "region-05",
       "name": "云端熔炉｜Forge Cloud",
       "summary": "网潜者的公共区域：熵网中一片相对稳定的结构。网潜者在此交换信息、交易、以及互相残杀。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:146",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:146",
       "atmosphere": "不存在的物理空间，但所有人都知道怎么\"去\"那里。",
       "key_places": [
         "中央索引（一片不稳定的档案海）",
@@ -242,7 +242,7 @@
       "id": "region-06",
       "name": "档案层｜The Archive Stratum",
       "summary": "熵网中最深、最平静、也最危险的一层。这里存放着坍缩之前的全部数据。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:156",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:156",
       "atmosphere": "一望无际的、无法分辨内容的档案。像雪。",
       "key_places": [
         "一个人的全部记忆（它被打包成了一份文件）",
@@ -262,7 +262,7 @@
       "id": "region-07",
       "name": "港区｜Docklands",
       "summary": "自动化港口，至今仍在运作，且没有人给它下过指令。这里是对外贸易的唯一通道。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:166",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:166",
       "atmosphere": "集装箱，起重机，以及三十一年都没有停过的自动装卸。",
       "key_places": [
         "自动装卸区（无人但高效）",
@@ -283,7 +283,7 @@
       "id": "region-08",
       "name": "医疗穹顶｜Dome",
       "summary": "义体医疗与纯度维护的中心。这里也是唯一能合法进行\"身份备份\"的地方。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:176",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:176",
       "atmosphere": "白，安静，以及一种让人不太敢大声说话的体面。",
       "key_places": [
         "备份厅（你可以把自己存起来，按月付费）",
@@ -304,7 +304,7 @@
       "id": "region-09",
       "name": "无名区｜Unlisted",
       "summary": "城市与城市之间的、未被任何系统登记的区域。这里住着所有主动退出系统的人。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:186",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:186",
       "atmosphere": "地图上没有，导航到不了，但确实存在。",
       "key_places": [
         "断电村（完全不使用任何联网设备）",
@@ -328,63 +328,63 @@
       "name": "奥姆尼（Omni）",
       "alignment": "财团，基础设施",
       "summary": "目标：维持运转，扩张订阅 ｜ 可被利用之处：内部部门之间互相竞争",
-      "source": "docs/scenario/07-世界模组III-熵网.md:198"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:198"
     },
     {
       "id": "faction-alar",
       "name": "翼骸（Alar）",
       "alignment": "财团，义体与医疗",
       "summary": "目标：让改造成为常态 ｜ 可被利用之处：他们隐瞒了纯度下降的真实数据",
-      "source": "docs/scenario/07-世界模组III-熵网.md:199"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:199"
     },
     {
       "id": "faction-northbank",
       "name": "北岸（Northbank）",
       "alignment": "财团，数据与身份",
       "summary": "目标：控制身份资产市场 ｜ 可被利用之处：他们的数据库有未被修补的漏洞",
-      "source": "docs/scenario/07-世界模组III-熵网.md:200"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:200"
     },
     {
       "id": "faction-stack-nine",
       "name": "第九栈（Stack Nine）",
       "alignment": "财团，熵网研究",
       "summary": "目标：从网里获取可用的东西 ｜ 可被利用之处：他们的研究团队内部有分裂",
-      "source": "docs/scenario/07-世界模组III-熵网.md:201"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:201"
     },
     {
       "id": "faction-divers-guild",
       "name": "网潜者行会",
       "alignment": "职业工会",
       "summary": "目标：维护网潜者的权利与定价 ｜ 可被利用之处：行会无法约束最有能力的那些人",
-      "source": "docs/scenario/07-世界模组III-熵网.md:202"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:202"
     },
     {
       "id": "faction-archive-union",
       "name": "档案人工会",
       "alignment": "权益组织",
       "summary": "目标：让被困的意识获得法律地位 ｜ 可被利用之处：他们的部分主张在道德上无法反驳",
-      "source": "docs/scenario/07-世界模组III-熵网.md:203"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:203"
     },
     {
       "id": "faction-meltdown-survivors",
       "name": "熔毁遗族",
       "alignment": "受害者家属网络",
       "summary": "目标：查清十一年的真相 ｜ 可被利用之处：他们掌握着大量未公开的现场资料",
-      "source": "docs/scenario/07-世界模组III-熵网.md:204"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:204"
     },
     {
       "id": "faction-unlisted",
       "name": "退出者",
       "alignment": "社区",
       "summary": "目标：彻底脱离系统 ｜ 可被利用之处：他们需要外部世界的物资",
-      "source": "docs/scenario/07-世界模组III-熵网.md:205"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:205"
     },
     {
       "id": "faction-echo-cult",
       "name": "回响教",
       "alignment": "新兴信仰",
       "summary": "目标：认为网中的东西是\"更进化的人类\" ｜ 可被利用之处：他们有钱、有武器，且相信自己是对的",
-      "source": "docs/scenario/07-世界模组III-熵网.md:206"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:206"
     }
   ],
   "tracks": [
@@ -403,113 +403,113 @@
         "现实中的长歇：+2",
         "在医疗穹顶接受校准：+4（费用「标准」）"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:212"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:212"
     }
   ],
   "world_rules": {
     "sync": {
       "note": "同步率衡量你的意识与身体之间的耦合强度。它最重要，也最脆弱。",
       "formula": "同步率上限 = 心智 + 洞察 + 4",
-      "formula_source": "docs/scenario/07-世界模组III-熵网.md:217",
+      "formula_source": "docs/scenario/07-world-module-iii-entropic-net.md:217",
       "consumption": [
         {
           "action": "网潜一轮（约 10 分钟）",
           "delta": "−1",
-          "source": "docs/scenario/07-世界模组III-熵网.md:224"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:224"
         },
         {
           "action": "在网中受到一次意识冲击",
           "delta": "−2",
-          "source": "docs/scenario/07-世界模组III-熵网.md:225"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:225"
         },
         {
           "action": "使用需要接入的能力",
           "delta": "−1",
-          "source": "docs/scenario/07-世界模组III-熵网.md:226"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:226"
         },
         {
           "action": "在网中经历一次时间错位",
           "delta": "−3（网的十分钟是现实的一小时）",
-          "source": "docs/scenario/07-世界模组III-熵网.md:227"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:227"
         }
       ],
       "recovery": [
         {
           "action": "现实中的长歇",
           "delta": "+2",
-          "source": "docs/scenario/07-世界模组III-熵网.md:228"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:228"
         },
         {
           "action": "在医疗穹顶接受校准",
           "delta": "+4（费用「标准」）",
-          "source": "docs/scenario/07-世界模组III-熵网.md:229"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:229"
         }
       ],
       "consequences": [
         {
           "band": "> 60%",
           "effect": "正常",
-          "source": "docs/scenario/07-世界模组III-熵网.md:235"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:235"
         },
         {
           "band": "40–59%",
           "effect": "现实感变薄：所有察觉判定 −1 骰，且无法分辨梦与记忆",
-          "source": "docs/scenario/07-世界模组III-熵网.md:236"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:236"
         },
         {
           "band": "20–39%",
           "effect": "身份漂移：你开始做出不属于自己的判断。导引者可以在此时替你决定一次行动",
-          "source": "docs/scenario/07-世界模组III-熵网.md:237"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:237"
         },
         {
           "band": "1–19%",
           "effect": "断线风险：每次行动都有 20% 概率失去一整个回合",
-          "source": "docs/scenario/07-世界模组III-熵网.md:238"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:238"
         },
         {
           "band": "0",
           "effect": "成为档案人：你的意识留在网里，身体留在现实。两者都还活着",
-          "source": "docs/scenario/07-世界模组III-熵网.md:239"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:239"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:212"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:212"
     },
     "purity": {
       "note": "纯度是你身上原生组织的比例，也是「还剩多少自己」的量化。",
       "formula": "纯度起始 = 10；每次义体改造 −（改造等级）",
-      "formula_source": "docs/scenario/07-世界模组III-熵网.md:248",
+      "formula_source": "docs/scenario/07-world-module-iii-entropic-net.md:248",
       "start": 10,
-      "start_source": "docs/scenario/07-世界模组III-熵网.md:248",
+      "start_source": "docs/scenario/07-world-module-iii-entropic-net.md:248",
       "bands": [
         {
           "range": "9–10",
           "effect": "完整的人。在中枢城被视为上等",
-          "source": "docs/scenario/07-世界模组III-熵网.md:254"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:254"
         },
         {
           "range": "6–8",
           "effect": "正常的大多数人",
-          "source": "docs/scenario/07-世界模组III-熵网.md:255"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:255"
         },
         {
           "range": "3–5",
           "effect": "明显改造过的人。中枢城部分区域无法进入",
-          "source": "docs/scenario/07-世界模组III-熵网.md:256"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:256"
         },
         {
           "range": "1–2",
           "effect": "大部分是零件。情绪反应迟钝，共感判定 −1 骰",
-          "source": "docs/scenario/07-世界模组III-熵网.md:257"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:257"
         },
         {
           "range": "0",
           "effect": "不再被法律视为人。 你成为财产",
-          "source": "docs/scenario/07-世界模组III-熵网.md:258"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:258"
         }
       ],
       "reduction": "纯度是可以恢复的，但极其昂贵：一次「原生重建」需要「贵重 ×5」，且需要三个月。",
-      "reduction_source": "docs/scenario/07-世界模组III-熵网.md:260",
-      "source": "docs/scenario/07-世界模组III-熵网.md:243"
+      "reduction_source": "docs/scenario/07-world-module-iii-entropic-net.md:260",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:243"
     },
     "cyberware": {
       "note": "每件义体提供能力，同时降低纯度。",
@@ -518,54 +518,54 @@
           "name": "光学模组",
           "effect": "夜视、变焦、热成像",
           "purity_delta": -1,
-          "source": "docs/scenario/07-世界模组III-熵网.md:268"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:268"
         },
         {
           "name": "反射增幅器",
           "effect": "先攻 +2，闪避 +1 骰",
           "purity_delta": -1,
-          "source": "docs/scenario/07-世界模组III-熵网.md:269"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:269"
         },
         {
           "name": "承重骨架",
           "effect": "力量类判定 +2 骰，负重翻倍",
           "purity_delta": -1,
-          "source": "docs/scenario/07-世界模组III-熵网.md:270"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:270"
         },
         {
           "name": "皮下装甲",
           "effect": "防护 +2",
           "purity_delta": -1,
-          "source": "docs/scenario/07-世界模组III-熵网.md:271"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:271"
         },
         {
           "name": "武器臂",
           "effect": "内置近战武器（1d8）",
           "purity_delta": -2,
-          "source": "docs/scenario/07-世界模组III-熵网.md:272"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:272"
         },
         {
           "name": "神经接口",
           "effect": "可以直接接入设备，无需工具",
           "purity_delta": -1,
-          "source": "docs/scenario/07-世界模组III-熵网.md:273"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:273"
         },
         {
           "name": "记忆槽",
           "effect": "可以存储并回放一段记忆",
           "purity_delta": -2,
-          "source": "docs/scenario/07-世界模组III-熵网.md:274"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:274"
         },
         {
           "name": "身份伪装模组",
           "effect": "可以随时更换生物识别特征",
           "purity_delta": -2,
-          "source": "docs/scenario/07-世界模组III-熵网.md:275"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:275"
         }
       ],
       "hidden_cost": "纯度每低于 5，你在共感、表演与说服上的判定各 −1 骰。别人能感觉到你不太像人了。",
-      "hidden_cost_source": "docs/scenario/07-世界模组III-熵网.md:277",
-      "source": "docs/scenario/07-世界模组III-熵网.md:262"
+      "hidden_cost_source": "docs/scenario/07-world-module-iii-entropic-net.md:277",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:262"
     },
     "diving": {
       "note": "网潜是本模组的核心活动。它不是「查资料」，而是进入一个地方。",
@@ -573,32 +573,32 @@
         {
           "order": 1,
           "step": "接入：需要一台终端（每个区域都有，费用不同）",
-          "source": "docs/scenario/07-世界模组III-熵网.md:286"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:286"
         },
         {
           "order": 2,
           "step": "潜入：掷一次「同步」判定，决定你进入的深度与稳定度",
-          "source": "docs/scenario/07-世界模组III-熵网.md:287"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:287"
         },
         {
           "order": 3,
           "step": "行动：在网中按回合行动，与现实相同的规则",
-          "source": "docs/scenario/07-世界模组III-熵网.md:288"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:288"
         },
         {
           "order": 4,
           "step": "遭遇：网中的一切都是敌体或障碍",
-          "source": "docs/scenario/07-世界模组III-熵网.md:289"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:289"
         },
         {
           "order": 5,
           "step": "带回：你可以带走一样东西（这是网潜的目的）",
-          "source": "docs/scenario/07-世界模组III-熵网.md:290"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:290"
         },
         {
           "order": 6,
           "step": "退出：同步率结算，并检定是否留下了什么",
-          "source": "docs/scenario/07-世界模组III-熵网.md:291"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:291"
         }
       ],
       "time_skew": {
@@ -607,46 +607,46 @@
           {
             "net": "1 分钟",
             "real": "6 分钟",
-            "source": "docs/scenario/07-世界模组III-熵网.md:300"
+            "source": "docs/scenario/07-world-module-iii-entropic-net.md:300"
           },
           {
             "net": "10 分钟",
             "real": "1 小时",
-            "source": "docs/scenario/07-世界模组III-熵网.md:301"
+            "source": "docs/scenario/07-world-module-iii-entropic-net.md:301"
           },
           {
             "net": "1 小时",
             "real": "6 小时",
-            "source": "docs/scenario/07-世界模组III-熵网.md:302"
+            "source": "docs/scenario/07-world-module-iii-entropic-net.md:302"
           },
           {
             "net": "4 小时",
             "real": "一整天",
-            "source": "docs/scenario/07-世界模组III-熵网.md:303"
+            "source": "docs/scenario/07-world-module-iii-entropic-net.md:303"
           }
         ],
-        "source": "docs/scenario/07-世界模组III-熵网.md:294"
+        "source": "docs/scenario/07-world-module-iii-entropic-net.md:294"
       },
       "encounters": [
         {
           "type": "程序残骸",
           "description": "仍在运行的旧程序，通常不知道自己已经没有主人",
-          "source": "docs/scenario/07-世界模组III-熵网.md:309"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:309"
         },
         {
           "type": "档案人",
           "description": "被困的意识。他们可能求助、可能攻击、也可能只是想找人说话",
-          "source": "docs/scenario/07-世界模组III-熵网.md:310"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:310"
         },
         {
           "type": "回响体",
           "description": "从网里生成的东西。它们想要出来",
-          "source": "docs/scenario/07-世界模组III-熵网.md:311"
+          "source": "docs/scenario/07-world-module-iii-entropic-net.md:311"
         }
       ],
       "death_rule": "网潜者在网中死亡不会真的死，但会永久损失 1d4 点同步率上限。这是可累积的、不可逆的损耗。",
-      "death_rule_source": "docs/scenario/07-世界模组III-熵网.md:313",
-      "source": "docs/scenario/07-世界模组III-熵网.md:279"
+      "death_rule_source": "docs/scenario/07-world-module-iii-entropic-net.md:313",
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:279"
     }
   },
   "careers": [
@@ -695,7 +695,7 @@
         "网中战斗",
         "档案人识别"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:374"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:374"
     },
     {
       "id": "career-02",
@@ -742,7 +742,7 @@
         "义体设计",
         "身份备份"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:386"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:386"
     },
     {
       "id": "career-03",
@@ -789,7 +789,7 @@
         "同步抗性",
         "双刀"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:398"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:398"
     },
     {
       "id": "career-04",
@@ -836,7 +836,7 @@
         "合规（钻服务条款的空子）",
         "安保队长"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:410"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:410"
     },
     {
       "id": "career-05",
@@ -883,7 +883,7 @@
         "陷阱布置",
         "黑市估价"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:422"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:422"
     },
     {
       "id": "career-06",
@@ -930,7 +930,7 @@
         "群殴",
         "护甲改装"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:434"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:434"
     },
     {
       "id": "career-07",
@@ -976,7 +976,7 @@
         "身份拍卖",
         "销赃"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:446"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:446"
     },
     {
       "id": "career-08",
@@ -1023,7 +1023,7 @@
         "协议考古",
         "关不掉的东西"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:458"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:458"
     },
     {
       "id": "career-09",
@@ -1070,7 +1070,7 @@
         "追逐战",
         "夜间运输"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:470"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:470"
     },
     {
       "id": "career-10",
@@ -1117,7 +1117,7 @@
         "工会资源",
         "公众演讲"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:482"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:482"
     },
     {
       "id": "career-11",
@@ -1164,7 +1164,7 @@
         "数据取证",
         "追踪"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:494"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:494"
     },
     {
       "id": "career-12",
@@ -1211,7 +1211,7 @@
         "抗性装备",
         "猎人工会"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:506"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:506"
     },
     {
       "id": "career-13",
@@ -1258,7 +1258,7 @@
         "机械维修（纯机械）",
         "纸与笔"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:518"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:518"
     },
     {
       "id": "career-14",
@@ -1305,7 +1305,7 @@
         "地下备份网络",
         "死亡判定"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:530"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:530"
     },
     {
       "id": "career-15",
@@ -1352,7 +1352,7 @@
         "自杀式打击",
         "维修"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:542"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:542"
     },
     {
       "id": "career-16",
@@ -1399,7 +1399,7 @@
         "荒野医疗",
         "引路人"
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:554"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:554"
     },
     {
       "id": "career-17",
@@ -1414,7 +1414,7 @@
       "abilities": [],
       "specializations": [],
       "note": "不获得职途能力。作为补偿，获得 3 点额外属性成长、2 项额外熟练，以及一个真实身份（这在你的世界里比任何技能都稀有，也危险）。",
-      "source": "docs/scenario/07-世界模组III-熵网.md:568"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:568"
     }
   ],
   "abilities": [
@@ -1432,7 +1432,7 @@
         }
       ],
       "effect": "接入本地网络，读取公开信息",
-      "source": "docs/scenario/07-世界模组III-熵网.md:594"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:594"
     },
     {
       "id": "ability-002",
@@ -1448,7 +1448,7 @@
         }
       ],
       "effect": "读出自己当前的同步率与稳定度",
-      "source": "docs/scenario/07-世界模组III-熵网.md:595"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:595"
     },
     {
       "id": "ability-003",
@@ -1464,7 +1464,7 @@
         }
       ],
       "effect": "在网中确定自己与其他网潜者的相对位置",
-      "source": "docs/scenario/07-世界模组III-熵网.md:596"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:596"
     },
     {
       "id": "ability-004",
@@ -1480,7 +1480,7 @@
         }
       ],
       "effect": "在网中放置一个锚点，之后可以返回此处",
-      "source": "docs/scenario/07-世界模组III-熵网.md:597"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:597"
     },
     {
       "id": "ability-005",
@@ -1496,7 +1496,7 @@
         }
       ],
       "effect": "下潜一层（每层需要一次，且同步率 −1）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:598"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:598"
     },
     {
       "id": "ability-006",
@@ -1512,7 +1512,7 @@
         }
       ],
       "effect": "网中的其他单位难以识别你",
-      "source": "docs/scenario/07-世界模组III-熵网.md:599"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:599"
     },
     {
       "id": "ability-007",
@@ -1528,7 +1528,7 @@
         }
       ],
       "effect": "把网中的一样东西带回现实（每次网潜限一次）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:600"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:600"
     },
     {
       "id": "ability-008",
@@ -1544,7 +1544,7 @@
         }
       ],
       "effect": "把自己或他人强制踢出网（安全，但失去本次收获）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:601"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:601"
     },
     {
       "id": "ability-009",
@@ -1560,7 +1560,7 @@
         }
       ],
       "effect": "在网中造出一个临时结构（掩体、桥、陷阱）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:602"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:602"
     },
     {
       "id": "ability-010",
@@ -1576,7 +1576,7 @@
         }
       ],
       "effect": "对一个网中目标造成 2d6【精神】",
-      "source": "docs/scenario/07-世界模组III-熵网.md:603"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:603"
     },
     {
       "id": "ability-011",
@@ -1592,7 +1592,7 @@
         }
       ],
       "effect": "进入档案层。你必须说出你要找的是什么",
-      "source": "docs/scenario/07-世界模组III-熵网.md:604"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:604"
     },
     {
       "id": "ability-012",
@@ -1608,7 +1608,7 @@
         }
       ],
       "effect": "无论身处何处，立即返回最近的锚点",
-      "source": "docs/scenario/07-世界模组III-熵网.md:605"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:605"
     },
     {
       "id": "ability-013",
@@ -1624,7 +1624,7 @@
         }
       ],
       "effect": "你同时在两处行动（现实与网），但同步率每回合 −1",
-      "source": "docs/scenario/07-世界模组III-熵网.md:606"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:606"
     },
     {
       "id": "ability-014",
@@ -1640,7 +1640,7 @@
         }
       ],
       "effect": "把一名档案人的意识带回现实。需要一个身体",
-      "source": "docs/scenario/07-世界模组III-熵网.md:607"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:607"
     },
     {
       "id": "ability-015",
@@ -1656,7 +1656,7 @@
         }
       ],
       "effect": "让一件处于待机的设备启动",
-      "source": "docs/scenario/07-世界模组III-熵网.md:613"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:613"
     },
     {
       "id": "ability-016",
@@ -1672,7 +1672,7 @@
         }
       ],
       "effect": "打开一道电子锁（DF 由锁的等级决定）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:614"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:614"
     },
     {
       "id": "ability-017",
@@ -1688,7 +1688,7 @@
         }
       ],
       "effect": "让一个摄像头失效 10 分钟",
-      "source": "docs/scenario/07-世界模组III-熵网.md:615"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:615"
     },
     {
       "id": "ability-018",
@@ -1704,7 +1704,7 @@
         }
       ],
       "effect": "找出 30 米内所有正在通讯的设备",
-      "source": "docs/scenario/07-世界模组III-熵网.md:616"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:616"
     },
     {
       "id": "ability-019",
@@ -1720,7 +1720,7 @@
         }
       ],
       "effect": "从一个设备中抽取一份数据（需要时间）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:617"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:617"
     },
     {
       "id": "ability-020",
@@ -1736,7 +1736,7 @@
         }
       ],
       "effect": "临时获得一个系统的管理员权限（10 分钟）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:618"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:618"
     },
     {
       "id": "ability-021",
@@ -1752,7 +1752,7 @@
         }
       ],
       "effect": "让你的这次入侵在日志中消失",
-      "source": "docs/scenario/07-世界模组III-熵网.md:619"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:619"
     },
     {
       "id": "ability-022",
@@ -1768,7 +1768,7 @@
         }
       ],
       "effect": "切断一整个房间的外部连接",
-      "source": "docs/scenario/07-世界模组III-熵网.md:620"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:620"
     },
     {
       "id": "ability-023",
@@ -1784,7 +1784,7 @@
         }
       ],
       "effect": "让一件设备为你工作一个场景",
-      "source": "docs/scenario/07-世界模组III-熵网.md:621"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:621"
     },
     {
       "id": "ability-024",
@@ -1800,7 +1800,7 @@
         }
       ],
       "effect": "追踪一条数据流的来源",
-      "source": "docs/scenario/07-世界模组III-熵网.md:622"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:622"
     },
     {
       "id": "ability-025",
@@ -1816,7 +1816,7 @@
         }
       ],
       "effect": "让系统将你识别为另一个人（10 分钟）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:623"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:623"
     },
     {
       "id": "ability-026",
@@ -1832,7 +1832,7 @@
         }
       ],
       "effect": "找出一个系统合规上的漏洞，使其必须为你服务",
-      "source": "docs/scenario/07-世界模组III-熵网.md:624"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:624"
     },
     {
       "id": "ability-027",
@@ -1848,7 +1848,7 @@
         }
       ],
       "effect": "接管一整个建筑的系统（持续 10 分钟）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:625"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:625"
     },
     {
       "id": "ability-028",
@@ -1864,7 +1864,7 @@
         }
       ],
       "effect": "在一个系统中留下一道只有你能用的门",
-      "source": "docs/scenario/07-世界模组III-熵网.md:626"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:626"
     },
     {
       "id": "ability-029",
@@ -1880,7 +1880,7 @@
         }
       ],
       "effect": "夜视与变焦，持续一小时",
-      "source": "docs/scenario/07-世界模组III-熵网.md:632"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:632"
     },
     {
       "id": "ability-030",
@@ -1896,7 +1896,7 @@
         }
       ],
       "effect": "看穿烟雾与薄墙",
-      "source": "docs/scenario/07-世界模组III-熵网.md:633"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:633"
     },
     {
       "id": "ability-031",
@@ -1913,7 +1913,7 @@
         }
       ],
       "effect": "一次闪避判定 +2 骰",
-      "source": "docs/scenario/07-世界模组III-熵网.md:634"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:634"
     },
     {
       "id": "ability-032",
@@ -1929,7 +1929,7 @@
         }
       ],
       "effect": "力量类判定 +2 骰，持续一回合",
-      "source": "docs/scenario/07-世界模组III-熵网.md:635"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:635"
     },
     {
       "id": "ability-033",
@@ -1945,7 +1945,7 @@
         }
       ],
       "effect": "防护 +3，持续时间依存于你的纯度",
-      "source": "docs/scenario/07-世界模组III-熵网.md:636"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:636"
     },
     {
       "id": "ability-034",
@@ -1961,7 +1961,7 @@
         }
       ],
       "effect": "展开内置武器，本场战斗可用",
-      "source": "docs/scenario/07-世界模组III-熵网.md:637"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:637"
     },
     {
       "id": "ability-035",
@@ -1977,7 +1977,7 @@
         }
       ],
       "effect": "忽略一个状态，两回合后承受一半效果",
-      "source": "docs/scenario/07-世界模组III-熵网.md:638"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:638"
     },
     {
       "id": "ability-036",
@@ -1993,7 +1993,7 @@
         }
       ],
       "effect": "恢复 1d8 活力，或立刻止血",
-      "source": "docs/scenario/07-世界模组III-熵网.md:639"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:639"
     },
     {
       "id": "ability-037",
@@ -2009,7 +2009,7 @@
         }
       ],
       "effect": "本回合 +1 AP，但纯度临时 −1",
-      "source": "docs/scenario/07-世界模组III-熵网.md:640"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:640"
     },
     {
       "id": "ability-038",
@@ -2025,7 +2025,7 @@
         }
       ],
       "effect": "所有判定 +1 骰，持续一回合；纯度永久 −1",
-      "source": "docs/scenario/07-世界模组III-熵网.md:641"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:641"
     },
     {
       "id": "ability-039",
@@ -2041,7 +2041,7 @@
         }
       ],
       "effect": "播放一段存储的记忆，可让他人观看",
-      "source": "docs/scenario/07-世界模组III-熵网.md:642"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:642"
     },
     {
       "id": "ability-040",
@@ -2057,7 +2057,7 @@
         }
       ],
       "effect": "抛弃一件义体以获得一次性爆发，纯度不再下降（因为已经没有可降的了）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:643"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:643"
     },
     {
       "id": "ability-041",
@@ -2073,7 +2073,7 @@
         }
       ],
       "effect": "察觉 20 米内所有的电子设备",
-      "source": "docs/scenario/07-世界模组III-熵网.md:649"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:649"
     },
     {
       "id": "ability-042",
@@ -2089,7 +2089,7 @@
         }
       ],
       "effect": "感知 15 米内的生命体征与纯度",
-      "source": "docs/scenario/07-世界模组III-熵网.md:650"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:650"
     },
     {
       "id": "ability-043",
@@ -2105,7 +2105,7 @@
         }
       ],
       "effect": "在嘈杂中锁定一段对话",
-      "source": "docs/scenario/07-世界模组III-熵网.md:651"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:651"
     },
     {
       "id": "ability-044",
@@ -2121,7 +2121,7 @@
         }
       ],
       "effect": "一次共感判定 +2 骰",
-      "source": "docs/scenario/07-世界模组III-熵网.md:652"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:652"
     },
     {
       "id": "ability-045",
@@ -2137,7 +2137,7 @@
         }
       ],
       "effect": "下一次先攻或闪避 +2 骰",
-      "source": "docs/scenario/07-世界模组III-熵网.md:653"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:653"
     },
     {
       "id": "ability-046",
@@ -2153,7 +2153,7 @@
         }
       ],
       "effect": "看穿一层薄墙或集装箱内的东西",
-      "source": "docs/scenario/07-世界模组III-熵网.md:654"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:654"
     },
     {
       "id": "ability-047",
@@ -2169,7 +2169,7 @@
         }
       ],
       "effect": "察觉附近是否有正在运行的强电磁设备",
-      "source": "docs/scenario/07-世界模组III-熵网.md:655"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:655"
     },
     {
       "id": "ability-048",
@@ -2185,7 +2185,7 @@
         }
       ],
       "effect": "检索自己是否曾见过某人或某地",
-      "source": "docs/scenario/07-世界模组III-熵网.md:656"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:656"
     },
     {
       "id": "ability-049",
@@ -2201,7 +2201,7 @@
         }
       ],
       "effect": "判断一段数据是否被修改过",
-      "source": "docs/scenario/07-世界模组III-熵网.md:657"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:657"
     },
     {
       "id": "ability-050",
@@ -2217,7 +2217,7 @@
         }
       ],
       "effect": "感知 100 米内的一切电子活动（信息量极大，需通过心智判定整理）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:658"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:658"
     },
     {
       "id": "ability-051",
@@ -2233,7 +2233,7 @@
         }
       ],
       "effect": "看穿一个人的真实纯度与其义体分布",
-      "source": "docs/scenario/07-世界模组III-熵网.md:659"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:659"
     },
     {
       "id": "ability-052",
@@ -2249,7 +2249,7 @@
         }
       ],
       "effect": "看到 6 秒后的一个片段（导引者必须诚实提供）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:660"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:660"
     },
     {
       "id": "ability-053",
@@ -2265,7 +2265,7 @@
         }
       ],
       "effect": "下一次远程攻击 +2 骰",
-      "source": "docs/scenario/07-世界模组III-熵网.md:666"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:666"
     },
     {
       "id": "ability-054",
@@ -2281,7 +2281,7 @@
         }
       ],
       "effect": "无视目标的一半掩体加成",
-      "source": "docs/scenario/07-世界模组III-熵网.md:667"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:667"
     },
     {
       "id": "ability-055",
@@ -2297,7 +2297,7 @@
         }
       ],
       "effect": "近战造成 1d6【电击】并使其获得【失衡】",
-      "source": "docs/scenario/07-世界模组III-熵网.md:668"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:668"
     },
     {
       "id": "ability-056",
@@ -2314,7 +2314,7 @@
         }
       ],
       "effect": "减少一次受到的伤害 3 点",
-      "source": "docs/scenario/07-世界模组III-熵网.md:669"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:669"
     },
     {
       "id": "ability-057",
@@ -2330,7 +2330,7 @@
         }
       ],
       "effect": "指定一个区域，进入者触发你的攻击",
-      "source": "docs/scenario/07-世界模组III-熵网.md:670"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:670"
     },
     {
       "id": "ability-058",
@@ -2346,7 +2346,7 @@
         }
       ],
       "effect": "本次攻击无视 4 点防护",
-      "source": "docs/scenario/07-世界模组III-熵网.md:671"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:671"
     },
     {
       "id": "ability-059",
@@ -2362,7 +2362,7 @@
         }
       ],
       "effect": "2d8【火焰】，范围 3 米",
-      "source": "docs/scenario/07-世界模组III-熵网.md:672"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:672"
     },
     {
       "id": "ability-060",
@@ -2378,7 +2378,7 @@
         }
       ],
       "effect": "本次攻击伤害翻倍，但你受到 1d6 反伤",
-      "source": "docs/scenario/07-世界模组III-熵网.md:673"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:673"
     },
     {
       "id": "ability-061",
@@ -2394,7 +2394,7 @@
         }
       ],
       "effect": "对一个 5 米 × 5 米区域进行一次全体攻击",
-      "source": "docs/scenario/07-世界模组III-熵网.md:674"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:674"
     },
     {
       "id": "ability-062",
@@ -2410,7 +2410,7 @@
         }
       ],
       "effect": "下一次攻击必定暴击（每场景一次）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:675"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:675"
     },
     {
       "id": "ability-063",
@@ -2426,7 +2426,7 @@
         }
       ],
       "effect": "对一件机械设备造成 3d10 伤害并使其彻底报废",
-      "source": "docs/scenario/07-世界模组III-熵网.md:676"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:676"
     },
     {
       "id": "ability-064",
@@ -2442,7 +2442,7 @@
         }
       ],
       "effect": "6 米范围内的敌人每回合开始获得 1 层【失衡】",
-      "source": "docs/scenario/07-世界模组III-熵网.md:677"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:677"
     },
     {
       "id": "ability-065",
@@ -2458,7 +2458,7 @@
         }
       ],
       "effect": "本回合移动 +3 米",
-      "source": "docs/scenario/07-世界模组III-熵网.md:683"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:683"
     },
     {
       "id": "ability-066",
@@ -2474,7 +2474,7 @@
         }
       ],
       "effect": "在垂直表面移动一回合",
-      "source": "docs/scenario/07-世界模组III-熵网.md:684"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:684"
     },
     {
       "id": "ability-067",
@@ -2491,7 +2491,7 @@
         }
       ],
       "effect": "免疫一次坠落伤害",
-      "source": "docs/scenario/07-世界模组III-熵网.md:685"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:685"
     },
     {
       "id": "ability-068",
@@ -2507,7 +2507,7 @@
         }
       ],
       "effect": "瞬移 5 米并可以立即攻击一次",
-      "source": "docs/scenario/07-世界模组III-熵网.md:686"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:686"
     },
     {
       "id": "ability-069",
@@ -2523,7 +2523,7 @@
         }
       ],
       "effect": "穿过一道薄墙（每个场景一次）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:687"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:687"
     },
     {
       "id": "ability-070",
@@ -2539,7 +2539,7 @@
         }
       ],
       "effect": "一小时内的负重视为四分之一",
-      "source": "docs/scenario/07-世界模组III-熵网.md:688"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:688"
     },
     {
       "id": "ability-071",
@@ -2555,7 +2555,7 @@
         }
       ],
       "effect": "本回合移动速度翻倍，且不会触发反手打击",
-      "source": "docs/scenario/07-世界模组III-熵网.md:689"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:689"
     },
     {
       "id": "ability-072",
@@ -2571,7 +2571,7 @@
         }
       ],
       "effect": "传送至 20 米内的一个可见位置",
-      "source": "docs/scenario/07-世界模组III-熵网.md:690"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:690"
     },
     {
       "id": "ability-073",
@@ -2587,7 +2587,7 @@
         }
       ],
       "effect": "全队（至多 5 人）传送至 10 米内的位置",
-      "source": "docs/scenario/07-世界模组III-熵网.md:691"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:691"
     },
     {
       "id": "ability-074",
@@ -2603,7 +2603,7 @@
         }
       ],
       "effect": "传送到此前放置的一个数据锚的位置",
-      "source": "docs/scenario/07-世界模组III-熵网.md:692"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:692"
     },
     {
       "id": "ability-075",
@@ -2619,7 +2619,7 @@
         }
       ],
       "effect": "模仿一个听过的人的声音",
-      "source": "docs/scenario/07-世界模组III-熵网.md:698"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:698"
     },
     {
       "id": "ability-076",
@@ -2635,7 +2635,7 @@
         }
       ],
       "effect": "骗过一次生物识别检查",
-      "source": "docs/scenario/07-世界模组III-熵网.md:699"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:699"
     },
     {
       "id": "ability-077",
@@ -2651,7 +2651,7 @@
         }
       ],
       "effect": "查询一个身份的状态、订阅等级与到期时间",
-      "source": "docs/scenario/07-世界模组III-熵网.md:700"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:700"
     },
     {
       "id": "ability-078",
@@ -2667,7 +2667,7 @@
         }
       ],
       "effect": "调取一个人的公开社交痕迹（有助于交涉）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:701"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:701"
     },
     {
       "id": "ability-079",
@@ -2683,7 +2683,7 @@
         }
       ],
       "effect": "修改一段记忆（高危，且会造成不可预知的后果）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:702"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:702"
     },
     {
       "id": "ability-080",
@@ -2699,7 +2699,7 @@
         }
       ],
       "effect": "使自己在一次交涉中获得 +2 骰",
-      "source": "docs/scenario/07-世界模组III-熵网.md:703"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:703"
     },
     {
       "id": "ability-081",
@@ -2715,7 +2715,7 @@
         }
       ],
       "effect": "同时对多人进行一次说服",
-      "source": "docs/scenario/07-世界模组III-熵网.md:704"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:704"
     },
     {
       "id": "ability-082",
@@ -2731,7 +2731,7 @@
         }
       ],
       "effect": "把自己的身份作为抵押，换取一次重大的资源或服务",
-      "source": "docs/scenario/07-世界模组III-熵网.md:705"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:705"
     },
     {
       "id": "ability-083",
@@ -2747,7 +2747,7 @@
         }
       ],
       "effect": "让一个系统在 24 小时内不再记录你",
-      "source": "docs/scenario/07-世界模组III-熵网.md:706"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:706"
     },
     {
       "id": "ability-084",
@@ -2763,7 +2763,7 @@
         }
       ],
       "effect": "把一个人的身份转移给另一个人（法律上完全有效）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:707"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:707"
     },
     {
       "id": "ability-085",
@@ -2779,7 +2779,7 @@
         }
       ],
       "effect": "一架无人机升空并开始工作",
-      "source": "docs/scenario/07-世界模组III-熵网.md:713"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:713"
     },
     {
       "id": "ability-086",
@@ -2795,7 +2795,7 @@
         }
       ],
       "effect": "获得无人机视角的画面",
-      "source": "docs/scenario/07-世界模组III-熵网.md:714"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:714"
     },
     {
       "id": "ability-087",
@@ -2811,7 +2811,7 @@
         }
       ],
       "effect": "无人机进行一次攻击（1d6）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:715"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:715"
     },
     {
       "id": "ability-088",
@@ -2827,7 +2827,7 @@
         }
       ],
       "effect": "10 米内的通讯失效一回合",
-      "source": "docs/scenario/07-世界模组III-熵网.md:716"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:716"
     },
     {
       "id": "ability-089",
@@ -2843,7 +2843,7 @@
         }
       ],
       "effect": "一名目标获得 +3 防护（持续一回合）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:717"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:717"
     },
     {
       "id": "ability-090",
@@ -2859,7 +2859,7 @@
         }
       ],
       "effect": "同时操控三架无人机执行同一任务",
-      "source": "docs/scenario/07-世界模组III-熵网.md:718"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:718"
     },
     {
       "id": "ability-091",
@@ -2875,7 +2875,7 @@
         }
       ],
       "effect": "一架无人机自爆，造成 3d8【火焰】",
-      "source": "docs/scenario/07-世界模组III-熵网.md:719"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:719"
     },
     {
       "id": "ability-092",
@@ -2891,7 +2891,7 @@
         }
       ],
       "effect": "部署一座自动炮塔（15 点耐久，持续一个场景）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:720"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:720"
     },
     {
       "id": "ability-093",
@@ -2907,7 +2907,7 @@
         }
       ],
       "effect": "在一个数据库中检索一个关键词",
-      "source": "docs/scenario/07-世界模组III-熵网.md:726"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:726"
     },
     {
       "id": "ability-094",
@@ -2923,7 +2923,7 @@
         }
       ],
       "effect": "让一份无法读取的数据变得可读（部分）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:727"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:727"
     },
     {
       "id": "ability-095",
@@ -2939,7 +2939,7 @@
         }
       ],
       "effect": "从损坏的数据中恢复一部分内容",
-      "source": "docs/scenario/07-世界模组III-熵网.md:728"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:728"
     },
     {
       "id": "ability-096",
@@ -2955,7 +2955,7 @@
         }
       ],
       "effect": "为一份数据加密（DF 16 才能破解）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:729"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:729"
     },
     {
       "id": "ability-097",
@@ -2971,7 +2971,7 @@
         }
       ],
       "effect": "读取一份坍缩之前的旧数据（这是考古者的核心能力）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:730"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:730"
     },
     {
       "id": "ability-098",
@@ -2987,7 +2987,7 @@
         }
       ],
       "effect": "伪造一份足以乱真的数据",
-      "source": "docs/scenario/07-世界模组III-熵网.md:731"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:731"
     },
     {
       "id": "ability-099",
@@ -3003,7 +3003,7 @@
         }
       ],
       "effect": "解析一小片熵网内容。结果无法预测，且必定改变你",
-      "source": "docs/scenario/07-世界模组III-熵网.md:732"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:732"
     },
     {
       "id": "ability-100",
@@ -3019,7 +3019,7 @@
         }
       ],
       "effect": "向整个网络广播一条信息。所有人都会收到，包括不该收到的那些",
-      "source": "docs/scenario/07-世界模组III-熵网.md:733"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:733"
     }
   ],
   "equipment": [
@@ -3034,7 +3034,7 @@
         "隐蔽"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:323"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:323"
     },
     {
       "id": "eq-melee-02",
@@ -3047,7 +3047,7 @@
         "单手"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:324"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:324"
     },
     {
       "id": "eq-melee-03",
@@ -3060,7 +3060,7 @@
         "震"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:325"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:325"
     },
     {
       "id": "eq-melee-04",
@@ -3072,7 +3072,7 @@
         "斩击"
       ],
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:326"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:326"
     },
     {
       "id": "eq-melee-05",
@@ -3085,7 +3085,7 @@
         "技术"
       ],
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:327"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:327"
     },
     {
       "id": "eq-melee-06",
@@ -3098,7 +3098,7 @@
         "义体"
       ],
       "price_tier": "贵重（含改造）",
-      "source": "docs/scenario/07-世界模组III-熵网.md:328"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:328"
     },
     {
       "id": "eq-ranged-01",
@@ -3111,7 +3111,7 @@
         "穿刺"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:334"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:334"
     },
     {
       "id": "eq-ranged-02",
@@ -3124,7 +3124,7 @@
         "电击"
       ],
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:335"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:335"
     },
     {
       "id": "eq-ranged-03",
@@ -3138,7 +3138,7 @@
         "双手"
       ],
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:336"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:336"
     },
     {
       "id": "eq-ranged-04",
@@ -3152,7 +3152,7 @@
         "重装"
       ],
       "price_tier": "贵重 ×2",
-      "source": "docs/scenario/07-世界模组III-熵网.md:337"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:337"
     },
     {
       "id": "eq-ranged-05",
@@ -3166,7 +3166,7 @@
         "无声"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:338"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:338"
     },
     {
       "id": "eq-armor-01",
@@ -3176,7 +3176,7 @@
       "load": "轻",
       "restriction": "无",
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:344"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:344"
     },
     {
       "id": "eq-armor-02",
@@ -3186,7 +3186,7 @@
       "load": "中",
       "restriction": "—",
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:345"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:345"
     },
     {
       "id": "eq-armor-03",
@@ -3196,7 +3196,7 @@
       "load": "重",
       "restriction": "移动 −2 米",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:346"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:346"
     },
     {
       "id": "eq-armor-04",
@@ -3206,7 +3206,7 @@
       "load": "重",
       "restriction": "移动 −3 米，纯度门槛 ≥5",
       "price_tier": "贵重 ×3",
-      "source": "docs/scenario/07-世界模组III-熵网.md:347"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:347"
     },
     {
       "id": "eq-armor-05",
@@ -3216,7 +3216,7 @@
       "load": "—",
       "restriction": "纯度 −1",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:348"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:348"
     },
     {
       "id": "eq-gear-01",
@@ -3224,7 +3224,7 @@
       "kind": "gear",
       "effect": "可以在任何地方接入；品质影响同步判定",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:354"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:354"
     },
     {
       "id": "eq-gear-02",
@@ -3232,7 +3232,7 @@
       "kind": "gear",
       "effect": "网潜时同步率损失减半（3 次后耗尽）",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:355"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:355"
     },
     {
       "id": "eq-gear-03",
@@ -3240,7 +3240,7 @@
       "kind": "gear",
       "effect": "死亡后可以从备份恢复，但纯度 −1",
       "price_tier": "贵重 ×2",
-      "source": "docs/scenario/07-世界模组III-熵网.md:356"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:356"
     },
     {
       "id": "eq-gear-04",
@@ -3248,7 +3248,7 @@
       "kind": "gear",
       "effect": "一个完整的、能通过常规检查的身份",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:357"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:357"
     },
     {
       "id": "eq-gear-05",
@@ -3256,7 +3256,7 @@
       "kind": "gear",
       "effect": "10 米内的监控失效一回合",
       "price_tier": "标准",
-      "source": "docs/scenario/07-世界模组III-熵网.md:358"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:358"
     },
     {
       "id": "eq-gear-06",
@@ -3264,7 +3264,7 @@
       "kind": "gear",
       "effect": "恢复 2d6 活力，共 2 次",
       "price_tier": "碎银",
-      "source": "docs/scenario/07-世界模组III-熵网.md:359"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:359"
     },
     {
       "id": "eq-gear-07",
@@ -3272,7 +3272,7 @@
       "kind": "gear",
       "effect": "对网中目标的攻击 +1 骰；也可用于现实中的设备入侵",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:360"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:360"
     },
     {
       "id": "eq-gear-08",
@@ -3280,7 +3280,7 @@
       "kind": "gear",
       "effect": "存储并回放一段记忆；纯度 −2",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:361"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:361"
     },
     {
       "id": "eq-gear-09",
@@ -3288,7 +3288,7 @@
       "kind": "gear",
       "effect": "检测一个人的真实纯度（这在某些场合极具杀伤力）",
       "price_tier": "贵重",
-      "source": "docs/scenario/07-世界模组III-熵网.md:362"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:362"
     }
   ],
   "enemies": [
@@ -3303,7 +3303,7 @@
       "damage": "1d6 力场",
       "persona": "狡诈",
       "trait": "一段还在运行的旧代码，它不知道自己已经没有主人",
-      "source": "docs/scenario/07-世界模组III-熵网.md:751"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:751"
     },
     {
       "id": "enemy-a02",
@@ -3316,7 +3316,7 @@
       "damage": "1d6 精神",
       "persona": "控场",
       "trait": "无目的地执行着三十一年前的一个循环",
-      "source": "docs/scenario/07-世界模组III-熵网.md:752"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:752"
     },
     {
       "id": "enemy-a03",
@@ -3329,7 +3329,7 @@
       "damage": "1d4 腐蚀",
       "persona": "召唤",
       "trait": "专吃未加密的数据，成群出现",
-      "source": "docs/scenario/07-世界模组III-熵网.md:753"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:753"
     },
     {
       "id": "enemy-a04",
@@ -3342,7 +3342,7 @@
       "damage": "1d4 精神",
       "persona": "狡诈",
       "trait": "一个没有人的身份，仍在登录",
-      "source": "docs/scenario/07-世界模组III-熵网.md:754"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:754"
     },
     {
       "id": "enemy-a05",
@@ -3355,7 +3355,7 @@
       "damage": "1d6 精神",
       "persona": "控场",
       "trait": "不断弹出无法关闭的窗口",
-      "source": "docs/scenario/07-世界模组III-熵网.md:755"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:755"
     },
     {
       "id": "enemy-a06",
@@ -3368,7 +3368,7 @@
       "damage": "1d6 力场",
       "persona": "狡诈",
       "trait": "一个已死者留下的数据印记，仍在试图被识别",
-      "source": "docs/scenario/07-世界模组III-熵网.md:756"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:756"
     },
     {
       "id": "enemy-a07",
@@ -3381,7 +3381,7 @@
       "damage": "1d8 精神",
       "persona": "控场",
       "trait": "它只想帮助你。它永远不会停止",
-      "source": "docs/scenario/07-世界模组III-熵网.md:757"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:757"
     },
     {
       "id": "enemy-a08",
@@ -3394,7 +3394,7 @@
       "damage": "1d8 力场",
       "persona": "控场",
       "trait": "坍缩当天正在训练中，至今仍在训练",
-      "source": "docs/scenario/07-世界模组III-熵网.md:758"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:758"
     },
     {
       "id": "enemy-a09",
@@ -3407,7 +3407,7 @@
       "damage": "1d8 电击",
       "persona": "守护",
       "trait": "它守护的数据早就没人要了",
-      "source": "docs/scenario/07-世界模组III-熵网.md:759"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:759"
     },
     {
       "id": "enemy-a10",
@@ -3420,7 +3420,7 @@
       "damage": "1d8 力场",
       "persona": "猛攻",
       "trait": "专门寻找网潜者，并且知道怎么造成伤害",
-      "source": "docs/scenario/07-世界模组III-熵网.md:760"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:760"
     },
     {
       "id": "enemy-a11",
@@ -3433,7 +3433,7 @@
       "damage": "1d6 精神",
       "persona": "控场",
       "trait": "某人的一段记忆被遗留在此，它仍在重复",
-      "source": "docs/scenario/07-世界模组III-熵网.md:761"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:761"
     },
     {
       "id": "enemy-a12",
@@ -3446,7 +3446,7 @@
       "damage": "1d8 精神",
       "persona": "守护",
       "trait": "它一直在等主人回来，已经等了三十一年",
-      "source": "docs/scenario/07-世界模组III-熵网.md:762"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:762"
     },
     {
       "id": "enemy-a13",
@@ -3459,7 +3459,7 @@
       "damage": "2d6 力场",
       "persona": "召唤",
       "trait": "不断索引着已经无法解析的内容",
-      "source": "docs/scenario/07-世界模组III-熵网.md:763"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:763"
     },
     {
       "id": "enemy-a14",
@@ -3472,7 +3472,7 @@
       "damage": "2d8 力场",
       "persona": "守护",
       "trait": "财团放置的防御单位，它会先发出三次警告",
-      "source": "docs/scenario/07-世界模组III-熵网.md:764"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:764"
     },
     {
       "id": "enemy-a15",
@@ -3485,7 +3485,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "他曾经是一个人，现在他只想有人陪",
-      "source": "docs/scenario/07-世界模组III-熵网.md:765"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:765"
     },
     {
       "id": "enemy-a16",
@@ -3498,7 +3498,7 @@
       "damage": "2d8 力场",
       "persona": "猛攻",
       "trait": "十一年前那次事故的残余，它记得每一个人的名字",
-      "source": "docs/scenario/07-世界模组III-熵网.md:766"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:766"
     },
     {
       "id": "enemy-a17",
@@ -3511,7 +3511,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "47 名网潜者中的一位。他还在找其他人",
-      "source": "docs/scenario/07-世界模组III-熵网.md:767"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:767"
     },
     {
       "id": "enemy-a18",
@@ -3524,7 +3524,7 @@
       "damage": "2d8 力场",
       "persona": "猛攻",
       "trait": "熵网自己造出来的东西，没有任何人写过它",
-      "source": "docs/scenario/07-世界模组III-熵网.md:768"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:768"
     },
     {
       "id": "enemy-a19",
@@ -3537,7 +3537,7 @@
       "damage": "2d8 熵蚀",
       "persona": "猛攻",
       "trait": "二十二年前第一次出现在现实中的那个东西的原型",
-      "source": "docs/scenario/07-世界模组III-熵网.md:769"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:769"
     },
     {
       "id": "enemy-a20",
@@ -3550,7 +3550,7 @@
       "damage": "3d8 精神",
       "persona": "控场",
       "trait": "如果网有意识，那就是它。它正在学习说话",
-      "source": "docs/scenario/07-世界模组III-熵网.md:770"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:770"
     },
     {
       "id": "enemy-a21",
@@ -3563,7 +3563,7 @@
       "damage": "3d10 力场",
       "persona": "召唤",
       "trait": "47 个人合成了一件东西，它仍然在寻找第 48 个",
-      "source": "docs/scenario/07-世界模组III-熵网.md:771"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:771"
     },
     {
       "id": "enemy-a22",
@@ -3576,7 +3576,7 @@
       "damage": "3d10 熵蚀",
       "persona": "控场",
       "trait": "它不是生物，它是那场事故本身，且它仍在扩散",
-      "source": "docs/scenario/07-世界模组III-熵网.md:772"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:772"
     },
     {
       "id": "enemy-b01",
@@ -3589,7 +3589,7 @@
       "damage": "1d6 钝击",
       "persona": "猛攻",
       "trait": "拿到钱之前不太愿意拼命",
-      "source": "docs/scenario/07-世界模组III-熵网.md:779"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:779"
     },
     {
       "id": "enemy-b02",
@@ -3602,7 +3602,7 @@
       "damage": "1d6 穿刺",
       "persona": "狡诈",
       "trait": "他想证明自己，这让他既危险又容易被利用",
-      "source": "docs/scenario/07-世界模组III-熵网.md:780"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:780"
     },
     {
       "id": "enemy-b03",
@@ -3615,7 +3615,7 @@
       "damage": "1d4 精神",
       "persona": "狡诈",
       "trait": "他卖的东西真假参半，包括他自己",
-      "source": "docs/scenario/07-世界模组III-熵网.md:781"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:781"
     },
     {
       "id": "enemy-b04",
@@ -3628,7 +3628,7 @@
       "damage": "1d6 钝击",
       "persona": "守护",
       "trait": "他护的是货，货比他的命值钱",
-      "source": "docs/scenario/07-世界模组III-熵网.md:782"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:782"
     },
     {
       "id": "enemy-b05",
@@ -3641,7 +3641,7 @@
       "damage": "1d8 穿刺",
       "persona": "猛攻",
       "trait": "身上至少四处改造，纯粹的打手",
-      "source": "docs/scenario/07-世界模组III-熵网.md:783"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:783"
     },
     {
       "id": "enemy-b06",
@@ -3654,7 +3654,7 @@
       "damage": "1d8 穿刺",
       "persona": "守护",
       "trait": "按流程办事，且流程里没有英雄主义",
-      "source": "docs/scenario/07-世界模组III-熵网.md:784"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:784"
     },
     {
       "id": "enemy-b07",
@@ -3667,7 +3667,7 @@
       "damage": "1d8 穿刺",
       "persona": "控场",
       "trait": "有执行令，有权限，也有 KPI",
-      "source": "docs/scenario/07-世界模组III-熵网.md:785"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:785"
     },
     {
       "id": "enemy-b08",
@@ -3680,7 +3680,7 @@
       "damage": "1d8 穿刺",
       "persona": "狡诈",
       "trait": "他只追有赏金的目标，但他记得住脸",
-      "source": "docs/scenario/07-世界模组III-熵网.md:786"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:786"
     },
     {
       "id": "enemy-b09",
@@ -3693,7 +3693,7 @@
       "damage": "1d8 力场",
       "persona": "猛攻",
       "trait": "另一个网潜者。你们在网里抢同一样东西",
-      "source": "docs/scenario/07-世界模组III-熵网.md:787"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:787"
     },
     {
       "id": "enemy-b10",
@@ -3706,7 +3706,7 @@
       "damage": "1d8 穿刺",
       "persona": "狡诈",
       "trait": "他从不正面交战，只是离开",
-      "source": "docs/scenario/07-世界模组III-熵网.md:788"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:788"
     },
     {
       "id": "enemy-b11",
@@ -3719,7 +3719,7 @@
       "damage": "1d8 精神",
       "persona": "猛攻",
       "trait": "他相信网里的东西比人类更进化，而且他并不疯狂",
-      "source": "docs/scenario/07-世界模组III-熵网.md:789"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:789"
     },
     {
       "id": "enemy-b12",
@@ -3732,7 +3732,7 @@
       "damage": "1d8 钝击",
       "persona": "猛攻",
       "trait": "他们只是想要你们手上的东西",
-      "source": "docs/scenario/07-世界模组III-熵网.md:790"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:790"
     },
     {
       "id": "enemy-b13",
@@ -3745,7 +3745,7 @@
       "damage": "2d8 穿刺",
       "persona": "领袖",
       "trait": "他管理着两千人，而他很清楚自己的位置不稳",
-      "source": "docs/scenario/07-世界模组III-熵网.md:791"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:791"
     },
     {
       "id": "enemy-b14",
@@ -3758,7 +3758,7 @@
       "damage": "2d8 穿刺",
       "persona": "领袖",
       "trait": "专业、冷静，且知道什么时候应该收手",
-      "source": "docs/scenario/07-世界模组III-熵网.md:792"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:792"
     },
     {
       "id": "enemy-b15",
@@ -3771,7 +3771,7 @@
       "damage": "2d10 钝击",
       "persona": "猛攻",
       "trait": "纯度已经低于 3，几乎不再是一个人了",
-      "source": "docs/scenario/07-世界模组III-熵网.md:793"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:793"
     },
     {
       "id": "enemy-b16",
@@ -3784,7 +3784,7 @@
       "damage": "2d8 力场",
       "persona": "狡诈",
       "trait": "网中的第一名。他从来没有输过，这让他很孤独",
-      "source": "docs/scenario/07-世界模组III-熵网.md:794"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:794"
     },
     {
       "id": "enemy-b17",
@@ -3797,7 +3797,7 @@
       "damage": "2d8 精神",
       "persona": "召唤",
       "trait": "他能从网里带出东西，也能让别人相信那是神圣的",
-      "source": "docs/scenario/07-世界模组III-熵网.md:795"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:795"
     },
     {
       "id": "enemy-b18",
@@ -3810,7 +3810,7 @@
       "damage": "2d8 穿刺",
       "persona": "狡诈",
       "trait": "他的工作就是让网潜者无法回来",
-      "source": "docs/scenario/07-世界模组III-熵网.md:796"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:796"
     },
     {
       "id": "enemy-c01",
@@ -3823,7 +3823,7 @@
       "damage": "1d6 穿刺",
       "persona": "狡诈",
       "trait": "小型飞行设备，被击落后数据可以被提取",
-      "source": "docs/scenario/07-世界模组III-熵网.md:803"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:803"
     },
     {
       "id": "enemy-c02",
@@ -3836,7 +3836,7 @@
       "damage": "1d6 钝击",
       "persona": "守护",
       "trait": "它只是想把你脚下的地擦干净",
-      "source": "docs/scenario/07-世界模组III-熵网.md:804"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:804"
     },
     {
       "id": "enemy-c03",
@@ -3849,7 +3849,7 @@
       "damage": "1d6 穿刺",
       "persona": "守护",
       "trait": "判定逻辑老旧，会把所有人都当作入侵者",
-      "source": "docs/scenario/07-世界模组III-熵网.md:805"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:805"
     },
     {
       "id": "enemy-c04",
@@ -3862,7 +3862,7 @@
       "damage": "1d6 钝击",
       "persona": "猛攻",
       "trait": "自动驾驶，撞人时从不减速",
-      "source": "docs/scenario/07-世界模组III-熵网.md:806"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:806"
     },
     {
       "id": "enemy-c05",
@@ -3875,7 +3875,7 @@
       "damage": "1d8 钝击",
       "persona": "猛攻",
       "trait": "稳健、缓慢，对指令绝对服从",
-      "source": "docs/scenario/07-世界模组III-熵网.md:807"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:807"
     },
     {
       "id": "enemy-c06",
@@ -3888,7 +3888,7 @@
       "damage": "1d6 穿刺",
       "persona": "控场",
       "trait": "发现目标后会标记，使后续攻击 +1 骰",
-      "source": "docs/scenario/07-世界模组III-熵网.md:808"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:808"
     },
     {
       "id": "enemy-c07",
@@ -3901,7 +3901,7 @@
       "damage": "2d6 钝击",
       "persona": "猛攻",
       "trait": "工程用，但拆人也很在行",
-      "source": "docs/scenario/07-世界模组III-熵网.md:809"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:809"
     },
     {
       "id": "enemy-c08",
@@ -3914,7 +3914,7 @@
       "damage": "1d6 穿刺",
       "persona": "控场",
       "trait": "它想治疗你，无论你是否同意",
-      "source": "docs/scenario/07-世界模组III-熵网.md:810"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:810"
     },
     {
       "id": "enemy-c09",
@@ -3927,7 +3927,7 @@
       "damage": "1d8 钝击",
       "persona": "守护",
       "trait": "管理整个港区，且从未收到过停止的指令",
-      "source": "docs/scenario/07-世界模组III-熵网.md:811"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:811"
     },
     {
       "id": "enemy-c10",
@@ -3940,7 +3940,7 @@
       "damage": "2d6 穿刺",
       "persona": "召唤",
       "trait": "一群小型无人机，共享一份活力",
-      "source": "docs/scenario/07-世界模组III-熵网.md:812"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:812"
     },
     {
       "id": "enemy-c11",
@@ -3953,7 +3953,7 @@
       "damage": "2d10 穿刺",
       "persona": "守护",
       "trait": "固定单位，火力极强",
-      "source": "docs/scenario/07-世界模组III-熵网.md:813"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:813"
     },
     {
       "id": "enemy-c12",
@@ -3966,7 +3966,7 @@
       "damage": "2d8 钝击",
       "persona": "猛攻",
       "trait": "财团最新型安保单位，装配了未公开的功能",
-      "source": "docs/scenario/07-世界模组III-熵网.md:814"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:814"
     },
     {
       "id": "enemy-c13",
@@ -3979,7 +3979,7 @@
       "damage": "3d8 力场",
       "persona": "控场",
       "trait": "它已经独自管理港口三十一年，它有很多问题想问",
-      "source": "docs/scenario/07-世界模组III-熵网.md:815"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:815"
     },
     {
       "id": "enemy-c14",
@@ -3992,7 +3992,7 @@
       "damage": "3d10 穿刺",
       "persona": "猛攻",
       "trait": "坍缩前的武器，三十一年后仍然可用",
-      "source": "docs/scenario/07-世界模组III-熵网.md:816"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:816"
     },
     {
       "id": "enemy-d01",
@@ -4005,7 +4005,7 @@
       "damage": "1d6 熵蚀",
       "persona": "控场",
       "trait": "一片会移动的雾，进入者会短暂地失去一部分记忆",
-      "source": "docs/scenario/07-世界模组III-熵网.md:823"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:823"
     },
     {
       "id": "enemy-d02",
@@ -4018,7 +4018,7 @@
       "damage": "1d6 穿刺",
       "persona": "狡诈",
       "trait": "形状像狗，但关节是反的",
-      "source": "docs/scenario/07-世界模组III-熵网.md:824"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:824"
     },
     {
       "id": "enemy-d03",
@@ -4031,7 +4031,7 @@
       "damage": "1d6 钝击",
       "persona": "猛攻",
       "trait": "由无数碎裂的影像拼成的一个人",
-      "source": "docs/scenario/07-世界模组III-熵网.md:825"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:825"
     },
     {
       "id": "enemy-d04",
@@ -4044,7 +4044,7 @@
       "damage": "1d8 精神",
       "persona": "狡诈",
       "trait": "它可以复制一个人的外貌，包括你的",
-      "source": "docs/scenario/07-世界模组III-熵网.md:826"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:826"
     },
     {
       "id": "enemy-d05",
@@ -4057,7 +4057,7 @@
       "damage": "1d8 穿刺",
       "persona": "猛攻",
       "trait": "它复制的是一名玩家，而且做得非常像",
-      "source": "docs/scenario/07-世界模组III-熵网.md:827"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:827"
     },
     {
       "id": "enemy-d06",
@@ -4070,7 +4070,7 @@
       "damage": "1d8 熵蚀",
       "persona": "守护",
       "trait": "透明的、脆弱的，但极难真正破坏",
-      "source": "docs/scenario/07-世界模组III-熵网.md:828"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:828"
     },
     {
       "id": "enemy-d07",
@@ -4083,7 +4083,7 @@
       "damage": "1d8 精神",
       "persona": "控场",
       "trait": "它说的每一句话，你都在某个地方听过",
-      "source": "docs/scenario/07-世界模组III-熵网.md:829"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:829"
     },
     {
       "id": "enemy-d08",
@@ -4096,7 +4096,7 @@
       "damage": "1d8 精神",
       "persona": "控场",
       "trait": "在它周围，所有的声音都会消失",
-      "source": "docs/scenario/07-世界模组III-熵网.md:830"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:830"
     },
     {
       "id": "enemy-d09",
@@ -4109,7 +4109,7 @@
       "damage": "2d6 钝击",
       "persona": "猛攻",
       "trait": "从任何一个界面里伸出来的一只手",
-      "source": "docs/scenario/07-世界模组III-熵网.md:831"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:831"
     },
     {
       "id": "enemy-d10",
@@ -4122,7 +4122,7 @@
       "damage": "2d8 熵蚀",
       "persona": "猛攻",
       "trait": "它差一点点就像人了，它自己也知道",
-      "source": "docs/scenario/07-世界模组III-熵网.md:832"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:832"
     },
     {
       "id": "enemy-d11",
@@ -4135,7 +4135,7 @@
       "damage": "2d8 熵蚀",
       "persona": "召唤",
       "trait": "多个回响体合成的东西，且还在吸收新的",
-      "source": "docs/scenario/07-世界模组III-熵网.md:833"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:833"
     },
     {
       "id": "enemy-d12",
@@ -4148,7 +4148,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "它吃掉的记忆会永远消失，包括别人对你的记忆",
-      "source": "docs/scenario/07-世界模组III-熵网.md:834"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:834"
     },
     {
       "id": "enemy-d13",
@@ -4161,7 +4161,7 @@
       "damage": "3d8 熵蚀",
       "persona": "猛攻",
       "trait": "二十二年前它维持了六天的存在，现在它回来了",
-      "source": "docs/scenario/07-世界模组III-熵网.md:835"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:835"
     },
     {
       "id": "enemy-d14",
@@ -4174,7 +4174,7 @@
       "damage": "3d10 精神",
       "persona": "控场",
       "trait": "回响教相信它是更进化的人类。它可能真的是",
-      "source": "docs/scenario/07-世界模组III-熵网.md:836"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:836"
     },
     {
       "id": "enemy-e01",
@@ -4187,7 +4187,7 @@
       "damage": "2d8 力场",
       "persona": "控场",
       "trait": "他知道每一个网潜者的同步率，包括不该知道的那些",
-      "source": "docs/scenario/07-世界模组III-熵网.md:843"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:843"
     },
     {
       "id": "enemy-e02",
@@ -4200,7 +4200,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "她的主张在道德上几乎无法反驳",
-      "source": "docs/scenario/07-世界模组III-熵网.md:844"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:844"
     },
     {
       "id": "enemy-e03",
@@ -4213,7 +4213,7 @@
       "damage": "2d8 穿刺",
       "persona": "领袖",
       "trait": "他有十一年的现场资料，而且他想要一个答案",
-      "source": "docs/scenario/07-世界模组III-熵网.md:845"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:845"
     },
     {
       "id": "enemy-e04",
@@ -4226,7 +4226,7 @@
       "damage": "2d8 钝击",
       "persona": "控场",
       "trait": "他知道纯度下降的真实数据",
-      "source": "docs/scenario/07-世界模组III-熵网.md:846"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:846"
     },
     {
       "id": "enemy-e05",
@@ -4239,7 +4239,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "她可以合法地判定你不是你",
-      "source": "docs/scenario/07-世界模组III-熵网.md:847"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:847"
     },
     {
       "id": "enemy-e06",
@@ -4252,7 +4252,7 @@
       "damage": "2d8 力场",
       "persona": "控场",
       "trait": "他去过最深处，而且他还愿意再去",
-      "source": "docs/scenario/07-世界模组III-熵网.md:848"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:848"
     },
     {
       "id": "enemy-e07",
@@ -4265,7 +4265,7 @@
       "damage": "2d8 精神",
       "persona": "领袖",
       "trait": "他有钱、有武器，而且他相信自己是对的",
-      "source": "docs/scenario/07-世界模组III-熵网.md:849"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:849"
     },
     {
       "id": "enemy-e08",
@@ -4278,7 +4278,7 @@
       "damage": "2d8 钝击",
       "persona": "守护",
       "trait": "他记得坍缩之前的样子，这本身就是一种力量",
-      "source": "docs/scenario/07-世界模组III-熵网.md:850"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:850"
     },
     {
       "id": "enemy-e09",
@@ -4291,7 +4291,7 @@
       "damage": "2d8 力场",
       "persona": "控场",
       "trait": "一台 AI 造出来的人形终端，它有很多话要说",
-      "source": "docs/scenario/07-世界模组III-熵网.md:851"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:851"
     },
     {
       "id": "enemy-e10",
@@ -4304,7 +4304,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "没有人见过它，但所有人都能收到它的广播",
-      "source": "docs/scenario/07-世界模组III-熵网.md:852"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:852"
     },
     {
       "id": "enemy-e11",
@@ -4317,7 +4317,7 @@
       "damage": "3d8 精神",
       "persona": "控场",
       "trait": "他的每一份备份都不太一样，而且它们互相知道彼此",
-      "source": "docs/scenario/07-世界模组III-熵网.md:853"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:853"
     },
     {
       "id": "enemy-e12",
@@ -4330,7 +4330,7 @@
       "damage": "3d8 力场",
       "persona": "猛攻",
       "trait": "它是你，而且它认为自己才是原件",
-      "source": "docs/scenario/07-世界模组III-熵网.md:854"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:854"
     }
   ],
   "random_tables": [
@@ -4388,7 +4388,7 @@
           "result": "你的义体在夜里自行启动了。它做了一件你不记得做过的事。"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:864"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:864"
     },
     {
       "id": "rumors",
@@ -4444,7 +4444,7 @@
           "result": "你的备份不是你的。它比现在的你更早，因此它才是原件。"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:881"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:881"
     },
     {
       "id": "net_finds",
@@ -4500,7 +4500,7 @@
           "result": "一个孩子的绘画，画的是网里面的样子"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:898"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:898"
     },
     {
       "id": "net_encounters",
@@ -4540,7 +4540,7 @@
           "result": "有什么东西跟着你，而且它已经跟了很久了"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:915"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:915"
     },
     {
       "id": "names_personal",
@@ -4621,7 +4621,7 @@
           "result": "未名"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:930"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:930"
     },
     {
       "id": "names_gang",
@@ -4662,7 +4662,7 @@
           "result": "铆钉"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:931"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:931"
     },
     {
       "id": "names_corp_dept",
@@ -4691,7 +4691,7 @@
           "result": "合规与终止部"
         }
       ],
-      "source": "docs/scenario/07-世界模组III-熵网.md:932"
+      "source": "docs/scenario/07-world-module-iii-entropic-net.md:932"
     }
   ]
 }

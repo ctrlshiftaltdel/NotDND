@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S8-起步战役集.md:722",
+  "source": "docs/scenario/s8-starter-campaigns.md:722",
   "meta": {
     "world": "foundered-strata",
     "engine": "tactics",
@@ -27,7 +27,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:741"
+      "source": "docs/scenario/s8-starter-campaigns.md:741"
     },
     {
       "id": "act-2",
@@ -44,7 +44,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:784"
+      "source": "docs/scenario/s8-starter-campaigns.md:784"
     },
     {
       "id": "act-3",
@@ -58,7 +58,7 @@
         "3.4 第 7 层·脂海之堤（墨鸢）：听坼民的警告／强行取配重／留下东西换情报（共感或论战 DF 14；取配重＝坼民长者不可逆敌对）",
         "3.5 收束：带回／留下——玩家决定这一趟的最终结果（无判定；这是本册「活着回来的人才算赢」的落地）"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:823"
+      "source": "docs/scenario/s8-starter-campaigns.md:823"
     }
   ],
   "nodes": [
@@ -69,7 +69,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:753"
+      "source": "docs/scenario/s8-starter-campaigns.md:753"
     },
     {
       "id": "N12",
@@ -78,7 +78,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:754"
+      "source": "docs/scenario/s8-starter-campaigns.md:754"
     },
     {
       "id": "N13",
@@ -87,7 +87,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:755"
+      "source": "docs/scenario/s8-starter-campaigns.md:755"
     },
     {
       "id": "N14",
@@ -96,7 +96,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:756"
+      "source": "docs/scenario/s8-starter-campaigns.md:756"
     },
     {
       "id": "N15",
@@ -105,7 +105,7 @@
       "next": [
         "N21"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:757"
+      "source": "docs/scenario/s8-starter-campaigns.md:757"
     },
     {
       "id": "N21",
@@ -114,7 +114,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:796"
+      "source": "docs/scenario/s8-starter-campaigns.md:796"
     },
     {
       "id": "N22",
@@ -123,7 +123,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:797"
+      "source": "docs/scenario/s8-starter-campaigns.md:797"
     },
     {
       "id": "N23",
@@ -132,7 +132,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:798"
+      "source": "docs/scenario/s8-starter-campaigns.md:798"
     },
     {
       "id": "N24",
@@ -141,7 +141,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:799"
+      "source": "docs/scenario/s8-starter-campaigns.md:799"
     },
     {
       "id": "N25",
@@ -150,7 +150,7 @@
       "next": [
         "N31"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:787"
+      "source": "docs/scenario/s8-starter-campaigns.md:787"
     },
     {
       "id": "N31",
@@ -159,7 +159,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:835"
+      "source": "docs/scenario/s8-starter-campaigns.md:835"
     },
     {
       "id": "N32",
@@ -168,7 +168,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:836"
+      "source": "docs/scenario/s8-starter-campaigns.md:836"
     },
     {
       "id": "N33",
@@ -177,7 +177,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:837"
+      "source": "docs/scenario/s8-starter-campaigns.md:837"
     },
     {
       "id": "N34",
@@ -186,7 +186,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:838"
+      "source": "docs/scenario/s8-starter-campaigns.md:838"
     },
     {
       "id": "N35",
@@ -197,7 +197,7 @@
         "ending-leave",
         "ending-half"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:839"
+      "source": "docs/scenario/s8-starter-campaigns.md:839"
     },
     {
       "id": "Q-00",
@@ -245,7 +245,7 @@
         "half_take"
       ],
       "act": "act-1",
-      "source": "docs/scenario/S8-起步战役集.md:741"
+      "source": "docs/scenario/s8-starter-campaigns.md:741"
     }
   ],
   "threads": [
@@ -267,20 +267,20 @@
         {
           "path": "调查",
           "detail": "灰秤行的定价目录里有一条无法解释的估值（分析 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:767"
+          "source": "docs/scenario/s8-starter-campaigns.md:767"
         },
         {
           "path": "社交",
           "detail": "薛弼年或账房助手辛夷漏出的举牌记录（说服 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:768"
+          "source": "docs/scenario/s8-starter-campaigns.md:768"
         },
         {
           "path": "环境",
           "detail": "口上拍卖场一块被反复抬价的出土物（察觉 DF 12）",
-          "source": "docs/scenario/S8-起步战役集.md:769"
+          "source": "docs/scenario/s8-starter-campaigns.md:769"
         }
       ],
-      "source": "docs/scenario/S8-起步战役集.md:766"
+      "source": "docs/scenario/s8-starter-campaigns.md:766"
     },
     {
       "id": "C-02",
@@ -300,21 +300,21 @@
         {
           "path": "分析",
           "detail": "役形工头的自检日志（分析 DF 15）",
-          "source": "docs/scenario/S8-起步战役集.md:809"
+          "source": "docs/scenario/s8-starter-campaigns.md:809"
         },
         {
           "path": "历史",
           "detail": "蒙七抄本里被涂掉的一行（历史 DF 14）",
-          "source": "docs/scenario/S8-起步战役集.md:809"
+          "source": "docs/scenario/s8-starter-campaigns.md:809"
         },
         {
           "path": "共感",
           "detail": "窦阿兰转述方梯的只言片语（共感 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:809"
+          "source": "docs/scenario/s8-starter-campaigns.md:809"
         }
       ],
       "note": "文档在 S8:809 一行内给出三条路径，path 行号同源。",
-      "source": "docs/scenario/S8-起步战役集.md:809"
+      "source": "docs/scenario/s8-starter-campaigns.md:809"
     },
     {
       "id": "C-03",
@@ -327,7 +327,7 @@
         "flag.first_relic"
       ],
       "note": "「方梯」对应主册 npc.fangti；本册编号册内唯一，不与主册《带回衡》C-xx 通用。",
-      "source": "docs/scenario/S8-起步战役集.md:736"
+      "source": "docs/scenario/s8-starter-campaigns.md:736"
     }
   ],
   "npcs": [
@@ -340,7 +340,7 @@
         "affinity": 0,
         "note": "纳税/报情可升"
       },
-      "source": "docs/scenario/S8-起步战役集.md:761"
+      "source": "docs/scenario/s8-starter-campaigns.md:761"
     },
     {
       "id": "npc-02",
@@ -352,7 +352,7 @@
         "affinity": 1,
         "note": "永远需要背工"
       },
-      "source": "docs/scenario/S8-起步战役集.md:762"
+      "source": "docs/scenario/s8-starter-campaigns.md:762"
     },
     {
       "id": "npc-03",
@@ -363,7 +363,7 @@
         "affinity": 1,
         "note": "记得每一件二手货的上一位主人怎么死的"
       },
-      "source": "docs/scenario/S8-起步战役集.md:763"
+      "source": "docs/scenario/s8-starter-campaigns.md:763"
     },
     {
       "id": "npc-04",
@@ -376,7 +376,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:764"
+      "source": "docs/scenario/s8-starter-campaigns.md:764"
     },
     {
       "id": "npc-05",
@@ -387,7 +387,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:757"
+      "source": "docs/scenario/s8-starter-campaigns.md:757"
     },
     {
       "id": "npc-06",
@@ -397,7 +397,7 @@
       "attitude": {
         "affinity": 1
       },
-      "source": "docs/scenario/S8-起步战役集.md:804"
+      "source": "docs/scenario/s8-starter-campaigns.md:804"
     },
     {
       "id": "npc-07",
@@ -408,7 +408,7 @@
         "affinity": 1,
         "note": "肯为玩家保密"
       },
-      "source": "docs/scenario/S8-起步战役集.md:805"
+      "source": "docs/scenario/s8-starter-campaigns.md:805"
     },
     {
       "id": "npc-08",
@@ -418,7 +418,7 @@
       "attitude": {
         "affinity": 0
       },
-      "source": "docs/scenario/S8-起步战役集.md:806"
+      "source": "docs/scenario/s8-starter-campaigns.md:806"
     },
     {
       "id": "npc-09",
@@ -433,7 +433,7 @@
         "C-02",
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:807"
+      "source": "docs/scenario/s8-starter-campaigns.md:807"
     },
     {
       "id": "npc-10",
@@ -444,7 +444,7 @@
         "affinity": -1,
         "note": "尊重秩序可升至 +2"
       },
-      "source": "docs/scenario/S8-起步战役集.md:843"
+      "source": "docs/scenario/s8-starter-campaigns.md:843"
     },
     {
       "id": "npc-11",
@@ -457,7 +457,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:844"
+      "source": "docs/scenario/s8-starter-campaigns.md:844"
     },
     {
       "id": "npc-12",
@@ -468,7 +468,7 @@
         "affinity": -1,
         "note": "认真听她可升"
       },
-      "source": "docs/scenario/S8-起步战役集.md:845"
+      "source": "docs/scenario/s8-starter-campaigns.md:845"
     },
     {
       "id": "npc-13",
@@ -478,7 +478,7 @@
       "attitude": {
         "affinity": -1
       },
-      "source": "docs/scenario/S8-起步战役集.md:846"
+      "source": "docs/scenario/s8-starter-campaigns.md:846"
     }
   ],
   "locations": [
@@ -486,49 +486,49 @@
       "id": "loc-01",
       "name": "口上（坼口镇）",
       "atmosphere": "碗底就是「口」，口以下九个可辨识的人工层叫沉层；集市、行会、灰秤行与拍卖场所在",
-      "source": "docs/scenario/S8-起步战役集.md:729"
+      "source": "docs/scenario/s8-starter-campaigns.md:729"
     },
     {
       "id": "loc-02",
       "name": "第 1 层·瓦脊",
       "atmosphere": "底下那座城是斜的，整片瓦脊向着同一个方向倾斜了十五度；这里比上面暖和——这不是好消息",
-      "source": "docs/scenario/S8-起步战役集.md:755"
+      "source": "docs/scenario/s8-starter-campaigns.md:755"
     },
     {
       "id": "loc-03",
       "name": "第 2 层·苔市",
       "atmosphere": "菌粮与补给；有病田与孢子雾",
-      "source": "docs/scenario/S8-起步战役集.md:796"
+      "source": "docs/scenario/s8-starter-campaigns.md:796"
     },
     {
       "id": "loc-04",
       "name": "第 3 层·铁骨渠",
       "atmosphere": "比坼口镇还老的水道；石壁刻着「再下一层，就得丢东西」",
-      "source": "docs/scenario/S8-起步战役集.md:797"
+      "source": "docs/scenario/s8-starter-campaigns.md:797"
     },
     {
       "id": "loc-05",
       "name": "第 4 层·灰巷",
       "atmosphere": "份子钱与中立地（窦阿兰的锅场）；黑井捷径在此",
-      "source": "docs/scenario/S8-起步战役集.md:799"
+      "source": "docs/scenario/s8-starter-campaigns.md:799"
     },
     {
       "id": "loc-06",
       "name": "第 5 层·盐廷",
       "atmosphere": "曾经的行政中枢，一个连声音都被收走的地方；石壁刻满「它还在转」的不同说法",
-      "source": "docs/scenario/S8-起步战役集.md:835"
+      "source": "docs/scenario/s8-starter-campaigns.md:835"
     },
     {
       "id": "loc-07",
       "name": "第 6 层·声窟",
       "atmosphere": "安静是纪律；响齿群与沉语者所在",
-      "source": "docs/scenario/S8-起步战役集.md:837"
+      "source": "docs/scenario/s8-starter-campaigns.md:837"
     },
     {
       "id": "loc-08",
       "name": "第 7 层·脂海之堤",
       "atmosphere": "坼民的领域；配重槽与观测册",
-      "source": "docs/scenario/S8-起步战役集.md:838"
+      "source": "docs/scenario/s8-starter-campaigns.md:838"
     }
   ],
   "endings": [
@@ -538,7 +538,7 @@
       "type": "带回",
       "requirements": "玩家把目标物带回口上，交灰秤行或匿名买家",
       "result": "接 S5 正式战役的「估值」路线：玩家暴富，但被缒行、行会与外地商号同时盯上",
-      "source": "docs/scenario/S8-起步战役集.md:849"
+      "source": "docs/scenario/s8-starter-campaigns.md:849"
     },
     {
       "id": "ending-leave",
@@ -546,7 +546,7 @@
       "type": "留下",
       "requirements": "玩家听信坼民，把东西留在第七层以下",
       "result": "接「观测」路线：玩家获得坼民的信任与一条只有他们知道的路线",
-      "source": "docs/scenario/S8-起步战役集.md:850"
+      "source": "docs/scenario/s8-starter-campaigns.md:850"
     },
     {
       "id": "ending-half",
@@ -554,11 +554,11 @@
       "type": "折中",
       "requirements": "玩家带走记录、留下实物",
       "result": "接「真相」路线：第九层的秘密成为长期线索，层货定价体系因他们的报告而波动",
-      "source": "docs/scenario/S8-起步战役集.md:851"
+      "source": "docs/scenario/s8-starter-campaigns.md:851"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S8-起步战役集.md:722",
+    "source": "docs/scenario/s8-starter-campaigns.md:722",
     "declared_flag_count": 4,
     "actual_flag_count": 4,
     "flag": [
@@ -569,7 +569,7 @@
         "write": "第一幕幕末：取得第一件出土物",
         "readers": "Q-00/C-01",
         "effect": "开启主线",
-        "source": "docs/scenario/S8-起步战役集.md:774"
+        "source": "docs/scenario/s8-starter-campaigns.md:774"
       },
       {
         "id": "flag.permit_type",
@@ -578,7 +578,7 @@
         "write": "第一幕：下潜方式",
         "readers": "act-1/act-2",
         "effect": "合法许可或黑井偷渡",
-        "source": "docs/scenario/S8-起步战役集.md:775"
+        "source": "docs/scenario/s8-starter-campaigns.md:775"
       },
       {
         "id": "flag.relic_half",
@@ -587,7 +587,7 @@
         "write": "第二幕幕末：核心目标物得其一",
         "readers": "Q-00",
         "effect": "进入第三幕",
-        "source": "docs/scenario/S8-起步战役集.md:813"
+        "source": "docs/scenario/s8-starter-campaigns.md:813"
       },
       {
         "id": "flag.meng_copy",
@@ -596,7 +596,7 @@
         "write": "是否取得蒙七抄本",
         "readers": "C-02",
         "effect": "配重槽线索的文献路径",
-        "source": "docs/scenario/S8-起步战役集.md:815"
+        "source": "docs/scenario/s8-starter-campaigns.md:815"
       }
     ],
     "rep": [
@@ -607,7 +607,7 @@
         "write": "纳税/报情可升",
         "readers": "act-1",
         "effect": "坼口行会态度（0~1）",
-        "source": "docs/scenario/S8-起步战役集.md:777"
+        "source": "docs/scenario/s8-starter-campaigns.md:777"
       },
       {
         "id": "rep.windlass",
@@ -616,7 +616,7 @@
         "write": "默认 +1",
         "readers": "act-1/act-2",
         "effect": "缒行态度",
-        "source": "docs/scenario/S8-起步战役集.md:778"
+        "source": "docs/scenario/s8-starter-campaigns.md:778"
       },
       {
         "id": "rep.sevenhearths",
@@ -625,7 +625,7 @@
         "write": "第二、三幕行为结算",
         "readers": "act-2/act-3",
         "effect": "七炉态度（0~1）",
-        "source": "docs/scenario/S8-起步战役集.md:818"
+        "source": "docs/scenario/s8-starter-campaigns.md:818"
       }
     ],
     "clock": [
@@ -636,7 +636,7 @@
         "write": "每层往返消耗",
         "readers": "Q-00/act-2/act-3",
         "effect": "剩余配给（归零触发层压症状；2~4）",
-        "source": "docs/scenario/S8-起步战役集.md:816"
+        "source": "docs/scenario/s8-starter-campaigns.md:816"
       }
     ]
   },
@@ -721,6 +721,6 @@
         "due": "下趟深活"
       }
     ],
-    "source": "docs/scenario/S8-起步战役集.md:779"
+    "source": "docs/scenario/s8-starter-campaigns.md:779"
   }
 }

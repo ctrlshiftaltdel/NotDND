@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S8-起步战役集.md:444",
+  "source": "docs/scenario/s8-starter-campaigns.md:444",
   "meta": {
     "world": "潮金港",
     "engine": "tactics",
@@ -27,7 +27,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:463"
+      "source": "docs/scenario/s8-starter-campaigns.md:463"
     },
     {
       "id": "act-2",
@@ -44,7 +44,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:506"
+      "source": "docs/scenario/s8-starter-campaigns.md:506"
     },
     {
       "id": "act-3",
@@ -58,7 +58,7 @@
         "3.4 回涨（场地级计时器）：每回合水位 +1 米，必须在时限内撤离（运动 DF 16；失败＝失去一半携带物，但人活着）",
         "3.5 收束：玩家在「独吞／交付／不挖」之间选择（无判定；三种收束各自接 S3 正式战役的不同终局）"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:545"
+      "source": "docs/scenario/s8-starter-campaigns.md:545"
     }
   ],
   "nodes": [
@@ -69,7 +69,7 @@
       "next": [
         "N12"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:475"
+      "source": "docs/scenario/s8-starter-campaigns.md:475"
     },
     {
       "id": "N12",
@@ -78,7 +78,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:476"
+      "source": "docs/scenario/s8-starter-campaigns.md:476"
     },
     {
       "id": "N13",
@@ -87,7 +87,7 @@
       "next": [
         "N14"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:477"
+      "source": "docs/scenario/s8-starter-campaigns.md:477"
     },
     {
       "id": "N14",
@@ -96,7 +96,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:478"
+      "source": "docs/scenario/s8-starter-campaigns.md:478"
     },
     {
       "id": "N15",
@@ -105,7 +105,7 @@
       "next": [
         "N21"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:479"
+      "source": "docs/scenario/s8-starter-campaigns.md:479"
     },
     {
       "id": "N21",
@@ -114,7 +114,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:518"
+      "source": "docs/scenario/s8-starter-campaigns.md:518"
     },
     {
       "id": "N22",
@@ -123,7 +123,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:519"
+      "source": "docs/scenario/s8-starter-campaigns.md:519"
     },
     {
       "id": "N23",
@@ -132,7 +132,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:520"
+      "source": "docs/scenario/s8-starter-campaigns.md:520"
     },
     {
       "id": "N24",
@@ -141,7 +141,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:521"
+      "source": "docs/scenario/s8-starter-campaigns.md:521"
     },
     {
       "id": "N25",
@@ -150,7 +150,7 @@
       "next": [
         "N31"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:522"
+      "source": "docs/scenario/s8-starter-campaigns.md:522"
     },
     {
       "id": "N31",
@@ -159,7 +159,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:557"
+      "source": "docs/scenario/s8-starter-campaigns.md:557"
     },
     {
       "id": "N32",
@@ -168,7 +168,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:558"
+      "source": "docs/scenario/s8-starter-campaigns.md:558"
     },
     {
       "id": "N33",
@@ -177,7 +177,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:559"
+      "source": "docs/scenario/s8-starter-campaigns.md:559"
     },
     {
       "id": "N34",
@@ -186,7 +186,7 @@
       "next": [
         "N35"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:560"
+      "source": "docs/scenario/s8-starter-campaigns.md:560"
     },
     {
       "id": "N35",
@@ -197,7 +197,7 @@
         "ending-faction",
         "ending-nobody"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:561"
+      "source": "docs/scenario/s8-starter-campaigns.md:561"
     },
     {
       "id": "Q-00",
@@ -245,7 +245,7 @@
         "nobody"
       ],
       "act": "act-1",
-      "source": "docs/scenario/S8-起步战役集.md:463"
+      "source": "docs/scenario/s8-starter-campaigns.md:463"
     }
   ],
   "threads": [
@@ -268,20 +268,20 @@
         {
           "path": "调查",
           "detail": "甲字七号仓的账本或公会报潮房的测潮记录（分析 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:489"
+          "source": "docs/scenario/s8-starter-campaigns.md:489"
         },
         {
           "path": "社交",
           "detail": "瞎子阿潮的说书（指出矛盾 DF 13）或陈三娘的闲话",
-          "source": "docs/scenario/S8-起步战役集.md:490"
+          "source": "docs/scenario/s8-starter-campaigns.md:490"
         },
         {
           "path": "战斗／环境",
           "detail": "拆船场里一具写有编号的船板（察觉 DF 12）",
-          "source": "docs/scenario/S8-起步战役集.md:491"
+          "source": "docs/scenario/s8-starter-campaigns.md:491"
         }
       ],
-      "source": "docs/scenario/S8-起步战役集.md:488"
+      "source": "docs/scenario/s8-starter-campaigns.md:488"
     },
     {
       "id": "C-02",
@@ -301,21 +301,21 @@
         {
           "path": "账户",
           "detail": "潮汐债担保物清单",
-          "source": "docs/scenario/S8-起步战役集.md:531"
+          "source": "docs/scenario/s8-starter-campaigns.md:531"
         },
         {
           "path": "人证",
           "detail": "温秉文／柯九斤",
-          "source": "docs/scenario/S8-起步战役集.md:531"
+          "source": "docs/scenario/s8-starter-campaigns.md:531"
         },
         {
           "path": "环境",
           "detail": "桩林区汐巢样本",
-          "source": "docs/scenario/S8-起步战役集.md:531"
+          "source": "docs/scenario/s8-starter-campaigns.md:531"
         }
       ],
       "note": "文档在 S8:531 一行内给出三条路径，path 行号同源；本册编号册内唯一，不与主册《满汐日》C-xx 通用。",
-      "source": "docs/scenario/S8-起步战役集.md:531"
+      "source": "docs/scenario/s8-starter-campaigns.md:531"
     },
     {
       "id": "C-03",
@@ -330,7 +330,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:551"
+      "source": "docs/scenario/s8-starter-campaigns.md:551"
     }
   ],
   "npcs": [
@@ -343,7 +343,7 @@
         "affinity": 1,
         "note": "问他父亲的事 +2"
       },
-      "source": "docs/scenario/S8-起步战役集.md:483"
+      "source": "docs/scenario/s8-starter-campaigns.md:483"
     },
     {
       "id": "npc-02",
@@ -357,7 +357,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:484"
+      "source": "docs/scenario/s8-starter-campaigns.md:484"
     },
     {
       "id": "npc-03",
@@ -368,7 +368,7 @@
         "affinity": 1,
         "note": "骗他 −3"
       },
-      "source": "docs/scenario/S8-起步战役集.md:485"
+      "source": "docs/scenario/s8-starter-campaigns.md:485"
     },
     {
       "id": "npc-04",
@@ -381,7 +381,7 @@
         "C-01",
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:486"
+      "source": "docs/scenario/s8-starter-campaigns.md:486"
     },
     {
       "id": "npc-05",
@@ -393,7 +393,7 @@
         "affinity": 0,
         "note": "在他这里成交 +1，动手 −3（永久关闭负二层）"
       },
-      "source": "docs/scenario/S8-起步战役集.md:526"
+      "source": "docs/scenario/s8-starter-campaigns.md:526"
     },
     {
       "id": "npc-06",
@@ -404,7 +404,7 @@
         "affinity": 1,
         "note": "一起喝过酒 +1"
       },
-      "source": "docs/scenario/S8-起步战役集.md:527"
+      "source": "docs/scenario/s8-starter-campaigns.md:527"
     },
     {
       "id": "npc-07",
@@ -415,7 +415,7 @@
         "affinity": -1,
         "note": "带来她父亲的物件 +3；第三幕可能倒戈带路进沉闸"
       },
-      "source": "docs/scenario/S8-起步战役集.md:528"
+      "source": "docs/scenario/s8-starter-campaigns.md:528"
     },
     {
       "id": "npc-08",
@@ -428,7 +428,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:529"
+      "source": "docs/scenario/s8-starter-campaigns.md:529"
     },
     {
       "id": "npc-09",
@@ -436,7 +436,7 @@
       "role": "北舷打捞行领队",
       "drive": "在泊期倒计时内完成打捞",
       "note": "泊期倒计时归零即出局",
-      "source": "docs/scenario/S8-起步战役集.md:567"
+      "source": "docs/scenario/s8-starter-campaigns.md:567"
     }
   ],
   "locations": [
@@ -444,43 +444,43 @@
       "id": "loc-01",
       "name": "三号码头",
       "atmosphere": "晨汐刚退，落滩上的水汽还没散",
-      "source": "docs/scenario/S8-起步战役集.md:475"
+      "source": "docs/scenario/s8-starter-campaigns.md:475"
     },
     {
       "id": "loc-02",
       "name": "蚝壳滩·碎壳带",
       "atmosphere": "泥没到脚踝；有会改道的潮沟迷宫",
-      "source": "docs/scenario/S8-起步战役集.md:476"
+      "source": "docs/scenario/s8-starter-campaigns.md:476"
     },
     {
       "id": "loc-03",
       "name": "老蚝架（O1 年木桩）",
       "atmosphere": "桩上有刻名可拓印",
-      "source": "docs/scenario/S8-起步战役集.md:477"
+      "source": "docs/scenario/s8-starter-campaigns.md:477"
     },
     {
       "id": "loc-04",
       "name": "落市",
       "atmosphere": "四层下沉广场，越往下柜台越窄、灯光越红；第四层没人承认它存在",
-      "source": "docs/scenario/S8-起步战役集.md:518"
+      "source": "docs/scenario/s8-starter-campaigns.md:518"
     },
     {
       "id": "loc-05",
       "name": "盐仓区",
       "atmosphere": "账本与查验文书；公会账房温秉文在此",
-      "source": "docs/scenario/S8-起步战役集.md:519"
+      "source": "docs/scenario/s8-starter-campaigns.md:519"
     },
     {
       "id": "loc-06",
       "name": "桩林区",
       "atmosphere": "夜汐会暗桩与浮台；深退时通向沉闸",
-      "source": "docs/scenario/S8-起步战役集.md:521"
+      "source": "docs/scenario/s8-starter-campaigns.md:521"
     },
     {
       "id": "loc-07",
       "name": "沉闸外围",
       "atmosphere": "闸钥／强行开启（技术 DF 18-20）；门后是下一季的钥匙",
-      "source": "docs/scenario/S8-起步战役集.md:547"
+      "source": "docs/scenario/s8-starter-campaigns.md:547"
     }
   ],
   "endings": [
@@ -490,7 +490,7 @@
       "type": "独吞",
       "requirements": "玩家带着汐金离城",
       "result": "接 S3 正式战役的「独吞」结局线，但先要过一次全城追索",
-      "source": "docs/scenario/S8-起步战役集.md:570"
+      "source": "docs/scenario/s8-starter-campaigns.md:570"
     },
     {
       "id": "ending-faction",
@@ -498,7 +498,7 @@
       "type": "交付",
       "requirements": "玩家把汐金交给挂靠的字号",
       "result": "接该字号的终局，玩家得酬劳与新身份",
-      "source": "docs/scenario/S8-起步战役集.md:571"
+      "source": "docs/scenario/s8-starter-campaigns.md:571"
     },
     {
       "id": "ending-nobody",
@@ -506,11 +506,11 @@
       "type": "旁观",
       "requirements": "回涨把汐金冲散，或对手先达第 7 格",
       "result": "接「旁观」结局，城按胜者的方式改变",
-      "source": "docs/scenario/S8-起步战役集.md:572"
+      "source": "docs/scenario/s8-starter-campaigns.md:572"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S8-起步战役集.md:444",
+    "source": "docs/scenario/s8-starter-campaigns.md:444",
     "declared_flag_count": 6,
     "actual_flag_count": 6,
     "flag": [
@@ -521,7 +521,7 @@
         "write": "第一幕：取得长庚号船板（或等价物）",
         "readers": "Q-00/C-01",
         "effect": "开启主线",
-        "source": "docs/scenario/S8-起步战役集.md:496"
+        "source": "docs/scenario/s8-starter-campaigns.md:496"
       },
       {
         "id": "flag.lu_paid",
@@ -530,7 +530,7 @@
         "write": "是否偿还赊账",
         "readers": "N15",
         "effect": "影响卢铁牛线（与 S2 的 flag.ropeclan_settled 勿混用）",
-        "source": "docs/scenario/S8-起步战役集.md:497"
+        "source": "docs/scenario/s8-starter-campaigns.md:497"
       },
       {
         "id": "flag.c01_known",
@@ -539,7 +539,7 @@
         "write": "得知报关单的异常",
         "readers": "Q-00/C-01",
         "effect": "报关单上没有第七舱",
-        "source": "docs/scenario/S8-起步战役集.md:498"
+        "source": "docs/scenario/s8-starter-campaigns.md:498"
       },
       {
         "id": "flag.faction_hooked",
@@ -548,7 +548,7 @@
         "write": "第二幕幕末：玩家挂靠选择",
         "readers": "Q-00/C-02",
         "effect": "某势力/none",
-        "source": "docs/scenario/S8-起步战役集.md:535"
+        "source": "docs/scenario/s8-starter-campaigns.md:535"
       },
       {
         "id": "flag.player_track",
@@ -557,7 +557,7 @@
         "write": "第二幕幕末起记录",
         "readers": "act-2/act-3",
         "effect": "玩家轨格（1~3）",
-        "source": "docs/scenario/S8-起步战役集.md:536"
+        "source": "docs/scenario/s8-starter-campaigns.md:536"
       },
       {
         "id": "flag.beachcomber_children_hurt",
@@ -566,7 +566,7 @@
         "write": "未伤拾滩人孩子",
         "readers": "act-3",
         "effect": "好结局保留",
-        "source": "docs/scenario/S8-起步战役集.md:537"
+        "source": "docs/scenario/s8-starter-campaigns.md:537"
       }
     ],
     "rep": [
@@ -577,7 +577,7 @@
         "write": "第一幕行为结算",
         "readers": "act-1/act-2",
         "effect": "蚝壳帮态度（0~1）",
-        "source": "docs/scenario/S8-起步战役集.md:500"
+        "source": "docs/scenario/s8-starter-campaigns.md:500"
       }
     ],
     "clock": [
@@ -588,7 +588,7 @@
         "write": "落滩窗口消耗",
         "readers": "act-1/act-3",
         "effect": "本退潮窗口剩余（归零则涨潮）",
-        "source": "docs/scenario/S8-起步战役集.md:499"
+        "source": "docs/scenario/s8-starter-campaigns.md:499"
       },
       {
         "id": "clock.northrail",
@@ -597,7 +597,7 @@
         "write": "每幕 −1",
         "readers": "act-2/act-3",
         "effect": "北舷泊期倒计时",
-        "source": "docs/scenario/S8-起步战役集.md:540"
+        "source": "docs/scenario/s8-starter-campaigns.md:540"
       }
     ]
   },
@@ -673,6 +673,6 @@
       "salt": 0,
       "note": "八家字号潮信轨（节选）；全场以夜汐会推进最快（4~5）"
     },
-    "source": "docs/scenario/S8-起步战役集.md:501"
+    "source": "docs/scenario/s8-starter-campaigns.md:501"
   }
 }

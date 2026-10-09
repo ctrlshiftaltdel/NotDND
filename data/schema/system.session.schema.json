@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.session）",
-  "description": "导引者操作系统第三节：会话状态机（6 状态）与六种玩法模式（各含目标 / 默认动作 / 结束条件 / 陷阱）。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "导引者操作系统第三节：会话状态机（6 状态）与六种玩法模式（各含目标 / 默认动作 / 结束条件 / 陷阱）。源自 docs/system/04-conductor-os.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "states", "modes", "announcement"],
   "properties": {

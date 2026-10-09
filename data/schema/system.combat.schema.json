@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.combat）",
-  "description": "战斗支柱：韧性破韧（体型加值 5、削减手段、重整、首领三阶段）、连携（触发 6 / 响应 3 / 连锁层）、场地要素（通用 d20 表 20 行 + 结构）；源自 docs/system/01-内核CORE.md 第八至十节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "战斗支柱：韧性破韧（体型加值 5、削减手段、重整、首领三阶段）、连携（触发 6 / 响应 3 / 连锁层）、场地要素（通用 d20 表 20 行 + 结构）；源自 docs/system/01-core.md 第八至十节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "poise", "combo", "site_elements"],
   "properties": {

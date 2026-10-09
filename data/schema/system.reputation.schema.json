@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.reputation）",
-  "description": "互动层第六节：声望轴 7 档（−3 ~ +3）、Bond 5 级、关系维持与衰减、敌对者 Nemesis。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "互动层第六节：声望轴 7 档（−3 ~ +3）、Bond 5 级、关系维持与衰减、敌对者 Nemesis。源自 docs/system/03-interaction-layer.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "reputation", "reputation_note", "bonds", "bond_rulings", "bond_decay", "bond_rupture", "nemesis"],
   "properties": {

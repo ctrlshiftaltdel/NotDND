@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S3-潮金港-都市夺宝.md:1",
+  "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:1",
   "meta": {
     "world": "潮金港",
     "engine": "tactics",
@@ -24,7 +24,7 @@
       "tasks": [
         "T0"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3236"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3236"
     },
     {
       "id": "act-2",
@@ -56,7 +56,7 @@
         "T6",
         "T7"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3251"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3251"
     },
     {
       "id": "act-3",
@@ -79,7 +79,7 @@
         "T8",
         "T9"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3269"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3269"
     }
   ],
   "nodes": [
@@ -95,7 +95,7 @@
       "marks": [
         "开局"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2640"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2640"
     },
     {
       "id": "map-02",
@@ -104,7 +104,7 @@
       "next": [
         "map-03"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2642"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2642"
     },
     {
       "id": "map-03",
@@ -114,21 +114,21 @@
         "map-04",
         "map-05"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2642"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2642"
     },
     {
       "id": "map-04",
       "name": "盐仓区",
       "unlock": "flag.c11_found",
       "next": [],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2642"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2642"
     },
     {
       "id": "map-05",
       "name": "税关楼·公会厅",
       "unlock": "flag.c15_known",
       "next": [],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2644"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2644"
     },
     {
       "id": "map-06",
@@ -137,7 +137,7 @@
       "next": [
         "map-07"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2646"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2646"
     },
     {
       "id": "map-07",
@@ -147,7 +147,7 @@
       "marks": [
         "退潮"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2646"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2646"
     },
     {
       "id": "map-08",
@@ -159,7 +159,7 @@
       "marks": [
         "退潮可徒步"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2648"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2648"
     },
     {
       "id": "map-09",
@@ -171,14 +171,14 @@
       "marks": [
         "满汐日深处"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2648"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2648"
     },
     {
       "id": "map-10",
       "name": "弃船湾·拆船场",
       "unlock": "flag.c12_schedule",
       "next": [],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2650"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2650"
     },
     {
       "id": "map-11",
@@ -188,7 +188,7 @@
       "marks": [
         "终局"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2652"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2652"
     },
     {
       "id": "cmp-01",
@@ -196,7 +196,7 @@
       "next": [
         "cmp-02"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3199"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3199"
     },
     {
       "id": "cmp-02",
@@ -205,7 +205,7 @@
       "next": [
         "cmp-03"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3202"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3202"
     },
     {
       "id": "cmp-03",
@@ -215,7 +215,7 @@
         "cmp-05",
         "cmp-06"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3202"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3202"
     },
     {
       "id": "cmp-04",
@@ -227,7 +227,7 @@
       "next": [
         "cmp-07"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3206"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3206"
     },
     {
       "id": "cmp-05",
@@ -239,7 +239,7 @@
       "next": [
         "cmp-07"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3206"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3206"
     },
     {
       "id": "cmp-06",
@@ -251,7 +251,7 @@
       "next": [
         "cmp-08"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3206"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3206"
     },
     {
       "id": "cmp-07",
@@ -260,7 +260,7 @@
         "cmp-08",
         "cmp-09"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3211"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3211"
     },
     {
       "id": "cmp-08",
@@ -271,7 +271,7 @@
       "next": [
         "cmp-10"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3211"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3211"
     },
     {
       "id": "cmp-09",
@@ -282,7 +282,7 @@
       "next": [
         "cmp-10"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3214"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3214"
     },
     {
       "id": "cmp-10",
@@ -291,7 +291,7 @@
       "next": [
         "cmp-11"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3214"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3214"
     },
     {
       "id": "cmp-11",
@@ -305,7 +305,7 @@
         "cmp-16",
         "cmp-17"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3222"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3222"
     },
     {
       "id": "cmp-12",
@@ -316,7 +316,7 @@
       "next": [
         "cmp-18"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3226"
     },
     {
       "id": "cmp-13",
@@ -327,7 +327,7 @@
       "next": [
         "cmp-18"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3226"
     },
     {
       "id": "cmp-14",
@@ -338,7 +338,7 @@
       "next": [
         "cmp-18"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3226"
     },
     {
       "id": "cmp-15",
@@ -349,7 +349,7 @@
       "next": [
         "cmp-18"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3226"
     },
     {
       "id": "cmp-16",
@@ -360,7 +360,7 @@
       "next": [
         "cmp-18"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3226"
     },
     {
       "id": "cmp-17",
@@ -371,13 +371,13 @@
       "next": [
         "cmp-18"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3226"
     },
     {
       "id": "cmp-18",
       "name": "T9 七天之后（收束）",
       "next": [],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3231"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3231"
     },
     {
       "id": "T0",
@@ -425,7 +425,7 @@
           "condition": "窗口结束（clock.tide_window == 0）"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2449"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2449"
     },
     {
       "id": "T1",
@@ -467,7 +467,7 @@
           "condition": "flag.c08_public == false 且 flag.wen_dead == true"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2461"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2461"
     },
     {
       "id": "T2",
@@ -515,7 +515,7 @@
           "condition": "蚝帮轨格 >= 5 而未完成"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2472"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2472"
     },
     {
       "id": "T3",
@@ -557,7 +557,7 @@
           "condition": "商栈在当幕完成现金流补足（clock.house_cash 归零）"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2484"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2484"
     },
     {
       "id": "T4",
@@ -605,7 +605,7 @@
           "condition": "满汐日结束（下一张潮汛表才重开）"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2495"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2495"
     },
     {
       "id": "T5",
@@ -647,7 +647,7 @@
           "condition": "伍长川识破伪造文书（water_watch 声望 -3）"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2507"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2507"
     },
     {
       "id": "T6",
@@ -689,7 +689,7 @@
           "condition": "三把闸钥中有两把落入对手之手（flag.rival_keys >= 2）"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2518"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2518"
     },
     {
       "id": "T7",
@@ -731,7 +731,7 @@
           "condition": "曾守拙死亡，或曾守愚被收买导致封印反降"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2529"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2529"
     },
     {
       "id": "T8",
@@ -791,7 +791,7 @@
           "condition": "竞速由对手先达第 7 格"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2540"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2540"
     },
     {
       "id": "T9",
@@ -833,7 +833,7 @@
           "condition": "flag.city_harmed == true（把事件扩大成灾）"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2554"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2554"
     }
   ],
   "threads": [
@@ -851,7 +851,7 @@
       "tasks": [
         "T1"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:452"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:452"
     },
     {
       "id": "C-02",
@@ -867,7 +867,7 @@
       "tasks": [
         "T8"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:453"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:453"
     },
     {
       "id": "C-03",
@@ -882,7 +882,7 @@
       "tasks": [
         "T4"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:454"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:454"
     },
     {
       "id": "C-04",
@@ -897,7 +897,7 @@
       "tasks": [
         "T2"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:455"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:455"
     },
     {
       "id": "C-05",
@@ -912,7 +912,7 @@
       "tasks": [
         "T3"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:456"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:456"
     },
     {
       "id": "C-06",
@@ -927,7 +927,7 @@
       "tasks": [
         "T1"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:457"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:457"
     },
     {
       "id": "C-07",
@@ -942,7 +942,7 @@
       "tasks": [
         "T3"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:458"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:458"
     },
     {
       "id": "C-08",
@@ -957,7 +957,7 @@
       "tasks": [
         "T1"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:459"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:459"
     },
     {
       "id": "C-09",
@@ -973,7 +973,7 @@
       "tasks": [
         "T2"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:460"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:460"
     },
     {
       "id": "C-10",
@@ -988,7 +988,7 @@
       "tasks": [
         "T2"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:461"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:461"
     },
     {
       "id": "C-11",
@@ -1003,7 +1003,7 @@
       "tasks": [
         "T3"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:462"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:462"
     },
     {
       "id": "C-12",
@@ -1018,7 +1018,7 @@
       "tasks": [
         "T4"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:463"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:463"
     },
     {
       "id": "C-13",
@@ -1033,7 +1033,7 @@
       "tasks": [
         "T4"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:464"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:464"
     },
     {
       "id": "C-14",
@@ -1048,7 +1048,7 @@
       "tasks": [
         "T8"
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:465"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:465"
     },
     {
       "id": "C-15",
@@ -1069,25 +1069,25 @@
         {
           "path": "A（物理）",
           "detail": "夺取持钥人",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:479"
         },
         {
           "path": "B（文档）",
           "detail": "旧海图的标注",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:479"
         },
         {
           "path": "C（人证）",
           "detail": "温秉文的交易对象",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:479"
         },
         {
           "path": "D（推理）",
           "detail": "由沉闸的机械结构推出",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:479"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:466"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:466"
     },
     {
       "id": "C-16",
@@ -1106,25 +1106,25 @@
         {
           "path": "A（物理）",
           "detail": "沉船残骸开舱",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:476"
         },
         {
           "path": "B（文档）",
           "detail": "曾守拙的灯语本",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:476"
         },
         {
           "path": "C（人证）",
           "detail": "岑晚的讲述／岑阿九的口供",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:476"
         },
         {
           "path": "D（推理）",
           "detail": "由登记六舱与实际七舱推出",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:476"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:467"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:467"
     },
     {
       "id": "C-17",
@@ -1143,25 +1143,25 @@
         {
           "path": "A（物理）",
           "detail": "桩林区汐巢实探",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:477"
         },
         {
           "path": "B（文档）",
           "detail": "夜汐会仪式表",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:477"
         },
         {
           "path": "C（人证）",
           "detail": "一枚金砂的缓慢增重",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:477"
         },
         {
           "path": "D（推理）",
           "detail": "由汐巢的营造方式反推",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:477"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:468"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:468"
     },
     {
       "id": "C-18",
@@ -1180,25 +1180,25 @@
         {
           "path": "A（物理）",
           "detail": "沉闸内室实探",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:478"
         },
         {
           "path": "B（文档）",
           "detail": "盐仓区租金汇款单",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:478"
         },
         {
           "path": "C（人证）",
           "detail": "卜守秤的称量记录",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:478"
         },
         {
           "path": "D（推理）",
           "detail": "由灯屿旧图上的注记与汇款持续性推出",
-          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+          "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:478"
         }
       ],
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:469"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:469"
     }
   ],
   "npcs": [
@@ -1221,7 +1221,7 @@
         "C-08"
       ],
       "if_dead_or_betrayed": "公会由温秉文接手，但温秉文会立刻把坏账原件卖给最高出价者（触发\"全城债权公开\"事件：所有势力 −1 格，市民水钱对玩家 +3）。沉闸的第一把闸钥流入落市。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:487"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:487"
     },
     {
       "id": "npc-02",
@@ -1242,7 +1242,7 @@
         "C-09"
       ],
       "if_dead_or_betrayed": "账本副本由其徒弟交给水巡，公会 −2 格；玩家获得 C-05 与 C-07 的备用路径（抄本在落市流通）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:495"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:495"
     },
     {
       "id": "npc-03",
@@ -1262,7 +1262,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "印鉴拓样落到霍大钧手里，此后伪造文书的 DF +4；但玩家可改走\"偷空白文书\"路径（落市字湾区）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:503"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:503"
     },
     {
       "id": "npc-04",
@@ -1283,7 +1283,7 @@
         "C-18"
       ],
       "if_dead_or_betrayed": "阮阿蟹上位，蚝帮 +1 格但后续遭遇强度 +1 档；柯九斤知道的线索改由阿箩掌握（阿箩会把它卖给拾滩人）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:513"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:513"
     },
     {
       "id": "npc-05",
@@ -1304,7 +1304,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "蚝帮 −2 格（内斗），但阿箩接任二当家且对玩家 +2；商栈失去内应（商栈 −1 格）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:521"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:521"
     },
     {
       "id": "npc-06",
@@ -1323,7 +1323,7 @@
         "C-09"
       ],
       "if_dead_or_betrayed": "巷子里的年轻人自发组成\"蚝仔队\"（杂兵级增援，可由水钱召唤）；蚝帮 −1 格。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:529"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:529"
     },
     {
       "id": "npc-07",
@@ -1344,7 +1344,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "桑玉衡接手，商栈策略转为公开收购（全城汐金价格 ×3，拾滩人 +2 格）；商栈 −1 格。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:539"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:539"
     },
     {
       "id": "npc-08",
@@ -1364,7 +1364,7 @@
         "C-11"
       ],
       "if_dead_or_betrayed": "桑敬亭失去唯一的良心约束，此后每幕商栈额外 +1 格（不再犹豫）；盐工暴动提前爆发（白田盐场成为敌对区）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:547"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:547"
     },
     {
       "id": "npc-09",
@@ -1386,7 +1386,7 @@
         "C-18"
       ],
       "if_dead_or_betrayed": "夜汐会 −3 格，但潮母失去控制者——此后每次潮汐异象强度 +1 档且不可预测；章潮生接管并转为全面暴力路线。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:557"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:557"
     },
     {
       "id": "npc-10",
@@ -1405,7 +1405,7 @@
         "C-17"
       ],
       "if_dead_or_betrayed": "岑晚失去护卫（其个人遭遇强度 −1 档），但会立刻启动\"提前仪式\"（夜汐会 +1 格）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:565"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:565"
     },
     {
       "id": "npc-11",
@@ -1424,7 +1424,7 @@
         "C-13"
       ],
       "if_dead_or_betrayed": "夜汐会分裂为两派（−2 格），其中温和派可被玩家吸收为一支可用的增援（精锐×2，一次性）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:573"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:573"
     },
     {
       "id": "npc-12",
@@ -1444,7 +1444,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "霍大钧接任，水巡全面腐败化（此后可用钱直接买\"扣押权\"，但每次使用 +1 层【负担】给全队）；水巡 −1 格。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:583"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:583"
     },
     {
       "id": "npc-13",
@@ -1464,7 +1464,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "字据被其遗孀交给落市秤仙（玩家可花钱买回，价格 贵重×3）；水巡 −1 格。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:591"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:591"
     },
     {
       "id": "npc-14",
@@ -1484,7 +1484,7 @@
         "C-14"
       ],
       "if_dead_or_betrayed": "她的卷宗被水巡归档封存（玩家需潜入税关楼地下才能拿到），但她的搭档会暗中把副本交给玩家。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:599"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:599"
     },
     {
       "id": "npc-15",
@@ -1506,7 +1506,7 @@
         "C-17"
       ],
       "if_dead_or_betrayed": "曾小满接手并把闸钥交给玩家（若玩家声望 ≥ 0），但灯塔无人维护（7 日后熄灭，全城航运停摆，所有势力 −2 格）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:609"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:609"
     },
     {
       "id": "npc-16",
@@ -1527,7 +1527,7 @@
         "C-18"
       ],
       "if_dead_or_betrayed": "她的画被曾守愚拿走卖给夜汐会（夜汐会 +1 格）；曾守拙从此拒绝与玩家交谈。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:617"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:617"
     },
     {
       "id": "npc-17",
@@ -1547,7 +1547,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "抄本流向落市（可被玩家买回，价格 贵重×2）；夜汐会失去灯语（−1 格）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:625"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:625"
     },
     {
       "id": "npc-18",
@@ -1568,7 +1568,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "蚬仔继承路引但不会用（拾滩人 −2 格），路引可被玩家以 3 点水钱或武力取得；拾滩人网络解散，落滩所有路线 DF +4。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:635"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:635"
     },
     {
       "id": "npc-19",
@@ -1587,7 +1587,7 @@
         "C-14"
       ],
       "if_dead_or_betrayed": "老蚬婆把所有水钱换成对玩家的敌意（拾滩人 +2 格仇恨推进，且她会向夜汐会通风报信）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:643"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:643"
     },
     {
       "id": "npc-20",
@@ -1608,7 +1608,7 @@
         "C-16"
       ],
       "if_dead_or_betrayed": "蓝慕接任并转为与本地势力全面合作（北舷 −1 格但此后可被玩家挂靠，且带来潜水设备）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:653"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:653"
     },
     {
       "id": "npc-21",
@@ -1628,7 +1628,7 @@
         "C-16"
       ],
       "if_dead_or_betrayed": "北舷失去唯一有深海经验的人（北舷 −3 格，泊期提前）；她的潜水日志留在船上，玩家可拿（C-16 的备用路径）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:661"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:661"
     },
     {
       "id": "npc-22",
@@ -1647,7 +1647,7 @@
         "C-02"
       ],
       "if_dead_or_betrayed": "清单副本由落市秤仙拍卖（起价 贵重×2）；北舷 −1 格。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:669"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:669"
     },
     {
       "id": "npc-23",
@@ -1668,7 +1668,7 @@
         "C-18"
       ],
       "if_dead_or_betrayed": "第七舱失去唯一的封印者。潮母当夜开始自主孵化（触发\"孵化\"结局的前置条件），且所有势力 +1 格（因为闸室不再抗拒任何人进入）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:679"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:679"
     },
     {
       "id": "npc-24",
@@ -1689,7 +1689,7 @@
         "C-18"
       ],
       "if_dead_or_betrayed": "鱼栏巷全面闭嘴（全城人脉与调查判定 DF +3，持续三幕）；她的儿子会带着她的账本去找夜汐会。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:687"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:687"
     },
     {
       "id": "npc-25",
@@ -1711,7 +1711,7 @@
         "C-15"
       ],
       "if_dead_or_betrayed": "负二层关闭，全城文书与情报获取 DF +5；他的水钱账会被挂在负一层公开拍卖（任何人可买走玩家的水钱）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:695"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:695"
     },
     {
       "id": "npc-26",
@@ -1731,7 +1731,7 @@
         "C-14"
       ],
       "if_dead_or_betrayed": "船坞关闭（蚝壳帮与北舷各 −1 格，且本册\"修船／借船\"路线永久关闭）；船板被蚝帮拿走并在落市拍卖。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:703"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:703"
     },
     {
       "id": "npc-27",
@@ -1751,7 +1751,7 @@
         "C-18"
       ],
       "if_dead_or_betrayed": "全城医疗判定 DF +4（他是唯一愿意不问来源的大夫）；墨失去药物来源，健康状况恶化（可被利用）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:711"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:711"
     },
     {
       "id": "npc-28",
@@ -1771,7 +1771,7 @@
         "C-16"
       ],
       "if_dead_or_betrayed": "他攒了三十年的十七个版本被落市的人当废纸卖掉（C-03 的唯一非暴力路径消失）；玩家只能靠岑阿九本人获得口供。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:719"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:719"
     }
   ],
   "locations": [
@@ -1789,7 +1789,7 @@
       "encounters": "遭遇预算 6–10（1–3 级）。典型组合：蚝壳帮装卸工（杂兵×3）+ 帮派拳手（标准）+ 码头野狗群（杂兵×2）。",
       "resources": "港口调度单（线索）、工棚里的欠条（水钱）、栈桥底的旧排水道路线。",
       "if_botched": "若在此公开动手伤人，蚝壳帮全城停摆一天（所有需人力的搬运涨价 50%），玩家在蚝壳帮声望 −2，且当日所有拾滩路线被封锁（落滩遭遇 DF +2，因为没人愿意带路）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:183"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:183"
     },
     {
       "id": "loc-02",
@@ -1804,7 +1804,7 @@
       "encounters": "遭遇预算 4–8。典型组合：醉酒船工（杂兵×2）+ 街区大嫂们的集体围攻（情绪型，非战斗，需用交涉化解）。",
       "resources": "岑阿九手札（关键线索）、岑阿九的汇款存根（指向白盐商栈）、街坊的水钱。",
       "if_botched": "若在巷里引来水巡并发生交火，居民会集体闭嘴（此后在鱼栏巷的一切人脉与调查判定 DF +4，持续两幕），且陈三娘会在面里下药（一次）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:197"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:197"
     },
     {
       "id": "loc-03",
@@ -1820,7 +1820,7 @@
       "encounters": "遭遇预算 8–14。典型组合：牙人的保镖（标准×2）+ 扒手群（杂兵×4，掠夺型）+ 夜汐会暗桩（精锐，仅当玩家持汐金时出现）。",
       "resources": "任何情报（明码标价）、伪造文书、汐金收货清单副本、**水钱转让服务**（秤仙的独门生意）。",
       "if_botched": "若在落市动刀，秤仙会永久关闭负二层（所有文书与情报获取 DF +5），并把玩家的债务挂牌出售（见第 5 节水钱转让）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:210"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:210"
     },
     {
       "id": "loc-04",
@@ -1836,7 +1836,7 @@
       "encounters": "遭遇预算 10–16。典型组合：公会守卫（标准×3）+ 账房护院（精锐）+ 巡逻水巡（标准×2）。",
       "resources": "潮汐债存根（核心线索：汐金是抵押物）、贺承宗的测潮隐瞒记录（弱点）、港务公会内部排班表。",
       "if_botched": "若被抓现行且未能在 24 小时内摆平，玩家被列入\"不予接待\"名单（港务公会声望 −3，盐仓区与税关楼永久关闭），同时温秉文会把账本转移（后续线索引向更难的路径）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:223"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:223"
     },
     {
       "id": "loc-05",
@@ -1851,7 +1851,7 @@
       "encounters": "遭遇预算 8–14。典型组合：船坞匠（标准×2）+ 看场子的蚝帮拳手（标准×2）+ 打捞行护卫（精锐）。",
       "resources": "长庚号船板（开局钩子）、船坞排期表（可推断谁在什么时候要船）、潜水设备（租借）。",
       "if_botched": "若烧掉或破坏船坞，蚝壳帮与北舷同时敌视（各 −2），且本册中\"修船/借船\"路线永久关闭（只能走陆路与落滩路线）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:236"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:236"
     },
     {
       "id": "loc-06",
@@ -1866,7 +1866,7 @@
       "encounters": "遭遇预算 6–12。典型组合：盐场监工（标准）+ 盐工暴动（情绪型集体检定）+ 卤水池里的卤虫群（杂兵×4）。",
       "resources": "旧金砂（汐金样本）、商栈的现金流情报（弱点）、盐工的支持（水钱）。",
       "if_botched": "若污染或破坏结晶池，白盐商栈当季损失惨重（声望 −3），且全城盐价上涨（此后所有\"以盐为抵押\"的交易成本翻倍）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:249"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:249"
     },
     {
       "id": "loc-07",
@@ -1883,7 +1883,7 @@
       "encounters": "遭遇预算 10–18。典型组合：拾滩人竞争者（杂兵×4）+ 泥下的蚝壳潜行者（标准×2）+ 潮沟涨水（场地要素，DF 14 撤离）。",
       "resources": "汐金样本、老蚝架上的刻名（指向曾家与岑家）、落滩路引、泥下渔村的淡水井（一个安全的临时营地）。",
       "if_botched": "若在此处开枪或大规模破坏，泥层塌陷（该段潮沟永久改道，此后进入桩林区的路径 DF +3），且拾滩人会把玩家的路线卖给最高出价者（对手竞速 +1 格）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:262"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:262"
     },
     {
       "id": "loc-08",
@@ -1899,7 +1899,7 @@
       "encounters": "遭遇预算 14–22。典型组合：夜汐会潮卫（精锐×2）+ 汐巢孵化体（杂兵×4）+ 潮汐异象\"回涨\"（场地要素）。",
       "resources": "汐巢样本（真相线索）、夜汐会的仪式时刻表（弱点）、通往沉闸的水下路标（需水下作业判定）。",
       "if_botched": "若摧毁汐巢，潮母提前被惊动（潮汐异象遭遇强度提升一档，且此后每次退潮窗口缩短半个时段——全城竞速被迫加速）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:276"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:276"
     },
     {
       "id": "loc-09",
@@ -1915,7 +1915,7 @@
       "encounters": "遭遇预算 6–12（塔内一般不战斗，除非夜汐会来袭）。典型组合：夜汐会登岛队（精锐×2 + 杂兵×4）+ 礁蟹群（杂兵×3）。",
       "resources": "潮沟偏移图（推算沉船位置）、异象记录、灯屿守的支持（本册最可靠的\"不挖\"路线）、**灯语**（可用来全城广播假消息）。",
       "if_botched": "若灯塔被熄灭或损坏，全城航运当日停摆（所有势力竞速 −1 格，但玩家在所有势力声望各 −1），且当夜潮汐异象遭遇强度 +1 档。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:289"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:289"
     },
     {
       "id": "loc-10",
@@ -1930,7 +1930,7 @@
       "encounters": "遭遇预算 8–14。典型组合：拆船工（杂兵×5）+ 场主保镖（标准×2）+ 船体里的寄居者（精锐，隐伏）。",
       "resources": "长庚号的构造知识、廉价潜水与打捞设备、拾滩人的人力（水钱）、废弃钢板的临时掩体。",
       "if_botched": "若在拆船坑引发大火或坍塌，拾滩人死伤（老蚬婆敌对，声望 −3，落滩所有路线断供），且拆船坑变成一个不可通行的障碍区。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:302"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:302"
     },
     {
       "id": "loc-11",
@@ -1946,7 +1946,7 @@
       "encounters": "遭遇预算 14–24。典型组合：公会护卫（标准×4）+ 水巡小队（精锐×2）+ 会首贴身保镖（精锐，护主）。",
       "resources": "坏账处置原件（贺承宗的把柄）、潮汛表原稿（可篡改，让所有对手的排期错一格）、担保物清单（汐金真相的第二层）。",
       "if_botched": "若在此被捕，玩家会被关进水巡拘留所（一次\"越狱\"支线，成功则全城声望 −1，失败则战役进入\"从牢里开始抢\"的困难分支），且贺承宗会立刻销毁坏账原件。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:315"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:315"
     },
     {
       "id": "loc-12",
@@ -1963,7 +1963,7 @@
       "encounters": "遭遇预算 24–40（终局）。典型组合：各方势力的先头队（精锐×2）+ 潮母眷属（精锐×2）+ 潮汐异象\"回涨\"（场地要素，每回合推进）+ 岑阿九（首领级，非必战）。",
       "resources": "**第七舱的内容**（本册真相）、岑阿九的三十年册子、汐金本体。",
       "if_botched": "若在闸室内破坏控制轮而未撤离，闸室回涨（全体承受 3d10 钝击 + 束缚，且汐金被冲散——**触发\"谁都没拿到\"结局**）。",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:328"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:328"
     }
   ],
   "endings": [
@@ -1974,7 +1974,7 @@
       "requirements": "`chest_opened` 且 `zhao_brought_up`",
       "result": "第七舱的人被带上岸；潮母失去\"归位\"的目标；全城潮位微微一变",
       "cost": "带上来的人已经不是三十年前的人；灯屿守认为你毁了三十年的封印",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3288"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3288"
     },
     {
       "id": "ending-b",
@@ -1983,7 +1983,7 @@
       "requirements": "`ritual_completed`",
       "result": "潮母孵化。澜口湾的潮差、地貌、人类位置被重新安排",
       "cost": "部分城区永久淹没；夜汐会的预言\"实现\"了，但方式与他们想的不同",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3289"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3289"
     },
     {
       "id": "ending-c",
@@ -1992,7 +1992,7 @@
       "requirements": "`tidegold_out` 且 `sold_to == none`",
       "result": "玩家带走汐金，兑现了潮汐债或据为己有；商栈／公会出局",
       "cost": "玩家必有一位角色获得永久【执念】特质；这座城会记得他们的名字——以不好的方式",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3290"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3290"
     },
     {
       "id": "ending-d",
@@ -2001,7 +2001,7 @@
       "requirements": "`seal_reinforced`",
       "result": "三把闸钥沉入最深的水沟；沉闸被永久封死；潮母无法再被唤起",
       "cost": "玩家放弃了那笔钱；曾守拙此后不再点\"警戒灯\"，因为不再需要",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3291"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3291"
     },
     {
       "id": "ending-e",
@@ -2010,7 +2010,7 @@
       "requirements": "竞速由对手先完成",
       "result": "城按胜者的方式改变（默认：商栈接管收租权）",
       "cost": "玩家的水钱被清空；他们成了\"曾经来过的人\"",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3292"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3292"
     },
     {
       "id": "ending-f",
@@ -2019,11 +2019,11 @@
       "requirements": "`tidegold_out` 且 `sold_to != none`（债券／商栈／北舷）",
       "result": "玩家把汐金交给指定一方；该方按其真实目标改造这座城（商栈吞收租权／公会清账／北舷拿走三十年航线优先权）",
       "cost": "玩家拿到兑现的酬劳与一个新身份，但从此被另一家在名单上记着；被交付方内部也因这笔财富开始新一轮倾轧",
-      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3293"
+      "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3293"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S3-潮金港-都市夺宝.md:2593",
+    "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2593",
     "declared_flag_count": 33,
     "actual_flag_count": 33,
     "flag": [
@@ -2035,7 +2035,7 @@
         "readers": "全部状态机",
         "effect": "决定遭遇强度与对手推进（**跨册通用**，见 `S0` §7.2）",
         "universal": true,
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2597"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2597"
       },
       {
         "id": "flag.t0_board",
@@ -2044,7 +2044,7 @@
         "write": "拾到长庚号船板",
         "readers": "T1 状态机",
         "effect": "开启主线",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2598"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2598"
       },
       {
         "id": "flag.t0_done",
@@ -2053,7 +2053,7 @@
         "write": "T0 结算",
         "readers": "T1 状态机",
         "effect": "教学节点完成",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2599"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2599"
       },
       {
         "id": "flag.lu_paid",
@@ -2062,7 +2062,7 @@
         "write": "偿还卢铁牛的赊账",
         "readers": "T0 状态机、水钱账",
         "effect": "影响船坞可用性",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2600"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2600"
       },
       {
         "id": "flag.keys",
@@ -2071,7 +2071,7 @@
         "write": "每取得一把闸钥 +1",
         "readers": "T6/T8",
         "effect": "沉闸开启条件",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2601"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2601"
       },
       {
         "id": "flag.rival_keys",
@@ -2080,7 +2080,7 @@
         "write": "对手先取得闸钥",
         "readers": "T6/T8",
         "effect": "失败倒计时",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2602"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2602"
       },
       {
         "id": "flag.location_known",
@@ -2089,7 +2089,7 @@
         "write": "取得潮沟偏移图 + 旧海图",
         "readers": "T8",
         "effect": "定位沉闸",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2603"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2603"
       },
       {
         "id": "flag.c08_public",
@@ -2098,7 +2098,7 @@
         "write": "公开 O95 假测潮记录",
         "readers": "T1、公会弱点",
         "effect": "公会 −1 格，全势力 −1",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2604"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2604"
       },
       {
         "id": "flag.wen_bribed",
@@ -2107,7 +2107,7 @@
         "write": "贿赂温秉文",
         "readers": "T1",
         "effect": "判定干净／脏",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2605"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2605"
       },
       {
         "id": "flag.wen_dead",
@@ -2116,7 +2116,7 @@
         "write": "温秉文被杀",
         "readers": "T1、线索主表",
         "effect": "关闭主途径，触发敌对者",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2606"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2606"
       },
       {
         "id": "flag.c09_kept",
@@ -2125,7 +2125,7 @@
         "write": "保留合股簿并交还柯九斤",
         "readers": "T2",
         "effect": "结盟线",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2607"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2607"
       },
       {
         "id": "flag.c09_given_r",
@@ -2134,7 +2134,7 @@
         "write": "合股簿交给阮阿蟹",
         "readers": "T2",
         "effect": "内斗线",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2608"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2608"
       },
       {
         "id": "flag.ke_jl_alive",
@@ -2143,7 +2143,7 @@
         "write": "柯九斤被杀时置 false",
         "readers": "T2/T9",
         "effect": "蚝帮后续走向",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2609"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2609"
       },
       {
         "id": "flag.c11_found",
@@ -2152,7 +2152,7 @@
         "write": "查商栈现金流缺口",
         "readers": "T3",
         "effect": "开启挤兑",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2610"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2610"
       },
       {
         "id": "flag.phony_drafts",
@@ -2161,7 +2161,7 @@
         "write": "伪造汇票成功",
         "readers": "T3",
         "effect": "挤兑的脏手段入口",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2611"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2611"
       },
       {
         "id": "flag.c12_schedule",
@@ -2170,7 +2170,7 @@
         "write": "取得夜汐会仪式时刻表",
         "readers": "T4",
         "effect": "夜汐会弱点",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2612"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2612"
       },
       {
         "id": "flag.cen_late_allied",
@@ -2179,7 +2179,7 @@
         "write": "岑晚倒戈",
         "readers": "T4",
         "effect": "夜汐会 −3 格",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2613"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2613"
       },
       {
         "id": "flag.c15_known",
@@ -2188,7 +2188,7 @@
         "write": "查到三把闸钥下落",
         "readers": "T6",
         "effect": "开启 T6",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2614"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2614"
       },
       {
         "id": "flag.forged_writ",
@@ -2197,7 +2197,7 @@
         "write": "伪造巡正令",
         "readers": "T5",
         "effect": "通缉风险",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2615"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2615"
       },
       {
         "id": "flag.g11_hetrade",
@@ -2206,7 +2206,7 @@
         "write": "掌握霍大钧受贿证据",
         "readers": "T5",
         "effect": "水巡 −2 格",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2616"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2616"
       },
       {
         "id": "flag.lamp_told",
@@ -2215,7 +2215,7 @@
         "write": "曾守拙交底",
         "readers": "T7",
         "effect": "取得灯语本与旧图",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2617"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2617"
       },
       {
         "id": "flag.lamp_threat",
@@ -2224,7 +2224,7 @@
         "write": "威胁熄灯",
         "readers": "T7、全城",
         "effect": "全势力 −1，玩家声望 −1",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2618"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2618"
       },
       {
         "id": "flag.lamp_out",
@@ -2233,7 +2233,7 @@
         "write": "灯塔被弄熄",
         "readers": "航运",
         "effect": "全城停摆一日",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2619"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2619"
       },
       {
         "id": "flag.chest_opened",
@@ -2242,7 +2242,7 @@
         "write": "第六舱开启",
         "readers": "T8 结局",
         "effect": "A/C 结局",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2620"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2620"
       },
       {
         "id": "flag.zhao_brought_up",
@@ -2251,7 +2251,7 @@
         "write": "把第 7 舱的人带上水面",
         "readers": "T8",
         "effect": "影响 A 结局质量",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2621"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2621"
       },
       {
         "id": "flag.ritual_completed",
@@ -2260,7 +2260,7 @@
         "write": "潮母孵化仪式完成",
         "readers": "T8",
         "effect": "B 结局",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2622"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2622"
       },
       {
         "id": "flag.tidegold_out",
@@ -2269,7 +2269,7 @@
         "write": "汐金离开落滩",
         "readers": "T8",
         "effect": "独吞判定",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2623"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2623"
       },
       {
         "id": "flag.sold_to",
@@ -2278,7 +2278,7 @@
         "write": "汐金兑现对象",
         "readers": "T8",
         "effect": "债券／商栈／北舷／none",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2624"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2624"
       },
       {
         "id": "flag.seal_reinforced",
@@ -2287,7 +2287,7 @@
         "write": "与灯屿守封死沉闸",
         "readers": "T8",
         "effect": "D 结局",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2625"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2625"
       },
       {
         "id": "flag.water_debt_settled",
@@ -2296,7 +2296,7 @@
         "write": "结清主要水钱",
         "readers": "T9",
         "effect": "收束质量",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2626"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2626"
       },
       {
         "id": "flag.city_harmed",
@@ -2305,7 +2305,7 @@
         "write": "造成全城性灾害",
         "readers": "T9",
         "effect": "烧城结局",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2627"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2627"
       },
       {
         "id": "flag.faction_hooked",
@@ -2314,7 +2314,7 @@
         "write": "玩家选择挂靠",
         "readers": "潮信轨",
         "effect": "决定共享轨格对象",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2634"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2634"
       },
       {
         "id": "flag.defect_count",
@@ -2323,7 +2323,7 @@
         "write": "每次换边 +1",
         "readers": "全城信任",
         "effect": "≥2 后水钱效率减半",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2635"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2635"
       },
       {
         "id": "water_debt",
@@ -2333,7 +2333,7 @@
         "readers": "全城办事效率",
         "effect": "见第 5.2 节",
         "note": "文档原始变量无 flag./rep./clock. 前缀（S3 §10.3 表内原样），违反 S0 §7.2 命名总则；数据如实保留",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2626"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2626"
       }
     ],
     "rep": [
@@ -2344,7 +2344,7 @@
         "write": "公开行为、任务结算",
         "readers": "通行证、物价、轨格买卖",
         "effect": "见各势力态度轴",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2628"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2628"
       }
     ],
     "clock": [
@@ -2355,7 +2355,7 @@
         "write": "每次退潮 −1，涨潮重置",
         "readers": "落滩行动",
         "effect": "落滩可用时长",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2629"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2629"
       },
       {
         "id": "clock.ritual",
@@ -2364,7 +2364,7 @@
         "write": "满汐日每时段 −1",
         "readers": "T4",
         "effect": "仪式完成倒计时",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2630"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2630"
       },
       {
         "id": "clock.pass",
@@ -2373,7 +2373,7 @@
         "write": "每幕 −1",
         "readers": "北舷出局判定",
         "effect": "北舷 5 格门槛",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2631"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2631"
       },
       {
         "id": "clock.house_cash",
@@ -2382,7 +2382,7 @@
         "write": "商栈每幕修正",
         "readers": "T3",
         "effect": "挤兑窗口",
-        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2632"
+        "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:2632"
       }
     ]
   },
@@ -2483,6 +2483,6 @@
     "party": [],
     "facts": [],
     "hooks": [],
-    "source": "docs/scenario/S3-潮金港-都市夺宝.md:3301"
+    "source": "docs/scenario/s3-tidegold-harbor-urban-treasure-hunt.md:3301"
   }
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.economy",
-  "source": "docs/system/03-互动层.md:322",
+  "source": "docs/system/03-interaction-layer.md:322",
   "note": "经济与物价：三层货币 + 稀有度的抽象模型，既能表达贫富差距，又不会让桌面陷入算术。",
   "declared": {
     "currency_tiers": 3,
@@ -12,63 +12,63 @@
     "income_sources": 4
   },
   "currency_tiers": [
-    {"id": "silver", "name": "碎银", "tier": 1, "relative_value": 1, "examples": "一顿饭、一趟地铁、一次性消耗品", "source": "docs/system/03-互动层.md:330"},
-    {"id": "standard", "name": "标准", "tier": 2, "relative_value": 10, "examples": "一件普通武器、一周的住宿、一次小额贿赂", "source": "docs/system/03-互动层.md:331"},
-    {"id": "precious", "name": "贵重", "tier": 3, "relative_value": 100, "examples": "专业设备、稀有材料、一个月的安全屋租金", "source": "docs/system/03-互动层.md:332"}
+    {"id": "silver", "name": "碎银", "tier": 1, "relative_value": 1, "examples": "一顿饭、一趟地铁、一次性消耗品", "source": "docs/system/03-interaction-layer.md:330"},
+    {"id": "standard", "name": "标准", "tier": 2, "relative_value": 10, "examples": "一件普通武器、一周的住宿、一次小额贿赂", "source": "docs/system/03-interaction-layer.md:331"},
+    {"id": "precious", "name": "贵重", "tier": 3, "relative_value": 100, "examples": "专业设备、稀有材料、一个月的安全屋租金", "source": "docs/system/03-interaction-layer.md:332"}
   ],
   "wealth_levels": {
     "levels": ["赤贫", "拮据", "普通", "宽裕", "富有"],
     "rule": "角色卡的「持有资金」用一个等级表示；每次大额消费后可能降级，以避免精确记账。",
-    "source": "docs/system/03-互动层.md:334"
+    "source": "docs/system/03-interaction-layer.md:334"
   },
   "price_reference": {
-    "source": "docs/system/03-互动层.md:340",
+    "source": "docs/system/03-interaction-layer.md:340",
     "note": "【可替换】各世界模组提供自己的物价清单；以下是通用底稿。",
-    "note_source": "docs/system/03-互动层.md:338",
+    "note_source": "docs/system/03-interaction-layer.md:338",
     "rows": [
-      {"id": "meal", "item": "一顿饭、一瓶药剂、普通衣物", "tier": "碎银", "source": "docs/system/03-互动层.md:342"},
-      {"id": "weapon", "item": "常规近战武器、通讯器、标准护甲", "tier": "标准", "source": "docs/system/03-互动层.md:343"},
-      {"id": "ammo_lodging", "item": "弹药一箱（20 单位）、一晚的安全住宿", "tier": "标准", "source": "docs/system/03-互动层.md:344"},
-      {"id": "fine_gear", "item": "精良武器、专业工具套装、稀有材料一份", "tier": "贵重", "source": "docs/system/03-互动层.md:345"},
-      {"id": "masterwork", "item": "杰作品、改造义体模块、共鸣增幅器", "tier": "贵重 ×2–5", "source": "docs/system/03-互动层.md:346"},
-      {"id": "safehouse", "item": "一栋小型安全屋", "tier": "贵重 ×10", "source": "docs/system/03-互动层.md:347"},
-      {"id": "vehicle", "item": "一辆载具", "tier": "贵重 ×3", "source": "docs/system/03-互动层.md:348"}
+      {"id": "meal", "item": "一顿饭、一瓶药剂、普通衣物", "tier": "碎银", "source": "docs/system/03-interaction-layer.md:342"},
+      {"id": "weapon", "item": "常规近战武器、通讯器、标准护甲", "tier": "标准", "source": "docs/system/03-interaction-layer.md:343"},
+      {"id": "ammo_lodging", "item": "弹药一箱（20 单位）、一晚的安全住宿", "tier": "标准", "source": "docs/system/03-interaction-layer.md:344"},
+      {"id": "fine_gear", "item": "精良武器、专业工具套装、稀有材料一份", "tier": "贵重", "source": "docs/system/03-interaction-layer.md:345"},
+      {"id": "masterwork", "item": "杰作品、改造义体模块、共鸣增幅器", "tier": "贵重 ×2–5", "source": "docs/system/03-interaction-layer.md:346"},
+      {"id": "safehouse", "item": "一栋小型安全屋", "tier": "贵重 ×10", "source": "docs/system/03-interaction-layer.md:347"},
+      {"id": "vehicle", "item": "一辆载具", "tier": "贵重 ×3", "source": "docs/system/03-interaction-layer.md:348"}
     ]
   },
   "haggle": {
-    "source": "docs/system/03-互动层.md:352",
+    "source": "docs/system/03-interaction-layer.md:352",
     "check": "说服／人脉",
     "df": 12,
     "outcomes": [
-      {"id": "triumph", "outcome": "凯旋", "effect": "对方给 −30%，并且附赠一件小东西", "source": "docs/system/03-互动层.md:356"},
-      {"id": "success", "outcome": "成功", "effect": "−15%", "source": "docs/system/03-互动层.md:357"},
-      {"id": "narrow", "outcome": "险成", "effect": "−10%，但你欠对方一个人情", "source": "docs/system/03-互动层.md:358"},
-      {"id": "setback", "outcome": "挫败", "effect": "原价，且对方印象转差", "source": "docs/system/03-互动层.md:359"},
-      {"id": "disaster", "outcome": "灾难", "effect": "+20%，且对方可能记住你并向第三方透露", "source": "docs/system/03-互动层.md:360"}
+      {"id": "triumph", "outcome": "凯旋", "effect": "对方给 −30%，并且附赠一件小东西", "source": "docs/system/03-interaction-layer.md:356"},
+      {"id": "success", "outcome": "成功", "effect": "−15%", "source": "docs/system/03-interaction-layer.md:357"},
+      {"id": "narrow", "outcome": "险成", "effect": "−10%，但你欠对方一个人情", "source": "docs/system/03-interaction-layer.md:358"},
+      {"id": "setback", "outcome": "挫败", "effect": "原价，且对方印象转差", "source": "docs/system/03-interaction-layer.md:359"},
+      {"id": "disaster", "outcome": "灾难", "effect": "+20%，且对方可能记住你并向第三方透露", "source": "docs/system/03-interaction-layer.md:360"}
     ],
     "restriction": "只有在独立商人、黑市、个人对手处可以讨价还价；连锁店、机构与自动贩卖系统不支持判定。",
-    "restriction_source": "docs/system/03-互动层.md:362"
+    "restriction_source": "docs/system/03-interaction-layer.md:362"
   },
   "rarities": [
-    {"id": "common", "name": "常见", "acquisition": "任何地方，随买随有", "source": "docs/system/03-互动层.md:370"},
-    {"id": "ordinary", "name": "普通", "acquisition": "需要找对商店，偶尔缺货", "source": "docs/system/03-互动层.md:371"},
-    {"id": "uncommon", "name": "少见", "acquisition": "需要人脉判定（DF 14）或特定区域", "source": "docs/system/03-互动层.md:372"},
-    {"id": "rare", "name": "稀有", "acquisition": "需要人脉 DF 17 + 一个引荐，或完成一项委托", "source": "docs/system/03-互动层.md:373"},
-    {"id": "unique", "name": "唯一", "acquisition": "必须是某个任务的奖励，或某个特定人物的持有物", "source": "docs/system/03-互动层.md:374"}
+    {"id": "common", "name": "常见", "acquisition": "任何地方，随买随有", "source": "docs/system/03-interaction-layer.md:370"},
+    {"id": "ordinary", "name": "普通", "acquisition": "需要找对商店，偶尔缺货", "source": "docs/system/03-interaction-layer.md:371"},
+    {"id": "uncommon", "name": "少见", "acquisition": "需要人脉判定（DF 14）或特定区域", "source": "docs/system/03-interaction-layer.md:372"},
+    {"id": "rare", "name": "稀有", "acquisition": "需要人脉 DF 17 + 一个引荐，或完成一项委托", "source": "docs/system/03-interaction-layer.md:373"},
+    {"id": "unique", "name": "唯一", "acquisition": "必须是某个任务的奖励，或某个特定人物的持有物", "source": "docs/system/03-interaction-layer.md:374"}
   ],
   "debt": {
-    "source": "docs/system/03-互动层.md:378",
+    "source": "docs/system/03-interaction-layer.md:378",
     "rules": [
-      {"order": 1, "rule": "借债可以立刻获得资金，但每经过一个章节，债务增加未偿还额的 20%；", "source": "docs/system/03-互动层.md:380"},
-      {"order": 2, "rule": "债主会在剧情中自然出现——他们是最好的「免费反派」；", "source": "docs/system/03-互动层.md:381"},
-      {"order": 3, "rule": "未偿还债务导致该债主对你的敬畏 +1、好感 −1（每次催收）；", "source": "docs/system/03-互动层.md:382"},
-      {"order": 4, "rule": "偿还债务应当成为一次叙事事件，而不是转账。", "source": "docs/system/03-互动层.md:383"}
+      {"order": 1, "rule": "借债可以立刻获得资金，但每经过一个章节，债务增加未偿还额的 20%；", "source": "docs/system/03-interaction-layer.md:380"},
+      {"order": 2, "rule": "债主会在剧情中自然出现——他们是最好的「免费反派」；", "source": "docs/system/03-interaction-layer.md:381"},
+      {"order": 3, "rule": "未偿还债务导致该债主对你的敬畏 +1、好感 −1（每次催收）；", "source": "docs/system/03-interaction-layer.md:382"},
+      {"order": 4, "rule": "偿还债务应当成为一次叙事事件，而不是转账。", "source": "docs/system/03-interaction-layer.md:383"}
     ]
   },
   "income_sources": [
-    {"id": "commission", "name": "完成委托的酬劳", "income": "视任务而定，通常碎银 ×d6 到标准 ×d6", "source": "docs/system/03-互动层.md:391"},
-    {"id": "loot", "name": "出售战利品（敌人装备、材料）", "income": "按稀有度定价", "source": "docs/system/03-互动层.md:392"},
-    {"id": "side_job", "name": "间幕副业", "income": "每次间幕掷一次，结果受相关技能影响", "source": "docs/system/03-互动层.md:393"},
-    {"id": "stronghold", "name": "据点经营收益", "income": "见第 7 节", "source": "docs/system/03-互动层.md:394"}
+    {"id": "commission", "name": "完成委托的酬劳", "income": "视任务而定，通常碎银 ×d6 到标准 ×d6", "source": "docs/system/03-interaction-layer.md:391"},
+    {"id": "loot", "name": "出售战利品（敌人装备、材料）", "income": "按稀有度定价", "source": "docs/system/03-interaction-layer.md:392"},
+    {"id": "side_job", "name": "间幕副业", "income": "每次间幕掷一次，结果受相关技能影响", "source": "docs/system/03-interaction-layer.md:393"},
+    {"id": "stronghold", "name": "据点经营收益", "income": "见第 7 节", "source": "docs/system/03-interaction-layer.md:394"}
   ]
 }

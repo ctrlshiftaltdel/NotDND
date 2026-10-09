@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.tracking）",
-  "description": "互动层第一节：追踪 DF 表（5 级新鲜度）与成功/失败后果。源自 docs/system/03-互动层.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "互动层第一节：追踪 DF 表（5 级新鲜度）与成功/失败后果。源自 docs/system/03-interaction-layer.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "levels", "consequences"],
   "properties": {

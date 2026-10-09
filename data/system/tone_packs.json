@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.tone_packs",
-  "source": "docs/system/04-导引者操作系统.md:863",
+  "source": "docs/system/04-conductor-os.md:863",
   "note": "八种语气包（描写偏好 / 对话风格 / 事件倾向 / 禁忌）、使用方法与切换时机。",
   "declared": {
     "packs": 8,
@@ -9,40 +9,40 @@
   },
   "usage": {
     "rule": "在会话开始时选定一个，并在整个战役中保持一致（切换需要明确理由，例如世界发生了重大变化）。",
-    "source": "docs/system/04-导引者操作系统.md:867"
+    "source": "docs/system/04-conductor-os.md:867"
   },
   "packs": [
     {"id": "noir", "name": "冷硬", "en": "Noir", "prose": "雨、光与影、疲惫、城市的无机感",
      "dialogue": "短句、双关、损人", "events": "背叛、道德灰色、体制性腐败",
-     "taboo": "童话式圆满、夸张英雄主义", "source": "docs/system/04-导引者操作系统.md:871"},
+     "taboo": "童话式圆满、夸张英雄主义", "source": "docs/system/04-conductor-os.md:871"},
     {"id": "black_comedy", "name": "黑色幽默", "en": "Black Comedy", "prose": "荒诞的细节、不协调的并置",
      "dialogue": "反讽、吐槽、错位的礼貌", "events": "荒唐的意外、官僚的愚蠢",
-     "taboo": "严肃煽情、长期压抑", "source": "docs/system/04-导引者操作系统.md:872"},
+     "taboo": "严肃煽情、长期压抑", "source": "docs/system/04-conductor-os.md:872"},
     {"id": "lyrical", "name": "抒情", "en": "Lyrical", "prose": "自然、光、时间的流逝",
      "dialogue": "含蓄、停顿多、话留半句", "events": "人与人的靠近、失去与纪念",
-     "taboo": "快速剪辑、过度解释", "source": "docs/system/04-导引者操作系统.md:873"},
+     "taboo": "快速剪辑、过度解释", "source": "docs/system/04-conductor-os.md:873"},
     {"id": "tragic", "name": "悲剧英雄", "en": "Tragic", "prose": "宏大的意象、血与金属的质感",
      "dialogue": "庄严、誓言、独白", "events": "必然的选择、不可逆的牺牲",
-     "taboo": "廉价的反转、机械降神", "source": "docs/system/04-导引者操作系统.md:874"},
+     "taboo": "廉价的反转、机械降神", "source": "docs/system/04-conductor-os.md:874"},
     {"id": "weird_daily", "name": "怪诞日常", "en": "Weird日常", "prose": "日常物件的不正常细节",
      "dialogue": "过度正常、礼貌得可怕", "events": "熟悉事物的错位、温和的恐怖",
-     "taboo": "直接说明发生了什么", "source": "docs/system/04-导引者操作系统.md:875"},
+     "taboo": "直接说明发生了什么", "source": "docs/system/04-conductor-os.md:875"},
     {"id": "thriller", "name": "高压惊悚", "en": "Thriller", "prose": "身体感受、声音、距离、时间感",
      "dialogue": "极少、急促、喘息式", "events": "追猎、资源枯竭、无处可逃",
-     "taboo": "幽默调剂（在顶点处）、长描写", "source": "docs/system/04-导引者操作系统.md:876"},
+     "taboo": "幽默调剂（在顶点处）、长描写", "source": "docs/system/04-conductor-os.md:876"},
     {"id": "satire", "name": "荒诞讽刺", "en": "Satire", "prose": "官僚语言、官僚物件、形式主义",
      "dialogue": "公文腔、套话、客套", "events": "体制的荒唐、程序正义的失效",
-     "taboo": "真诚的情感宣泄（可偶尔破例）", "source": "docs/system/04-导引者操作系统.md:877"},
+     "taboo": "真诚的情感宣泄（可偶尔破例）", "source": "docs/system/04-conductor-os.md:877"},
     {"id": "ensemble", "name": "群像温情", "en": "Ensemble", "prose": "众人共处一室的小动作",
      "dialogue": "打断、重叠、日常闲话", "events": "关系的积累、共同生活的质感",
-     "taboo": "孤胆英雄叙事", "source": "docs/system/04-导引者操作系统.md:878"}
+     "taboo": "孤胆英雄叙事", "source": "docs/system/04-conductor-os.md:878"}
   ],
   "switching": [
     {"order": 1, "situation": "一个重大转折之后（例如：从惊悚转向抒情）",
-     "source": "docs/system/04-导引者操作系统.md:884"},
+     "source": "docs/system/04-conductor-os.md:884"},
     {"order": 2, "situation": "世界发生了不可逆的改变时",
-     "source": "docs/system/04-导引者操作系统.md:885"},
+     "source": "docs/system/04-conductor-os.md:885"},
     {"order": 3, "situation": "玩家明确表示想要不同的味道时",
-     "source": "docs/system/04-导引者操作系统.md:886"}
+     "source": "docs/system/04-conductor-os.md:886"}
   ]
 }

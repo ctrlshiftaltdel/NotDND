@@ -1,58 +1,58 @@
 {
   "schema_version": 1,
   "kind": "world.module",
-  "source": "docs/scenario/05-世界模组I-阈界都市.md:3",
+  "source": "docs/scenario/05-world-module-i-threshold.md:3",
   "world": {
     "key": "threshold",
     "name": "阈界都市",
     "engine": "tactics",
-    "source": "docs/scenario/05-世界模组I-阈界都市.md:3"
+    "source": "docs/scenario/05-world-module-i-threshold.md:3"
   },
   "glossary": [
     {
       "term": "阈界",
       "meaning": "现实之下的夹层，有意图，行为不可预测",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:58"
+      "source": "docs/scenario/05-world-module-i-threshold.md:58"
     },
     {
       "term": "阈质",
       "meaning": "渗过来的物质／性质",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:59"
+      "source": "docs/scenario/05-world-module-i-threshold.md:59"
     },
     {
       "term": "渗溢",
       "meaning": "阈界向这边的一次明显渗透",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:60"
+      "source": "docs/scenario/05-world-module-i-threshold.md:60"
     },
     {
       "term": "共鸣者",
       "meaning": "约 3% 的人，能感知并运用阈质",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:61"
+      "source": "docs/scenario/05-world-module-i-threshold.md:61"
     },
     {
       "term": "阈丝度",
       "meaning": "个体累积的阈质污染程度（见第 5 节）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:62"
+      "source": "docs/scenario/05-world-module-i-threshold.md:62"
     },
     {
       "term": "回声",
       "meaning": "某个地方残留的过去事件的\"重放\"",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:63"
+      "source": "docs/scenario/05-world-module-i-threshold.md:63"
     },
     {
       "term": "薄处",
       "meaning": "现实特别薄、容易渗溢的地点",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:64"
+      "source": "docs/scenario/05-world-module-i-threshold.md:64"
     },
     {
       "term": "敷面",
       "meaning": "官方对异常现象的统称，也指掩盖事件的整套流程",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:65"
+      "source": "docs/scenario/05-world-module-i-threshold.md:65"
     },
     {
       "term": "办公厅",
       "meaning": "市政特别事务办公厅，官方主管机构",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:66"
+      "source": "docs/scenario/05-world-module-i-threshold.md:66"
     }
   ],
   "history": [
@@ -61,77 +61,77 @@
       "year": "1971",
       "name": "第一次渗溢（\"长夏\"）",
       "detail": "江州市西区连续四十天出现无法解释的光与低频声。官方记录为\"地下电缆故障引发的光学现象\"。此后该区居民中第一批\"敏感体质\"被识别出来。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:74"
+      "source": "docs/scenario/05-world-module-i-threshold.md:74"
     },
     {
       "id": "hist-1978",
       "year": "1978",
       "name": "市政设立特别勘察组",
       "detail": "市政设立特别勘察组，即办公厅前身。编制 12 人，经费来自一笔没有名目的款项。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:75"
+      "source": "docs/scenario/05-world-module-i-threshold.md:75"
     },
     {
       "id": "hist-1984",
       "year": "1984",
       "name": "第三隧道事件",
       "detail": "地铁三号线施工队在地下挖到一段不属于任何图纸的隧道。施工人员 9 人进入，3 人返回。返回的 3 人中，2 人在两年内自杀。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:76"
+      "source": "docs/scenario/05-world-module-i-threshold.md:76"
     },
     {
       "id": "hist-1991",
       "year": "1991",
       "name": "第一台抑噪器研制成功",
       "detail": "第一台抑噪器研制成功。原理至今不明，但其核心部件来自第三隧道。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:77"
+      "source": "docs/scenario/05-world-module-i-threshold.md:77"
     },
     {
       "id": "hist-1996",
       "year": "1996",
       "name": "白鹭洲夜雨",
       "detail": "一场持续九天的雨落在白鹭洲老旧住区，事后该区约 400 名居民出现共同的记忆缺失——他们当中没有一个人能说出那年夏天发生了什么。此事件至今没有解密。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:78"
+      "source": "docs/scenario/05-world-module-i-threshold.md:78"
     },
     {
       "id": "hist-2003",
       "year": "2003",
       "name": "共鸣者地下互助网络\"雾缆\"形成",
       "detail": "共鸣者地下互助网络\"雾缆\"形成。最初只是一个通讯录。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:79"
+      "source": "docs/scenario/05-world-module-i-threshold.md:79"
     },
     {
       "id": "hist-2009",
       "year": "2009",
       "name": "财团开始收购薄处周边的地产",
       "detail": "财团开始收购薄处周边的地产。同年，第一家研究阈质商业化的公司成立。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:80"
+      "source": "docs/scenario/05-world-module-i-threshold.md:80"
     },
     {
       "id": "hist-2014",
       "year": "2014",
       "name": "Ia — \"第十二层\"事故",
       "detail": "某写字楼电梯在一次渗溢中把 11 名夜班员工送到了一个不存在的楼层。7 小时后，其中 4 人被送回，年龄比进入时平均老了 3 岁。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:81"
+      "source": "docs/scenario/05-world-module-i-threshold.md:81"
     },
     {
       "id": "hist-2019",
       "year": "2019",
       "name": "《异常现象管控条例》生效",
       "detail": "《异常现象管控条例》生效。共鸣者被要求登记。至今约 41% 已登记。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:82"
+      "source": "docs/scenario/05-world-module-i-threshold.md:82"
     },
     {
       "id": "hist-2023",
       "year": "2023",
       "name": "黑潮首次公开活动",
       "detail": "黑潮首次公开活动。同一年，江州市的薄处数量首次突破三百处。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:83"
+      "source": "docs/scenario/05-world-module-i-threshold.md:83"
     },
     {
       "id": "hist-2026",
       "year": "2026（现在）",
       "name": "渗溢频率达到每月 4–7 次",
       "detail": "渗溢频率达到每月 4–7 次，是十年前的六倍。办公厅编制扩充至 800 人但仍捉襟见肘。有人说，这座城已经在漏了。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:84"
+      "source": "docs/scenario/05-world-module-i-threshold.md:84"
     }
   ],
   "regions": [
@@ -156,7 +156,7 @@
         "失踪的集装箱",
         "\"某些声音从货柜里传出来\""
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:94"
+      "source": "docs/scenario/05-world-module-i-threshold.md:94"
     },
     {
       "id": "region-02",
@@ -177,7 +177,7 @@
         "被压下的内部报告",
         "有人愿意花大钱让某份消失"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:104"
+      "source": "docs/scenario/05-world-module-i-threshold.md:104"
     },
     {
       "id": "region-03",
@@ -198,7 +198,7 @@
         "某个出租屋里的临时祭坛",
         "每月一次的“停电”"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:114"
+      "source": "docs/scenario/05-world-module-i-threshold.md:114"
     },
     {
       "id": "region-04",
@@ -219,7 +219,7 @@
         "有人在厂房里长期独自生活",
         "设备自己在运转"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:124"
+      "source": "docs/scenario/05-world-module-i-threshold.md:124"
     },
     {
       "id": "region-05",
@@ -241,7 +241,7 @@
         "未经许可的实验",
         "某个教授的奇怪作息"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:134"
+      "source": "docs/scenario/05-world-module-i-threshold.md:134"
     },
     {
       "id": "region-06",
@@ -262,7 +262,7 @@
         "被跟踪",
         "某个摊位换了主人"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:144"
+      "source": "docs/scenario/05-world-module-i-threshold.md:144"
     },
     {
       "id": "region-07",
@@ -282,7 +282,7 @@
         "邻居消失但房子仍有人打扫",
         "孩子在湖边看到别人看不到的东西"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:154"
+      "source": "docs/scenario/05-world-module-i-threshold.md:154"
     },
     {
       "id": "region-08",
@@ -302,7 +302,7 @@
         "末班车多停了一站",
         "\"有人在对面站台看着你\""
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:164"
+      "source": "docs/scenario/05-world-module-i-threshold.md:164"
     },
     {
       "id": "region-09",
@@ -322,7 +322,7 @@
         "回来的人不再是原来那个人",
         "地面上出现不属于任何地图的新路"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:174"
+      "source": "docs/scenario/05-world-module-i-threshold.md:174"
     }
   ],
   "factions": [
@@ -331,84 +331,84 @@
       "name": "市政特别事务办公厅",
       "alignment": "官方",
       "summary": "主管异常的官方机构，对外挂牌「城市发展研究院」；约 800 人，外勤不足 90 人；目标是秩序而非真相；内部分「记录派」与「敷面派」。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:190"
+      "source": "docs/scenario/05-world-module-i-threshold.md:190"
     },
     {
       "id": "registration-office",
       "name": "登记管理处",
       "alignment": "官方",
       "summary": "负责共鸣者登记的分支机构，掌握本市最完整的共鸣者名单。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:203"
+      "source": "docs/scenario/05-world-module-i-threshold.md:203"
     },
     {
       "id": "fogcable-society",
       "name": "雾缆会",
       "alignment": "半民间",
       "summary": "共鸣者互助网络，2003 年成立，成员约 400 人（登记仅一半）；提供隐蔽医疗、庇护、信息与假身份，代价是必须提供一次服务。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:209"
+      "source": "docs/scenario/05-world-module-i-threshold.md:209"
     },
     {
       "id": "threshold-medicine",
       "name": "阈医科",
       "alignment": "半民间",
       "summary": "铁北职工医院三楼，表面是精神科分支，实则治疗阈丝度中毒并研究其病理。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:217"
+      "source": "docs/scenario/05-world-module-i-threshold.md:217"
     },
     {
       "id": "black-tide",
       "name": "黑潮",
       "alignment": "反体制",
       "summary": "激进共鸣者组织，主张「人类应主动接触阈界」；核心约 40 人；以公开制造渗溢、窃取档案、袭击设施为手段。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:225"
+      "source": "docs/scenario/05-world-module-i-threshold.md:225"
     },
     {
       "id": "huansheng",
       "name": "寰晟",
       "alignment": "资本",
       "summary": "地产、基建财团，大量收购薄处周边地块，理由不明。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:243"
+      "source": "docs/scenario/05-world-module-i-threshold.md:243"
     },
     {
       "id": "baiyan-group",
       "name": "白岩集团",
       "alignment": "资本",
       "summary": "医药、生物财团，阈医科 40% 的经费来源。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:244"
+      "source": "docs/scenario/05-world-module-i-threshold.md:244"
     },
     {
       "id": "linchuan-heavy",
       "name": "临川重工",
       "alignment": "资本",
       "summary": "装备制造财团，生产抑噪设备，同时也生产未被管制的「增效器」。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:245"
+      "source": "docs/scenario/05-world-module-i-threshold.md:245"
     },
     {
       "id": "tonghe-culture",
       "name": "同和文化",
       "alignment": "资本",
       "summary": "传媒、娱乐财团，控制三家主流媒体，负责大部分「敷面」的具体执行。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:246"
+      "source": "docs/scenario/05-world-module-i-threshold.md:246"
     },
     {
       "id": "porters-union",
       "name": "搬运工会",
       "alignment": "其他",
       "summary": "环港区的实际控制者，有 3,000 名会员，表决方式极为传统。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:250"
+      "source": "docs/scenario/05-world-module-i-threshold.md:250"
     },
     {
       "id": "limit-society",
       "name": "限度社",
       "alignment": "其他",
       "summary": "松岭大学的学生社团，私下做阈质实验。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:251"
+      "source": "docs/scenario/05-world-module-i-threshold.md:251"
     },
     {
       "id": "subway-trio",
       "name": "地铁三人组",
       "alignment": "其他",
       "summary": "七号线的三名老员工，他们的知识无人继承。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:252"
+      "source": "docs/scenario/05-world-module-i-threshold.md:252"
     }
   ],
   "tracks": [
@@ -429,7 +429,7 @@
         "连续一周完全不接触阈质：−2",
         "使用净化式（见第 8 节）：−1 至 −3，代价由施术者共同承担"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:265"
+      "source": "docs/scenario/05-world-module-i-threshold.md:265"
     }
   ],
   "world_rules": {
@@ -439,41 +439,41 @@
         {
           "action": "在薄处停留一晚",
           "delta": "+1",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:272"
+          "source": "docs/scenario/05-world-module-i-threshold.md:272"
         },
         {
           "action": "身处一次渗溢现场",
           "delta": "+2",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:273"
+          "source": "docs/scenario/05-world-module-i-threshold.md:273"
         },
         {
           "action": "施放一次「重式」（高级共鸣式）",
           "delta": "+1",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:274"
+          "source": "docs/scenario/05-world-module-i-threshold.md:274"
         },
         {
           "action": "施放一次「轻式」",
           "delta": "+0（累计三次才 +1）",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:275"
+          "source": "docs/scenario/05-world-module-i-threshold.md:275"
         },
         {
           "action": "被阈染生物攻击并受伤",
           "delta": "+1",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:276"
+          "source": "docs/scenario/05-world-module-i-threshold.md:276"
         },
         {
           "action": "直接吞食或注入阈质",
           "delta": "+3 且立即进行耐受检定",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:277"
+          "source": "docs/scenario/05-world-module-i-threshold.md:277"
         },
         {
           "action": "非共鸣者使用共鸣增幅器强行施放",
           "delta": "+2",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:278"
+          "source": "docs/scenario/05-world-module-i-threshold.md:278"
         }
       ],
       "note": "阈丝度衡量一个人身上累积了多少阈质，是这个世界的慢性病进度条。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:262"
+      "source": "docs/scenario/05-world-module-i-threshold.md:262"
     },
     "echo": {
       "definition": "过去发生的强烈事件在空间上留下的痕迹，会在特定条件下重放。",
@@ -482,19 +482,19 @@
           "name": "残留回声",
           "behavior": "像录音一样机械地重复同一段时间（通常 10–40 秒），对环境无反应",
           "danger": "无危险，是最常见的线索来源",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:311"
+          "source": "docs/scenario/05-world-module-i-threshold.md:311"
         },
         {
           "name": "交互回声",
           "behavior": "会回应当前在场的人，可能回答问题（但回答的总是它记忆里的内容）",
           "danger": "中等，可能把活人认作过去的人",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:312"
+          "source": "docs/scenario/05-world-module-i-threshold.md:312"
         },
         {
           "name": "污染回声",
           "behavior": "会扩散，试图重演整个事件（包括伤害），并会把活人填进过去的位置",
           "danger": "危险，通常是一个遭遇的核心",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:313"
+          "source": "docs/scenario/05-world-module-i-threshold.md:313"
         }
       ],
       "interactions": [
@@ -502,35 +502,35 @@
           "action": "察觉回声",
           "check": "洞察 DF 14（在薄处 −2）",
           "result": "成功则注意到某处\"重演\"",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:319"
+          "source": "docs/scenario/05-world-module-i-threshold.md:319"
         },
         {
           "action": "判断回声的年代",
           "check": "隐秘学 DF 13",
           "result": "成功则知道大约是哪一年",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:320"
+          "source": "docs/scenario/05-world-module-i-threshold.md:320"
         },
         {
           "action": "引导交互回声",
           "check": "共感 DF 15",
           "result": "成功则可以问 1d4 个问题（只能问它当时经历过的事）",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:321"
+          "source": "docs/scenario/05-world-module-i-threshold.md:321"
         },
         {
           "action": "强行中断回声",
           "check": "隐秘学 DF 16 或使用抑噪器",
           "result": "成功则中断，但可能留下残片",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:322"
+          "source": "docs/scenario/05-world-module-i-threshold.md:322"
         },
         {
           "action": "记录回声",
           "check": "技术 / 数据 DF 14",
           "result": "成功则获得一份可用的记录，可以在别处播放给别人看",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:323"
+          "source": "docs/scenario/05-world-module-i-threshold.md:323"
         }
       ],
       "content_table": "echo_content",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:303"
+      "source": "docs/scenario/05-world-module-i-threshold.md:303"
     },
     "thin_place": {
       "effects": [
@@ -541,7 +541,7 @@
         "常人可以察觉到\"这个地方不太舒服\"（但不说出原因）。"
       ],
       "note": "城市里目前有 300 多处薄处。它们大多数看起来只是普通的老房子、旧仓库、或者一段没人走的楼梯。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:346"
+      "source": "docs/scenario/05-world-module-i-threshold.md:346"
     },
     "damper": {
       "devices": [
@@ -549,22 +549,22 @@
           "name": "手持抑噪器",
           "effect": "6 米半径内，共鸣式 DF +3，阈染生物的所有判定 −1 骰",
           "side_effect": "同一半径内的共鸣者同样受 −1 骰",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:364"
+          "source": "docs/scenario/05-world-module-i-threshold.md:364"
         },
         {
           "name": "固定抑噪塔",
           "effect": "覆盖一整个街区，几乎消除渗溢",
           "side_effect": "长期居住在此的居民出现情感钝化（叙事效果）",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:365"
+          "source": "docs/scenario/05-world-module-i-threshold.md:365"
         },
         {
           "name": "增效器（非法）",
           "effect": "让使用者的共鸣式效果 +50%",
           "side_effect": "每次使用 +2 阈丝度，且 15% 概率失控",
-          "source": "docs/scenario/05-世界模组I-阈界都市.md:366"
+          "source": "docs/scenario/05-world-module-i-threshold.md:366"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:358"
+      "source": "docs/scenario/05-world-module-i-threshold.md:358"
     },
     "name_pools": {
       "surnames": [
@@ -657,7 +657,7 @@
         "临川",
         "柏舟"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:1027"
+      "source": "docs/scenario/05-world-module-i-threshold.md:1027"
     }
   },
   "careers": [
@@ -707,7 +707,7 @@
         "独家新闻（一次性的大额声望提升）",
         "舆论战（影响群众场面）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:433"
+      "source": "docs/scenario/05-world-module-i-threshold.md:433"
     },
     {
       "id": "career-02",
@@ -756,7 +756,7 @@
         "内部调查（审查同事）",
         "部门支援（额外人手）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:445"
+      "source": "docs/scenario/05-world-module-i-threshold.md:445"
     },
     {
       "id": "career-03",
@@ -803,7 +803,7 @@
         "心理支持（清除恐惧）",
         "临床保密（保护病人的秘密）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:457"
+      "source": "docs/scenario/05-world-module-i-threshold.md:457"
     },
     {
       "id": "career-04",
@@ -849,7 +849,7 @@
         "仪器改装",
         "公开讲座（获取资源与声望）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:469"
+      "source": "docs/scenario/05-world-module-i-threshold.md:469"
     },
     {
       "id": "career-05",
@@ -897,7 +897,7 @@
         "推挤大师（压制能力提升）",
         "工会代表（组织支援）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:481"
+      "source": "docs/scenario/05-world-module-i-threshold.md:481"
     },
     {
       "id": "career-06",
@@ -945,7 +945,7 @@
         "应急处理（设备操作）",
         "城市传说（知道各种版本的怪谈）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:492"
+      "source": "docs/scenario/05-world-module-i-threshold.md:492"
     },
     {
       "id": "career-07",
@@ -990,7 +990,7 @@
         "内部关系（检察院、法医）",
         "强硬手段（更高的伤害，更低的声望）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:502"
+      "source": "docs/scenario/05-world-module-i-threshold.md:502"
     },
     {
       "id": "career-08",
@@ -1031,7 +1031,7 @@
         "心理定价（更好的交易条件）",
         "地盘经营"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:513"
+      "source": "docs/scenario/05-world-module-i-threshold.md:513"
     },
     {
       "id": "career-09",
@@ -1077,7 +1077,7 @@
         "防护术式",
         "半步阈化（永久 +1 阈丝，换取 +2 伤害）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:524"
+      "source": "docs/scenario/05-world-module-i-threshold.md:524"
     },
     {
       "id": "career-10",
@@ -1119,7 +1119,7 @@
         "电磁脉冲",
         "长期维护（装备不易损坏）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:536"
+      "source": "docs/scenario/05-world-module-i-threshold.md:536"
     },
     {
       "id": "career-11",
@@ -1159,7 +1159,7 @@
         "哀伤承接（替队友承担负担）",
         "读心专家"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:547"
+      "source": "docs/scenario/05-world-module-i-threshold.md:547"
     },
     {
       "id": "career-12",
@@ -1206,7 +1206,7 @@
         "隧道知识（地下水文与管网）",
         "快速建造"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:557"
+      "source": "docs/scenario/05-world-module-i-threshold.md:557"
     },
     {
       "id": "career-13",
@@ -1247,7 +1247,7 @@
         "文件修复",
         "内部渠道"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:569"
+      "source": "docs/scenario/05-world-module-i-threshold.md:569"
     },
     {
       "id": "career-14",
@@ -1290,7 +1290,7 @@
         "夜间配送（夜间加成）",
         "包裹伪装"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:580"
+      "source": "docs/scenario/05-world-module-i-threshold.md:580"
     },
     {
       "id": "career-15",
@@ -1331,7 +1331,7 @@
         "燎原（大规模渗溢）",
         "撤退路线"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:590"
+      "source": "docs/scenario/05-world-module-i-threshold.md:590"
     },
     {
       "id": "career-16",
@@ -1373,7 +1373,7 @@
         "共鸣畸变（更强的力量，更快的阈化）",
         "最后的人形（一次性的强力牺牲）"
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:601",
+      "source": "docs/scenario/05-world-module-i-threshold.md:601",
       "note": "起始阈丝度 4。 你已经走过了一半的路，这既是力量也是倒计时。"
     },
     {
@@ -1387,7 +1387,7 @@
       "abilities": [],
       "specializations": [],
       "note": "市民 Civilian：不获得职途能力。作为补偿，获得额外的 3 个属性成长点、2 项额外熟练，以及最重要的：一个完整的、会被剧情放在危险中的日常生活。",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:620"
+      "source": "docs/scenario/05-world-module-i-threshold.md:620"
     }
   ],
   "abilities": [
@@ -1405,7 +1405,7 @@
         }
       ],
       "effect": "10 米内可以看见阈质的流动方向",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:647"
+      "source": "docs/scenario/05-world-module-i-threshold.md:647"
     },
     {
       "id": "resonance-002",
@@ -1421,7 +1421,7 @@
         }
       ],
       "effect": "察觉半径 20 米内是否存在回声及其类型",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:648"
+      "source": "docs/scenario/05-world-module-i-threshold.md:648"
     },
     {
       "id": "resonance-003",
@@ -1437,7 +1437,7 @@
         }
       ],
       "effect": "判断当前位置的\"薄化程度\"（1–5 级）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:649"
+      "source": "docs/scenario/05-world-module-i-threshold.md:649"
     },
     {
       "id": "resonance-004",
@@ -1453,7 +1453,7 @@
         }
       ],
       "effect": "指出最近的薄处所在方向",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:650"
+      "source": "docs/scenario/05-world-module-i-threshold.md:650"
     },
     {
       "id": "resonance-005",
@@ -1469,7 +1469,7 @@
         }
       ],
       "effect": "听见 30 米内所有人的心跳，可穿透墙体",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:651"
+      "source": "docs/scenario/05-world-module-i-threshold.md:651"
     },
     {
       "id": "resonance-006",
@@ -1485,7 +1485,7 @@
         }
       ],
       "effect": "下一次闪避或格挡的反应判定 +2 枚助势骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:652"
+      "source": "docs/scenario/05-world-module-i-threshold.md:652"
     },
     {
       "id": "resonance-007",
@@ -1501,7 +1501,7 @@
         }
       ],
       "effect": "触碰一个物件，看到最近触碰过它的人的短暂影像",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:653"
+      "source": "docs/scenario/05-world-module-i-threshold.md:653"
     },
     {
       "id": "resonance-008",
@@ -1517,7 +1517,7 @@
         }
       ],
       "effect": "说出一个阈染生物的名字后，对它的一切判定 +2 骰（持续一场景）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:654"
+      "source": "docs/scenario/05-world-module-i-threshold.md:654"
     },
     {
       "id": "resonance-009",
@@ -1533,7 +1533,7 @@
         }
       ],
       "effect": "读出范围内所有人的阈丝度高低排序",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:655"
+      "source": "docs/scenario/05-world-module-i-threshold.md:655"
     },
     {
       "id": "resonance-010",
@@ -1554,7 +1554,7 @@
         }
       ],
       "effect": "感知全城正在发生的渗溢位置（会出现过多信息，需通过心智 DF 14 才能分辨）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:656"
+      "source": "docs/scenario/05-world-module-i-threshold.md:656"
     },
     {
       "id": "resonance-011",
@@ -1575,7 +1575,7 @@
         }
       ],
       "effect": "在一个地点直接看到过去发生过的最强烈的那件事",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:657"
+      "source": "docs/scenario/05-world-module-i-threshold.md:657"
     },
     {
       "id": "resonance-012",
@@ -1596,7 +1596,7 @@
         }
       ],
       "effect": "短暂感知阈界另一侧。可以向导引者提问一个问题并获得诚实的答复，但你未必会理解答案",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:658"
+      "source": "docs/scenario/05-world-module-i-threshold.md:658"
     },
     {
       "id": "resonance-013",
@@ -1612,7 +1612,7 @@
         }
       ],
       "effect": "下一次力量类判定 +2 骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:664"
+      "source": "docs/scenario/05-world-module-i-threshold.md:664"
     },
     {
       "id": "resonance-014",
@@ -1628,7 +1628,7 @@
         }
       ],
       "effect": "本回合移动 +3 米",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:665"
+      "source": "docs/scenario/05-world-module-i-threshold.md:665"
     },
     {
       "id": "resonance-015",
@@ -1644,7 +1644,7 @@
         }
       ],
       "effect": "下一次精细动作判定 DF −2",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:666"
+      "source": "docs/scenario/05-world-module-i-threshold.md:666"
     },
     {
       "id": "resonance-016",
@@ -1660,7 +1660,7 @@
         }
       ],
       "effect": "消除自己的脚步与呼吸声（潜行 +1 骰）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:667"
+      "source": "docs/scenario/05-world-module-i-threshold.md:667"
     },
     {
       "id": "resonance-017",
@@ -1676,7 +1676,7 @@
         }
       ],
       "effect": "忽略下一次伤害造成的状态效果，两回合后承受其中一半",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:668"
+      "source": "docs/scenario/05-world-module-i-threshold.md:668"
     },
     {
       "id": "resonance-018",
@@ -1692,7 +1692,7 @@
         }
       ],
       "effect": "本回合防护 +2",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:669"
+      "source": "docs/scenario/05-world-module-i-threshold.md:669"
     },
     {
       "id": "resonance-019",
@@ -1708,7 +1708,7 @@
         }
       ],
       "effect": "下一次攻击 +2 骰，且至少视为重击",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:670"
+      "source": "docs/scenario/05-world-module-i-threshold.md:670"
     },
     {
       "id": "resonance-020",
@@ -1724,7 +1724,7 @@
         }
       ],
       "effect": "下一次说服或表演判定 +2 骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:671"
+      "source": "docs/scenario/05-world-module-i-threshold.md:671"
     },
     {
       "id": "resonance-021",
@@ -1740,7 +1740,7 @@
         }
       ],
       "effect": "移除自己的一层【恐惧】或【失衡】",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:672"
+      "source": "docs/scenario/05-world-module-i-threshold.md:672"
     },
     {
       "id": "resonance-022",
@@ -1756,7 +1756,7 @@
         }
       ],
       "effect": "跳跃高度与距离翻倍（持续一回合）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:673"
+      "source": "docs/scenario/05-world-module-i-threshold.md:673"
     },
     {
       "id": "resonance-023",
@@ -1772,7 +1772,7 @@
         }
       ],
       "effect": "把下一次将受到的一半伤害转移到另一个目标（需在 5 米内）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:674"
+      "source": "docs/scenario/05-world-module-i-threshold.md:674"
     },
     {
       "id": "resonance-024",
@@ -1793,7 +1793,7 @@
         }
       ],
       "effect": "本回合对【钝击】与【穿刺】获得抗性",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:675"
+      "source": "docs/scenario/05-world-module-i-threshold.md:675"
     },
     {
       "id": "resonance-025",
@@ -1814,7 +1814,7 @@
         }
       ],
       "effect": "重掷一次自己刚刚失败的判定（含对抗判定）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:676"
+      "source": "docs/scenario/05-world-module-i-threshold.md:676"
     },
     {
       "id": "resonance-026",
@@ -1835,7 +1835,7 @@
         }
       ],
       "effect": "本回合所有察觉与洞察判定 +3 骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:677"
+      "source": "docs/scenario/05-world-module-i-threshold.md:677"
     },
     {
       "id": "resonance-027",
@@ -1851,7 +1851,7 @@
         }
       ],
       "effect": "3 米内的对话无法被听清（潜行 +1 骰）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:683"
+      "source": "docs/scenario/05-world-module-i-threshold.md:683"
     },
     {
       "id": "resonance-028",
@@ -1867,7 +1867,7 @@
         }
       ],
       "effect": "熄灭一个 5 米内的光源，持续一回合",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:684"
+      "source": "docs/scenario/05-world-module-i-threshold.md:684"
     },
     {
       "id": "resonance-029",
@@ -1883,7 +1883,7 @@
         }
       ],
       "effect": "使 10 米内的通讯设备失效一回合",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:685"
+      "source": "docs/scenario/05-world-module-i-threshold.md:685"
     },
     {
       "id": "resonance-030",
@@ -1899,7 +1899,7 @@
         }
       ],
       "effect": "30 秒内让追踪者的追踪判定 DF +3",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:686"
+      "source": "docs/scenario/05-world-module-i-threshold.md:686"
     },
     {
       "id": "resonance-031",
@@ -1915,7 +1915,7 @@
         }
       ],
       "effect": "目标对你的察觉判定 DF +3（持续一回合）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:687"
+      "source": "docs/scenario/05-world-module-i-threshold.md:687"
     },
     {
       "id": "resonance-032",
@@ -1931,7 +1931,7 @@
         }
       ],
       "effect": "一个机械单位的所有判定 −2 骰（持续一回合）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:688"
+      "source": "docs/scenario/05-world-module-i-threshold.md:688"
     },
     {
       "id": "resonance-033",
@@ -1947,7 +1947,7 @@
         }
       ],
       "effect": "目标耳边出现持续的低语，其心智类判定 DF +2",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:689"
+      "source": "docs/scenario/05-world-module-i-threshold.md:689"
     },
     {
       "id": "resonance-034",
@@ -1963,7 +1963,7 @@
         }
       ],
       "effect": "自己与目标 10 米内的区域无法被阈质探针识别",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:690"
+      "source": "docs/scenario/05-world-module-i-threshold.md:690"
     },
     {
       "id": "resonance-035",
@@ -1984,7 +1984,7 @@
         }
       ],
       "effect": "目标遗忘最近 10 分钟内的一件事（可通过耐受 DF 15 抵抗）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:691"
+      "source": "docs/scenario/05-world-module-i-threshold.md:691"
     },
     {
       "id": "resonance-036",
@@ -2000,7 +2000,7 @@
         }
       ],
       "effect": "10 米内所有人（含友军）的视觉判定 DF +2",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:692"
+      "source": "docs/scenario/05-world-module-i-threshold.md:692"
     },
     {
       "id": "resonance-037",
@@ -2021,7 +2021,7 @@
         }
       ],
       "effect": "20 米内所有带【技术】标签的装备失效一回合",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:693"
+      "source": "docs/scenario/05-world-module-i-threshold.md:693"
     },
     {
       "id": "resonance-038",
@@ -2042,7 +2042,7 @@
         }
       ],
       "effect": "临时制造一个薄处：此后该地点存在引发大范围渗溢的风险",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:694"
+      "source": "docs/scenario/05-world-module-i-threshold.md:694"
     },
     {
       "id": "resonance-039",
@@ -2058,7 +2058,7 @@
         }
       ],
       "effect": "目标脚下出现持续一回合的黏滞，移动减半",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:700"
+      "source": "docs/scenario/05-world-module-i-threshold.md:700"
     },
     {
       "id": "resonance-040",
@@ -2074,7 +2074,7 @@
         }
       ],
       "effect": "让一道门、闸门或电梯门随你的意愿开合一次",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:701"
+      "source": "docs/scenario/05-world-module-i-threshold.md:701"
     },
     {
       "id": "resonance-041",
@@ -2090,7 +2090,7 @@
         }
       ],
       "effect": "目标获得 2 层【失衡】",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:702"
+      "source": "docs/scenario/05-world-module-i-threshold.md:702"
     },
     {
       "id": "resonance-042",
@@ -2106,7 +2106,7 @@
         }
       ],
       "effect": "目标获得【束缚】，可通过力道 DF 15 挣脱",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:703"
+      "source": "docs/scenario/05-world-module-i-threshold.md:703"
     },
     {
       "id": "resonance-043",
@@ -2122,7 +2122,7 @@
         }
       ],
       "effect": "目标获得【恐惧】（针对你或你指定的对象）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:704"
+      "source": "docs/scenario/05-world-module-i-threshold.md:704"
     },
     {
       "id": "resonance-044",
@@ -2138,7 +2138,7 @@
         }
       ],
       "effect": "一个处于非战斗状态的 NPC 进入浅眠 10 分钟",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:705"
+      "source": "docs/scenario/05-world-module-i-threshold.md:705"
     },
     {
       "id": "resonance-045",
@@ -2154,7 +2154,7 @@
         }
       ],
       "effect": "使一片 3 米的水面或地面变得如同沥青，通过需耐受 DF 14",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:706"
+      "source": "docs/scenario/05-world-module-i-threshold.md:706"
     },
     {
       "id": "resonance-046",
@@ -2175,7 +2175,7 @@
         }
       ],
       "effect": "指定一个 3 米区域，区域内移动 AP 消耗翻倍",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:707"
+      "source": "docs/scenario/05-world-module-i-threshold.md:707"
     },
     {
       "id": "resonance-047",
@@ -2196,7 +2196,7 @@
         }
       ],
       "effect": "目标获得【麻痹】，每回合可尝试耐受 DF 15 挣脱",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:708"
+      "source": "docs/scenario/05-world-module-i-threshold.md:708"
     },
     {
       "id": "resonance-048",
@@ -2217,7 +2217,7 @@
         }
       ],
       "effect": "在一处地点设置陷阱，触发时该处重放一次过去的事故（2d10 伤害 +【束缚】）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:709"
+      "source": "docs/scenario/05-world-module-i-threshold.md:709"
     },
     {
       "id": "resonance-049",
@@ -2238,7 +2238,7 @@
         }
       ],
       "effect": "中断一个正在持续的敌方能力或共鸣式",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:710"
+      "source": "docs/scenario/05-world-module-i-threshold.md:710"
     },
     {
       "id": "resonance-050",
@@ -2259,7 +2259,7 @@
         }
       ],
       "effect": "指定一名目标，其下一次行动须先通过心智 DF 16，失败则失去该回合",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:711"
+      "source": "docs/scenario/05-world-module-i-threshold.md:711"
     },
     {
       "id": "resonance-051",
@@ -2275,7 +2275,7 @@
         }
       ],
       "effect": "瞬间移动 3 米，可穿越障碍与敌人占据的位置",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:719"
+      "source": "docs/scenario/05-world-module-i-threshold.md:719"
     },
     {
       "id": "resonance-052",
@@ -2291,7 +2291,7 @@
         }
       ],
       "effect": "一回合内可在水面或脆弱的支撑物上行走",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:720"
+      "source": "docs/scenario/05-world-module-i-threshold.md:720"
     },
     {
       "id": "resonance-053",
@@ -2307,7 +2307,7 @@
         }
       ],
       "effect": "本回合的移动不会触发敌方的反手打击",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:721"
+      "source": "docs/scenario/05-world-module-i-threshold.md:721"
     },
     {
       "id": "resonance-054",
@@ -2323,7 +2323,7 @@
         }
       ],
       "effect": "忽略一次坠落伤害，并总是以站稳的姿态落地",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:722"
+      "source": "docs/scenario/05-world-module-i-threshold.md:722"
     },
     {
       "id": "resonance-055",
@@ -2339,7 +2339,7 @@
         }
       ],
       "effect": "将一个物件（或一名愿意的人）投掷至 10 米外",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:723"
+      "source": "docs/scenario/05-world-module-i-threshold.md:723"
     },
     {
       "id": "resonance-056",
@@ -2355,7 +2355,7 @@
         }
       ],
       "effect": "穿过厚度不超过 3 米的实心物体（每个场景一次）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:724"
+      "source": "docs/scenario/05-world-module-i-threshold.md:724"
     },
     {
       "id": "resonance-057",
@@ -2371,7 +2371,7 @@
         }
       ],
       "effect": "把 10 米内的目标拉近 5 米，或推离 5 米",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:725"
+      "source": "docs/scenario/05-world-module-i-threshold.md:725"
     },
     {
       "id": "resonance-058",
@@ -2387,7 +2387,7 @@
         }
       ],
       "effect": "与自己 20 米范围内的一个回声交换位置",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:726"
+      "source": "docs/scenario/05-world-module-i-threshold.md:726"
     },
     {
       "id": "resonance-059",
@@ -2408,7 +2408,7 @@
         }
       ],
       "effect": "在两个你都去过的薄处之间直接穿行（距离不限）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:727"
+      "source": "docs/scenario/05-world-module-i-threshold.md:727"
     },
     {
       "id": "resonance-060",
@@ -2429,7 +2429,7 @@
         }
       ],
       "effect": "全队（至多 5 人）同时瞬移 6 米",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:728"
+      "source": "docs/scenario/05-world-module-i-threshold.md:728"
     },
     {
       "id": "resonance-061",
@@ -2445,7 +2445,7 @@
         }
       ],
       "effect": "用阈质造出一个简单物件，维持一个场景",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:734"
+      "source": "docs/scenario/05-world-module-i-threshold.md:734"
     },
     {
       "id": "resonance-062",
@@ -2461,7 +2461,7 @@
         }
       ],
       "effect": "完美复制一个手掌大小的物体，维持 10 分钟",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:735"
+      "source": "docs/scenario/05-world-module-i-threshold.md:735"
     },
     {
       "id": "resonance-063",
@@ -2477,7 +2477,7 @@
         }
       ],
       "effect": "造出一把阈质近战武器（1d8【熵蚀】），维持一个场景",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:736"
+      "source": "docs/scenario/05-world-module-i-threshold.md:736"
     },
     {
       "id": "resonance-064",
@@ -2493,7 +2493,7 @@
         }
       ],
       "effect": "在相邻位置制造一面可移动的屏障（12 点耐久）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:737"
+      "source": "docs/scenario/05-world-module-i-threshold.md:737"
     },
     {
       "id": "resonance-065",
@@ -2514,7 +2514,7 @@
         }
       ],
       "effect": "使一件物体暂时变得柔软、坚硬或透明（维持一回合）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:738"
+      "source": "docs/scenario/05-world-module-i-threshold.md:738"
     },
     {
       "id": "resonance-066",
@@ -2530,7 +2530,7 @@
         }
       ],
       "effect": "给一个非生命物短暂的行动能力，使它能够执行一个简单动作（开门、坠落、绊人）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:739"
+      "source": "docs/scenario/05-world-module-i-threshold.md:739"
     },
     {
       "id": "resonance-067",
@@ -2551,7 +2551,7 @@
         }
       ],
       "effect": "凭空制造一个持续存在的场景要素（属性由导引者裁定）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:740"
+      "source": "docs/scenario/05-world-module-i-threshold.md:740"
     },
     {
       "id": "resonance-068",
@@ -2572,7 +2572,7 @@
         }
       ],
       "effect": "让一处走廊或房间的两端直接相连，维持一个场景",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:741"
+      "source": "docs/scenario/05-world-module-i-threshold.md:741"
     },
     {
       "id": "resonance-069",
@@ -2588,7 +2588,7 @@
         }
       ],
       "effect": "触碰造成 1d6【熵蚀】伤害",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:747"
+      "source": "docs/scenario/05-world-module-i-threshold.md:747"
     },
     {
       "id": "resonance-070",
@@ -2604,7 +2604,7 @@
         }
       ],
       "effect": "目标受到 1d4 伤害；若目标身上已有【伤口】类标记，则额外受到 1d4",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:748"
+      "source": "docs/scenario/05-world-module-i-threshold.md:748"
     },
     {
       "id": "resonance-071",
@@ -2620,7 +2620,7 @@
         }
       ],
       "effect": "2d6【火焰】＋【熵蚀】，可被抑噪器削弱",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:749"
+      "source": "docs/scenario/05-world-module-i-threshold.md:749"
     },
     {
       "id": "resonance-072",
@@ -2636,7 +2636,7 @@
         }
       ],
       "effect": "3 米锥形范围内 2d6【声波】伤害",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:750"
+      "source": "docs/scenario/05-world-module-i-threshold.md:750"
     },
     {
       "id": "resonance-073",
@@ -2652,7 +2652,7 @@
         }
       ],
       "effect": "目标受到 2d8【熵蚀】，并获得 1 层【失衡】",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:751"
+      "source": "docs/scenario/05-world-module-i-threshold.md:751"
     },
     {
       "id": "resonance-074",
@@ -2668,7 +2668,7 @@
         }
       ],
       "effect": "2d8【钝击】，且必定削减目标 4 点韧性",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:752"
+      "source": "docs/scenario/05-world-module-i-threshold.md:752"
     },
     {
       "id": "resonance-075",
@@ -2684,7 +2684,7 @@
         }
       ],
       "effect": "2d6【精神】伤害，并使目标遗忘你此刻的一个动作",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:753"
+      "source": "docs/scenario/05-world-module-i-threshold.md:753"
     },
     {
       "id": "resonance-076",
@@ -2705,7 +2705,7 @@
         }
       ],
       "effect": "使目标的阈丝度 +1（这是一种缓慢但无法治疗的伤害）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:754"
+      "source": "docs/scenario/05-world-module-i-threshold.md:754"
     },
     {
       "id": "resonance-077",
@@ -2726,7 +2726,7 @@
         }
       ],
       "effect": "对相邻的两个目标各造成 3d6【熵蚀】",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:755"
+      "source": "docs/scenario/05-world-module-i-threshold.md:755"
     },
     {
       "id": "resonance-078",
@@ -2747,7 +2747,7 @@
         }
       ],
       "effect": "地面出现一道 3×10 米的裂隙，进入或跨越者受到 3d8 伤害并获得【束缚】",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:756"
+      "source": "docs/scenario/05-world-module-i-threshold.md:756"
     },
     {
       "id": "resonance-079",
@@ -2768,7 +2768,7 @@
         }
       ],
       "effect": "目标受到的伤害数值等于它最近一次造成的伤害数值",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:757"
+      "source": "docs/scenario/05-world-module-i-threshold.md:757"
     },
     {
       "id": "resonance-080",
@@ -2789,7 +2789,7 @@
         }
       ],
       "effect": "单个目标受到 5d8【熵蚀】，且你自身阈丝度 +2",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:758"
+      "source": "docs/scenario/05-world-module-i-threshold.md:758"
     },
     {
       "id": "resonance-081",
@@ -2805,7 +2805,7 @@
         }
       ],
       "effect": "恢复 1d6 活力",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:764"
+      "source": "docs/scenario/05-world-module-i-threshold.md:764"
     },
     {
       "id": "resonance-082",
@@ -2821,7 +2821,7 @@
         }
       ],
       "effect": "目标阈丝度 −1，但你立即获得 1 点负担",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:765"
+      "source": "docs/scenario/05-world-module-i-threshold.md:765"
     },
     {
       "id": "resonance-083",
@@ -2837,7 +2837,7 @@
         }
       ],
       "effect": "解除目标身上的一个非阈染状态",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:766"
+      "source": "docs/scenario/05-world-module-i-threshold.md:766"
     },
     {
       "id": "resonance-084",
@@ -2853,7 +2853,7 @@
         }
       ],
       "effect": "修复一件损坏的装备，使其恢复可用状态",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:767"
+      "source": "docs/scenario/05-world-module-i-threshold.md:767"
     },
     {
       "id": "resonance-085",
@@ -2869,7 +2869,7 @@
         }
       ],
       "effect": "目标的负担 −1",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:768"
+      "source": "docs/scenario/05-world-module-i-threshold.md:768"
     },
     {
       "id": "resonance-086",
@@ -2890,7 +2890,7 @@
         }
       ],
       "effect": "移除目标的一层创伤（每个会话一次）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:769"
+      "source": "docs/scenario/05-world-module-i-threshold.md:769"
     },
     {
       "id": "resonance-087",
@@ -2906,7 +2906,7 @@
         }
       ],
       "effect": "全队各恢复 1d8 活力",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:770"
+      "source": "docs/scenario/05-world-module-i-threshold.md:770"
     },
     {
       "id": "resonance-088",
@@ -2927,7 +2927,7 @@
         }
       ],
       "effect": "永久消除一个地点的回声。这同时也永久毁掉了那段线索",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:771"
+      "source": "docs/scenario/05-world-module-i-threshold.md:771"
     },
     {
       "id": "resonance-089",
@@ -2948,7 +2948,7 @@
         }
       ],
       "effect": "把目标体内一半的阈丝度转移到你自己身上",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:772"
+      "source": "docs/scenario/05-world-module-i-threshold.md:772"
     },
     {
       "id": "resonance-090",
@@ -2969,7 +2969,7 @@
         }
       ],
       "effect": "让一个濒危的单位以四分之一的活力上限复活；你获得 2 点负担与 1 点阈丝度",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:773"
+      "source": "docs/scenario/05-world-module-i-threshold.md:773"
     },
     {
       "id": "resonance-091",
@@ -2985,7 +2985,7 @@
         }
       ],
       "effect": "与目标共享心跳：你知道对方的生死、方位与大致情绪",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:779"
+      "source": "docs/scenario/05-world-module-i-threshold.md:779"
     },
     {
       "id": "resonance-092",
@@ -3001,7 +3001,7 @@
         }
       ],
       "effect": "与一名队友建立链接，其下一次判定可由你代替掷骰（使用你的骰池或加值）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:780"
+      "source": "docs/scenario/05-world-module-i-threshold.md:780"
     },
     {
       "id": "resonance-093",
@@ -3017,7 +3017,7 @@
         }
       ],
       "effect": "替一名队友承担下一次伤害的一半",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:781"
+      "source": "docs/scenario/05-world-module-i-threshold.md:781"
     },
     {
       "id": "resonance-094",
@@ -3033,7 +3033,7 @@
         }
       ],
       "effect": "把自己身上的一个状态转移到队友身上（正面或负面皆可）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:782"
+      "source": "docs/scenario/05-world-module-i-threshold.md:782"
     },
     {
       "id": "resonance-095",
@@ -3054,7 +3054,7 @@
         }
       ],
       "effect": "全队共享阈丝度变化：此后本场景内所有阈丝度增减由全体平均分摊",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:783"
+      "source": "docs/scenario/05-world-module-i-threshold.md:783"
     },
     {
       "id": "resonance-096",
@@ -3075,7 +3075,7 @@
         }
       ],
       "effect": "与一名队友建立生命链接：任一方受到致命伤时，另一方替其承受一半伤害",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:784"
+      "source": "docs/scenario/05-world-module-i-threshold.md:784"
     },
     {
       "id": "resonance-097",
@@ -3096,7 +3096,7 @@
         }
       ],
       "effect": "向阈界提出一个问题。答案必定真实，但你必定会在理解它的过程中付出代价（通常是永久的负担或一段失去的记忆）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:792"
+      "source": "docs/scenario/05-world-module-i-threshold.md:792"
     },
     {
       "id": "resonance-098",
@@ -3117,7 +3117,7 @@
         }
       ],
       "effect": "永久提升自身阈丝度 3 点，换取本场景内所有共鸣式效果 +50%、伤害骰 +1 阶",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:793"
+      "source": "docs/scenario/05-world-module-i-threshold.md:793"
     },
     {
       "id": "resonance-099",
@@ -3138,7 +3138,7 @@
         }
       ],
       "effect": "打开一道通往阈界裂隙的门，持续一回合。任何人（包括敌人与无辜者）都可以越过它",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:794"
+      "source": "docs/scenario/05-world-module-i-threshold.md:794"
     },
     {
       "id": "resonance-100",
@@ -3159,7 +3159,7 @@
         }
       ],
       "effect": "摧毁一个地点的回声，将其能量转为一次性的全队完全恢复。该地点永久失去这段历史，且再也不会有任何回声重现",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:795"
+      "source": "docs/scenario/05-world-module-i-threshold.md:795"
     }
   ],
   "equipment": [
@@ -3174,7 +3174,7 @@
         "隐蔽"
       ],
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:378"
+      "source": "docs/scenario/05-world-module-i-threshold.md:378"
     },
     {
       "id": "eq-melee-02",
@@ -3187,7 +3187,7 @@
         "双手可选"
       ],
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:379"
+      "source": "docs/scenario/05-world-module-i-threshold.md:379"
     },
     {
       "id": "eq-melee-03",
@@ -3200,7 +3200,7 @@
         "单手"
       ],
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:380"
+      "source": "docs/scenario/05-world-module-i-threshold.md:380"
     },
     {
       "id": "eq-melee-04",
@@ -3213,7 +3213,7 @@
         "重装"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:381"
+      "source": "docs/scenario/05-world-module-i-threshold.md:381"
     },
     {
       "id": "eq-melee-05",
@@ -3225,7 +3225,7 @@
         "斩击"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:382"
+      "source": "docs/scenario/05-world-module-i-threshold.md:382"
     },
     {
       "id": "eq-melee-06",
@@ -3238,7 +3238,7 @@
         "震"
       ],
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:383"
+      "source": "docs/scenario/05-world-module-i-threshold.md:383"
     },
     {
       "id": "eq-melee-07",
@@ -3251,7 +3251,7 @@
         "隐蔽"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:384"
+      "source": "docs/scenario/05-world-module-i-threshold.md:384"
     },
     {
       "id": "eq-ranged-01",
@@ -3265,7 +3265,7 @@
         "隐蔽"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:390"
+      "source": "docs/scenario/05-world-module-i-threshold.md:390"
     },
     {
       "id": "eq-ranged-02",
@@ -3279,7 +3279,7 @@
         "近距离惩罚"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:391"
+      "source": "docs/scenario/05-world-module-i-threshold.md:391"
     },
     {
       "id": "eq-ranged-03",
@@ -3293,7 +3293,7 @@
         "双手"
       ],
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:392"
+      "source": "docs/scenario/05-world-module-i-threshold.md:392"
     },
     {
       "id": "eq-ranged-04",
@@ -3307,7 +3307,7 @@
         "无声"
       ],
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:393"
+      "source": "docs/scenario/05-world-module-i-threshold.md:393"
     },
     {
       "id": "eq-ranged-05",
@@ -3321,7 +3321,7 @@
         "无声"
       ],
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:394"
+      "source": "docs/scenario/05-world-module-i-threshold.md:394"
     },
     {
       "id": "eq-armor-01",
@@ -3331,7 +3331,7 @@
       "load": "轻",
       "restriction": "无",
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:400"
+      "source": "docs/scenario/05-world-module-i-threshold.md:400"
     },
     {
       "id": "eq-armor-02",
@@ -3341,7 +3341,7 @@
       "load": "中",
       "restriction": "移动 −1 米",
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:401"
+      "source": "docs/scenario/05-world-module-i-threshold.md:401"
     },
     {
       "id": "eq-armor-03",
@@ -3351,7 +3351,7 @@
       "load": "中",
       "restriction": "潜行 −1 骰",
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:402"
+      "source": "docs/scenario/05-world-module-i-threshold.md:402"
     },
     {
       "id": "eq-armor-04",
@@ -3361,7 +3361,7 @@
       "load": "重",
       "restriction": "移动 −2 米，潜行 −2 骰",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:403"
+      "source": "docs/scenario/05-world-module-i-threshold.md:403"
     },
     {
       "id": "eq-armor-05",
@@ -3371,7 +3371,7 @@
       "load": "重",
       "restriction": "移动 −3 米，不可攀爬，明显的【显眼】",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:404"
+      "source": "docs/scenario/05-world-module-i-threshold.md:404"
     },
     {
       "id": "eq-gear-01",
@@ -3379,7 +3379,7 @@
       "kind": "gear",
       "effect": "见第 5 节",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:410"
+      "source": "docs/scenario/05-world-module-i-threshold.md:410"
     },
     {
       "id": "eq-gear-02",
@@ -3387,7 +3387,7 @@
       "kind": "gear",
       "effect": "见第 5 节",
       "price_tier": "标准（黑市）",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:411"
+      "source": "docs/scenario/05-world-module-i-threshold.md:411"
     },
     {
       "id": "eq-gear-03",
@@ -3395,7 +3395,7 @@
       "kind": "gear",
       "effect": "让非共鸣者可以施放轻式（每次 +2 阈丝）",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:412"
+      "source": "docs/scenario/05-world-module-i-threshold.md:412"
     },
     {
       "id": "eq-gear-04",
@@ -3403,7 +3403,7 @@
       "kind": "gear",
       "effect": "察觉阈质：洞察判定 DF −3，射程 10 米",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:413"
+      "source": "docs/scenario/05-world-module-i-threshold.md:413"
     },
     {
       "id": "eq-gear-05",
@@ -3411,7 +3411,7 @@
       "kind": "gear",
       "effect": "录制并回放一段回声（每天一次）",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:414"
+      "source": "docs/scenario/05-world-module-i-threshold.md:414"
     },
     {
       "id": "eq-gear-06",
@@ -3419,7 +3419,7 @@
       "kind": "gear",
       "effect": "消除昏暗带来的劣势",
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:415"
+      "source": "docs/scenario/05-world-module-i-threshold.md:415"
     },
     {
       "id": "eq-gear-07",
@@ -3427,7 +3427,7 @@
       "kind": "gear",
       "effect": "一次医疗判定获得 +1 骰，共 3 次",
       "price_tier": "碎银",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:416"
+      "source": "docs/scenario/05-world-module-i-threshold.md:416"
     },
     {
       "id": "eq-gear-08",
@@ -3435,7 +3435,7 @@
       "kind": "gear",
       "effect": "一次 −1 阈丝度，副作用：24 小时的反应迟钝",
       "price_tier": "贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:417"
+      "source": "docs/scenario/05-world-module-i-threshold.md:417"
     },
     {
       "id": "eq-gear-09",
@@ -3443,7 +3443,7 @@
       "kind": "gear",
       "effect": "交涉／潜行时的身份优势，品质决定 DF 加成",
       "price_tier": "标准～贵重",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:418"
+      "source": "docs/scenario/05-world-module-i-threshold.md:418"
     },
     {
       "id": "eq-gear-10",
@@ -3451,7 +3451,7 @@
       "kind": "gear",
       "effect": "为设备供电 8 小时",
       "price_tier": "标准",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:419"
+      "source": "docs/scenario/05-world-module-i-threshold.md:419"
     }
   ],
   "enemies": [
@@ -3466,7 +3466,7 @@
       "damage": "1d6 精神",
       "persona": "狡诈",
       "trait": "由城市噪音凝成；处于抑噪器作用范围内时，它的所有判定 −2 枚助势骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:813"
+      "source": "docs/scenario/05-world-module-i-threshold.md:813"
     },
     {
       "id": "enemy-a02",
@@ -3479,7 +3479,7 @@
       "damage": "1d4 腐蚀",
       "persona": "猛攻",
       "trait": "地上的一滩水渍，会试图钻进人的伤口",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:814"
+      "source": "docs/scenario/05-world-module-i-threshold.md:814"
     },
     {
       "id": "enemy-a03",
@@ -3492,7 +3492,7 @@
       "damage": "1d4 精神",
       "persona": "狡诈",
       "trait": "小群出现；模仿人声，很难被真正驱逐",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:815"
+      "source": "docs/scenario/05-world-module-i-threshold.md:815"
     },
     {
       "id": "enemy-a04",
@@ -3505,7 +3505,7 @@
       "damage": "1d6 穿刺",
       "persona": "召唤",
       "trait": "每三只共享一份活力；区域伤害是清理它们的最快方式",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:816"
+      "source": "docs/scenario/05-world-module-i-threshold.md:816"
     },
     {
       "id": "enemy-a05",
@@ -3518,7 +3518,7 @@
       "damage": "1d6 腐蚀",
       "persona": "守护",
       "trait": "附着在金属表面生长；它守护的不是某处地点，而是「锈蚀本身」",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:817"
+      "source": "docs/scenario/05-world-module-i-threshold.md:817"
     },
     {
       "id": "enemy-a06",
@@ -3531,7 +3531,7 @@
       "damage": "1d6 精神",
       "persona": "狡诈",
       "trait": "不断重复它上一次听到的句子；说出这句话的人会感到不适",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:818"
+      "source": "docs/scenario/05-world-module-i-threshold.md:818"
     },
     {
       "id": "enemy-a07",
@@ -3544,7 +3544,7 @@
       "damage": "1d8 钝击",
       "persona": "猛攻",
       "trait": "由灰尘凝聚；被打散后会重组，火攻可一次性将其彻底分解",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:819"
+      "source": "docs/scenario/05-world-module-i-threshold.md:819"
     },
     {
       "id": "enemy-a08",
@@ -3557,7 +3557,7 @@
       "damage": "1d8 腐蚀",
       "persona": "狡诈",
       "trait": "总出现在积水中；被逼出水域时移动减半",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:820"
+      "source": "docs/scenario/05-world-module-i-threshold.md:820"
     },
     {
       "id": "enemy-a09",
@@ -3570,7 +3570,7 @@
       "damage": "1d8 精神",
       "persona": "控场",
       "trait": "一直念数字；听见自己的名字被念到时必须通过耐受 DF 14",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:821"
+      "source": "docs/scenario/05-world-module-i-threshold.md:821"
     },
     {
       "id": "enemy-a10",
@@ -3583,7 +3583,7 @@
       "damage": "1d8 精神",
       "persona": "控场",
       "trait": "由多名秘密保守者的沉默构成；公开说出它的秘密可以重创它",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:822"
+      "source": "docs/scenario/05-world-module-i-threshold.md:822"
     },
     {
       "id": "enemy-a11",
@@ -3596,7 +3596,7 @@
       "damage": "1d10 穿刺",
       "persona": "猛攻",
       "trait": "总是同一个工地看门人的模样；附近每个人都「见过它很多次」",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:823"
+      "source": "docs/scenario/05-world-module-i-threshold.md:823"
     },
     {
       "id": "enemy-a12",
@@ -3609,7 +3609,7 @@
       "damage": "1d6 精神",
       "persona": "狡诈",
       "trait": "伪装成走失的孩童；被识破后立刻逃走，并会记住识破者的脸",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:824"
+      "source": "docs/scenario/05-world-module-i-threshold.md:824"
     },
     {
       "id": "enemy-a13",
@@ -3622,7 +3622,7 @@
       "damage": "1d10 声波",
       "persona": "控场",
       "trait": "吞掉范围内的所有声音；在它附近必须靠书写或手势交流",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:825"
+      "source": "docs/scenario/05-world-module-i-threshold.md:825"
     },
     {
       "id": "enemy-a14",
@@ -3635,7 +3635,7 @@
       "damage": "2d6 斩击",
       "persona": "猛攻",
       "trait": "由被拆解的机械残件拼成，会边战斗边吸收新的零件",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:826"
+      "source": "docs/scenario/05-world-module-i-threshold.md:826"
     },
     {
       "id": "enemy-a15",
@@ -3648,7 +3648,7 @@
       "damage": "1d8 精神",
       "persona": "狡诈",
       "trait": "只能从镜面一类反光物中出现；击碎它所在的镜子可以驱逐它",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:827"
+      "source": "docs/scenario/05-world-module-i-threshold.md:827"
     },
     {
       "id": "enemy-a16",
@@ -3661,7 +3661,7 @@
       "damage": "2d6 钝击",
       "persona": "守护",
       "trait": "从墙体中渗出；只要那面墙还在，它就不会真正倒下",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:828"
+      "source": "docs/scenario/05-world-module-i-threshold.md:828"
     },
     {
       "id": "enemy-a17",
@@ -3674,7 +3674,7 @@
       "damage": "2d8 钝击",
       "persona": "守护",
       "trait": "会摆出与它守护对象相同的姿势；姿势被打破时进入狂暴",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:829"
+      "source": "docs/scenario/05-world-module-i-threshold.md:829"
     },
     {
       "id": "enemy-a18",
@@ -3687,7 +3687,7 @@
       "damage": "2d6 精神",
       "persona": "召唤",
       "trait": "用人们的梦线编织巢穴；一夜未眠的人对它的所有判定 −1 骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:830"
+      "source": "docs/scenario/05-world-module-i-threshold.md:830"
     },
     {
       "id": "enemy-a19",
@@ -3700,7 +3700,7 @@
       "damage": "2d8 穿刺",
       "persona": "猛攻",
       "trait": "有上下两个部分，必须同时破除；只破其一会在三回合后复原",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:831"
+      "source": "docs/scenario/05-world-module-i-threshold.md:831"
     },
     {
       "id": "enemy-a20",
@@ -3713,7 +3713,7 @@
       "damage": "2d8 熵蚀",
       "persona": "狡诈",
       "trait": "没有影子；在强光下防护 −6，在黑暗中攻击 +1 骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:832"
+      "source": "docs/scenario/05-world-module-i-threshold.md:832"
     },
     {
       "id": "enemy-a21",
@@ -3726,7 +3726,7 @@
       "damage": "2d10 声波",
       "persona": "控场",
       "trait": "每当它造成 15 点以上伤害，附近的时间重演 6 秒：所有人重掷上一次的骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:833"
+      "source": "docs/scenario/05-world-module-i-threshold.md:833"
     },
     {
       "id": "enemy-a22",
@@ -3739,7 +3739,7 @@
       "damage": "3d8 熵蚀",
       "persona": "控场",
       "trait": "三阶段：先是低语，然后显现，最后坍缩成一道敞开的门",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:834"
+      "source": "docs/scenario/05-world-module-i-threshold.md:834"
     },
     {
       "id": "enemy-a23",
@@ -3752,7 +3752,7 @@
       "damage": "3d10 钝击",
       "persona": "猛攻",
       "trait": "从水底捞起的巨大不明物；它始终在试图返回水中",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:835"
+      "source": "docs/scenario/05-world-module-i-threshold.md:835"
     },
     {
       "id": "enemy-a24",
@@ -3765,7 +3765,7 @@
       "damage": "3d10 熵蚀",
       "persona": "召唤",
       "trait": "它不是一个生物，是一段空间。它正在缓慢地向城市内部延伸",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:836"
+      "source": "docs/scenario/05-world-module-i-threshold.md:836"
     },
     {
       "id": "enemy-b01",
@@ -3778,7 +3778,7 @@
       "damage": "1d6 钝击",
       "persona": "猛攻",
       "trait": "临时受雇的人，拿到钱之前不太愿意拼命",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:844"
+      "source": "docs/scenario/05-world-module-i-threshold.md:844"
     },
     {
       "id": "enemy-b02",
@@ -3791,7 +3791,7 @@
       "damage": "1d4 穿刺",
       "persona": "狡诈",
       "trait": "逃跑是第一本能；抓住他会牵出一整条线",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:845"
+      "source": "docs/scenario/05-world-module-i-threshold.md:845"
     },
     {
       "id": "enemy-b03",
@@ -3804,7 +3804,7 @@
       "damage": "1d6 钝击",
       "persona": "猛攻",
       "trait": "专业施加压力，很少有人真正动手",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:846"
+      "source": "docs/scenario/05-world-module-i-threshold.md:846"
     },
     {
       "id": "enemy-b04",
@@ -3817,7 +3817,7 @@
       "damage": "1d6 穿刺",
       "persona": "狡诈",
       "trait": "制服是买的，但足够以假乱真",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:847"
+      "source": "docs/scenario/05-world-module-i-threshold.md:847"
     },
     {
       "id": "enemy-b05",
@@ -3830,7 +3830,7 @@
       "damage": "1d4 精神",
       "persona": "狡诈",
       "trait": "专门套话；他的录音笔里都是别人的秘密",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:848"
+      "source": "docs/scenario/05-world-module-i-threshold.md:848"
     },
     {
       "id": "enemy-b06",
@@ -3843,7 +3843,7 @@
       "damage": "1d4 钝击",
       "persona": "狡诈",
       "trait": "他其实很怕事，也确实什么都听得见",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:849"
+      "source": "docs/scenario/05-world-module-i-threshold.md:849"
     },
     {
       "id": "enemy-b07",
@@ -3856,7 +3856,7 @@
       "damage": "1d8 钝击",
       "persona": "猛攻",
       "trait": "训练有素的业余拳手，讲究一起上",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:850"
+      "source": "docs/scenario/05-world-module-i-threshold.md:850"
     },
     {
       "id": "enemy-b08",
@@ -3869,7 +3869,7 @@
       "damage": "1d8 穿刺",
       "persona": "守护",
       "trait": "受过正规训练，会先护住目标再反击",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:851"
+      "source": "docs/scenario/05-world-module-i-threshold.md:851"
     },
     {
       "id": "enemy-b09",
@@ -3882,7 +3882,7 @@
       "damage": "1d6 熵蚀",
       "persona": "狡诈",
       "trait": "随身携带必须送达的东西，宁死不交",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:852"
+      "source": "docs/scenario/05-world-module-i-threshold.md:852"
     },
     {
       "id": "enemy-b10",
@@ -3895,7 +3895,7 @@
       "damage": "1d8 熵蚀",
       "persona": "控场",
       "trait": "愿意为了「让公众知道」而主动制造渗溢",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:853"
+      "source": "docs/scenario/05-world-module-i-threshold.md:853"
     },
     {
       "id": "enemy-b11",
@@ -3908,7 +3908,7 @@
       "damage": "1d4 钝击",
       "persona": "守护",
       "trait": "不会主动攻击，但会按下警报，且精通流程",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:854"
+      "source": "docs/scenario/05-world-module-i-threshold.md:854"
     },
     {
       "id": "enemy-b12",
@@ -3921,7 +3921,7 @@
       "damage": "1d8 穿刺",
       "persona": "守护",
       "trait": "受过训练、装备齐全，但普遍人手不足且害怕",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:855"
+      "source": "docs/scenario/05-world-module-i-threshold.md:855"
     },
     {
       "id": "enemy-b13",
@@ -3934,7 +3934,7 @@
       "damage": "1d8 声波",
       "persona": "控场",
       "trait": "携抑噪器；他们的存在让队友的共鸣式难以生效",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:856"
+      "source": "docs/scenario/05-world-module-i-threshold.md:856"
     },
     {
       "id": "enemy-b14",
@@ -3947,7 +3947,7 @@
       "damage": "1d6 精神",
       "persona": "控场",
       "trait": "不用刑，只是问很多问题，而且从不急着要答案",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:857"
+      "source": "docs/scenario/05-world-module-i-threshold.md:857"
     },
     {
       "id": "enemy-b15",
@@ -3960,7 +3960,7 @@
       "damage": "1d8 钝击",
       "persona": "守护",
       "trait": "把共鸣者送出城的最后一道保障",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:858"
+      "source": "docs/scenario/05-world-module-i-threshold.md:858"
     },
     {
       "id": "enemy-b16",
@@ -3973,7 +3973,7 @@
       "damage": "2d6 穿刺",
       "persona": "守护",
       "trait": "退役的，专业而有节制，会考虑诉讼后果",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:859"
+      "source": "docs/scenario/05-world-module-i-threshold.md:859"
     },
     {
       "id": "enemy-b17",
@@ -3986,7 +3986,7 @@
       "damage": "2d8 穿刺",
       "persona": "狡诈",
       "trait": "一次伏击之后必定离开；第二次出现在你最放松时",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:860"
+      "source": "docs/scenario/05-world-module-i-threshold.md:860"
     },
     {
       "id": "enemy-b18",
@@ -3999,7 +3999,7 @@
       "damage": "2d8 穿刺",
       "persona": "领袖",
       "trait": "敌对者。他不恨你们，他只是有必须在三天内完成的事",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:861"
+      "source": "docs/scenario/05-world-module-i-threshold.md:861"
     },
     {
       "id": "enemy-c01",
@@ -4012,7 +4012,7 @@
       "damage": "1d6 穿刺",
       "persona": "狡诈",
       "trait": "小型飞行设备，被击落后里面的数据可以被提取",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:868"
+      "source": "docs/scenario/05-world-module-i-threshold.md:868"
     },
     {
       "id": "enemy-c02",
@@ -4025,7 +4025,7 @@
       "damage": "1d6 钝击",
       "persona": "猛攻",
       "trait": "自动驾驶运输车；撞人时从不减速",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:869"
+      "source": "docs/scenario/05-world-module-i-threshold.md:869"
     },
     {
       "id": "enemy-c03",
@@ -4038,7 +4038,7 @@
       "damage": "—",
       "persona": "控场",
       "trait": "不攻击，但会把目标标出，使针对该目标的攻击 +1 骰",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:870"
+      "source": "docs/scenario/05-world-module-i-threshold.md:870"
     },
     {
       "id": "enemy-c04",
@@ -4051,7 +4051,7 @@
       "damage": "1d6 钝击",
       "persona": "守护",
       "trait": "会开合、会夹人，也懂得把人关在某一侧",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:871"
+      "source": "docs/scenario/05-world-module-i-threshold.md:871"
     },
     {
       "id": "enemy-c05",
@@ -4064,7 +4064,7 @@
       "damage": "1d6 声波",
       "persona": "守护",
       "trait": "小型抑噪平台的空中版本",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:872"
+      "source": "docs/scenario/05-world-module-i-threshold.md:872"
     },
     {
       "id": "enemy-c06",
@@ -4077,7 +4077,7 @@
       "damage": "1d8 钝击",
       "persona": "猛攻",
       "trait": "稳健、缓慢、对指令绝对服从",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:873"
+      "source": "docs/scenario/05-world-module-i-threshold.md:873"
     },
     {
       "id": "enemy-c07",
@@ -4090,7 +4090,7 @@
       "damage": "2d6 钝击",
       "persona": "猛攻",
       "trait": "工程机械改造而成，可以用它开墙",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:874"
+      "source": "docs/scenario/05-world-module-i-threshold.md:874"
     },
     {
       "id": "enemy-c08",
@@ -4103,7 +4103,7 @@
       "damage": "1d8 钝击",
       "persona": "控场",
       "trait": "它控制着整栋楼的垂直交通；它是活的吗？没人想确认",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:875"
+      "source": "docs/scenario/05-world-module-i-threshold.md:875"
     },
     {
       "id": "enemy-c09",
@@ -4116,7 +4116,7 @@
       "damage": "1d8 电击",
       "persona": "控场",
       "trait": "在通信基站之间游走，会切断信号",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:876"
+      "source": "docs/scenario/05-world-module-i-threshold.md:876"
     },
     {
       "id": "enemy-c10",
@@ -4129,7 +4129,7 @@
       "damage": "1d8 钝击",
       "persona": "守护",
       "trait": "江面与地下管廊之间来回的自动艇；它不追人，只在必经航道上反复横切",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:877"
+      "source": "docs/scenario/05-world-module-i-threshold.md:877"
     },
     {
       "id": "enemy-c11",
@@ -4142,7 +4142,7 @@
       "damage": "2d6 钝击",
       "persona": "召唤",
       "trait": "一场区域内的旧机器自杀式合体",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:878"
+      "source": "docs/scenario/05-world-module-i-threshold.md:878"
     },
     {
       "id": "enemy-c12",
@@ -4155,7 +4155,7 @@
       "damage": "2d8 电击",
       "persona": "守护",
       "trait": "最新型安保单位，装配了未公开的功能",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:879"
+      "source": "docs/scenario/05-world-module-i-threshold.md:879"
     },
     {
       "id": "enemy-c13",
@@ -4168,7 +4168,7 @@
       "damage": "3d10 钝击",
       "persona": "猛攻",
       "trait": "自动化码头的核心，它的运行逻辑已无法解释",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:880"
+      "source": "docs/scenario/05-world-module-i-threshold.md:880"
     },
     {
       "id": "enemy-c14",
@@ -4181,7 +4181,7 @@
       "damage": "2d10 精神",
       "persona": "控场",
       "trait": "它不是一个物理敌人，而是一个不断做决定的过程",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:881"
+      "source": "docs/scenario/05-world-module-i-threshold.md:881"
     },
     {
       "id": "enemy-d01",
@@ -4194,7 +4194,7 @@
       "damage": "1d4 穿刺",
       "persona": "狡诈",
       "trait": "眼睛反光，比正常的猫更安静，也更聪明",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:888"
+      "source": "docs/scenario/05-world-module-i-threshold.md:888"
     },
     {
       "id": "enemy-d02",
@@ -4207,7 +4207,7 @@
       "damage": "1d6 钝击",
       "persona": "守护",
       "trait": "白天还是那个人，晚上不完全是",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:889"
+      "source": "docs/scenario/05-world-module-i-threshold.md:889"
     },
     {
       "id": "enemy-d03",
@@ -4220,7 +4220,7 @@
       "damage": "1d8 熵蚀",
       "persona": "猛攻",
       "trait": "看得出来还剩下多少「他自己」，这是最令人难受的对手",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:890"
+      "source": "docs/scenario/05-world-module-i-threshold.md:890"
     },
     {
       "id": "enemy-d04",
@@ -4233,7 +4233,7 @@
       "damage": "1d6 熵蚀",
       "persona": "控场",
       "trait": "会治疗同伴，同时把病人一个个引向不可逆",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:891"
+      "source": "docs/scenario/05-world-module-i-threshold.md:891"
     },
     {
       "id": "enemy-d05",
@@ -4246,7 +4246,7 @@
       "damage": "1d6 精神",
       "persona": "狡诈",
       "trait": "几十只猫同时叫出同一个音节",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:892"
+      "source": "docs/scenario/05-world-module-i-threshold.md:892"
     },
     {
       "id": "enemy-d06",
@@ -4259,7 +4259,7 @@
       "damage": "2d8 穿刺",
       "persona": "猛攻",
       "trait": "一只由无数金属螺纹缠成的巨大手臂，找不到主人",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:893"
+      "source": "docs/scenario/05-world-module-i-threshold.md:893"
     },
     {
       "id": "enemy-d07",
@@ -4272,7 +4272,7 @@
       "damage": "2d8 熵蚀",
       "persona": "猛攻",
       "trait": "限度社的产物；它的病历档案是本案的关键证据",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:894"
+      "source": "docs/scenario/05-world-module-i-threshold.md:894"
     },
     {
       "id": "enemy-d08",
@@ -4285,7 +4285,7 @@
       "damage": "2d6 精神",
       "persona": "控场",
       "trait": "它借用某个地点最强的回声来填满一个身体",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:895"
+      "source": "docs/scenario/05-world-module-i-threshold.md:895"
     },
     {
       "id": "enemy-d09",
@@ -4298,7 +4298,7 @@
       "damage": "2d8 钝击",
       "persona": "守护",
       "trait": "他仍然在守着他的房子，只是房子早就没了",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:896"
+      "source": "docs/scenario/05-world-module-i-threshold.md:896"
     },
     {
       "id": "enemy-d10",
@@ -4311,7 +4311,7 @@
       "damage": "2d8 穿刺",
       "persona": "狡诈",
       "trait": "能从一个身体里褪出来；里面那个人未必是自愿的",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:897"
+      "source": "docs/scenario/05-world-module-i-threshold.md:897"
     },
     {
       "id": "enemy-d11",
@@ -4324,7 +4324,7 @@
       "damage": "3d8 钝击",
       "persona": "猛攻",
       "trait": "曾经是一个人，现在它保留下来的只有体型",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:898"
+      "source": "docs/scenario/05-world-module-i-threshold.md:898"
     },
     {
       "id": "enemy-d12",
@@ -4337,7 +4337,7 @@
       "damage": "3d10 熵蚀",
       "persona": "控场",
       "trait": "比所有入住的人都更早存在于这栋建筑里，它一直都在忍耐",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:899"
+      "source": "docs/scenario/05-world-module-i-threshold.md:899"
     },
     {
       "id": "enemy-e01",
@@ -4350,7 +4350,7 @@
       "damage": "1d8 穿刺",
       "persona": "狡诈",
       "trait": "不是敌人，除非你挡了她妹妹的路",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:906"
+      "source": "docs/scenario/05-world-module-i-threshold.md:906"
     },
     {
       "id": "enemy-e02",
@@ -4363,7 +4363,7 @@
       "damage": "1d6 熵蚀",
       "persona": "控场",
       "trait": "会治疗你们，也会在报告里提到你们",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:907"
+      "source": "docs/scenario/05-world-module-i-threshold.md:907"
     },
     {
       "id": "enemy-e03",
@@ -4376,7 +4376,7 @@
       "damage": "2d8 穿刺",
       "persona": "守护",
       "trait": "忠诚、可靠，且终究会意识到自己在替谁卖命",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:908"
+      "source": "docs/scenario/05-world-module-i-threshold.md:908"
     },
     {
       "id": "enemy-e04",
@@ -4389,7 +4389,7 @@
       "damage": "2d8 熵蚀",
       "persona": "召唤",
       "trait": "专门引导被阈染的人穿过阈界",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:909"
+      "source": "docs/scenario/05-world-module-i-threshold.md:909"
     },
     {
       "id": "enemy-e05",
@@ -4402,7 +4402,7 @@
       "damage": "2d8 穿刺",
       "persona": "领袖",
       "trait": "办公厅最能干的人，也是最疲惫的人",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:910"
+      "source": "docs/scenario/05-world-module-i-threshold.md:910"
     },
     {
       "id": "enemy-e06",
@@ -4415,7 +4415,7 @@
       "damage": "2d10 钝击",
       "persona": "猛攻",
       "trait": "整个港区最强的拳头，也是最有秩序感的对手",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:911"
+      "source": "docs/scenario/05-world-module-i-threshold.md:911"
     },
     {
       "id": "enemy-e07",
@@ -4428,7 +4428,7 @@
       "damage": "2d6 精神",
       "persona": "控场",
       "trait": "地铁的最后一位知情者；他的知识无人继承",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:912"
+      "source": "docs/scenario/05-world-module-i-threshold.md:912"
     },
     {
       "id": "enemy-e08",
@@ -4441,7 +4441,7 @@
       "damage": "2d8 电击",
       "persona": "控场",
       "trait": "把学生当作耗材的年轻研究者",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:913"
+      "source": "docs/scenario/05-world-module-i-threshold.md:913"
     },
     {
       "id": "enemy-e09",
@@ -4454,7 +4454,7 @@
       "damage": "2d8 钝击",
       "persona": "守护",
       "trait": "他知道这座楼里所有住客的秘密，包括不该知道的那些",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:914"
+      "source": "docs/scenario/05-world-module-i-threshold.md:914"
     },
     {
       "id": "enemy-e10",
@@ -4467,7 +4467,7 @@
       "damage": "2d8 精神",
       "persona": "控场",
       "trait": "专门负责让一件事从未发生过的人",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:915"
+      "source": "docs/scenario/05-world-module-i-threshold.md:915"
     },
     {
       "id": "enemy-e11",
@@ -4480,7 +4480,7 @@
       "damage": "3d8 熵蚀",
       "persona": "领袖",
       "trait": "三阶段；她相信自己在拯救所有人，而且她的论据很难反驳",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:916"
+      "source": "docs/scenario/05-world-module-i-threshold.md:916"
     },
     {
       "id": "enemy-e12",
@@ -4493,7 +4493,7 @@
       "damage": "3d8 精神",
       "persona": "控场",
       "trait": "1978 年那十二个人里唯一还在世的，而他已经不算是人了",
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:917"
+      "source": "docs/scenario/05-world-module-i-threshold.md:917"
     }
   ],
   "random_tables": [
@@ -4583,7 +4583,7 @@
           "result": "你在旧书市买到一本二手相册。翻到最后一页时，你发现那是自己的葬礼。"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:925"
+      "source": "docs/scenario/05-world-module-i-threshold.md:925"
     },
     {
       "id": "rumors",
@@ -4639,7 +4639,7 @@
           "result": "如果你在雨夜里听见有人叫你的名字，不要在第七声之前答应。"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:950"
+      "source": "docs/scenario/05-world-module-i-threshold.md:950"
     },
     {
       "id": "street_people",
@@ -4707,7 +4707,7 @@
           "example": "Drive：别出事 ｜ Tell：他从不走某一段路，绕着走"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:967"
+      "source": "docs/scenario/05-world-module-i-threshold.md:967"
     },
     {
       "id": "scene_distortion",
@@ -4755,7 +4755,7 @@
           "result": "你一走进来就听见有人在念一段数字。念到最后会停下，然后开始倒数。"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:986"
+      "source": "docs/scenario/05-world-module-i-threshold.md:986"
     },
     {
       "id": "bleed_types",
@@ -4811,7 +4811,7 @@
           "result": "一个正在发生的事同时在这里与别处进行，两处的版本略有不同"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:1001"
+      "source": "docs/scenario/05-world-module-i-threshold.md:1001"
     },
     {
       "id": "block_events",
@@ -4851,7 +4851,7 @@
           "result": "街角的监控摄像头新装了一个，位置正对着你同伴的脸"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:1018"
+      "source": "docs/scenario/05-world-module-i-threshold.md:1018"
     },
     {
       "id": "echo_content",
@@ -4907,7 +4907,7 @@
           "result": "电梯门打开的瞬间，里面站着一个和玩家一模一样的人"
         }
       ],
-      "source": "docs/scenario/05-世界模组I-阈界都市.md:333",
+      "source": "docs/scenario/05-world-module-i-threshold.md:333",
       "purpose": "需要一个「这里发生过什么」的即时答案时掷一次。"
     }
   ]

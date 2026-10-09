@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/09-起步战役.md:167",
+  "source": "docs/scenario/09-three-openings.md:167",
   "meta": {
     "world": "emberfall",
     "engine": "tactics",
@@ -24,7 +24,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:208"
+      "source": "docs/scenario/09-three-openings.md:208"
     },
     {
       "id": "act-2",
@@ -39,14 +39,14 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:224"
+      "source": "docs/scenario/09-three-openings.md:224"
     },
     {
       "id": "act-3",
       "name": "第三幕：摊牌",
       "level_range": "1–3",
       "summary": "目标：在三天期限到达前完成仪式，或者阻止它。高潮三要素：念出名字的人一定会失去一段记忆；知情的选择；仪式一旦开始，井将永远不再是水井。",
-      "source": "docs/scenario/09-起步战役.md:245"
+      "source": "docs/scenario/09-three-openings.md:245"
     }
   ],
   "nodes": [
@@ -57,7 +57,7 @@
       "next": [
         "N12"
       ],
-      "source": "docs/scenario/09-起步战役.md:212"
+      "source": "docs/scenario/09-three-openings.md:212"
     },
     {
       "id": "N12",
@@ -66,7 +66,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/09-起步战役.md:213"
+      "source": "docs/scenario/09-three-openings.md:213"
     },
     {
       "id": "N13",
@@ -82,7 +82,7 @@
         "回响",
         "代价"
       ],
-      "source": "docs/scenario/09-起步战役.md:214"
+      "source": "docs/scenario/09-three-openings.md:214"
     },
     {
       "id": "N21",
@@ -91,7 +91,7 @@
       "next": [
         "N23"
       ],
-      "source": "docs/scenario/09-起步战役.md:228"
+      "source": "docs/scenario/09-three-openings.md:228"
     },
     {
       "id": "N22",
@@ -100,7 +100,7 @@
       "next": [
         "N23"
       ],
-      "source": "docs/scenario/09-起步战役.md:229"
+      "source": "docs/scenario/09-three-openings.md:229"
     },
     {
       "id": "N23",
@@ -110,7 +110,7 @@
         "N31"
       ],
       "unlock": "带回至少一个死者的真名",
-      "source": "docs/scenario/09-起步战役.md:230"
+      "source": "docs/scenario/09-three-openings.md:230"
     },
     {
       "id": "N31",
@@ -121,7 +121,7 @@
         "ending-fengcun",
         "ending-jiaohuan"
       ],
-      "source": "docs/scenario/09-起步战役.md:247"
+      "source": "docs/scenario/09-three-openings.md:247"
     },
     {
       "id": "Q-00",
@@ -169,7 +169,7 @@
         "exchange"
       ],
       "act": "act-1",
-      "source": "docs/scenario/09-起步战役.md:208"
+      "source": "docs/scenario/09-three-openings.md:208"
     }
   ],
   "threads": [
@@ -191,20 +191,20 @@
         {
           "path": "文档",
           "detail": "老谷留下的那半句话 + 公社的地契（井确实是后来挖的）",
-          "source": "docs/scenario/09-起步战役.md:233"
+          "source": "docs/scenario/09-three-openings.md:233"
         },
         {
           "path": "人证",
           "detail": "柯弥的官方档案中，第六纪的死亡名单在某一页被撕掉了",
-          "source": "docs/scenario/09-起步战役.md:234"
+          "source": "docs/scenario/09-three-openings.md:234"
         },
         {
           "path": "环境",
           "detail": "在井底的根系中，可以直接听见它在数名字",
-          "source": "docs/scenario/09-起步战役.md:235"
+          "source": "docs/scenario/09-three-openings.md:235"
         }
       ],
-      "source": "docs/scenario/09-起步战役.md:174"
+      "source": "docs/scenario/09-three-openings.md:174"
     },
     {
       "id": "C-02",
@@ -219,7 +219,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:178"
+      "source": "docs/scenario/09-three-openings.md:178"
     },
     {
       "id": "C-03",
@@ -234,7 +234,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/09-起步战役.md:219"
+      "source": "docs/scenario/09-three-openings.md:219"
     },
     {
       "id": "C-04",
@@ -248,7 +248,7 @@
         "flag.dream_shared"
       ],
       "note": "后续钩子：那个「在数名字的人」的身份，可以在静林的档案里查到（09 册后续钩子）。",
-      "source": "docs/scenario/09-起步战役.md:228"
+      "source": "docs/scenario/09-three-openings.md:228"
     }
   ],
   "npcs": [
@@ -264,7 +264,7 @@
         "C-01",
         "C-03"
       ],
-      "source": "docs/scenario/09-起步战役.md:183"
+      "source": "docs/scenario/09-three-openings.md:183"
     },
     {
       "id": "npc-02",
@@ -279,7 +279,7 @@
         "affinity": 0,
         "note": "第二幕她的选择会改变立场：可能转为帮助，也可能是更严格的封锁"
       },
-      "source": "docs/scenario/09-起步战役.md:189"
+      "source": "docs/scenario/09-three-openings.md:189"
     },
     {
       "id": "npc-03",
@@ -293,7 +293,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/09-起步战役.md:195"
+      "source": "docs/scenario/09-three-openings.md:195"
     },
     {
       "id": "npc-04",
@@ -303,7 +303,7 @@
       "lever": "他的女儿也做了那个梦",
       "mask": "热情、豪爽、好客",
       "tell": "从不碰井里的水",
-      "source": "docs/scenario/09-起步战役.md:201"
+      "source": "docs/scenario/09-three-openings.md:201"
     }
   ],
   "locations": [
@@ -311,25 +311,25 @@
       "id": "loc-01",
       "name": "公社与井",
       "atmosphere": "井水开始温热，孩子说水是甜的",
-      "source": "docs/scenario/09-起步战役.md:212"
+      "source": "docs/scenario/09-three-openings.md:212"
     },
     {
       "id": "loc-02",
       "name": "根系（井底）",
       "atmosphere": "本战役的「地下城」段落；可以直接听见它在数名字",
-      "source": "docs/scenario/09-起步战役.md:230"
+      "source": "docs/scenario/09-three-openings.md:230"
     },
     {
       "id": "loc-03",
       "name": "邻村",
       "purpose": "家主郝平的地盘；他的女儿也做了那个梦",
-      "source": "docs/scenario/09-起步战役.md:218"
+      "source": "docs/scenario/09-three-openings.md:218"
     },
     {
       "id": "loc-04",
       "name": "白骨荒野",
       "purpose": "后续钩子：柯弥手里第六纪名单缺失的那一页，后来出现在白骨荒野",
-      "source": "docs/scenario/09-起步战役.md:265"
+      "source": "docs/scenario/09-three-openings.md:265"
     }
   ],
   "endings": [
@@ -339,7 +339,7 @@
       "type": "安息",
       "requirements": "完成仪式，念出足够多的名字",
       "result": "集体残余得到安息。井变成一口温热的、不再出水的井，而它此后会在每年同一天发出光。念名者失去的记忆从此属于所有人",
-      "source": "docs/scenario/09-起步战役.md:259"
+      "source": "docs/scenario/09-three-openings.md:259"
     },
     {
       "id": "ending-fengcun",
@@ -347,7 +347,7 @@
       "type": "掩盖",
       "requirements": "让柯弥按官方程序封井",
       "result": "事件被记录为「地质活动」。公社失去水源，必须迁走。老谷在迁走那晚去世，而他没有留下任何话",
-      "source": "docs/scenario/09-起步战役.md:260"
+      "source": "docs/scenario/09-three-openings.md:260"
     },
     {
       "id": "ending-jiaohuan",
@@ -355,11 +355,11 @@
       "type": "代价",
       "requirements": "让郝平的女儿念第一个名字",
       "result": "代价由全公社分摊，每个人忘掉一件小事。第六纪的患者们被记住了，而代价是公社从此记不清那天到底发生了什么",
-      "source": "docs/scenario/09-起步战役.md:261"
+      "source": "docs/scenario/09-three-openings.md:261"
     }
   ],
   "flags": {
-    "source": "docs/scenario/09-起步战役.md:167",
+    "source": "docs/scenario/09-three-openings.md:167",
     "declared_flag_count": 0,
     "actual_flag_count": 6,
     "flag": [
@@ -371,7 +371,7 @@
         "readers": "C-01/Q-00",
         "effect": "它苏醒的迹象",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:212"
+        "source": "docs/scenario/09-three-openings.md:212"
       },
       {
         "id": "flag.names_spoken",
@@ -381,7 +381,7 @@
         "readers": "C-02/Q-00",
         "effect": "每一位念出名字的角色都会失去一段自己的记忆（对等的交换）",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:239"
+        "source": "docs/scenario/09-three-openings.md:239"
       },
       {
         "id": "flag.dream_shared",
@@ -391,7 +391,7 @@
         "readers": "C-04",
         "effect": "梦里那个人在数名字",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:228"
+        "source": "docs/scenario/09-three-openings.md:228"
       },
       {
         "id": "flag.komi_arrived",
@@ -401,7 +401,7 @@
         "readers": "Q-00",
         "effect": "封井意味着公社将失去唯一的水源",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:220"
+        "source": "docs/scenario/09-three-openings.md:220"
       },
       {
         "id": "flag.hao_offer",
@@ -411,7 +411,7 @@
         "readers": "N13",
         "effect": "买地线",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:218"
+        "source": "docs/scenario/09-three-openings.md:218"
       },
       {
         "id": "flag.root_expansion",
@@ -421,7 +421,7 @@
         "readers": "act-3",
         "effect": "井水沸腾，且附近三十公里内的野炉全部开启",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:241"
+        "source": "docs/scenario/09-three-openings.md:241"
       }
     ],
     "rep": [
@@ -433,7 +433,7 @@
         "readers": "act-2/act-3",
         "effect": "守烬巡查态度",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:229"
+        "source": "docs/scenario/09-three-openings.md:229"
       }
     ],
     "clock": [
@@ -445,7 +445,7 @@
         "readers": "Q-00",
         "effect": "三天后，守烬人会来检查",
         "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
-        "source": "docs/scenario/09-起步战役.md:170"
+        "source": "docs/scenario/09-three-openings.md:170"
       }
     ]
   },
@@ -513,6 +513,6 @@
       "root_expansion": false,
       "rep_komi": 0
     },
-    "source": "docs/scenario/09-起步战役.md:167"
+    "source": "docs/scenario/09-three-openings.md:167"
   }
 }

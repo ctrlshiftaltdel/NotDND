@@ -1,34 +1,34 @@
 {
   "schema_version": 1,
   "kind": "system.build_outcomes",
-  "source": "docs/system/02B-构建引擎.md:83",
+  "source": "docs/system/02b-forge-engine.md:83",
   "declared": {"grades": 5, "special_cases": 2},
   "formula": "结果 = 成功数 S − 需求成功数 N",
   "grades": [
     {"id": "triumph", "band": "≥ +3", "name": "凯旋", "en": "Triumph",
      "consequence": "达成 ＋ 额外收益（额外获得 2 点动量）", "momentum": 2,
-     "source": "docs/system/02B-构建引擎.md:89"},
+     "source": "docs/system/02b-forge-engine.md:89"},
     {"id": "success", "band": "+1 ~ +2", "name": "成功", "en": "Success",
      "consequence": "达成（获得 1 点动量）", "momentum": 1,
-     "source": "docs/system/02B-构建引擎.md:90"},
+     "source": "docs/system/02b-forge-engine.md:90"},
     {"id": "narrow", "band": "0", "name": "险成", "en": "Narrow",
      "consequence": "达成，但附带一个代价（获得 1 点动量）", "momentum": 1,
-     "source": "docs/system/02B-构建引擎.md:91"},
+     "source": "docs/system/02b-forge-engine.md:91"},
     {"id": "failure", "band": "−1", "name": "挫败", "en": "Failure",
      "consequence": "未达成，情况恶化（获得 1 点动量，安慰性补偿）", "momentum": 1,
-     "source": "docs/system/02B-构建引擎.md:92"},
+     "source": "docs/system/02b-forge-engine.md:92"},
     {"id": "catastrophe", "band": "≤ −2", "name": "灾难", "en": "Catastrophe",
      "consequence": "未达成 ＋ 显著麻烦（获得 2 点动量，便于低谷后反击）", "momentum": 2,
-     "source": "docs/system/02B-构建引擎.md:93"}
+     "source": "docs/system/02b-forge-engine.md:93"}
   ],
   "design_note": "构建引擎刻意让失败也给予动量，因为资源循环建立在「动量消耗 → 反哺成功」之上；若失败一无所获，玩家会陷入死亡螺旋。这是两套引擎在手感上最大的不同。",
-  "design_note_source": "docs/system/02B-构建引擎.md:95",
+  "design_note_source": "docs/system/02b-forge-engine.md:95",
   "special_cases": [
     {"id": "all_fail", "name": "全骰皆负",
      "rule": "当骰池中没有任何一枚骰达到阈值时，无论需求成功数是多少，都至少视为 −1（挫败），且获得 1 点额外动量。",
-     "source": "docs/system/02B-构建引擎.md:99"},
+     "source": "docs/system/02b-forge-engine.md:99"},
     {"id": "max_face", "name": "最大值爆发",
      "rule": "任何一枚骰掷出最大面值（10 面上的 10、12 面上的 12 等）时，该骰记作 2 次成功。",
-     "source": "docs/system/02B-构建引擎.md:103"}
+     "source": "docs/system/02b-forge-engine.md:103"}
   ]
 }

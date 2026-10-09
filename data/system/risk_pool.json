@@ -1,26 +1,26 @@
 {
   "schema_version": 1,
   "kind": "system.risk_pool",
-  "source": "docs/system/03-互动层.md:51",
+  "source": "docs/system/03-interaction-layer.md:51",
   "note": "每当队伍进入移动状态，创建一个风险池，把「路上不太平」变成可预期的紧张感，而不是随机骚扰。",
   "declared": {"trigger_steps": 3, "die_adjustments": 2},
   "steps": [
-    {"order": 1, "step": "每次移动一个单元（约 1 时段），向池中放入 1 枚标记。", "source": "docs/system/03-互动层.md:58"},
-    {"order": 2, "step": "移动结束时，导引者掷 d6。", "source": "docs/system/03-互动层.md:59"},
-    {"order": 3, "step": "无论是否触发，触发后清空标记。", "source": "docs/system/03-互动层.md:61"}
+    {"order": 1, "step": "每次移动一个单元（约 1 时段），向池中放入 1 枚标记。", "source": "docs/system/03-interaction-layer.md:58"},
+    {"order": 2, "step": "移动结束时，导引者掷 d6。", "source": "docs/system/03-interaction-layer.md:59"},
+    {"order": 3, "step": "无论是否触发，触发后清空标记。", "source": "docs/system/03-interaction-layer.md:61"}
   ],
   "trigger": {
     "die": "d6",
     "faces": "6（或 5–6，取决于区域危险度）",
     "effect": "触发一次遭遇或事件",
-    "source": "docs/system/03-互动层.md:60"
+    "source": "docs/system/03-interaction-layer.md:60"
   },
   "die_adjustment": [
-    {"id": "safe", "zone": "安全区域", "die": "d8", "face": 8, "source": "docs/system/03-互动层.md:64"},
-    {"id": "dangerous", "zone": "危险区域", "die": "d4", "face": 4, "source": "docs/system/03-互动层.md:64"}
+    {"id": "safe", "zone": "安全区域", "die": "d8", "face": 8, "source": "docs/system/03-interaction-layer.md:64"},
+    {"id": "dangerous", "zone": "危险区域", "die": "d4", "face": 4, "source": "docs/system/03-interaction-layer.md:64"}
   ],
   "reward_rule": {
     "rule": "不发生事件的移动不能没有收获：若掷不出事件，导引者应当描述一个有价值的见闻——一支运输队、一处可以再利用的地形、一条传闻。移动应当推进故事，哪怕没有冲突。",
-    "source": "docs/system/03-互动层.md:66"
+    "source": "docs/system/03-interaction-layer.md:66"
   }
 }

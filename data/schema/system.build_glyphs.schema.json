@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.build_glyphs）",
-  "description": "构建引擎第十节：通用符纹库 28 枚（分类 / 等级 I–III / 效果 / 代价，六类：增幅/效率/转化/触发/连锁/代价）、符纹等级限制（I 任意 / II 需 4 级 / III 需 7 级）、同能力同名同类不可叠装。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "构建引擎第十节：通用符纹库 28 枚（分类 / 等级 I–III / 效果 / 代价，六类：增幅/效率/转化/触发/连锁/代价）、符纹等级限制（I 任意 / II 需 4 级 / III 需 7 级）、同能力同名同类不可叠装。源自 docs/system/02b-forge-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "note", "note_source", "categories", "glyphs", "level_limits", "install_limit", "install_limit_source"],
   "properties": {

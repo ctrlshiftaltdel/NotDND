@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.build_overload_chain）",
-  "description": "构建引擎第七节：超载连锁的触发条件（成功数达需求两倍且盈余 ≥3）、四选一的免费选项、每角色每场景限一次。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "构建引擎第七节：超载连锁的触发条件（成功数达需求两倍且盈余 ≥3）、四选一的免费选项、每角色每场景限一次。源自 docs/system/02b-forge-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "trigger", "trigger_source", "rule", "rule_source", "options", "limit"],
   "properties": {

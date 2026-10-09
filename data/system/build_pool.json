@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "kind": "system.build_pool",
-  "source": "docs/system/02B-构建引擎.md:27",
+  "source": "docs/system/02b-forge-engine.md:27",
   "declared": {"pool_parts": 4, "die_rates": 4, "required_successes": 8},
   "pool": {
     "formula": "骰池 = 主属性枚数 + 技能熟练枚数 + 临时加成枚数",
     "parts": [
-      {"name": "主属性枚数", "detail": "= 该属性的值本身（属性 5 → 5 枚骰）", "source": "docs/system/02B-构建引擎.md:37"},
-      {"name": "技能熟练枚数", "detail": "= 熟练加值的一半（向上取整）：+2 → +1 枚；+3 → +2 枚；+4 → +2 枚", "source": "docs/system/02B-构建引擎.md:38"},
-      {"name": "技能专精", "detail": "额外 +1 枚", "source": "docs/system/02B-构建引擎.md:39"},
-      {"name": "临时加成", "detail": "协助、态势、场地要素等提供的额外骰子，通常 1–3 枚", "source": "docs/system/02B-构建引擎.md:40"}
+      {"name": "主属性枚数", "detail": "= 该属性的值本身（属性 5 → 5 枚骰）", "source": "docs/system/02b-forge-engine.md:37"},
+      {"name": "技能熟练枚数", "detail": "= 熟练加值的一半（向上取整）：+2 → +1 枚；+3 → +2 枚；+4 → +2 枚", "source": "docs/system/02b-forge-engine.md:38"},
+      {"name": "技能专精", "detail": "额外 +1 枚", "source": "docs/system/02b-forge-engine.md:39"},
+      {"name": "临时加成", "detail": "协助、态势、场地要素等提供的额外骰子，通常 1–3 枚", "source": "docs/system/02b-forge-engine.md:40"}
     ],
     "note": "构建引擎里的「加值」几乎都转换为骰子枚数，而不是固定数字；这让每一次加成都看得见、数得着。"
   },
@@ -18,26 +18,26 @@
     "threshold": 5,
     "default_die": "d10",
     "die_rates": [
-      {"die": "d6", "rate": "33%", "source": "docs/system/02B-构建引擎.md:50"},
-      {"die": "d8", "rate": "50%", "source": "docs/system/02B-构建引擎.md:51"},
-      {"die": "d10", "rate": "60%", "source": "docs/system/02B-构建引擎.md:52"},
-      {"die": "d12", "rate": "67%", "source": "docs/system/02B-构建引擎.md:53"}
+      {"die": "d6", "rate": "33%", "source": "docs/system/02b-forge-engine.md:50"},
+      {"die": "d8", "rate": "50%", "source": "docs/system/02b-forge-engine.md:51"},
+      {"die": "d10", "rate": "60%", "source": "docs/system/02b-forge-engine.md:52"},
+      {"die": "d12", "rate": "67%", "source": "docs/system/02b-forge-engine.md:53"}
     ]
   },
   "required_successes": [
-    {"need": 1, "name": "平凡", "tactics_df": 8, "source": "docs/system/02B-构建引擎.md:63"},
-    {"need": 2, "name": "简易", "tactics_df": 10, "source": "docs/system/02B-构建引擎.md:64"},
-    {"need": 3, "name": "常规", "tactics_df": 12, "source": "docs/system/02B-构建引擎.md:65"},
-    {"need": 4, "name": "有挑战", "tactics_df": 14, "source": "docs/system/02B-构建引擎.md:66"},
-    {"need": 5, "name": "困难", "tactics_df": 16, "source": "docs/system/02B-构建引擎.md:67"},
-    {"need": 6, "name": "严峻", "tactics_df": 18, "source": "docs/system/02B-构建引擎.md:68"},
-    {"need": 8, "name": "极限", "tactics_df": 20, "source": "docs/system/02B-构建引擎.md:69"},
-    {"need": 10, "name": "传说", "tactics_df": 24, "source": "docs/system/02B-构建引擎.md:70"}
+    {"need": 1, "name": "平凡", "tactics_df": 8, "source": "docs/system/02b-forge-engine.md:63"},
+    {"need": 2, "name": "简易", "tactics_df": 10, "source": "docs/system/02b-forge-engine.md:64"},
+    {"need": 3, "name": "常规", "tactics_df": 12, "source": "docs/system/02b-forge-engine.md:65"},
+    {"need": 4, "name": "有挑战", "tactics_df": 14, "source": "docs/system/02b-forge-engine.md:66"},
+    {"need": 5, "name": "困难", "tactics_df": 16, "source": "docs/system/02b-forge-engine.md:67"},
+    {"need": 6, "name": "严峻", "tactics_df": 18, "source": "docs/system/02b-forge-engine.md:68"},
+    {"need": 8, "name": "极限", "tactics_df": 20, "source": "docs/system/02b-forge-engine.md:69"},
+    {"need": 10, "name": "传说", "tactics_df": 24, "source": "docs/system/02b-forge-engine.md:70"}
   ],
   "resolution_steps": [
-    {"order": 1, "step": "需求成功数 N（由导引者宣布）", "source": "docs/system/02B-构建引擎.md:75"},
-    {"order": 2, "step": "玩家掷 [骰池] 枚骰（面值由骰阶决定）", "source": "docs/system/02B-构建引擎.md:76"},
-    {"order": 3, "step": "清点 ≥5 的骰子数量 S", "source": "docs/system/02B-构建引擎.md:77"},
-    {"order": 4, "step": "结果 = S − N", "source": "docs/system/02B-构建引擎.md:78"}
+    {"order": 1, "step": "需求成功数 N（由导引者宣布）", "source": "docs/system/02b-forge-engine.md:75"},
+    {"order": 2, "step": "玩家掷 [骰池] 枚骰（面值由骰阶决定）", "source": "docs/system/02b-forge-engine.md:76"},
+    {"order": 3, "step": "清点 ≥5 的骰子数量 S", "source": "docs/system/02b-forge-engine.md:77"},
+    {"order": 4, "step": "结果 = S − N", "source": "docs/system/02b-forge-engine.md:78"}
   ]
 }

@@ -6,7 +6,7 @@
 > 预定落点：仓库根 `GUIDE-DESIGN.md`（替换同名草案，不另起文件名）。未进 GitHub 之前，按 `AGENTS.md` 不能当作交接。
 > 依据：同日已拍板的模型、音色、pcm16 与环境变量；本修订把「模型到底用来做什么」写成前两页。默认分支是 `master`。
 
-本文件不是规则正文，不替代 `docs/system/04-导引者操作系统.md`。规则真相仍在 `prism_core.py`。模型不掷骰。地图坐标仍归 ATLAS，导引者不接过编译器。
+本文件不是规则正文，不替代 `docs/system/04-conductor-os.md`。规则真相仍在 `prism_core.py`。模型不掷骰。地图坐标仍归 ATLAS，导引者不接过编译器。
 
 本文是上一版导引者草案的修订，不是另起一套接口。上一版已经钉死的工程（Chat Completions、前缀缓存、pcm16、薄回合循环）全部保留。新用途若和那些句子打架，**不删旧句子**，只加到后面的切片，并在文中写明「这是延伸，不是推翻」。
 
@@ -415,7 +415,7 @@ flowchart TD
 | `scene` 不是战役节点 | `RuleSession.scene` 初始 `{id: "", actions: []}`。战役节点在剧本 `nodes[]`。 |
 | 落盘的白名单很窄 | `Session.save()` 写 `to_dict()`。`load` 先补 `_SESSION_DEFAULTS`，再**只**把 `created`、`log`、`seq`、`save_name`、`rules` 赋到实例上。新块必须同时接上 `__init__`、默认表、`to_dict`、`load`。 |
 | 行动者 | 不传 `unit_id` 时，`perform_action` 用 `active_unit_id`，再没有就用 `party[0]`。 |
-| 导引者操作系统 | `docs/system/04-导引者操作系统.md`：叙事 / 裁决 / 模拟；守则二先裁决后叙事；守则四场外的事事后以痕迹出现；输出【裁决】【叙事】【钩子】；第 8 节是 Drive / Lever / Mask / Tell。 |
+| 导引者操作系统 | `docs/system/04-conductor-os.md`：叙事 / 裁决 / 模拟；守则二先裁决后叙事；守则四场外的事事后以痕迹出现；输出【裁决】【叙事】【钩子】；第 8 节是 Drive / Lever / Mask / Tell。 |
 | 地点卡不是街道图 | schema 的 `location` 与世界 `region`。yunji 的白壁、灰市、中庭是例子。 |
 | 地图算法不归本方案 | `atlas.guide_card`。`ATLAS-DESIGN.md`：编译不调用模型；导引者只读地点卡。 |
 | 剧本文件与世界文件不一定成对 | `yunji.json` 的 `meta.world` 为 `yunji`，`meta.engine` 为 `tactics`，`meta.campaign` 为「九钥与元柜」。没有同 key 的世界文件。 |
@@ -1088,7 +1088,7 @@ TTS 不进现金表。限时免费会结束；风格卡应命中缓存。
 - `MASTER.md` §4 与 §7：M5 未开始；文档地图里已有 `GUIDE-DESIGN.md` 一行。G0 改这一行，不另插一行。
 - `ATLAS-DESIGN.md` §1、§3：编译不调用模型；导引者只读地点卡。`atlas.guide_card`。
 - `DNDWEB-ASSETS.md` §4：可选模块的工程形状。不搬内容。
-- `docs/system/04-导引者操作系统.md`：守则二、守则四、第 8 节。本文引用它，不改它。
+- `docs/system/04-conductor-os.md`：守则二、守则四、第 8 节。本文引用它，不改它。
 - `data/schema/scenario.schema.json` 的 `location` 与 `npc`。`data/schema/world.schema.json` 的 `region`。
 - `data/scenarios/yunji.json`：白壁 `loc-02`、灰市 `loc-05`、霍砚 `npc-01`、温苔 `npc-02`。专名以文件为准。
 - `prism_core.py`：`perform_action`、`judge_check`、`OUTCOMES`、`RuleSession.scene`。

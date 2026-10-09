@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S8-起步战役集.md:586",
+  "source": "docs/scenario/s8-starter-campaigns.md:586",
   "meta": {
     "world": "still-sea",
     "engine": "build",
@@ -27,7 +27,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:606"
+      "source": "docs/scenario/s8-starter-campaigns.md:606"
     },
     {
       "id": "act-2",
@@ -44,7 +44,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:647"
+      "source": "docs/scenario/s8-starter-campaigns.md:647"
     },
     {
       "id": "act-3",
@@ -57,7 +57,7 @@
         "3.3 哑铃隔离站攻防（可选）：阻止检疫署强制接管／协助接管／撤离（安保或技术 DF 14；战斗非必需，可用一次论战让检疫署退让）",
         "3.4 收束：谁承担代价——玩家决定谁为这个决定负责（无判定；这是本册「没有无损按钮」的落地）"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:683"
+      "source": "docs/scenario/s8-starter-campaigns.md:683"
     }
   ],
   "nodes": [
@@ -68,7 +68,7 @@
       "next": [
         "N14"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:618"
+      "source": "docs/scenario/s8-starter-campaigns.md:618"
     },
     {
       "id": "N12",
@@ -77,7 +77,7 @@
       "next": [
         "N14"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:619"
+      "source": "docs/scenario/s8-starter-campaigns.md:619"
     },
     {
       "id": "N13",
@@ -86,7 +86,7 @@
       "next": [
         "N14"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:620"
+      "source": "docs/scenario/s8-starter-campaigns.md:620"
     },
     {
       "id": "N14",
@@ -95,7 +95,7 @@
       "next": [
         "N21"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:621"
+      "source": "docs/scenario/s8-starter-campaigns.md:621"
     },
     {
       "id": "N21",
@@ -104,7 +104,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:659"
+      "source": "docs/scenario/s8-starter-campaigns.md:659"
     },
     {
       "id": "N22",
@@ -113,7 +113,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:660"
+      "source": "docs/scenario/s8-starter-campaigns.md:660"
     },
     {
       "id": "N23",
@@ -122,7 +122,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:661"
+      "source": "docs/scenario/s8-starter-campaigns.md:661"
     },
     {
       "id": "N24",
@@ -131,7 +131,7 @@
       "next": [
         "N25"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:662"
+      "source": "docs/scenario/s8-starter-campaigns.md:662"
     },
     {
       "id": "N25",
@@ -140,7 +140,7 @@
       "next": [
         "N31"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:663"
+      "source": "docs/scenario/s8-starter-campaigns.md:663"
     },
     {
       "id": "N31",
@@ -149,7 +149,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:695"
+      "source": "docs/scenario/s8-starter-campaigns.md:695"
     },
     {
       "id": "N32",
@@ -158,7 +158,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:696"
+      "source": "docs/scenario/s8-starter-campaigns.md:696"
     },
     {
       "id": "N33",
@@ -167,7 +167,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:697"
+      "source": "docs/scenario/s8-starter-campaigns.md:697"
     },
     {
       "id": "N34",
@@ -178,7 +178,7 @@
         "ending-archive",
         "ending-again"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:698"
+      "source": "docs/scenario/s8-starter-campaigns.md:698"
     },
     {
       "id": "Q-00",
@@ -226,7 +226,7 @@
         "again"
       ],
       "act": "act-1",
-      "source": "docs/scenario/S8-起步战役集.md:606"
+      "source": "docs/scenario/s8-starter-campaigns.md:606"
     }
   ],
   "threads": [
@@ -248,20 +248,20 @@
         {
           "path": "调查",
           "detail": "旧规程电文的时戳异常（信延 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:632"
+          "source": "docs/scenario/s8-starter-campaigns.md:632"
         },
         {
           "path": "社交",
           "detail": "席砚生或韩砚秋的一句「这不是第一次」",
-          "source": "docs/scenario/S8-起步战役集.md:633"
+          "source": "docs/scenario/s8-starter-campaigns.md:633"
         },
         {
           "path": "环境",
           "detail": "哑铃外壳的一次出舱观测（舱外 DF 14）",
-          "source": "docs/scenario/S8-起步战役集.md:634"
+          "source": "docs/scenario/s8-starter-campaigns.md:634"
         }
       ],
-      "source": "docs/scenario/S8-起步战役集.md:631"
+      "source": "docs/scenario/s8-starter-campaigns.md:631"
     },
     {
       "id": "C-02",
@@ -280,21 +280,21 @@
         {
           "path": "分析",
           "detail": "实验日志",
-          "source": "docs/scenario/S8-起步战役集.md:670"
+          "source": "docs/scenario/s8-starter-campaigns.md:670"
         },
         {
           "path": "共感",
           "detail": "发信人的口述",
-          "source": "docs/scenario/S8-起步战役集.md:670"
+          "source": "docs/scenario/s8-starter-campaigns.md:670"
         },
         {
           "path": "科学",
           "detail": "样本本身的同位素读数",
-          "source": "docs/scenario/S8-起步战役集.md:670"
+          "source": "docs/scenario/s8-starter-campaigns.md:670"
         }
       ],
       "note": "文档在 S8:670 一行内给出三条路径，path 行号同源。",
-      "source": "docs/scenario/S8-起步战役集.md:670"
+      "source": "docs/scenario/s8-starter-campaigns.md:670"
     },
     {
       "id": "C-03",
@@ -309,7 +309,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:689"
+      "source": "docs/scenario/s8-starter-campaigns.md:689"
     }
   ],
   "npcs": [
@@ -323,7 +323,7 @@
         "affinity": 1,
         "note": "务实、护短"
       },
-      "source": "docs/scenario/S8-起步战役集.md:626"
+      "source": "docs/scenario/s8-starter-campaigns.md:626"
     },
     {
       "id": "npc-02",
@@ -331,7 +331,7 @@
       "role": "锚地船坞工会技师班长",
       "drive": "不让锚地的船带病出坞",
       "note": "可提供设备与技师",
-      "source": "docs/scenario/S8-起步战役集.md:627"
+      "source": "docs/scenario/s8-starter-campaigns.md:627"
     },
     {
       "id": "npc-03",
@@ -344,14 +344,14 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:628"
+      "source": "docs/scenario/s8-starter-campaigns.md:628"
     },
     {
       "id": "npc-04",
       "name": "罗敷",
       "role": "「回信号」通信官 · 可玩家扮演",
       "drive": "把每一条迟到的信都念完",
-      "source": "docs/scenario/S8-起步战役集.md:629"
+      "source": "docs/scenario/s8-starter-campaigns.md:629"
     },
     {
       "id": "npc-05",
@@ -359,7 +359,7 @@
       "role": "检疫署区域督察 · 机构对手",
       "drive": "把哑铃重新纳入管制",
       "note": "本幕不在场，但会通过无线电施压",
-      "source": "docs/scenario/S8-起步战役集.md:667"
+      "source": "docs/scenario/s8-starter-campaigns.md:667"
     },
     {
       "id": "npc-06",
@@ -373,7 +373,7 @@
         "C-02",
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:668"
+      "source": "docs/scenario/s8-starter-campaigns.md:668"
     },
     {
       "id": "npc-07",
@@ -383,7 +383,7 @@
       "attitude": {
         "affinity": 0
       },
-      "source": "docs/scenario/S8-起步战役集.md:702"
+      "source": "docs/scenario/s8-starter-campaigns.md:702"
     },
     {
       "id": "npc-08",
@@ -391,7 +391,7 @@
       "role": "熄灯会传道人 · 意识形态对手／同盟",
       "drive": "永久关闭中继与远航",
       "note": "他会支持「封存」",
-      "source": "docs/scenario/S8-起步战役集.md:703"
+      "source": "docs/scenario/s8-starter-campaigns.md:703"
     }
   ],
   "locations": [
@@ -399,25 +399,25 @@
       "id": "loc-01",
       "name": "砾海·锚地",
       "atmosphere": "驿船「回信号」的锚地；两个窗口在本衡日零点同时打开，只够选一个",
-      "source": "docs/scenario/S8-起步战役集.md:618"
+      "source": "docs/scenario/s8-starter-campaigns.md:618"
     },
     {
       "id": "loc-02",
       "name": "哑铃隔离站",
       "atmosphere": "已静默的隔离站；中继串的消息比官方通报晚六小时",
-      "source": "docs/scenario/S8-起步战役集.md:659"
+      "source": "docs/scenario/s8-starter-campaigns.md:659"
     },
     {
       "id": "loc-03",
       "name": "样本库",
       "atmosphere": "库里不是样本（科学或分析 DF 15）",
-      "source": "docs/scenario/S8-起步战役集.md:661"
+      "source": "docs/scenario/s8-starter-campaigns.md:661"
     },
     {
       "id": "loc-04",
       "name": "汀洲·冷滩港",
       "atmosphere": "共同事务局、沈知微与熄灯会所在的港站",
-      "source": "docs/scenario/S8-起步战役集.md:696"
+      "source": "docs/scenario/s8-starter-campaigns.md:696"
     }
   ],
   "endings": [
@@ -427,7 +427,7 @@
       "type": "公开",
       "requirements": "真相进入公共信道",
       "result": "检疫署被迫改组。→ 接 S4 正式战役的「揭幕」路线",
-      "source": "docs/scenario/S8-起步战役集.md:706"
+      "source": "docs/scenario/s8-starter-campaigns.md:706"
     },
     {
       "id": "ending-archive",
@@ -435,7 +435,7 @@
       "type": "封存",
       "requirements": "真相被压回档案，换取暂时的秩序",
       "result": "接「换手」路线，玩家得赦免与一笔钱",
-      "source": "docs/scenario/S8-起步战役集.md:707"
+      "source": "docs/scenario/s8-starter-campaigns.md:707"
     },
     {
       "id": "ending-again",
@@ -443,11 +443,11 @@
       "type": "追查",
       "requirements": "玩家选择继续追查",
       "result": "进入正式战役的长期线——「为发信时的对方和收信时的对方分别准备」",
-      "source": "docs/scenario/S8-起步战役集.md:708"
+      "source": "docs/scenario/s8-starter-campaigns.md:708"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S8-起步战役集.md:586",
+    "source": "docs/scenario/s8-starter-campaigns.md:586",
     "declared_flag_count": 7,
     "actual_flag_count": 7,
     "flag": [
@@ -458,7 +458,7 @@
         "write": "第一幕幕末：选中的窗口",
         "readers": "Q-00",
         "effect": "哑铃或汀洲，承担即时的关系性代价",
-        "source": "docs/scenario/S8-起步战役集.md:638"
+        "source": "docs/scenario/s8-starter-campaigns.md:638"
       },
       {
         "id": "flag.oldspec_message",
@@ -467,7 +467,7 @@
         "write": "收到旧规程电文",
         "readers": "Q-00/C-01",
         "effect": "「别信例行报告。库里不是样本。」",
-        "source": "docs/scenario/S8-起步战役集.md:640"
+        "source": "docs/scenario/s8-starter-campaigns.md:640"
       },
       {
         "id": "flag.crew_paid",
@@ -476,7 +476,7 @@
         "write": "闭环保养是否完成",
         "readers": "act-1",
         "effect": "维生状态",
-        "source": "docs/scenario/S8-起步战役集.md:641"
+        "source": "docs/scenario/s8-starter-campaigns.md:641"
       },
       {
         "id": "flag.dullbell_entered",
@@ -485,7 +485,7 @@
         "write": "已进入哑铃",
         "readers": "Q-00/C-03",
         "effect": "第二幕开启",
-        "source": "docs/scenario/S8-起步战役集.md:674"
+        "source": "docs/scenario/s8-starter-campaigns.md:674"
       },
       {
         "id": "flag.sample_taken",
@@ -494,7 +494,7 @@
         "write": "是否取样",
         "readers": "C-02",
         "effect": "取样失败＝样本被污染，但得到完整实验日志",
-        "source": "docs/scenario/S8-起步战役集.md:675"
+        "source": "docs/scenario/s8-starter-campaigns.md:675"
       },
       {
         "id": "flag.radiation_load",
@@ -503,7 +503,7 @@
         "write": "出舱超时等事件累积",
         "readers": "act-2/act-3",
         "effect": "辐射载荷累积（0~2）",
-        "source": "docs/scenario/S8-起步战役集.md:677"
+        "source": "docs/scenario/s8-starter-campaigns.md:677"
       },
       {
         "id": "flag.crew_a",
@@ -512,7 +512,7 @@
         "write": "进站后记录",
         "readers": "act-2",
         "effect": "站内存活人数（默认 2）",
-        "source": "docs/scenario/S8-起步战役集.md:676"
+        "source": "docs/scenario/s8-starter-campaigns.md:676"
       }
     ],
     "rep": [
@@ -523,7 +523,7 @@
         "write": "第一幕行为结算",
         "readers": "act-1/act-3",
         "effect": "共同事务局态度",
-        "source": "docs/scenario/S8-起步战役集.md:642"
+        "source": "docs/scenario/s8-starter-campaigns.md:642"
       }
     ],
     "clock": [
@@ -534,7 +534,7 @@
         "write": "每次机动累加",
         "readers": "act-1",
         "effect": "已花 Δv（格）（10~17）",
-        "source": "docs/scenario/S8-起步战役集.md:639"
+        "source": "docs/scenario/s8-starter-campaigns.md:639"
       },
       {
         "id": "clock.dv_left",
@@ -543,7 +543,7 @@
         "write": "每次机动扣减",
         "readers": "act-2/act-3",
         "effect": "剩余 Δv（40~48）",
-        "source": "docs/scenario/S8-起步战役集.md:678"
+        "source": "docs/scenario/s8-starter-campaigns.md:678"
       }
     ]
   },
@@ -621,6 +621,6 @@
       "delay_hours": 6,
       "note": "延迟通信：回复永远比预期晚"
     },
-    "source": "docs/scenario/S8-起步战役集.md:638"
+    "source": "docs/scenario/s8-starter-campaigns.md:638"
   }
 }

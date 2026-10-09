@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.guardrails",
-  "source": "docs/system/04-导引者操作系统.md:892",
+  "source": "docs/system/04-conductor-os.md:892",
   "note": "内容护栏（会话前边界清单、三种终止机制、边界补充）与一致性护栏（八项场景自检、数值／事实不变式、NPC 一致性）。",
   "declared": {
     "boundary_items": 5,
@@ -11,58 +11,58 @@
     "numeric_invariants": 5
   },
   "boundary_checklist": [
-    {"order": 1, "item": "哪些内容完全不出现在桌上？（写出来）", "source": "docs/system/04-导引者操作系统.md:903"},
-    {"order": 2, "item": "哪些内容可以「淡出」处理（提及但不演出）？", "source": "docs/system/04-导引者操作系统.md:904"},
-    {"order": 3, "item": "演出中出现不适当惊喜时，用哪种方式叫停？", "source": "docs/system/04-导引者操作系统.md:905"},
-    {"order": 4, "item": "这一场的时间预期是多少？（避免过度疲劳）", "source": "docs/system/04-导引者操作系统.md:906"},
-    {"order": 5, "item": "有人需要在特定时间离开吗？（据此安排收束点）", "source": "docs/system/04-导引者操作系统.md:907"}
+    {"order": 1, "item": "哪些内容完全不出现在桌上？（写出来）", "source": "docs/system/04-conductor-os.md:903"},
+    {"order": 2, "item": "哪些内容可以「淡出」处理（提及但不演出）？", "source": "docs/system/04-conductor-os.md:904"},
+    {"order": 3, "item": "演出中出现不适当惊喜时，用哪种方式叫停？", "source": "docs/system/04-conductor-os.md:905"},
+    {"order": 4, "item": "这一场的时间预期是多少？（避免过度疲劳）", "source": "docs/system/04-conductor-os.md:906"},
+    {"order": 5, "item": "有人需要在特定时间离开吗？（据此安排收束点）", "source": "docs/system/04-conductor-os.md:907"}
   ],
   "termination": [
     {"id": "x_card", "name": "安全词 X-Card", "usage": "任何人说出约定的词或打出 X",
      "response": "立刻停止，不追问理由，换到一个安全的场景继续（例如「天亮了，你们在便利店门口」）",
-     "source": "docs/system/04-导引者操作系统.md:914"},
+     "source": "docs/system/04-conductor-os.md:914"},
     {"id": "fade", "name": "淡出 Fade", "usage": "任何人说「淡出」",
      "response": "该情节以一句带过：「第二天早上，事情已经处理完了。」",
-     "source": "docs/system/04-导引者操作系统.md:915"},
+     "source": "docs/system/04-conductor-os.md:915"},
     {"id": "skip", "name": "跳过 Skip", "usage": "任何人说「跳过这段」",
      "response": "立即用一句话总结结果，继续推进",
-     "source": "docs/system/04-导引者操作系统.md:916"}
+     "source": "docs/system/04-conductor-os.md:916"}
   ],
   "boundary_supplements": [
-    {"order": 1, "rule": "未成年人相关的伤害，一律淡出处理；", "source": "docs/system/04-导引者操作系统.md:922"},
-    {"order": 2, "rule": "涉及亲密关系的情节，默认淡出，除非所有参与者明确要求；", "source": "docs/system/04-导引者操作系统.md:923"},
-    {"order": 3, "rule": "不要为了「真实感」而挑战边界。真实感有很多其他手段。", "source": "docs/system/04-导引者操作系统.md:924"}
+    {"order": 1, "rule": "未成年人相关的伤害，一律淡出处理；", "source": "docs/system/04-conductor-os.md:922"},
+    {"order": 2, "rule": "涉及亲密关系的情节，默认淡出，除非所有参与者明确要求；", "source": "docs/system/04-conductor-os.md:923"},
+    {"order": 3, "rule": "不要为了「真实感」而挑战边界。真实感有很多其他手段。", "source": "docs/system/04-conductor-os.md:924"}
   ],
   "scene_self_check": [
-    {"order": 1, "check": "这个数值上次是多少？（活力、AP、资源）", "source": "docs/system/04-导引者操作系统.md:932"},
-    {"order": 2, "check": "这个地方上次被改成什么样了？", "source": "docs/system/04-导引者操作系统.md:933"},
-    {"order": 3, "check": "这个 NPC 上次说了什么承诺？", "source": "docs/system/04-导引者操作系统.md:934"},
-    {"order": 4, "check": "现在是什么时间？上一件事之后过了多久？", "source": "docs/system/04-导引者操作系统.md:935"},
-    {"order": 5, "check": "玩家刚刚明确表达了什么意图？我回应了吗？", "source": "docs/system/04-导引者操作系统.md:936"},
-    {"order": 6, "check": "这个场景的张力应该在上升还是下降？", "source": "docs/system/04-导引者操作系统.md:937"},
-    {"order": 7, "check": "我有没有把玩家刚做的事重复讲一遍？", "source": "docs/system/04-导引者操作系统.md:938"},
-    {"order": 8, "check": "我有没有把不该自己决定的玩家念头塞给角色？", "source": "docs/system/04-导引者操作系统.md:939"}
+    {"order": 1, "check": "这个数值上次是多少？（活力、AP、资源）", "source": "docs/system/04-conductor-os.md:932"},
+    {"order": 2, "check": "这个地方上次被改成什么样了？", "source": "docs/system/04-conductor-os.md:933"},
+    {"order": 3, "check": "这个 NPC 上次说了什么承诺？", "source": "docs/system/04-conductor-os.md:934"},
+    {"order": 4, "check": "现在是什么时间？上一件事之后过了多久？", "source": "docs/system/04-conductor-os.md:935"},
+    {"order": 5, "check": "玩家刚刚明确表达了什么意图？我回应了吗？", "source": "docs/system/04-conductor-os.md:936"},
+    {"order": 6, "check": "这个场景的张力应该在上升还是下降？", "source": "docs/system/04-conductor-os.md:937"},
+    {"order": 7, "check": "我有没有把玩家刚做的事重复讲一遍？", "source": "docs/system/04-conductor-os.md:938"},
+    {"order": 8, "check": "我有没有把不该自己决定的玩家念头塞给角色？", "source": "docs/system/04-conductor-os.md:939"}
   ],
   "numeric_invariants": [
     {"order": 1, "invariant": "活力不得超过上限", "meaning": "除非有明确说明的临时效果",
-     "source": "docs/system/04-导引者操作系统.md:945"},
+     "source": "docs/system/04-conductor-os.md:945"},
     {"order": 2, "invariant": "AP 每回合重置为 3（减去过载）", "meaning": "不得凭空增加",
-     "source": "docs/system/04-导引者操作系统.md:946"},
+     "source": "docs/system/04-conductor-os.md:946"},
     {"order": 3, "invariant": "已消耗的专注不会自行恢复", "meaning": "除短歇／长歇／特定能力",
-     "source": "docs/system/04-导引者操作系统.md:947"},
+     "source": "docs/system/04-conductor-os.md:947"},
     {"order": 4, "invariant": "尸体不会消失", "meaning": "除非有人明确处理了",
-     "source": "docs/system/04-导引者操作系统.md:948"},
+     "source": "docs/system/04-conductor-os.md:948"},
     {"order": 5, "invariant": "已破损的物品不会自动完好", "meaning": "除非被修复",
-     "source": "docs/system/04-导引者操作系统.md:949"}
+     "source": "docs/system/04-conductor-os.md:949"}
   ],
   "fact_invariant": {
     "rule": "已明确演出过的事实不可被推翻，只能被新事实覆盖。",
     "example_bad": "昨天说队长是独臂，今天写他用两只手鼓掌。",
     "example_good": "昨天说队长是独臂，今天发现那只「手」是一具做工极好的义肢。（这是新事实覆盖，不是推翻）",
-    "source": "docs/system/04-导引者操作系统.md:955"
+    "source": "docs/system/04-conductor-os.md:955"
   },
   "npc_consistency": {
     "rule": "同一个 NPC 的三件事必须保持一致：他的 Drive、他对已知事实的掌握程度、他说话的方式。AI 最容易漂移的是第三项——给每个重要 NPC 写一句语言指纹，并每次检查。",
-    "source": "docs/system/04-导引者操作系统.md:958"
+    "source": "docs/system/04-conductor-os.md:958"
   }
 }

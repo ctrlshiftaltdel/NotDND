@@ -1,49 +1,49 @@
 {
   "schema_version": 1,
   "kind": "system.combat",
-  "source": "docs/system/01-内核CORE.md:374",
+  "source": "docs/system/01-core.md:374",
   "poise": {
     "name": "韧性上限",
     "formula": "体魄 × 3 + 体型加值 + 职途／物种加值",
     "note": "韧性（Poise）衡量一个单位“维持不被压制的能力”。它和活力无关：一个血还很厚的敌人可以被打崩，一个血快见底的敌人可能站得很稳。",
     "body_sizes": [
-      {"id": "small", "name": "小型／敏捷型", "bonus": 0, "source": "docs/system/01-内核CORE.md:388"},
-      {"id": "medium", "name": "中型／标准", "bonus": 6, "source": "docs/system/01-内核CORE.md:389"},
-      {"id": "large", "name": "大型／重装", "bonus": 12, "source": "docs/system/01-内核CORE.md:390"},
-      {"id": "huge", "name": "巨兽／结构型", "bonus": 20, "source": "docs/system/01-内核CORE.md:391"},
+      {"id": "small", "name": "小型／敏捷型", "bonus": 0, "source": "docs/system/01-core.md:388"},
+      {"id": "medium", "name": "中型／标准", "bonus": 6, "source": "docs/system/01-core.md:389"},
+      {"id": "large", "name": "大型／重装", "bonus": 12, "source": "docs/system/01-core.md:390"},
+      {"id": "huge", "name": "巨兽／结构型", "bonus": 20, "source": "docs/system/01-core.md:391"},
       {"id": "boss", "name": "首领", "bonus": 30, "extra": "并获得 3 层「韧性护盾」",
-       "source": "docs/system/01-内核CORE.md:392"}
+       "source": "docs/system/01-core.md:392"}
     ],
     "reduction": [
       {"id": "normal_hit", "method": "普通攻击命中", "amount": "伤害值的一半（向下取整）",
-       "source": "docs/system/01-内核CORE.md:398"},
+       "source": "docs/system/01-core.md:398"},
       {"id": "crit_hit", "method": "暴击／要害命中", "amount": "伤害值全部",
-       "source": "docs/system/01-内核CORE.md:399"},
+       "source": "docs/system/01-core.md:399"},
       {"id": "suppress", "method": "压制动作（推、绊、撞、震）", "amount": "造成的伤害 + 力道修正 ×2",
-       "source": "docs/system/01-内核CORE.md:400"},
+       "source": "docs/system/01-core.md:400"},
       {"id": "tagged", "method": "带【震】【重】【共鸣】标签的能力", "amount": "伤害值全部 + 额外 3",
-       "source": "docs/system/01-内核CORE.md:401"},
+       "source": "docs/system/01-core.md:401"},
       {"id": "site", "method": "场地要素的塌陷／冲击", "amount": "见具体要素描述，通常为全额",
-       "source": "docs/system/01-内核CORE.md:402"},
+       "source": "docs/system/01-core.md:402"},
       {"id": "psych", "method": "心理状态类攻击（恐惧、动摇）", "amount": "削减 1d6 + 气场修正",
-       "source": "docs/system/01-内核CORE.md:403"}
+       "source": "docs/system/01-core.md:403"}
     ],
     "reduction_caveat": "若攻击没能命中目标的要害部位，或目标无法感知该次打击的来源（例如背后偷袭的运动说服），韧性削减减半。这让“偷偷打崩对手”变得困难，符合直觉。",
     "recovery": "每个单位在自己的回合开始时，恢复韧性上限的 25%（向上取整）",
-    "recovery_source": "docs/system/01-内核CORE.md:409",
+    "recovery_source": "docs/system/01-core.md:409",
     "break": {
       "effects": [
-        {"id": "guard", "effect": "防护", "value": "−4", "source": "docs/system/01-内核CORE.md:419"},
-        {"id": "damage_taken", "effect": "承受伤害", "value": "+50%", "source": "docs/system/01-内核CORE.md:420"},
+        {"id": "guard", "effect": "防护", "value": "−4", "source": "docs/system/01-core.md:419"},
+        {"id": "damage_taken", "effect": "承受伤害", "value": "+50%", "source": "docs/system/01-core.md:420"},
         {"id": "action_limit", "effect": "行动限制",
          "value": "无法执行任何 2 AP 以上的动作；每回合只能尝试一次【重整】",
-         "source": "docs/system/01-内核CORE.md:421"},
+         "source": "docs/system/01-core.md:421"},
         {"id": "reform", "effect": "重整",
          "value": "DF 12 + 体魄修正；成功则脱离破韧，韧性恢复至上限制50%",
-         "source": "docs/system/01-内核CORE.md:422"},
+         "source": "docs/system/01-core.md:422"},
         {"id": "combo_window", "effect": "连携追击窗口",
          "value": "破韧期间，所有触发连携的打击自动视为要害",
-         "source": "docs/system/01-内核CORE.md:423"}
+         "source": "docs/system/01-core.md:423"}
       ],
       "note": "破韧不是昏迷：单位仍然可以说话、可以移动、可以尝试重整。它失去的是“从容行动的能力”。这让演出始终保留紧张的互动。"
     },
@@ -53,41 +53,41 @@
       "note": "首领级单位拥有 3 层韧性护盾。每被破韧一次，消耗一层，立即恢复至韧性上限的 60%，并获得一次阶段转化。",
       "phases": [
         {"order": 1, "name": "暴怒形态", "change": "攻击 +1 骰，防护 −2；解锁一组新行为",
-         "source": "docs/system/01-内核CORE.md:433"},
+         "source": "docs/system/01-core.md:433"},
         {"order": 2, "name": "绝望形态", "change": "全部伤害 +2；每回合开始消耗自身 3 点活力换取额外 1 AP",
-         "source": "docs/system/01-内核CORE.md:434"},
+         "source": "docs/system/01-core.md:434"},
         {"order": 3, "name": "崩解形态", "change": "真正的破韧：防护 −6，保留总计：【就此不再恢复韧性】",
-         "source": "docs/system/01-内核CORE.md:435"}
+         "source": "docs/system/01-core.md:435"}
       ]
     }
   },
   "combo": {
     "triggers": [
       {"order": 1, "name": "要害", "description": "攻击判定结果超出目标防护 6 点以上",
-       "source": "docs/system/01-内核CORE.md:451"},
+       "source": "docs/system/01-core.md:451"},
       {"order": 2, "name": "施加减益", "description": "给敌人成功施加了任意减益状态",
-       "source": "docs/system/01-内核CORE.md:452"},
+       "source": "docs/system/01-core.md:452"},
       {"order": 3, "name": "压制", "description": "执行了一次压制动作并造成伤害",
-       "source": "docs/system/01-内核CORE.md:453"},
+       "source": "docs/system/01-core.md:453"},
       {"order": 4, "name": "破韧", "description": "使敌人进入破韧状态",
-       "source": "docs/system/01-内核CORE.md:454"},
+       "source": "docs/system/01-core.md:454"},
       {"order": 5, "name": "救援", "description": "成功解救一名处于濒危／束缚／恐惧的队友",
-       "source": "docs/system/01-内核CORE.md:455"},
+       "source": "docs/system/01-core.md:455"},
       {"order": 6, "name": "场地引爆", "description": "成功触发或破坏了一个场地要素",
-       "source": "docs/system/01-内核CORE.md:456"}
+       "source": "docs/system/01-core.md:456"}
     ],
     "limit": "每个目标每回合最多开启 2 次连携窗口，且每次连携最多允许 2 名角色响应，避免无限连锁",
-    "limit_source": "docs/system/01-内核CORE.md:458",
+    "limit_source": "docs/system/01-core.md:458",
     "responses": [
       {"id": "follow_up", "name": "追打", "en": "Follow-up",
        "effect": "对同一目标发起一次基础攻击，本次攻击 +1 骰",
-       "source": "docs/system/01-内核CORE.md:468"},
+       "source": "docs/system/01-core.md:468"},
       {"id": "setup", "name": "补强", "en": "Setup",
        "effect": "为下一个行动的队友提供 +1 枚助势骰，且不消耗自身额度的另一半",
-       "source": "docs/system/01-内核CORE.md:469"},
+       "source": "docs/system/01-core.md:469"},
       {"id": "lockdown", "name": "控场", "en": "Lockdown",
        "effect": "对目标施加一个额外状态（DF 由具体方式决定）",
-       "source": "docs/system/01-内核CORE.md:470"}
+       "source": "docs/system/01-core.md:470"}
     ],
     "chain": {
       "rule": "本回合内每完成一次成功的连携，全队连锁层数 +1，上限 = 队伍人数 − 1",
@@ -96,80 +96,80 @@
         "下一次队友陷入危机时，可以额外获得一枚助势骰用于救援"
       ],
       "reset": "连锁层数在自己回合结束后清零",
-      "source": "docs/system/01-内核CORE.md:474"
+      "source": "docs/system/01-core.md:474"
     },
     "pursuit": "当敌人处于破韧状态，所有连携自动获得「必中要害」，且连锁层数上限临时翻倍",
-    "pursuit_source": "docs/system/01-内核CORE.md:485"
+    "pursuit_source": "docs/system/01-core.md:485"
   },
   "site_elements": {
     "count_rule": "要素数量 = 2 + 场景复杂度修正（普通场景 +0；重要场景 +1；高潮场景 +2）",
-    "count_source": "docs/system/01-内核CORE.md:500",
+    "count_source": "docs/system/01-core.md:500",
     "adopt_conditions": [
       {"order": 1, "name": "位置上可见", "rule": "玩家能一眼看到或立刻感知到它",
-       "source": "docs/system/01-内核CORE.md:506"},
+       "source": "docs/system/01-core.md:506"},
       {"order": 2, "name": "可被利用", "rule": "至少有一条明确的路径让玩家主动触发它",
-       "source": "docs/system/01-内核CORE.md:507"},
+       "source": "docs/system/01-core.md:507"},
       {"order": 3, "name": "双向性", "rule": "它既能害玩家，也能帮玩家，或与敌人互动时有不同结果",
-       "source": "docs/system/01-内核CORE.md:508"}
+       "source": "docs/system/01-core.md:508"}
     ],
     "format": {
       "fields": ["要素名", "类型", "位置", "交互 DF", "效果", "耐久"],
       "types": ["掩体", "危险", "机关", "增幅", "情绪", "机动"],
-      "source": "docs/system/01-内核CORE.md:515"
+      "source": "docs/system/01-core.md:515"
     },
     "table": [
       {"roll": 1, "name": "倾倒的货架／书架", "type": "掩体", "df": null,
-       "effect": "提供中级掩体；可被推倒造成范围 2d6 钝击 +【束缚】", "source": "docs/system/01-内核CORE.md:529"},
+       "effect": "提供中级掩体；可被推倒造成范围 2d6 钝击 +【束缚】", "source": "docs/system/01-core.md:529"},
       {"roll": 2, "name": "泄漏的管道", "type": "危险", "df": 12,
-       "effect": "该区域每回合 1d6 腐蚀伤害，或者引燃后造成范围火焰", "source": "docs/system/01-内核CORE.md:530"},
+       "effect": "该区域每回合 1d6 腐蚀伤害，或者引燃后造成范围火焰", "source": "docs/system/01-core.md:530"},
       {"roll": 3, "name": "悬吊的重物", "type": "机关", "df": 14,
-       "effect": "击落对其下方单位造成 3d8 钝击 +【束缚】", "source": "docs/system/01-内核CORE.md:531"},
+       "effect": "击落对其下方单位造成 3d8 钝击 +【束缚】", "source": "docs/system/01-core.md:531"},
       {"roll": 4, "name": "高压电源", "type": "危险", "df": 13,
-       "effect": "触碰造成 2d8 电击 +【麻痹】；可被导体延伸", "source": "docs/system/01-内核CORE.md:532"},
+       "effect": "触碰造成 2d8 电击 +【麻痹】；可被导体延伸", "source": "docs/system/01-core.md:532"},
       {"roll": 5, "name": "大面积水面／积水", "type": "增幅", "df": null,
-       "effect": "所有【电击】伤害范围扩大；移动减半", "source": "docs/system/01-内核CORE.md:533"},
+       "effect": "所有【电击】伤害范围扩大；移动减半", "source": "docs/system/01-core.md:533"},
       {"roll": 6, "name": "可攀爬的高台", "type": "机动", "df": 10,
-       "effect": "占据后获得【高地】：远程 +1 骰，且可被推下造成坠落伤害", "source": "docs/system/01-内核CORE.md:534"},
+       "effect": "占据后获得【高地】：远程 +1 骰，且可被推下造成坠落伤害", "source": "docs/system/01-core.md:534"},
       {"roll": 7, "name": "熊熊燃烧的火堆", "type": "危险", "df": null,
-       "effect": "相邻单位每回合 1d6 火焰；可被泼洒扩散", "source": "docs/system/01-内核CORE.md:535"},
+       "effect": "相邻单位每回合 1d6 火焰；可被泼洒扩散", "source": "docs/system/01-core.md:535"},
       {"roll": 8, "name": "成群的旁观者", "type": "情绪", "df": null,
-       "effect": "伤害他们会造成严重声望后果；可被驱散制造混乱增益", "source": "docs/system/01-内核CORE.md:536"},
+       "effect": "伤害他们会造成严重声望后果；可被驱散制造混乱增益", "source": "docs/system/01-core.md:536"},
       {"roll": 9, "name": "运输带／移动地板", "type": "机动", "df": 11,
-       "effect": "每回合把所有单位向一个方向推送 3 米", "source": "docs/system/01-内核CORE.md:537"},
+       "effect": "每回合把所有单位向一个方向推送 3 米", "source": "docs/system/01-core.md:537"},
       {"roll": 10, "name": "封闭的唯一出口", "type": "机关", "df": 15,
-       "effect": "可被强行打开或封死，改变整场战斗的撤离条件", "source": "docs/system/01-内核CORE.md:538"},
+       "effect": "可被强行打开或封死，改变整场战斗的撤离条件", "source": "docs/system/01-core.md:538"},
       {"roll": 11, "name": "弥漫的浓烟／雾", "type": "增幅", "df": null,
-       "effect": "5 米外视线受阻，所有人获得【隐匿】机会", "source": "docs/system/01-内核CORE.md:539"},
+       "effect": "5 米外视线受阻，所有人获得【隐匿】机会", "source": "docs/system/01-core.md:539"},
       {"roll": 12, "name": "摇摇欲坠的地板", "type": "危险", "df": 12,
-       "effect": "承重超过 2 个单位则塌陷，掉落者 2d10 钝击 +【束缚】", "source": "docs/system/01-内核CORE.md:540"},
+       "effect": "承重超过 2 个单位则塌陷，掉落者 2d10 钝击 +【束缚】", "source": "docs/system/01-core.md:540"},
       {"roll": 13, "name": "可控照明", "type": "增幅", "df": 10,
-       "effect": "关闭照明后所有人判定 DF +2，拥有夜视能力者不受影响", "source": "docs/system/01-内核CORE.md:541"},
+       "effect": "关闭照明后所有人判定 DF +2，拥有夜视能力者不受影响", "source": "docs/system/01-core.md:541"},
       {"roll": 14, "name": "巨大机械／车辆残骸", "type": "掩体", "df": null,
-       "effect": "重型掩体；可作为临时援护位置，或被引爆", "source": "docs/system/01-内核CORE.md:542"},
+       "effect": "重型掩体；可作为临时援护位置，或被引爆", "source": "docs/system/01-core.md:542"},
       {"roll": 15, "name": "报警系统／警报器", "type": "情绪", "df": 12,
-       "effect": "触发后在 N 回合后引来增援；可被关闭避免增援", "source": "docs/system/01-内核CORE.md:543"},
+       "effect": "触发后在 N 回合后引来增援；可被关闭避免增援", "source": "docs/system/01-core.md:543"},
       {"roll": 16, "name": "回声回廊", "type": "增幅", "df": null,
-       "effect": "所有【声波】相关的判定获得 +1 骰", "source": "docs/system/01-内核CORE.md:544"},
+       "effect": "所有【声波】相关的判定获得 +1 骰", "source": "docs/system/01-core.md:544"},
       {"roll": 17, "name": "脆弱的结构柱", "type": "机关", "df": 13,
        "effect": "击碎后整个空间结构动摇，所有人进行\\|\\|闪避（DF 14），失败者坠落并承受 2d10 钝击",
-       "source": "docs/system/01-内核CORE.md:545"},
+       "source": "docs/system/01-core.md:545"},
       {"roll": 18, "name": "易燃易爆气罐", "type": "危险", "df": 12,
-       "effect": "受到火焰或穿刺后爆炸：范围 3d10 火焰 +【灼烧】", "source": "docs/system/01-内核CORE.md:546"},
+       "effect": "受到火焰或穿刺后爆炸：范围 3d10 火焰 +【灼烧】", "source": "docs/system/01-core.md:546"},
       {"roll": 19, "name": "特殊治疗／补给点", "type": "增幅", "df": 10,
-       "effect": "一次可再生资源：在此获得 2d8 活力恢复，仅一次", "source": "docs/system/01-内核CORE.md:547"},
+       "effect": "一次可再生资源：在此获得 2d8 活力恢复，仅一次", "source": "docs/system/01-core.md:547"},
       {"roll": 20, "name": "高处的坠落物／吊链", "type": "机关", "df": 11,
-       "effect": "可远程命中使其落下，对下方单位造成 2d10 +【束缚】", "source": "docs/system/01-内核CORE.md:548"}
+       "effect": "可远程命中使其落下，对下方单位造成 2d10 +【束缚】", "source": "docs/system/01-core.md:548"}
     ],
     "player_request": {
       "cost": "1 点气势",
       "rule": "任意玩家可以提出：我想要这个场景里有一个 ______。",
       "outcomes": [
         {"order": 1, "name": "默认接受", "rule": "如果提议合理且不严重削弱难度",
-         "source": "docs/system/01-内核CORE.md:558"},
+         "source": "docs/system/01-core.md:558"},
         {"order": 2, "name": "接受并加码", "rule": "如果提议太便利，增加一步操作",
-         "source": "docs/system/01-内核CORE.md:559"},
+         "source": "docs/system/01-core.md:559"},
         {"order": 3, "name": "替换", "rule": "如果提议在当前叙事中确实说不通，给出最接近的合理替代",
-         "source": "docs/system/01-内核CORE.md:560"}
+         "source": "docs/system/01-core.md:560"}
       ]
     }
   }

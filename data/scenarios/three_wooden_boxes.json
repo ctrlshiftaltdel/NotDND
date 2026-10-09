@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "scenario.campaign",
-  "source": "docs/scenario/S8-起步战役集.md:307",
+  "source": "docs/scenario/s8-starter-campaigns.md:307",
   "meta": {
     "world": "yunji",
     "engine": "tactics",
@@ -26,7 +26,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:326"
+      "source": "docs/scenario/s8-starter-campaigns.md:326"
     },
     {
       "id": "act-2",
@@ -42,7 +42,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:368"
+      "source": "docs/scenario/s8-starter-campaigns.md:368"
     },
     {
       "id": "act-3",
@@ -55,7 +55,7 @@
         "3.3 与岑照周旋（若触发）：交一样换安全／反问她要哪样／开打（直觉 DF 15；动手＝岑照首领战，可选）",
         "3.4 收束：三只匣子——玩家在三只相似木匣中选择（无判定；选错也推进，解锁「同行竞争者反应」）"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:404"
+      "source": "docs/scenario/s8-starter-campaigns.md:404"
     }
   ],
   "nodes": [
@@ -66,7 +66,7 @@
       "next": [
         "N12"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:338"
+      "source": "docs/scenario/s8-starter-campaigns.md:338"
     },
     {
       "id": "N12",
@@ -75,7 +75,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:339"
+      "source": "docs/scenario/s8-starter-campaigns.md:339"
     },
     {
       "id": "N13",
@@ -84,7 +84,7 @@
       "next": [
         "N14"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:340"
+      "source": "docs/scenario/s8-starter-campaigns.md:340"
     },
     {
       "id": "N14",
@@ -93,7 +93,7 @@
       "next": [
         "N15"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:341"
+      "source": "docs/scenario/s8-starter-campaigns.md:341"
     },
     {
       "id": "N15",
@@ -102,7 +102,7 @@
       "next": [
         "N21"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:342"
+      "source": "docs/scenario/s8-starter-campaigns.md:342"
     },
     {
       "id": "N21",
@@ -111,7 +111,7 @@
       "next": [
         "N24"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:380"
+      "source": "docs/scenario/s8-starter-campaigns.md:380"
     },
     {
       "id": "N22",
@@ -120,7 +120,7 @@
       "next": [
         "N24"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:381"
+      "source": "docs/scenario/s8-starter-campaigns.md:381"
     },
     {
       "id": "N23",
@@ -129,7 +129,7 @@
       "next": [
         "N24"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:382"
+      "source": "docs/scenario/s8-starter-campaigns.md:382"
     },
     {
       "id": "N24",
@@ -138,7 +138,7 @@
       "next": [
         "N31"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:383"
+      "source": "docs/scenario/s8-starter-campaigns.md:383"
     },
     {
       "id": "N31",
@@ -147,7 +147,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:416"
+      "source": "docs/scenario/s8-starter-campaigns.md:416"
     },
     {
       "id": "N32",
@@ -156,7 +156,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:417"
+      "source": "docs/scenario/s8-starter-campaigns.md:417"
     },
     {
       "id": "N33",
@@ -165,7 +165,7 @@
       "next": [
         "N34"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:418"
+      "source": "docs/scenario/s8-starter-campaigns.md:418"
     },
     {
       "id": "N34",
@@ -176,7 +176,7 @@
         "ending-defect",
         "ending-expose"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:419"
+      "source": "docs/scenario/s8-starter-campaigns.md:419"
     },
     {
       "id": "Q-00",
@@ -224,7 +224,7 @@
         "expose"
       ],
       "act": "act-1",
-      "source": "docs/scenario/S8-起步战役集.md:326"
+      "source": "docs/scenario/s8-starter-campaigns.md:326"
     }
   ],
   "threads": [
@@ -242,7 +242,7 @@
       "tasks": [
         "Q-00"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:312"
+      "source": "docs/scenario/s8-starter-campaigns.md:312"
     },
     {
       "id": "C-02",
@@ -261,21 +261,21 @@
         {
           "path": "调查",
           "detail": "开柜时顺手比对档案索引（分析 DF 13）",
-          "source": "docs/scenario/S8-起步战役集.md:351"
+          "source": "docs/scenario/s8-starter-campaigns.md:351"
         },
         {
           "path": "社交",
           "detail": "直接问黎望「被压下的判决书是谁的」（说服 DF 12）",
-          "source": "docs/scenario/S8-起步战役集.md:352"
+          "source": "docs/scenario/s8-starter-campaigns.md:352"
         },
         {
           "path": "战斗／环境",
           "detail": "击倒或绕开夜巡骑手后检查其巡逻日志（察觉 DF 12）",
-          "source": "docs/scenario/S8-起步战役集.md:353"
+          "source": "docs/scenario/s8-starter-campaigns.md:353"
         }
       ],
       "note": "任得其一即可获得「雇主在雇两队」的第一块拼图。",
-      "source": "docs/scenario/S8-起步战役集.md:350"
+      "source": "docs/scenario/s8-starter-campaigns.md:350"
     },
     {
       "id": "C-03",
@@ -297,21 +297,21 @@
         {
           "path": "元柜传说",
           "detail": "胡同舟的报馆铅字",
-          "source": "docs/scenario/S8-起步战役集.md:391"
+          "source": "docs/scenario/s8-starter-campaigns.md:391"
         },
         {
           "path": "静默社技术线",
           "detail": "计晚的反钥",
-          "source": "docs/scenario/S8-起步战役集.md:391"
+          "source": "docs/scenario/s8-starter-campaigns.md:391"
         },
         {
           "path": "井底线",
           "detail": "老钳的模",
-          "source": "docs/scenario/S8-起步战役集.md:391"
+          "source": "docs/scenario/s8-starter-campaigns.md:391"
         }
       ],
       "note": "文档在 S8:391 一行内给出三条路径，path 行号同源；本册编号册内唯一，不与主册《九钥与元柜》C-xx 通用。",
-      "source": "docs/scenario/S8-起步战役集.md:391"
+      "source": "docs/scenario/s8-starter-campaigns.md:391"
     }
   ],
   "npcs": [
@@ -327,7 +327,7 @@
       "knows": [
         "C-01"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:346"
+      "source": "docs/scenario/s8-starter-campaigns.md:346"
     },
     {
       "id": "npc-02",
@@ -341,7 +341,7 @@
       "knows": [
         "C-02"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:347"
+      "source": "docs/scenario/s8-starter-campaigns.md:347"
     },
     {
       "id": "npc-03",
@@ -356,7 +356,7 @@
         "C-01",
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:348"
+      "source": "docs/scenario/s8-starter-campaigns.md:348"
     },
     {
       "id": "npc-04",
@@ -364,7 +364,7 @@
       "role": "白壁行首席拍卖师",
       "drive": "让每一件带印的东西都被「洗干净」",
       "note": "可交涉，收 15%—40% 洗印费",
-      "source": "docs/scenario/S8-起步战役集.md:387"
+      "source": "docs/scenario/s8-starter-campaigns.md:387"
     },
     {
       "id": "npc-05",
@@ -372,7 +372,7 @@
       "role": "听泉馆主人 · 中立失主",
       "drive": "等一个六十年前没回来的人",
       "note": "「不偷」路线的关键",
-      "source": "docs/scenario/S8-起步战役集.md:388"
+      "source": "docs/scenario/s8-starter-campaigns.md:388"
     },
     {
       "id": "npc-06",
@@ -383,7 +383,7 @@
       "knows": [
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:389"
+      "source": "docs/scenario/s8-starter-campaigns.md:389"
     },
     {
       "id": "npc-07",
@@ -394,7 +394,7 @@
         "affinity": -2,
         "note": "永远可以谈"
       },
-      "source": "docs/scenario/S8-起步战役集.md:424"
+      "source": "docs/scenario/s8-starter-campaigns.md:424"
     },
     {
       "id": "npc-08",
@@ -405,7 +405,7 @@
       "knows": [
         "C-03"
       ],
-      "source": "docs/scenario/S8-起步战役集.md:425"
+      "source": "docs/scenario/s8-starter-campaigns.md:425"
     }
   ],
   "locations": [
@@ -413,37 +413,37 @@
       "id": "loc-01",
       "name": "五阶·灰市（绳会账房）",
       "atmosphere": "五阶没有天，只有六阶的地板缝；接活之处",
-      "source": "docs/scenario/S8-起步战役集.md:338"
+      "source": "docs/scenario/s8-starter-campaigns.md:338"
     },
     {
       "id": "loc-02",
       "name": "四阶·铜环（判牍阁）",
       "atmosphere": "高安保档案重地；踩点、动手与撤离的第一票主场",
-      "source": "docs/scenario/S8-起步战役集.md:339"
+      "source": "docs/scenario/s8-starter-campaigns.md:339"
     },
     {
       "id": "loc-03",
       "name": "撤离段（铜环走廊）",
       "atmosphere": "出来比进去难：外墙、吊篮、检修井三条路",
-      "source": "docs/scenario/S8-起步战役集.md:341"
+      "source": "docs/scenario/s8-starter-campaigns.md:341"
     },
     {
       "id": "loc-04",
       "name": "二阶·白壁（听泉馆）",
       "atmosphere": "厚地毯、双层玻璃的安静；锁序的第三节在第二声水滴之后开三十七秒",
-      "source": "docs/scenario/S8-起步战役集.md:380"
+      "source": "docs/scenario/s8-starter-campaigns.md:380"
     },
     {
       "id": "loc-05",
       "name": "三阶·中庭",
       "atmosphere": "同行竞争者罗屏出没之处",
-      "source": "docs/scenario/S8-起步战役集.md:382"
+      "source": "docs/scenario/s8-starter-campaigns.md:382"
     },
     {
       "id": "loc-06",
       "name": "冠台前哨",
       "atmosphere": "终局入口；守夜局六分半可达，消防梯在防火闸另一边",
-      "source": "docs/scenario/S8-起步战役集.md:416"
+      "source": "docs/scenario/s8-starter-campaigns.md:416"
     }
   ],
   "endings": [
@@ -453,7 +453,7 @@
       "type": "顺从",
       "requirements": "玩家把钥匙交给霍砚",
       "result": "进入 S2 正式战役第二幕（V2 听泉馆已在开场跑完，可直接接 V3）",
-      "source": "docs/scenario/S8-起步战役集.md:428"
+      "source": "docs/scenario/s8-starter-campaigns.md:428"
     },
     {
       "id": "ending-defect",
@@ -461,7 +461,7 @@
       "type": "反水",
       "requirements": "玩家扣下钥匙",
       "result": "霍砚排布追索，进入正式战役的「独行线」，从灰市重新起步",
-      "source": "docs/scenario/S8-起步战役集.md:429"
+      "source": "docs/scenario/s8-starter-campaigns.md:429"
     },
     {
       "id": "ending-expose",
@@ -469,11 +469,11 @@
       "type": "转向",
       "requirements": "玩家把真相带给岑照或胡同舟",
       "result": "进入正式战役的「守夜局线」或「报馆线」",
-      "source": "docs/scenario/S8-起步战役集.md:430"
+      "source": "docs/scenario/s8-starter-campaigns.md:430"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S8-起步战役集.md:307",
+    "source": "docs/scenario/s8-starter-campaigns.md:307",
     "declared_flag_count": 7,
     "actual_flag_count": 7,
     "flag": [
@@ -484,7 +484,7 @@
         "write": "第一幕幕末：拿到了第一件赃物（木匣内文件）",
         "readers": "Q-00/C-01",
         "effect": "开启主线",
-        "source": "docs/scenario/S8-起步战役集.md:358"
+        "source": "docs/scenario/s8-starter-campaigns.md:358"
       },
       {
         "id": "flag.ropeclan_settled",
@@ -493,7 +493,7 @@
         "write": "已向绳会交付／欠账结算",
         "readers": "act-1",
         "effect": "绳会线；勿与 S3 的 flag.lu_paid 混用",
-        "source": "docs/scenario/S8-起步战役集.md:359"
+        "source": "docs/scenario/s8-starter-campaigns.md:359"
       },
       {
         "id": "flag.prep_pool",
@@ -502,7 +502,7 @@
         "write": "踩点失败 −1",
         "readers": "act-1/act-2",
         "effect": "剩余预案点（1~2）",
-        "source": "docs/scenario/S8-起步战役集.md:361"
+        "source": "docs/scenario/s8-starter-campaigns.md:361"
       },
       {
         "id": "flag.insider_liwang",
@@ -511,7 +511,7 @@
         "write": "第一幕幕末：黎望已可被策反",
         "readers": "N12/N13",
         "effect": "内应可用",
-        "source": "docs/scenario/S8-起步战役集.md:363"
+        "source": "docs/scenario/s8-starter-campaigns.md:363"
       },
       {
         "id": "flag.key_v1",
@@ -520,7 +520,7 @@
         "write": "第二幕幕末：取得第一枚权钥",
         "readers": "Q-00/C-03",
         "effect": "赃物是权钥的实证",
-        "source": "docs/scenario/S8-起步战役集.md:395"
+        "source": "docs/scenario/s8-starter-campaigns.md:395"
       },
       {
         "id": "flag.huo_motive_suspected",
@@ -529,7 +529,7 @@
         "write": "第二幕幕末：开始怀疑雇主隐藏动机",
         "readers": "Q-00/C-03",
         "effect": "识破「雇主在雇两队」",
-        "source": "docs/scenario/S8-起步战役集.md:396"
+        "source": "docs/scenario/s8-starter-campaigns.md:396"
       },
       {
         "id": "flag.rival_luo_first",
@@ -538,7 +538,7 @@
         "write": "罗屏是否先得手",
         "readers": "N23",
         "effect": "影响竞争者线",
-        "source": "docs/scenario/S8-起步战役集.md:397"
+        "source": "docs/scenario/s8-starter-campaigns.md:397"
       }
     ],
     "rep": [
@@ -549,7 +549,7 @@
         "write": "守规矩 +1",
         "readers": "act-1",
         "effect": "绳会态度",
-        "source": "docs/scenario/S8-起步战役集.md:362"
+        "source": "docs/scenario/s8-starter-campaigns.md:362"
       },
       {
         "id": "rep.baihang",
@@ -558,7 +558,7 @@
         "write": "第二幕行为结算",
         "readers": "act-2/act-3",
         "effect": "白壁行态度（0~2）",
-        "source": "docs/scenario/S8-起步战役集.md:399"
+        "source": "docs/scenario/s8-starter-campaigns.md:399"
       }
     ],
     "clock": [
@@ -569,7 +569,7 @@
         "write": "开柜／撤离失败 +2；潜行失败 +1",
         "readers": "act-1/act-2/act-3",
         "effect": "静默值（干净 0／带痕 3；二幕 3~6）",
-        "source": "docs/scenario/S8-起步战役集.md:360"
+        "source": "docs/scenario/s8-starter-campaigns.md:360"
       }
     ]
   },
@@ -651,6 +651,6 @@
       "collected": 0,
       "target": 9
     },
-    "source": "docs/scenario/S8-起步战役集.md:363"
+    "source": "docs/scenario/s8-starter-campaigns.md:363"
   }
 }

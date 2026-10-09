@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "kind": "system.reputation",
-  "source": "docs/system/03-互动层.md:398",
+  "source": "docs/system/03-interaction-layer.md:398",
   "note": "声望与关系网：对势力的声望轴（−3 ~ +3）、对个人的人脉 Bond（1–5）、敌对者 Nemesis。",
   "declared": {
     "reputation_axis": 7,
@@ -10,50 +10,50 @@
     "nemesis_duties": 3
   },
   "reputation": [
-    {"value": 3, "label": "崇敬", "expression": "该势力会主动提供支援、透露内部信息、为你背书", "source": "docs/system/03-互动层.md:406"},
-    {"value": 2, "label": "友好", "expression": "提供折扣、情报、通行便利", "source": "docs/system/03-互动层.md:407"},
-    {"value": 1, "label": "认可", "expression": "不会被为难，可以求助", "source": "docs/system/03-互动层.md:408"},
-    {"value": 0, "label": "中立", "expression": "按规则办事", "source": "docs/system/03-互动层.md:409"},
-    {"value": -1, "label": "警惕", "expression": "额外审查、更高的价钱、更长的等待", "source": "docs/system/03-互动层.md:410"},
-    {"value": -2, "label": "敌视", "expression": "拒绝服务、可能刁难、会记录你的行踪", "source": "docs/system/03-互动层.md:411"},
-    {"value": -3, "label": "仇寇", "expression": "主动阻挠、悬赏、派遣人员处理你", "source": "docs/system/03-互动层.md:412"}
+    {"value": 3, "label": "崇敬", "expression": "该势力会主动提供支援、透露内部信息、为你背书", "source": "docs/system/03-interaction-layer.md:406"},
+    {"value": 2, "label": "友好", "expression": "提供折扣、情报、通行便利", "source": "docs/system/03-interaction-layer.md:407"},
+    {"value": 1, "label": "认可", "expression": "不会被为难，可以求助", "source": "docs/system/03-interaction-layer.md:408"},
+    {"value": 0, "label": "中立", "expression": "按规则办事", "source": "docs/system/03-interaction-layer.md:409"},
+    {"value": -1, "label": "警惕", "expression": "额外审查、更高的价钱、更长的等待", "source": "docs/system/03-interaction-layer.md:410"},
+    {"value": -2, "label": "敌视", "expression": "拒绝服务、可能刁难、会记录你的行踪", "source": "docs/system/03-interaction-layer.md:411"},
+    {"value": -3, "label": "仇寇", "expression": "主动阻挠、悬赏、派遣人员处理你", "source": "docs/system/03-interaction-layer.md:412"}
   ],
   "reputation_note": {
     "rule": "声望变化应当被明确宣布——导引者说「你对港务局的声望降到 −2」，这比悄悄记账更能让玩家感受到后果。",
-    "source": "docs/system/03-互动层.md:414"
+    "source": "docs/system/03-interaction-layer.md:414"
   },
   "bonds": [
-    {"level": 1, "name": "点头之交", "request": "回答一个简单问题", "source": "docs/system/03-互动层.md:422"},
-    {"level": 2, "name": "熟人", "request": "帮忙跑腿、提供一个消息", "source": "docs/system/03-互动层.md:423"},
-    {"level": 3, "name": "朋友", "request": "借用资源、冒一点风险帮你", "source": "docs/system/03-互动层.md:424"},
-    {"level": 4, "name": "挚交", "request": "为你撒谎、动用自己的关系网、提供藏身处", "source": "docs/system/03-互动层.md:425"},
-    {"level": 5, "name": "生死之交", "request": "为你违抗自己的组织、替你顶罪、替你挡刀", "source": "docs/system/03-互动层.md:426"}
+    {"level": 1, "name": "点头之交", "request": "回答一个简单问题", "source": "docs/system/03-interaction-layer.md:422"},
+    {"level": 2, "name": "熟人", "request": "帮忙跑腿、提供一个消息", "source": "docs/system/03-interaction-layer.md:423"},
+    {"level": 3, "name": "朋友", "request": "借用资源、冒一点风险帮你", "source": "docs/system/03-interaction-layer.md:424"},
+    {"level": 4, "name": "挚交", "request": "为你撒谎、动用自己的关系网、提供藏身处", "source": "docs/system/03-interaction-layer.md:425"},
+    {"level": 5, "name": "生死之交", "request": "为你违抗自己的组织、替你顶罪、替你挡刀", "source": "docs/system/03-interaction-layer.md:426"}
   ],
   "bond_rulings": [
-    {"order": 1, "case": "请求在等级范围内", "ruling": "默认答应，但可能需要付出时间；", "source": "docs/system/03-互动层.md:430"},
-    {"order": 2, "case": "请求略微超出等级", "ruling": "需要一次说服判定，且成功会让羁绊等级可能下降；", "source": "docs/system/03-互动层.md:431"},
-    {"order": 3, "case": "请求严重超出等级", "ruling": "默认拒绝，但如果剧情上有必要，可以让对方提出一个交换条件。", "source": "docs/system/03-互动层.md:432"}
+    {"order": 1, "case": "请求在等级范围内", "ruling": "默认答应，但可能需要付出时间；", "source": "docs/system/03-interaction-layer.md:430"},
+    {"order": 2, "case": "请求略微超出等级", "ruling": "需要一次说服判定，且成功会让羁绊等级可能下降；", "source": "docs/system/03-interaction-layer.md:431"},
+    {"order": 3, "case": "请求严重超出等级", "ruling": "默认拒绝，但如果剧情上有必要，可以让对方提出一个交换条件。", "source": "docs/system/03-interaction-layer.md:432"}
   ],
   "bond_decay": {
     "rule": "每个章节结束时，未被联络的关系进行一次判定（或简化：每三个章节 −1）。",
-    "source": "docs/system/03-互动层.md:438"
+    "source": "docs/system/03-interaction-layer.md:438"
   },
   "bond_rupture": {
     "causes": ["被利用", "被忽视", "被牵连", "价值观冲突"],
     "rule": "关系的破裂通常源于以上原因；这些应当成为具体的场景，而不是悄悄改数字。",
-    "source": "docs/system/03-互动层.md:439"
+    "source": "docs/system/03-interaction-layer.md:439"
   },
   "nemesis": {
     "trigger": "当某个 NPC 对你的好感降到 −2 以下，他成为敌对者。",
-    "trigger_source": "docs/system/03-互动层.md:443",
+    "trigger_source": "docs/system/03-interaction-layer.md:443",
     "duties": [
-      {"order": 1, "duty": "有自己的目标与进度（不只是等待玩家）；", "source": "docs/system/03-互动层.md:445"},
-      {"order": 2, "duty": "在幕后推进自己的计划，偶尔以间接方式出现在剧情中；", "source": "docs/system/03-互动层.md:446"},
-      {"order": 3, "duty": "最终与玩家正面遭遇。", "source": "docs/system/03-互动层.md:447"}
+      {"order": 1, "duty": "有自己的目标与进度（不只是等待玩家）；", "source": "docs/system/03-interaction-layer.md:445"},
+      {"order": 2, "duty": "在幕后推进自己的计划，偶尔以间接方式出现在剧情中；", "source": "docs/system/03-interaction-layer.md:446"},
+      {"order": 3, "duty": "最终与玩家正面遭遇。", "source": "docs/system/03-interaction-layer.md:447"}
     ],
     "ai_note": {
       "rule": "敌对者是最好的长期结构。每完成一个重要章节，考虑提升某个既有敌对者的级别，而不是再造一个新反派。",
-      "source": "docs/system/03-互动层.md:449"
+      "source": "docs/system/03-interaction-layer.md:449"
     }
   }
 }

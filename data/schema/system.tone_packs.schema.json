@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.tone_packs）",
-  "description": "导引者操作系统第十三节：八种语气包（描写偏好 / 对话风格 / 事件倾向 / 禁忌）与切换时机。源自 docs/system/04-导引者操作系统.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "导引者操作系统第十三节：八种语气包（描写偏好 / 对话风格 / 事件倾向 / 禁忌）与切换时机。源自 docs/system/04-conductor-os.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "note", "declared", "usage", "packs", "switching"],
   "properties": {

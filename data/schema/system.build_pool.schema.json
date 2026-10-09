@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "system 族（system.build_pool）",
-  "description": "构建引擎第一节：骰池构成（主属性枚数 + 熟练枚数 + 专精 + 临时）、成功阈值（≥5 记 1 次成功）、单骰成功率表、需求成功数表（8 档）与战术 DF 对照、判定四步。源自 docs/system/02B-构建引擎.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "description": "构建引擎第一节：骰池构成（主属性枚数 + 熟练枚数 + 专精 + 临时）、成功阈值（≥5 记 1 次成功）、单骰成功率表、需求成功数表（8 档）与战术 DF 对照、判定四步。源自 docs/system/02b-forge-engine.md。只使用 data/FORMAT.md 第 7 节的关键字子集。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "declared", "pool", "success_threshold", "required_successes", "resolution_steps"],
   "properties": {
