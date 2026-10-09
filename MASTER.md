@@ -106,7 +106,7 @@ bash tests/content_firewall.sh
 | **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ b 战斗 / 派生 / 成长 ✅（PR #70）/ c 构建引擎 ✅（PR #76）；M2d（符纹 / 插槽 / 构建点 / 互转）待 |
 | **M3** | 会话与存档 + 后端 API | a 规则快照接线 ✅（PR #56）/ b 写接口 / API 待 |
 | **M4** | 前端 UI（`static/`） | 待 |
-| **M5** | AI 导引者（可选模块，import 失败不影响离线） | 待 |
+| **M5** | AI 导引者（可选模块，import 失败不影响离线）。方案见 `GUIDE-DESIGN.md` | 待 |
 | **M6** | 测试与文档收口（README + HANDOVER + run_all 全量） | 待 |
 
 > **ATLAS（自动地图）切片**：`ATLAS-DESIGN.md` §8 的六条 Issue **I1–I6** 与 M2–M4 交叉
@@ -162,6 +162,7 @@ bash tests/content_firewall.sh
 | **`MASTER.md`** | **主管 Agent** | **本文件**：接手 + 状态 + 路线 + 检查清单 |
 | `DNDWEB-ASSETS.md` | 主管 / 实现 | DNDWeb 可复用资产与挖掘状态 + 剥离红线 |
 | **`ATLAS-DESIGN.md`** | 主管 / 实现 | 自动地图（ATLAS）设计方案：帧 / 词表 / 编译 / 生成 / 六条拆单依据 |
+| **`GUIDE-DESIGN.md`** | 主管 / 实现 | 导引者：把地点卡走成可印证的街道、演已有人物、同一剧本每局不同；Chat Completions、前缀缓存、pcm16；G0–G7 |
 | `README.md` | 使用者 | 怎么跑、定位、**「别暴露到公网」警告** |
 | `data/FORMAT.md` | 数据贡献者 | 数据格式 / canonical 键 / schema 子集 |
 | `HANDOVER.md` | 改造者 | 架构交接（M6 落地） |
