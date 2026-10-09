@@ -14,6 +14,9 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     rules 平级，atlas.export_state / restore_state 进出），老档缺块时按
     当前世界懒编译；GET /api/atlas/exits 看出口（纯文本列表），
     POST /api/atlas/move 移动并返回行程档与时段
+  · 导引者接线（可选模块）：`guide` 状态块随存档落盘 / 按键还原；
+    GET /api/guide/status 三个布尔；POST /api/guide/turn 先结算、后叙事，
+    叙事走 HTTP/1.1 分块的事件流（上游失败只发 `fallback`，不再动 HTTP 状态）
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -35,6 +38,7 @@ import os
 import pathlib
 import random
 import re
+import secrets
 import socket
 import threading
 import time
@@ -44,6 +48,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import atlas as atlas_kernel
 import atlas_compile
 import prism_core
+
+# 导引者是**可选模块**（GUIDE-DESIGN.md §5.1）：依赖方向只允许
+# notdnd_web → prism_guide → prism_core。import 失败（缺文件 / 语法错 / 缺依赖）
+# 时网页层照常工作，导引路由返回固定 JSON 兜底，**不结算**。
+try:
+    import prism_guide
+except Exception:      # noqa: BLE001 — 可选模块缺失不该带走整个服务
+    prism_guide = None
 
 HERE = pathlib.Path(__file__).resolve().parent
 STATIC_DIR = HERE / "static"
@@ -66,6 +78,79 @@ SAVE_LIST_LIMIT = int(os.environ.get("NOTDND_SAVE_LIST_LIMIT") or "40")
 # 存档 sid 白名单：既是业务标识，也是**磁盘文件名安全边界**
 # （不含路径分隔符与点号，杜绝 ../ 拼接）。
 SID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+
+# ── 导引者（G2）常量 ─────────────────────────────────────────────────────
+#
+# 玩家文本上限（§5.10）：超过就是 400「这句话太长」。
+GUIDE_TEXT_LIMIT = 2000
+
+# 速率：每会话每 60 秒最多 12 次 turn / 30 次 speak（§5.10）。
+# 只放内存，**不进存档**（to_dict 是白名单，速率不是局内状态）。
+GUIDE_RATE_WINDOW_S = 60.0
+GUIDE_TURN_LIMIT = 12
+
+# 淡出与跳过是**整句相等**，不是关键字包含（§5.10）：单独的「跳过」不命中。
+GUIDE_FADE_WORD = "淡出"
+GUIDE_FADE_TEXT = "第二天早上，事情已经处理完了。"
+GUIDE_SKIP_WORD = "跳过这段"
+GUIDE_SKIP_TEXT = "这段先跳过。已经记下的规则结果还在，我们换一件事。"
+
+# 结算异常 → (固定短语, 仅开头可用的 HTTP 码)（§5.2）。状态行写出之后
+# 不再产生第二套 HTTP 状态，同一短语改当工具错误字符串（G4）。
+GUIDE_SETTLE_ERRORS = {
+    "行动不存在于当前场景": ("没有这个行动", 400),
+    "单位不存在": ("没有这个角色", 400),
+    "战斗还没结束，先打完这场": ("战斗还没结束", 409),
+}
+GUIDE_SETTLE_DEFAULT = ("这次结算不能做", 400)
+
+# 模块缺失时的本地兜底句：与 `prism_guide.FALLBACK_NARRATION` 同文的常量
+# （§5.1：「兜底句是模块级常量，不向模型现编」）。模块在时以它为准。
+FALLBACK_NARRATION = "导引者这会儿不在席。刚才的规则结果已经生效，请按桌上的判定继续。"
+
+
+def _empty_guide() -> dict:
+    """新存档的 `guide` 块（零参工厂：每次现造一份，含新 salt）。
+
+    形状与加载合同都归 `prism_guide`（§7）；模块缺失时退化成一个最小空块，
+    **不在这里再列一遍键**——两边各维护一套必然漂移。
+    """
+    if prism_guide is not None:
+        return prism_guide.empty_guide()
+    return {"salt": secrets.token_hex(16), "realizations": {}}
+
+
+def _guide_from(raw: object) -> dict:
+    """按键还原 `guide`（§7 加载合同）：只丢脏键，不因一个键把其余键删掉。"""
+    if prism_guide is not None:
+        return prism_guide.guide_from(raw)
+    return _empty_guide()
+
+
+def _guide_fallback_text(result=None) -> str:
+    """叙事失败时的正文：保留服务端裁决，正文用兜底句（§5.2）。"""
+    if prism_guide is not None:
+        return prism_guide.fallback_text(result)
+    return FALLBACK_NARRATION
+
+
+# 速率窗口：{sid: {"turn": [时间戳…], "speak": […]}}。窗口滑动、只留 60 秒内的。
+_guide_rates: dict[str, dict[str, list]] = {}
+_guide_rates_lock = threading.RLock()
+
+
+def _rate_ok(sid: str, kind: str, limit: int) -> bool:
+    """记一次调用并判断是否超限；超限**不**记这一次（窗口自然回滚）。"""
+    now = time.monotonic()
+    with _guide_rates_lock:
+        buckets = _guide_rates.setdefault(sid, {"turn": [], "speak": []})
+        bucket = buckets.setdefault(kind, [])
+        bucket[:] = [stamp for stamp in bucket
+                     if now - stamp < GUIDE_RATE_WINDOW_S]
+        if len(bucket) >= limit:
+            return False
+        bucket.append(now)
+        return True
 
 
 def _empty_rules_snapshot(sid: str = "") -> dict:
@@ -93,6 +178,7 @@ _SESSION_DEFAULTS: dict[str, object] = {
     "rules": _empty_rules_snapshot,     # PRISM 规则会话快照（工厂：现造空会话）
     "atlas": None,                      # ATLAS 存档块（§3.4）；老档缺失按 None，
                                         # 第一次用到地图时按当前世界懒编译
+    "guide": _empty_guide,              # 导引者状态块（工厂：现造，salt 新掷）
 }
 
 
@@ -268,6 +354,10 @@ class Session:
         self.atlas_block: dict | None = None
         self._atlas: dict | None = None      # 运行时地图（atlas.py 纯数据）
         self._locus: dict | None = None      # 队伍位置 {frame_id, place_id, ...}
+        # 导引者状态块（对局里的 salt / 前缀 / 实相等）：与 rules 平级，
+        # 同样是**快照字典**。新存档在这一刻生成 salt（§7）。模块缺失时是
+        # 最小空块；加载路径由 load() 调 _guide_from() 按键还原。
+        self.guide: dict = _empty_guide()
 
     # ── 持久化 ────────────────────────────────────────────
     def to_dict(self) -> dict:
@@ -280,6 +370,7 @@ class Session:
             "save_name": self.save_name,
             "rules": self.rules,
             "atlas": self._export_atlas_block(),
+            "guide": self.guide,
         }
 
     def _export_atlas_block(self) -> dict | None:
@@ -354,6 +445,9 @@ class Session:
         # 由 ensure_atlas() 按当前世界懒编译，不报错、不改写磁盘老档。
         block = d.get("atlas")
         s.atlas_block = copy.deepcopy(block) if isinstance(block, dict) else None
+        # 导引者块：**显式**在 rules 旁边还原（§7 加载合同，G2 就要做）。
+        # 按键处理——旁边一个键脏了不会把整块换成空块（否则会删掉 realizations）。
+        s.guide = _guide_from(d.get("guide"))
         # TODO(M3)：PRISM 存档层字段（世界 id / 进度索引等**索引 / 展示**用途的
         # 派生字段）的迁移规则加在这里（同样：只补不覆盖）；规则态本身不进这里，
         # 统一放 s.rules。
@@ -663,12 +757,48 @@ class Handler(BaseHTTPRequestHandler):
             return
         self._send(200, p.read_bytes(), MIME.get(p.suffix, "application/octet-stream"))
 
+    # ── 流式响应（导引者专用，§5.10）────────────────────────
+    def _begin_stream(self):
+        """打开导引者的流式响应：HTTP/1.1 + 分块，**只调用一次**。
+
+        `protocol_version` 在 `send_response` 之前设成 HTTP/1.1（默认 HTTP/1.0）；
+        JSON / 4xx / 429 / 淡出仍走 HTTP/1.0。没有 `Content-Length`——
+        长度未知，只能分块。
+        """
+        self.protocol_version = "HTTP/1.1"
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+
+    def _chunk(self, data: bytes) -> None:
+        """写一个 HTTP/1.1 分块：十六进制长度 + CRLF + 数据 + CRLF。"""
+        self.wfile.write(("%x\r\n" % len(data)).encode("ascii") + data + b"\r\n")
+
+    def _sse(self, event: str, obj) -> None:
+        """写一个 SSE 事件：`event:` + 一行 JSON `data:` + 空行。"""
+        payload = ("event: %s\ndata: %s\n\n"
+                   % (event, json.dumps(obj, ensure_ascii=False)))
+        self._chunk(payload.encode("utf-8"))
+
+    def _sse_close(self) -> None:
+        """写零长度块收尾——**不再**发第二行 HTTP 状态（§5.2）。"""
+        self.wfile.write(b"0\r\n\r\n")
+
     # ── GET（只读）─────────────────────────────────────────
     def do_GET(self):
         path = self.path.split("?", 1)[0]
         try:
             if path in ("/", "/index.html"):
                 return self._static("index.html")
+            if path == "/api/guide/status":
+                # 三个布尔，不需要会话（§5.10）。模块缺失时三个都是假。
+                if prism_guide is None:
+                    return self._json({"chat": False, "tts": False,
+                                       "configured": False})
+                return self._json(prism_guide.status())
             if path == "/api/saves":
                 # 开始界面还没有会话也要能列存档：故意不调 _sess()。
                 cur = (self.headers.get("X-Session") or "").strip()
@@ -721,6 +851,9 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         try:
             b = self._body()
+
+            if path == "/api/guide/turn":
+                return self._guide_turn(b)
 
             if path == "/api/save/rename":
                 # 目标 sid 来自请求体，不是 X-Session 头（头里是当前打开那局）。
@@ -780,6 +913,93 @@ class Handler(BaseHTTPRequestHandler):
             self._err(str(e), 400)
         except Exception as e:  # noqa: BLE001
             self._err(f"服务器内部错误：{e}", 500)
+
+    # ── 导引者回合（G2，§5.2 / §5.10）───────────────────────
+    def _guide_turn(self, body: dict):
+        """`POST /api/guide/turn`：先结算，后叙事。
+
+        顺序（§5.2）：长度 → 会话 → 速率 → 淡出整句——四步都还没写状态行。
+        有 `action_id` 时在**状态行之前**结算：`ValueError` 变成固定 JSON。
+        只有这些通过之后才打开 HTTP/1.1 分块；头写出之后的失败一律走
+        `fallback` 事件，`_err` 不再出现（否则就是第二行 HTTP 状态）。
+        """
+        text = str(body.get("text") or "")
+        if len(text) > GUIDE_TEXT_LIMIT:
+            return self._err("这句话太长", 400)
+        sid = (self.headers.get("X-Session") or "").strip()
+        session = get_session(sid) if sid else None
+        if not session:
+            return self._err("会话不存在或已过期", 400)
+        if not _rate_ok(sid, "turn", GUIDE_TURN_LIMIT):
+            return self._err("太频繁", 429)
+
+        stripped = text.strip()
+        if stripped == GUIDE_FADE_WORD:
+            # 淡出 / 跳过是整句相等：**不结算**，也不叫模型（§5.10）。
+            return self._json({"status": "ok",
+                               "narration": {"text": GUIDE_FADE_TEXT}})
+        if stripped == GUIDE_SKIP_WORD:
+            return self._json({"status": "ok",
+                               "narration": {"text": GUIDE_SKIP_TEXT}})
+
+        if prism_guide is None:
+            # 模块缺失：状态行之前返回固定 JSON 兜底，不结算（§5.1）。
+            return self._json({"status": "offline",
+                               "narration": {"text": FALLBACK_NARRATION}})
+
+        action_id = str(body.get("action_id") or "")
+        result = None
+        if action_id:
+            try:
+                result = prism_guide.settle(session, action_id)
+            except ValueError as exc:
+                phrase, code = GUIDE_SETTLE_ERRORS.get(str(exc),
+                                                       GUIDE_SETTLE_DEFAULT)
+                return self._err(phrase, code)
+
+        # L2 只在 scene.id 变化时重写（并清空 L3）；写 guide 要在单局锁内。
+        with session.lock:
+            prism_guide.ensure_l2(session.guide, session.rules)
+
+        try:
+            self._begin_stream()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+
+        try:
+            if result is not None:
+                self._sse("result", result)
+            completion = None
+            try:
+                env = prism_guide.load_env()
+                messages = prism_guide.build_narrative_messages(
+                    session.rules, session.guide, text, result)
+                completion = prism_guide.call_narrative(messages, env=env)
+            except Exception:   # noqa: BLE001 — 上游读取失败不改整回合为 _err
+                completion = None
+            reviewed = None
+            if completion is not None:
+                try:
+                    reviewed = prism_guide.review_narration(result, completion)
+                except Exception:   # noqa: BLE001
+                    reviewed = None
+            if reviewed is None:
+                # 头已写出：失败只能用 fallback，拿不到第二行 HTTP 状态。
+                self._sse("fallback", {"text": _guide_fallback_text(result)})
+            else:
+                with session.lock:
+                    session.guide["transcript"].append(
+                        {"role": "assistant", "content": reviewed})
+                    stats = session.guide.get("stats")
+                    if isinstance(stats, dict):
+                        stats["calls"] = int(stats.get("calls") or 0) + 1
+                    session.save()      # L3 要跟着落盘，重启后才接得上
+                self._sse("narration", {"text": reviewed, "beats": []})
+                self._sse("usage", completion.get("usage") or {})
+            self._sse("done", {"status": "ok"})
+            self._sse_close()
+        except (BrokenPipeError, ConnectionResetError):
+            pass                # 客户端中途断线（锁屏 / 切网）不该让服务端报错
 
 
 def lan_ip() -> str:
