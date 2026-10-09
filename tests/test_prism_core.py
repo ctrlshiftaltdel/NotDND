@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""prism_core 数值落地回归测试（Issue #53 M2a + Issue #59 M2b）。
+"""prism_core 数值落地回归测试（Issue #53 M2a + Issue #59 M2b + Issue #72 M2c）。
 
 M2a 覆盖：白名单拒绝、助势骰层数与取消、五档分档边界、灾难后果表、
 资源夹取与专注过用、伤害标签修正、状态叠加与【疲惫】、张力曲线触发、
@@ -9,6 +9,11 @@ M2a 覆盖：白名单拒绝、助势骰层数与取消、五档分档边界、�
 M2b 覆盖：先攻公式、攻击六档边界、擦过/暴击/重击数值、破韧与首领
 阶段、敌体模板与词缀、遭遇预算与组成限制、派生值重算、状态叠层、
 濒危三成/三败、经验升级与成长点、A 类 +4 上限、战斗集成。
+
+M2c 覆盖：构建引擎骰池四部分组成、成功阈值与单骰成功率表、需求
+成功数 8 档、五档结果边界与动量增益、全骰皆负与最大值爆发两个特例、
+骰阶 5 阶与期望成功数速查表、动量池（入账/花费/清零/上下限）、
+应力上限与惩罚段、崩溃事件 4 步、降低应力 4 手段。
 
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_prism_core.py` 运行。
 """
@@ -966,6 +971,319 @@ def check_combat_integration():
         pc.random = saved_random
 
 
+# ════════════════════════════════════════════════════════════════════════
+# M2c（Issue #72）：构建引擎骰池与结算（02B 第一至五节）
+# ════════════════════════════════════════════════════════════════════════
+
+# ── 骰池的构成（02B 第一节，四部分）─────────────────────────────────────
+
+def check_build_pool_composition():
+    # 熟练加值 → 枚数：+2 → +1 枚；+3 → +2 枚；+4 → +2 枚（02B 第一节）。
+    assert pc.build_proficiency_dice(2) == 1
+    assert pc.build_proficiency_dice(3) == 2
+    assert pc.build_proficiency_dice(4) == 2
+    try:
+        pc.build_proficiency_dice(-1)
+        raise AssertionError("熟练加值为负应报错")
+    except ValueError:
+        pass
+    # 四部分：主属性枚数 = 属性值本身（属性 5 → 5 枚）。
+    parts = pc.build_pool(5, 2)
+    assert parts == {"attribute": 5, "proficiency": 1,
+                     "specialization": 0, "temp": 0, "total": 6}, parts
+    # 专精额外 +1 枚；临时加成照传入结算。
+    parts = pc.build_pool(6, 3, specialization=True, temp=2)
+    assert parts["total"] == 6 + 2 + 1 + 2, parts
+    assert pc.build_pool(10, 4)["attribute"] == 10
+    assert pc.BUILD_SPECIALIZATION_DICE == 1
+    assert pc.BUILD_TEMP_DICE_TYPICAL == (1, 3)  # 参考量级：通常 1–3 枚
+
+
+# ── 成功阈值与单骰成功率表（02B 第一节）────────────────────────────────
+
+def check_build_threshold_and_rates():
+    assert pc.BUILD_SUCCESS_THRESHOLD == 5
+    assert pc.BUILD_DEFAULT_SIDES == 10
+    for sides, rate in ((6, 33), (8, 50), (10, 60), (12, 67)):
+        assert pc.build_die_rate(sides) == rate, (sides, rate)
+    try:
+        pc.build_die_rate(100)
+        raise AssertionError("未记录的骰面应报错")
+    except ValueError:
+        pass
+
+
+# ── 需求成功数 8 档（02B 第一节）───────────────────────────────────────
+
+def check_build_required_successes():
+    assert len(pc.BUILD_REQUIRED_SUCCESSES) == 8
+    for need, name, df in ((1, "平凡", 8), (2, "简易", 10), (3, "常规", 12),
+                           (4, "有挑战", 14), (5, "困难", 16), (6, "严峻", 18),
+                           (8, "极限", 20), (10, "传说", 24)):
+        info = pc.build_difficulty(need)
+        assert info["need"] == need and info["name"] == name \
+            and info["tactics_df"] == df, info
+    try:
+        pc.build_difficulty(7)
+        raise AssertionError("非 8 档的需求成功数应报错")
+    except ValueError:
+        pass
+
+
+# ── 五档结果梯度（02B 第二节：结果 = S − N）────────────────────────────
+
+def check_build_outcome_bands():
+    cases = (
+        (-5, "catastrophe"), (-2, "catastrophe"),
+        (-1, "failure"),
+        (0, "narrow"),
+        (1, "success"), (2, "success"),
+        (3, "triumph"), (7, "triumph"),
+    )
+    for margin, expected in cases:
+        got = pc.build_outcome(margin)
+        assert got == expected, "build_outcome(%d) = %s，期望 %s" % (
+            margin, got, expected)
+    # 动量增益：凯旋 +2 / 成功 +1 / 险成 +1 / 挫败 +1 / 灾难 +2
+    assert pc.BUILD_OUTCOME_MOMENTUM == {
+        "triumph": 2, "success": 1, "narrow": 1,
+        "failure": 1, "catastrophe": 2}
+
+
+# ── 判定结算与两个特例（02B 第一节四步 + 第二节）───────────────────────
+
+def check_build_roll_resolution():
+    # 普通结算：d10 掷 [7, 3, 5]，S = 2，need 2 → 0 → 险成，动量 +1。
+    seq = SeqRandom(7, 3, 5)
+    result = pc.build_roll(3, 2, rng=seq)
+    assert result["successes"] == 2 and result["margin"] == 0
+    assert result["outcome"] == "narrow" and result["momentum"] == 1
+    assert result["all_fail"] is False and result["burst"] == 0
+    json.dumps(result)  # 判定结果必须可直接落盘
+
+    # 特例 1 · 最大值爆发：最大面值的骰记 2 次成功（d10 的 10）。
+    seq = SeqRandom(10, 10, 4)
+    result = pc.build_roll(3, 1, rng=seq)
+    assert result["burst"] == 2 and result["successes"] == 4, result
+    assert result["outcome"] == "triumph" and result["momentum"] == 2
+    # d8 的 8 / d12 的 12 同理（最大面值 + 阈值达标各记 1 次）。
+    result = pc.build_roll(2, 1, sides=8, rng=SeqRandom(8, 5))
+    assert result["successes"] == 3 and result["burst"] == 1, result
+    result = pc.build_roll(2, 1, sides=12, rng=SeqRandom(12, 5))
+    assert result["successes"] == 3 and result["burst"] == 1, result
+
+    # 特例 2 · 全骰皆负：无任何一枚达到阈值 → 至少挫败 + 1 点额外动量。
+    seq = SeqRandom(4, 4, 4)
+    result = pc.build_roll(3, 1, rng=seq)
+    assert result["all_fail"] is True and result["outcome"] == "failure"
+    assert result["momentum"] == 2, result   # 挫败 1 + 额外 1
+    # 全骰皆负把灾难压回挫败：need 3、全 4 → margin −3 本应灾难。
+    result = pc.build_roll(4, 3, rng=SeqRandom(4, 4, 4, 4))
+    assert result["margin"] == -3 and result["outcome"] == "failure"
+    assert result["momentum"] == 2
+    # 阈值边界：≥5 记成功，4 不算（含 d6/d12 的阈值不变）。
+    result = pc.build_roll(2, 1, rng=SeqRandom(5, 4))
+    assert result["successes"] == 1 and result["outcome"] == "narrow"
+    # 空池同样按全骰皆负处理（没有任何一枚达到阈值）。
+    result = pc.build_roll(0, 2, rng=SeqRandom())
+    assert result["all_fail"] is True and result["outcome"] == "failure"
+
+
+# ── 骰阶与期望成功数速查（02B 第三节）──────────────────────────────────
+
+def check_build_die_ranks():
+    assert len(pc.BUILD_DIE_RANKS) == 5
+    for rank, sides in (("I", 6), ("II", 8), ("III", 10), ("IV", 12), ("V", 20)):
+        assert pc.build_rank_die(rank) == sides, rank
+    for bad in ("VI", "", "x"):
+        try:
+            pc.build_rank_die(bad)
+            raise AssertionError("未知骰阶应报错：%r" % bad)
+        except ValueError:
+            pass
+    # 起始角色的所有骰阶为 d8（骰阶 II）。
+    assert pc.BUILD_STARTING_RANK == "II"
+    assert pc.build_rank_die(pc.BUILD_STARTING_RANK) == 8
+    # 期望成功数速查表：8 行 × d8/d10/d12 逐格吻合。
+    assert len(pc.BUILD_EXPECTED_SUCCESS_TABLE) == 8
+    for pool, d8, d10, d12 in pc.BUILD_EXPECTED_SUCCESS_TABLE:
+        assert pc.build_expected_successes(pool, 8) == d8, (pool, "d8")
+        assert pc.build_expected_successes(pool, 10) == d10, (pool, "d10")
+        assert pc.build_expected_successes(pool, 12) == d12, (pool, "d12")
+    # 表外组合由同一公式推导：6 枚 d10 → 3.6（02B 第三节示例）。
+    assert pc.build_expected_successes(6, 10) == 3.6
+
+
+# ── 动量（02B 第四节：7 源获取 / 7 项花费 / 共享池与个人持有）──────────
+
+def check_momentum_pool():
+    # 获取 7 源：3 条判定档位 + 4 条叙事触发，数值逐条对照。
+    assert len(pc.MOMENTUM_GAIN_SOURCES) == 7
+    amounts = dict((row[0], row[1]) for row in pc.MOMENTUM_GAIN_SOURCES)
+    assert amounts == {
+        "outcome_success": 1, "outcome_triumph": 2,
+        "outcome_catastrophe": 2, "assist": 1, "heavy_damage_taken": 1,
+        "driven_choice": 1, "enemy_morale_break": 2}, amounts
+    # 花费 7 项：费用逐条对照（补强 1 / 重掷 2 / 升阶 2 / 改写 1 /
+    # 额外行动 3 / 刷新 2 / 连携增强 1）。
+    assert len(pc.MOMENTUM_SPENDS) == 7
+    costs = dict((key, value[0]) for key, value in pc.MOMENTUM_SPENDS.items())
+    assert costs == {"boost": 1, "reroll": 2, "upgrade": 2, "rewrite": 1,
+                     "extra_action": 3, "refresh": 2, "combo_boost": 1}, costs
+    assert pc.MOMENTUM_BOOST_MAX == 3
+
+    # 共享池起始 0（上限 10）、个人持有上限 5。
+    assert pc.MOMENTUM_SHARED_START == 0
+    assert pc.MOMENTUM_SHARED_CAP == 10
+    assert pc.MOMENTUM_PERSON_CAP == 5
+    pool = pc.new_momentum_pool(("a", "b"))
+    assert pool == {"shared": 0, "members": {"a": 0, "b": 0}}
+    json.dumps(pool)
+
+    # 个人入账：先填个人持有（上限 5），溢出进共享池（上限 10）。
+    pc.momentum_add(pool, "a", 3)
+    assert pool["members"]["a"] == 3 and pool["shared"] == 0
+    pc.momentum_add(pool, "a", 4)      # 3 + 4 → 个人 5，共享 2
+    assert pool["members"]["a"] == 5 and pool["shared"] == 2
+    # 全队来源（士气崩溃）：直接进共享池，夹在 10。
+    pc.momentum_add(pool, None, 20)
+    assert pool["shared"] == 10
+    try:
+        pc.momentum_add(pool, "a", -1)
+        raise AssertionError("负数入账应报错")
+    except ValueError:
+        pass
+
+    # 花费：先扣个人，不足部分从共享池补扣。
+    out = pc.momentum_spend(pool, "a", "extra_action")   # 3 点 → 个人出 3
+    assert out["cost"] == 3
+    assert pool["members"]["a"] == 2 and pool["shared"] == 10
+    out = pc.momentum_spend(pool, "b", "reroll")          # 个人 0 → 全部共享出
+    assert pool["members"]["b"] == 0 and pool["shared"] == 8
+    out = pc.momentum_spend(pool, "a", "upgrade", times=1)  # 个人 2 出 2
+    assert pool["members"]["a"] == 0 and pool["shared"] == 8
+    out = pc.momentum_spend(pool, "a", "extra_action")    # 个人 0 → 共享出 3
+    assert pool["shared"] == 5
+    out = pc.momentum_spend(pool, "b", "extra_action")    # 个人 0 → 共享出 3
+    assert pool["shared"] == 2
+    # 合计不足 → 整体拒绝，不产生部分扣减。
+    before = dict(pool)
+    try:
+        pc.momentum_spend(pool, "b", "extra_action")      # 需 3，只有共享 2
+        raise AssertionError("动量不足应报错")
+    except ValueError:
+        pass
+    assert pool == before, "拒绝时不得产生部分扣减"
+    try:
+        pc.momentum_spend(pool, "b", "nope")
+        raise AssertionError("未知花费项应报错")
+    except ValueError:
+        pass
+
+    # 场景结束：共享池清零，个人持有不动。
+    pc.momentum_add(pool, "b", 2)
+    cleared = pc.momentum_clear(pool)
+    assert cleared["cleared"] == 2 and pool["shared"] == 0
+    assert pool["members"]["b"] == 2
+
+
+# ── 应力与超载（02B 第五节）────────────────────────────────────────────
+
+def check_stress_system():
+    # 应力上限 = 体魄 + 心智 + 5（典型 13–21）。
+    assert pc.stress_cap(_unit()) == 13                       # 4 + 4 + 5
+    assert pc.stress_cap(_unit(attributes={"VIG": 6, "MND": 6})) == 17
+    assert pc.STRESS_CAP_FLAT == 5
+    # 获取应力的 5 种方式（数值逐条对照）。
+    assert len(pc.STRESS_GAINS) == 5
+    gains = dict((row[0], row[1]) for row in pc.STRESS_GAINS)
+    assert gains == {"overload_check": 2, "heavy_hit": 1,
+                     "repeat_overload": 3, "beyond_ability": 2,
+                     "desperate": 2}, gains
+
+    # 惩罚 4 段：0–49% 无 / 50–79% −1 枚 / 80–99% −2 枚 + 耐受判定 / 100% 崩溃。
+    p = pc.stress_penalty(0, 20)
+    assert p["band"] == "0–49%" and p["pool_dice"] == 0
+    assert p["tolerance_need"] is None and p["collapse"] is False
+    p = pc.stress_penalty(10, 20)                              # 50%
+    assert p["band"] == "50–79%" and p["pool_dice"] == -1
+    p = pc.stress_penalty(15, 20)                              # 75%
+    assert p["band"] == "50–79%" and p["pool_dice"] == -1
+    p = pc.stress_penalty(16, 20)                              # 80%
+    assert p["band"] == "80–99%" and p["pool_dice"] == -2
+    assert p["tolerance_need"] == pc.STRESS_TOLERANCE_NEED == 3
+    p = pc.stress_penalty(19, 20)                              # 95%
+    assert p["band"] == "80–99%" and p["collapse"] is False
+    p = pc.stress_penalty(20, 20)                              # 100% → 崩溃
+    assert p["collapse"] is True and p["band"] == "100%"
+
+    # 应力累积：夹在上限内；达到上限立即触发崩溃（4 步）。
+    session = pc.RuleSession("stress")
+    unit = _unit(attributes={"VIG": 5, "MND": 5})              # 上限 15
+    out = pc.stress_gain(session, unit, 14)
+    assert out["stress"] == 14 and out["overload"] is None
+    out = pc.stress_gain(session, unit, 5)                     # 顶到 15 → 崩溃
+    assert out["overload"] is not None
+    steps = out["overload"]
+    # 步骤 4：应力回落至上限的 50%（15 // 2 = 7）。
+    assert steps["stress_after"] == 7 and unit["stress"] == 7
+    # 步骤 1：失去本回合所有 AP（带 ap 字段的单位直接清零）。
+    assert steps["ap_lost"] is True
+    # 步骤 2：3 层【疲惫】与 1 点负担。
+    assert steps["fatigue_layers"] == 3
+    assert "疲惫" in unit["conditions"]
+    assert unit["condition_layers"]["疲惫"] == 3
+    assert steps["burden"] == 1 and unit["resources"]["strain"] == 1
+    # 步骤 3：中断标记。
+    assert steps["interrupted"] is True
+    # 崩溃后还能继续累积并再次崩溃（回落 ≠ 免疫）。
+    out = pc.stress_gain(session, unit, 8)                     # 7 + 8 = 15
+    assert out["overload"] is not None and unit["stress"] == 7
+
+    # AP 清零路径：战斗单位带 ap 字段。
+    fighter = _unit()                                          # 上限 13
+    fighter["ap"] = 3
+    pc.stress_gain(pc.RuleSession("ap"), fighter, 13)
+    assert fighter["ap"] == 0
+
+    # 降低应力 4 手段：短歇 −2 / 长歇 −4（安全据点 −6）/ 驱动目标 −2 /
+    # 能力道具须显式传入 amount。
+    assert pc.LONG_REST_SAFE_HAVEN == -6
+    rest = _unit()
+    session2 = pc.RuleSession("rest")
+    pc.stress_gain(session2, rest, 12)                         # 上限 13，不崩溃
+    assert rest["stress"] == 12
+    pc.stress_reduce(session2, rest, "short_rest")             # −2 → 10
+    assert rest["stress"] == 10
+    pc.stress_reduce(session2, rest, "long_rest")              # −4 → 6
+    assert rest["stress"] == 6
+    pc.stress_reduce(session2, rest, "long_rest", safe_haven=True)  # −6 → 0
+    assert rest["stress"] == 0
+    pc.stress_reduce(session2, rest, "drive_goal")             # 0 为下限
+    assert rest["stress"] == 0
+    try:
+        pc.stress_reduce(session2, rest, "ability_item")
+        raise AssertionError("能力道具未传 amount 应报错")
+    except ValueError:
+        pass
+    out = pc.stress_reduce(session2, rest, "ability_item", amount=3)
+    assert out["changed"] == 0                                 # 已是 0，不再降
+    try:
+        pc.stress_reduce(session2, rest, "meditate")
+        raise AssertionError("未知手段应报错")
+    except ValueError:
+        pass
+
+    # recompute_unit 把应力夹回上限内（属性下降后）。
+    shrunk = _unit(attributes={"VIG": 6, "MND": 6})            # 上限 17
+    shrunk["stress"] = 16
+    pc.recompute_unit(shrunk, session2)
+    assert shrunk["stress"] == 16
+    shrunk["attributes"]["MND"] = 3                            # 上限 14
+    pc.recompute_unit(shrunk, session2)
+    assert shrunk["stress"] == 14
+
+
 def main():
     checks = (
         check_roll_whitelist,
@@ -995,6 +1313,15 @@ def main():
         check_downed_struggle,
         check_growth_system,
         check_combat_integration,
+        # M2c（Issue #72）
+        check_build_pool_composition,
+        check_build_threshold_and_rates,
+        check_build_required_successes,
+        check_build_outcome_bands,
+        check_build_roll_resolution,
+        check_build_die_ranks,
+        check_momentum_pool,
+        check_stress_system,
     )
     failures = 0
     for check in checks:

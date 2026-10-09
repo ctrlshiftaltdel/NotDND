@@ -17,7 +17,16 @@ M2b（Issue #59）已落地：先攻（d20 + 洞察修正 + 灵巧修正的一�
 派生值（活力上限 / 移动 / 负重 / 先攻 / 专注与气势上限）/
 濒危挣扎循环与【创伤】层数 / 状态层数（叠至 3 层升级）/
 成长（十二级三层制、经验点法、六类成长选择、A 类 +4 上限）。
-源文档未写的数值一律不臆造，仍以 `TODO(M2)` / `TODO(M2c)` 标注。
+
+M2c（Issue #72）已落地：构建引擎骰池与结算（docs/system/02B 第一至
+五节）——骰池四部分组成与成功阈值（≥5 记 1 成功，默认 d10）/
+需求成功数 8 档（含战术 DF 对照）/ 五档结果梯度（结果 = S − N，
+失败也给动量）与两个特例（全骰皆负、最大值爆发）/ 骰阶 5 阶与
+期望成功数速查 / 动量（共享池 0–10 + 个人持有 5、7 源获取、7 项
+花费、场景清零）/ 应力（上限 = 体魄 + 心智 + 5、5 条来源、4 段
+惩罚、崩溃事件 4 步、4 种降低手段）。与战术引擎（d20 路径）并列、
+不混用；符纹插槽 / 构建点成长 / 双引擎互转留给 M2d。
+源文档未写的数值一律不臆造，仍以 `TODO(M2)` / `TODO(M2d)` 标注。
 
 设计约定
   · 零第三方依赖（仅 Python 3 标准库）；`import prism_core` **无副作用**。
@@ -32,6 +41,7 @@ M2b（Issue #59）已落地：先攻（d20 + 洞察修正 + 灵巧修正的一�
   三、会话状态契约          四、结算的单一进出口
   五、场景行动单入口        六、战斗状态机
   七、派生值与明细          八、成长
+  九、构建引擎（M2c，02B 第一至五节）
 """
 
 from __future__ import annotations
@@ -359,6 +369,7 @@ def new_unit(unit_id: str, name: str, *, attributes: dict | None = None) -> dict
         "guard": 0,
         "poise": 0,               # 韧性（01 第八节；recompute 后才有上限）
         "max_poise": 0,
+        "stress": 0,              # 应力（02B 第五节；上限 = 体魄 + 心智 + 5）
         "poise_broken": False,
         "poise_shields": 0,       # 首领韧性护盾层数
         "boss_phase": 0,          # 首领阶段转化（1 暴怒 / 2 绝望 / 3 崩解）
@@ -2394,7 +2405,8 @@ def recompute_unit(unit: dict | None, session: RuleSession | None = None) -> Non
       · 活力上限（体魄 / 等级 / 职途 / 创伤），并把当前活力夹回上限内；
       · 专注上限（写入 max_resources.focus；气势是队伍共享池，
         上限用 tempo_cap(队伍人数) 由会话层计算，不存于单位）；
-      · 韧性上限（敌体模板优先），首次计算时以满韧性开局。
+      · 韧性上限（敌体模板优先），首次计算时以满韧性开局；
+      · 应力夹回上限内（02B 第五节：上限 = 体魄 + 心智 + 5）。
     """
     if unit is None:
         return
@@ -2414,6 +2426,10 @@ def recompute_unit(unit: dict | None, session: RuleSession | None = None) -> Non
         # 敌体模板等调用方已给出韧性数据的，只夹取不重置。
         unit["poise"] = min(int(unit.get("poise") or 0),
                             int(unit["max_poise"] or 0))
+    # 应力夹回上限内（02B 第五节；超限触发崩溃只发生在 stress_gain，
+    # 这里只做属性变化后的静默夹取）。
+    unit["stress"] = min(max(0, int(unit.get("stress") or 0)),
+                         stress_cap(unit))
     if session is not None:
         session.touch()
 
@@ -2620,6 +2636,467 @@ def apply_growth_choice(session: RuleSession, unit_id: str, category: str,
     return out
 
 
+# ════════════════════════════════════════════════════════════════════════
+# 九、构建引擎（docs/system/02B 第一至五节 / data/system/build_*.json）
+# ════════════════════════════════════════════════════════════════════════
+#
+# 第二套引擎：**d10 骰池 + 成功计数**。它与战术引擎（d20 路径，见
+# judge_check / resolve_attack）**并列**、不混用——同一个团的所有人
+# 应当使用同一套引擎（02B 第十一节「混用限制」）。判定四步（02B
+# 第一节）：导引者宣布需求成功数 N → 掷骰池 → 清点成功数 S →
+# 结果 = S − N。本节只落 02B 第一至五节；战斗中的应用（第六节）、
+# 超载连锁（第七节）、符纹插槽 / 构建点（第八、九节）与双引擎互转
+# （第十一节）留给 M2d，TODO 一并标注。
+
+# ── 成功阈值与默认骰（02B 第一节）─────────────────────────────────────
+# 骰池里的每一枚骰，点数 ≥ 5 记作 1 次成功；默认骰面 d10，骰面经
+# 骰阶升级提升（见 BUILD_DIE_RANKS）。
+BUILD_SUCCESS_THRESHOLD = 5
+BUILD_DEFAULT_SIDES = 10
+
+# 单骰成功率表（02B 第一节：d6 33% / d8 50% / d10 60% / d12 67%）。
+# d20 的 80% 为推导值（16 面达标 / 20），源文档未列表——TODO(M2d)
+# 与骰阶 V 一并确认。
+BUILD_DIE_RATES = {6: 33, 8: 50, 10: 60, 12: 67}
+
+# ── 骰池的构成（02B 第一节，四部分）──────────────────────────────────
+# 骰池 = 主属性枚数 + 技能熟练枚数 + 技能专精 + 临时加成。
+#   主属性枚数 = 属性值本身（属性 5 → 5 枚骰）；
+#   熟练枚数 = 熟练加值的一半（向上取整）：+2 → +1 枚；+3 → +2 枚；
+#   +4 → +2 枚；专精额外 +1 枚；临时加成（协助 / 态势 / 场地要素）
+#   通常 1–3 枚——量级为参考值，具体枚数由导引者宣布。
+BUILD_SPECIALIZATION_DICE = 1
+BUILD_TEMP_DICE_TYPICAL = (1, 3)
+
+
+def build_proficiency_dice(prof_bonus: int) -> int:
+    """熟练加值 → 骰池枚数（02B 第一节）：加值的一半向上取整。"""
+    bonus = int(prof_bonus or 0)
+    if bonus < 0:
+        raise ValueError("熟练加值不能为负")
+    return (bonus + 1) // 2
+
+
+def build_pool(attribute: int, prof_bonus: int, *,
+               specialization: bool = False, temp: int = 0) -> dict:
+    """构建引擎骰池的组成（02B 第一节，四部分）。
+
+    返回 {attribute, proficiency, specialization, temp, total}；总数
+    即掷骰枚数。构建引擎的加值几乎都转换为骰子枚数，而不是固定数字。
+    """
+    main = max(0, int(attribute or 0))
+    prof = build_proficiency_dice(prof_bonus)
+    spec = BUILD_SPECIALIZATION_DICE if specialization else 0
+    extra = max(0, int(temp or 0))
+    return {"attribute": main, "proficiency": prof,
+            "specialization": spec, "temp": extra,
+            "total": main + prof + spec + extra}
+
+
+def build_die_rate(sides: int) -> int:
+    """骰面 → 单骰成功率（%，02B 第一节表）。"""
+    sides = int(sides or 0)
+    rate = BUILD_DIE_RATES.get(sides)
+    if rate is not None:
+        return rate
+    if sides == 20:
+        return 80  # 推导值（16/20 达标）；源文档未列表，TODO(M2d) 确认。
+    raise ValueError(f"未记录的骰面：d{sides}（源文档只列表 d6/d8/d10/d12）")
+
+
+# ── 难度 = 需求成功数（02B 第一节：8 档 + 战术 DF 对照）──────────────
+BUILD_REQUIRED_SUCCESSES = (
+    (1, "平凡", 8), (2, "简易", 10), (3, "常规", 12), (4, "有挑战", 14),
+    (5, "困难", 16), (6, "严峻", 18), (8, "极限", 20), (10, "传说", 24),
+)
+
+
+def build_difficulty(need: int) -> dict:
+    """需求成功数 → 档名与战术引擎对应 DF（02B 第一节对照表）。"""
+    need = int(need or 0)
+    for value, name, df in BUILD_REQUIRED_SUCCESSES:
+        if value == need:
+            return {"need": need, "name": name, "tactics_df": df}
+    raise ValueError(
+        f"未知需求成功数：{need}（源文档只定义 8 档：1/2/3/4/5/6/8/10）")
+
+
+# ── 五档结果梯度（02B 第二节）────────────────────────────────────────
+# 结果 = 成功数 S − 需求成功数 N。档位命名与战术引擎相同，边界不同；
+# 动量增益刻意让失败也有进账（灾难 +2、挫败 +1）——资源循环建立在
+# 「动量消耗 → 反哺成功」之上，否则玩家会陷入死亡螺旋（02B 第二节
+# 设计说明）。
+BUILD_OUTCOME_MOMENTUM = {"triumph": 2, "success": 1, "narrow": 1,
+                          "failure": 1, "catastrophe": 2}
+
+
+def build_outcome(margin: int) -> str:
+    """成功数差 → 五档结果（02B 第二节）。
+
+    S − N ≥ +3 凯旋；+1 ~ +2 成功；0 险成；−1 挫败；≤ −2 灾难。
+    """
+    margin = int(margin or 0)
+    if margin >= 3:
+        return "triumph"
+    if margin >= 1:
+        return "success"
+    if margin == 0:
+        return "narrow"
+    if margin == -1:
+        return "failure"
+    return "catastrophe"
+
+
+# ── 骰阶与专精（02B 第三节：5 阶）────────────────────────────────────
+BUILD_DIE_RANKS = (
+    ("I", 6, "未受训的属性（新手角色）"),
+    ("II", 8, "默认起始值：角色所有骰阶为 d8"),
+    ("III", 10, "标准手法：每项 +1 枚对该属性的骰阶提升"),
+    ("IV", 12, "需要投入大量构建点"),
+    ("V", 20, "极限成就，通常在 8 级以后才可能触及"),
+)
+BUILD_STARTING_RANK = "II"   # 起始角色的所有骰阶为 d8（骰阶 II）
+
+# 期望成功数速查表（02B 第三节，8 行 × d8/d10/d12）。
+BUILD_EXPECTED_SUCCESS_TABLE = (
+    (2, 1.0, 1.2, 1.3), (3, 1.5, 1.8, 2.0), (4, 2.0, 2.4, 2.7),
+    (5, 2.5, 3.0, 3.3), (6, 3.0, 3.6, 4.0), (7, 3.5, 4.2, 4.7),
+    (8, 4.0, 4.8, 5.3), (10, 5.0, 6.0, 6.7),
+)
+
+
+def build_rank_die(rank: str) -> int:
+    """骰阶 → 骰面（02B 第三节）。"""
+    key = str(rank or "").strip().upper()
+    for name, sides, _unlock in BUILD_DIE_RANKS:
+        if name == key:
+            return sides
+    raise ValueError(f"未知骰阶：{rank}（I–V）")
+
+
+def build_expected_successes(pool: int, sides: int) -> float:
+    """骰池枚数 × 骰面 → 期望成功数（02B 第三节速查表）。
+
+    期望 = 枚数 × 达标率（(面值 − 阈值 + 1) / 面值），与速查表逐格
+    吻合（见 tests）；表外组合由同一公式推导，不臆造。
+    """
+    pool = max(0, int(pool or 0))
+    sides = int(sides or 0)
+    if sides < BUILD_SUCCESS_THRESHOLD + 1:
+        raise ValueError(
+            f"骰面至少要有 {BUILD_SUCCESS_THRESHOLD + 1} 面（当前 d{sides}）")
+    return round(pool * (sides - BUILD_SUCCESS_THRESHOLD + 1) / sides, 1)
+
+
+def build_roll(pool: int, need: int, *, sides: int = BUILD_DEFAULT_SIDES,
+               rng=None) -> dict:
+    """掷一次构建引擎判定（02B 第一节判定四步 + 第二节两个特例）。
+
+      · 每枚骰 ≥ 5 记 1 次成功；掷出**最大面值**的骰记 2 次成功
+        （最大值爆发：高风险设计的天然回报）；
+      · **全骰皆负**（没有任何一枚达到阈值，含空池）时，无论需求
+        成功数是多少都至少视为挫败，且获得 1 点额外动量；
+      · 动量增益按五档表（BUILD_OUTCOME_MOMENTUM）结算。
+
+    返回纯数据 dict（可直接 JSON 落盘）：{pool, sides, need, dice,
+    successes, burst, all_fail, margin, outcome, momentum, detail}。
+    `rng` 供测试注入确定性随机（默认 Python 标准库的 random）。
+    """
+    pool = max(0, int(pool or 0))
+    need = int(need or 0)
+    source = rng or random
+    dice = [int(source.randint(1, sides)) for _ in range(pool)]
+    successes = 0
+    burst = 0
+    for value in dice:
+        if value >= BUILD_SUCCESS_THRESHOLD:
+            successes += 1
+        if value == sides:      # 最大值爆发：该骰记 2 次成功
+            successes += 1
+            burst += 1
+    all_fail = not any(value >= BUILD_SUCCESS_THRESHOLD for value in dice)
+    margin = successes - need
+    outcome = build_outcome(margin)
+    if all_fail and outcome == "catastrophe":
+        outcome = "failure"     # 全骰皆负：至少视为 −1（挫败）
+    momentum = BUILD_OUTCOME_MOMENTUM[outcome] + (1 if all_fail else 0)
+    detail = (f"骰池 {pool} 枚 d{sides}：{dice} → 成功 {successes}"
+              f"（爆发 {burst} 枚）vs 需求 {need} → {margin:+d}")
+    return {"pool": pool, "sides": sides, "need": need, "dice": dice,
+            "successes": successes, "burst": burst, "all_fail": all_fail,
+            "margin": margin, "outcome": outcome, "momentum": momentum,
+            "detail": detail}
+
+
+# ── 动量 Momentum（02B 第四节）───────────────────────────────────────
+# 动量池 = 共享池（起始 0，上限 10）＋ 每人各自的持有上限 5；可以
+# 在任何时候花费（包括他人的回合——时序归调用方处理）。每个场景
+# 结束时共享池清零（个人持有源文档未写清零，不动——TODO(M2d) 复核）。
+MOMENTUM_SHARED_START = 0
+MOMENTUM_SHARED_CAP = 10
+MOMENTUM_PERSON_CAP = 5
+MOMENTUM_BOOST_MAX = 3    # 补强：单次判定最多追加 3 枚（02B 第四节）
+
+# 获取动量的 7 个来源（02B 第四节；判定档位的三条已并入
+# BUILD_OUTCOME_MOMENTUM，其余为叙事触发，由导引者宣布后入账）。
+MOMENTUM_GAIN_SOURCES = (
+    ("outcome_success", 1, "判定结果为成功"),
+    ("outcome_triumph", 2, "判定结果为凯旋"),
+    ("outcome_catastrophe", 2, "判定结果为灾难"),
+    ("assist", 1, "队友的协助动作生效"),
+    ("heavy_damage_taken", 1, "你承受了一次超过 10 点的伤害"),
+    ("driven_choice", 1, "你演出了符合角色驱动、且对自己不利的抉择（导引者判定）"),
+    ("enemy_morale_break", 2, "敌人发生一次士气崩溃（全队）"),
+)
+
+# 花费动量的 7 项（02B 第四节花费表）：id → (费用, 名称, 效果)。
+MOMENTUM_SPENDS = {
+    "boost": (1, "补强", "向正在进行的判定追加 1 枚骰（可多次，上限 3 枚）"),
+    "reroll": (2, "重掷", "重掷池中所有未成功的骰子一次"),
+    "upgrade": (2, "升阶", "本次判定中，把所有骰视为高一阶（d8→d10→d12）"),
+    "rewrite": (1, "改写失败", "把一次 −1 结果提升为 0（险成）"),
+    "extra_action": (3, "额外行动", "在当前时刻获得额外 1 AP"),
+    "refresh": (2, "刷新", "一项本场景已消耗的能力可以再用一次"),
+    "combo_boost": (1, "连携增强", "下一次连携完成时，额外获得 1 层连锁"),
+}
+
+
+def new_momentum_pool(members=()) -> dict:
+    """动量池的纯数据结构：{"shared": 0, "members": {成员 id: 持有}}。
+
+    纯 dict / int，可直接随会话快照落盘。
+    """
+    return {"shared": int(MOMENTUM_SHARED_START),
+            "members": {str(m): 0 for m in (members or ())}}
+
+
+def momentum_add(pool: dict, member: str | None, amount: int) -> dict:
+    """动量入账（02B 第四节 7 源），返回 {shared, member, changed}。
+
+    源文档只写明「共享池 0–10 / 个人持有 5 / 任何时候可花 / 场景结束
+    共享池清零」，未写明入账与扣减的先后——本实现采用并已在 PR 中
+    列为待复核项：增益先入该成员的持有（上限 5），溢出进共享池
+    （上限 10）；`member=None` 表示全队来源（如敌人士气崩溃），直接
+    进共享池。TODO(M2d)：导引者接线时复核该解释。
+    """
+    amount = int(amount or 0)
+    if amount < 0:
+        raise ValueError("动量入账不能为负（花费走 momentum_spend）")
+    shared = int(pool.get("shared", 0) or 0)
+    if member is None:
+        new_shared = min(shared + amount, MOMENTUM_SHARED_CAP)
+        pool["shared"] = new_shared
+        return {"shared": new_shared, "member": None,
+                "changed": new_shared - shared}
+    key = str(member)
+    members = pool.setdefault("members", {})
+    held = int(members.get(key, 0) or 0)
+    # 先填满个人持有（上限 5），溢出进共享池（上限 10），再溢出丢弃。
+    to_member = min(amount, max(0, MOMENTUM_PERSON_CAP - held))
+    to_shared = min(amount - to_member, max(0, MOMENTUM_SHARED_CAP - shared))
+    members[key] = held + to_member
+    pool["shared"] = shared + to_shared
+    return {"shared": pool["shared"], "member": key,
+            "changed": to_member + to_shared}
+
+
+def momentum_spend(pool: dict, member: str, spend_id: str, *,
+                   times: int = 1) -> dict:
+    """花费动量（02B 第四节花费表，7 项）。
+
+    先扣成员个人持有，不足部分从共享池补扣；合计不足则整体拒绝
+    （不产生部分扣减）。补强（boost）可多次但单次判定最多追加
+    MOMENTUM_BOOST_MAX 枚——次数记账归调用方，本函数只按 times 收费。
+    """
+    if spend_id not in MOMENTUM_SPENDS:
+        raise ValueError(f"未知动量花费：{spend_id}"
+                         f"（可用：{'/'.join(MOMENTUM_SPENDS)}）")
+    times = int(times or 0)
+    if times < 1:
+        raise ValueError("花费次数至少为 1")
+    cost = MOMENTUM_SPENDS[spend_id][0] * times
+    key = str(member)
+    members = pool.setdefault("members", {})
+    held = int(members.get(key, 0) or 0)
+    shared = int(pool.get("shared", 0) or 0)
+    if held + shared < cost:
+        raise ValueError(
+            f"动量不足：需要 {cost}，{key} 持有 {held} + 共享 {shared}")
+    from_member = min(held, cost)
+    from_shared = cost - from_member
+    members[key] = held - from_member
+    pool["shared"] = shared - from_shared
+    return {"spend": spend_id, "name": MOMENTUM_SPENDS[spend_id][1],
+            "cost": cost, "member": key,
+            "member_left": members[key], "shared_left": pool["shared"]}
+
+
+def momentum_clear(pool: dict) -> dict:
+    """场景结束：共享池中的动量清零（02B 第四节「动量清零」）。
+
+    未使用的动量不会累积到下一幕；个人持有源文档未写清零，保持
+    不动（TODO(M2d) 复核）。
+    """
+    before = int(pool.get("shared", 0) or 0)
+    pool["shared"] = 0
+    return {"cleared": before}
+
+
+# ── 应力 Stress 与超载（02B 第五节）──────────────────────────────────
+# 应力上限 = 体魄 + 心智 + 5（典型 13–21）；从 0 开始累积，存于
+# unit["stress"]（new_unit 已给默认 0，recompute_unit 夹回上限内）。
+STRESS_CAP_FLAT = 5
+
+# 获得应力的 5 种方式（02B 第五节）：id → (应力, 行为)。
+STRESS_GAINS = (
+    ("overload_check", 2, "超载一次判定（宣布后重掷全池，取第二次结果）"),
+    ("heavy_hit", 1, "受到一次超过自身活力上限 1/4 的伤害"),
+    ("repeat_overload", 3, "连续第二次宣布超载（同一场景内）"),
+    ("beyond_ability", 2, "使用超出自身能力等级的资源（强行动用未掌握的能力）"),
+    ("desperate", 2, "处于濒危状态"),
+)
+
+STRESS_TOLERANCE_NEED = 3   # 80–99% 段：回合开始耐受判定的需求成功数
+
+# 降低应力的 4 种手段（02B 第五节）：id → (降幅, 说明)。
+STRESS_REDUCTIONS = (
+    ("short_rest", -2, "短歇"),
+    ("long_rest", -4, "长歇"),
+    ("drive_goal", -2, "完成一次角色驱动相关的目标"),
+    ("ability_item", None, "特定能力／道具（见具体描述，由导引者裁定）"),
+)
+LONG_REST_SAFE_HAVEN = -6   # 长歇在安全据点 −6（02B 第五节）
+
+
+def stress_cap(unit: dict | None) -> int:
+    """应力上限 = 体魄 + 心智 + 5（02B 第五节；典型 13–21）。"""
+    attrs = (unit or {}).get("attributes") or {}
+    return (int(attrs.get("VIG", 4) or 4) + int(attrs.get("MND", 4) or 4)
+            + STRESS_CAP_FLAT)
+
+
+def stress_penalty(stress: int, cap: int) -> dict:
+    """应力惩罚段（02B 第五节，4 段，按占上限的比例分档）。
+
+    返回 {ratio, band, pool_dice, tolerance_need, collapse}：
+      0–49%   无；
+      50–79%  所有判定骰池 −1 枚；
+      80–99%  骰池 −2 枚，且每次开始回合需通过耐受判定（需求成功
+              3，失败失去 1 AP——由调用方按骰池结算）；
+      100%    崩溃（事件走 stress_overload_event）。
+    """
+    stress = max(0, int(stress or 0))
+    cap = int(cap or 0)
+    if cap <= 0:
+        raise ValueError("应力上限必须为正")
+    ratio = min(100, round(stress * 100 / cap))
+    if stress >= cap:
+        return {"ratio": 100, "band": "100%", "pool_dice": 0,
+                "tolerance_need": None, "collapse": True}
+    if ratio >= 80:
+        return {"ratio": ratio, "band": "80–99%", "pool_dice": -2,
+                "tolerance_need": STRESS_TOLERANCE_NEED, "collapse": False}
+    if ratio >= 50:
+        return {"ratio": ratio, "band": "50–79%", "pool_dice": -1,
+                "tolerance_need": None, "collapse": False}
+    return {"ratio": ratio, "band": "0–49%", "pool_dice": 0,
+            "tolerance_need": None, "collapse": False}
+
+
+def stress_overload_event(session: RuleSession, unit: dict | None) -> dict:
+    """崩溃 Overload Event（02B 第五节，应力达到上限时立即触发的 4 步）。
+
+      1. 失去本回合所有 AP（战斗中直接清 unit["ap"]；AP 经济归回合
+         层，非战斗时由调用方处理），并演出崩溃的具体表现（导引者
+         与玩家共同决定，玩家优先——归导引者模块）；
+      2. 获得 3 层【疲惫】与 1 点负担；
+      3. 所有进行中的超载效果立即中断（此处只记 interrupted 标记；
+         能力层接线后由调用方结束【过载中】等效果——TODO(M2d)）；
+      4. 应力回落至上限的 50%。
+
+    【疲惫】的「3 层」是 02B 点名的数量；疲惫层数的机械效果源文档
+    未写明，本函数只记录层数——TODO(M2d) 复核。
+    """
+    if unit is None:
+        raise ValueError("崩溃事件必须落在某个单位上")
+    steps: dict = {"ap_lost": False, "fatigue_layers": 0, "burden": 0,
+                   "interrupted": False, "stress_after": 0}
+    if "ap" in unit:
+        unit["ap"] = 0
+    steps["ap_lost"] = True
+    add_condition(session, unit, "疲惫")
+    unit.setdefault("condition_layers", {})["疲惫"] = 3
+    steps["fatigue_layers"] = 3
+    if change_resource(session, unit, "strain", 1)["changed"]:
+        steps["burden"] = 1
+    steps["interrupted"] = True
+    cap = stress_cap(unit)
+    unit["stress"] = cap // 2      # 回落至上限的 50%（向下取整）
+    steps["stress_after"] = int(unit["stress"])
+    session.add_log("system", f"{unit.get('name', '')} 应力达到上限，崩溃了。",
+                    speaker="应力")
+    session.touch()
+    return steps
+
+
+def stress_gain(session: RuleSession, unit: dict | None, amount: int) -> dict:
+    """给单位累积应力（02B 第五节 5 种方式由调用方按键名触发）。
+
+    应力夹取 0–上限；**达到上限立即触发崩溃**（stress_overload_event，
+    结果挂在返回值的 overload 字段）。返回 {stress, cap, changed,
+    overload}。
+    """
+    if unit is None:
+        raise ValueError("应力必须加在某个单位上")
+    amount = int(amount or 0)
+    cap = stress_cap(unit)
+    before = max(0, int(unit.get("stress") or 0))
+    after = min(max(0, before + amount), cap)
+    unit["stress"] = after
+    out: dict = {"stress": after, "cap": cap, "changed": after - before,
+                 "overload": None}
+    if amount > 0 and after >= cap and before < cap:
+        out["overload"] = stress_overload_event(session, unit)
+    session.touch()
+    return out
+
+
+def stress_reduce(session: RuleSession, unit: dict | None, method: str, *,
+                  safe_haven: bool = False,
+                  amount: int | None = None) -> dict:
+    """降低应力（02B 第五节 4 种手段），返回 {method, changed, stress}。
+
+    短歇 −2 / 长歇 −4（在安全据点 −6，传 safe_haven=True）/ 完成一
+    次角色驱动相关的目标 −2；「特定能力／道具」的降幅源文档未写明
+    （「见具体描述」），必须由调用方显式传入 amount，否则 raise——
+    不臆造数值。应力不低于 0。
+    """
+    if unit is None:
+        raise ValueError("应力必须落在某个单位上")
+    key = str(method or "")
+    if key == "ability_item":
+        if amount is None:
+            raise ValueError(
+                "「特定能力／道具」的降幅源文档未写明，须由调用方传入 amount")
+        delta = -abs(int(amount))
+    else:
+        for method_id, value, _label in STRESS_REDUCTIONS:
+            if method_id == key:
+                delta = int(value)
+                break
+        else:
+            raise ValueError(
+                f"未知降低应力手段：{method}"
+                f"（可用：{'/'.join(item[0] for item in STRESS_REDUCTIONS)}）")
+    if key == "long_rest" and safe_haven:
+        delta = LONG_REST_SAFE_HAVEN
+    before = max(0, int(unit.get("stress") or 0))
+    after = max(0, before + delta)
+    unit["stress"] = after
+    session.touch()
+    return {"method": key, "changed": after - before, "stress": after}
+
+
 __all__ = [
     # 一、术语与白名单
     "ATTRIBUTES", "ATTRIBUTE_IDS", "ATTRIBUTE_MIN", "ATTRIBUTE_MAX",
@@ -2668,4 +3145,19 @@ __all__ = [
     "LEVEL_XP_THRESHOLDS", "level_for_xp", "growth_points_for", "award_xp",
     "GROWTH_CATEGORIES", "GROWTH_ATTRIBUTE_CAP", "GROWTH_CONSECUTIVE_LIMIT",
     "assign_attribute", "apply_growth_choice",
+    # 九、构建引擎（M2c，02B 第一至五节）
+    "BUILD_SUCCESS_THRESHOLD", "BUILD_DEFAULT_SIDES", "BUILD_DIE_RATES",
+    "BUILD_SPECIALIZATION_DICE", "BUILD_TEMP_DICE_TYPICAL",
+    "build_proficiency_dice", "build_pool", "build_die_rate",
+    "BUILD_REQUIRED_SUCCESSES", "build_difficulty",
+    "BUILD_OUTCOME_MOMENTUM", "build_outcome",
+    "BUILD_DIE_RANKS", "BUILD_STARTING_RANK", "BUILD_EXPECTED_SUCCESS_TABLE",
+    "build_rank_die", "build_expected_successes", "build_roll",
+    "MOMENTUM_SHARED_START", "MOMENTUM_SHARED_CAP", "MOMENTUM_PERSON_CAP",
+    "MOMENTUM_BOOST_MAX", "MOMENTUM_GAIN_SOURCES", "MOMENTUM_SPENDS",
+    "new_momentum_pool", "momentum_add", "momentum_spend", "momentum_clear",
+    "STRESS_CAP_FLAT", "STRESS_GAINS", "STRESS_TOLERANCE_NEED",
+    "STRESS_REDUCTIONS", "LONG_REST_SAFE_HAVEN",
+    "stress_cap", "stress_penalty", "stress_overload_event",
+    "stress_gain", "stress_reduce",
 ]
