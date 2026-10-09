@@ -24,7 +24,7 @@
       "tasks": [
         "Q-01"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2462"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2486"
     },
     {
       "id": "act-2",
@@ -40,7 +40,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2498"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2522"
     },
     {
       "id": "act-3",
@@ -57,7 +57,7 @@
         "Q-05",
         "Q-06"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2533"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2557"
     },
     {
       "id": "act-4",
@@ -73,7 +73,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2568"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2592"
     },
     {
       "id": "act-5",
@@ -90,7 +90,7 @@
         "Q-00",
         "Q-05"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2603"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2627"
     }
   ],
   "nodes": [
@@ -101,7 +101,7 @@
       "next": [
         "N01"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2437"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2461"
     },
     {
       "id": "N01",
@@ -110,7 +110,7 @@
       "next": [
         "N02"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2437"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2461"
     },
     {
       "id": "N02",
@@ -119,7 +119,7 @@
       "next": [
         "N03"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2437"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2461"
     },
     {
       "id": "N03",
@@ -129,7 +129,7 @@
         "N10"
       ],
       "unlock": "完成一次配给整备",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2438"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2462"
     },
     {
       "id": "N10",
@@ -139,14 +139,14 @@
         "N11",
         "N12"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2441"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2465"
     },
     {
       "id": "N11",
       "name": "铁骨渠·青铜六闸",
       "act": "act-2",
       "next": [],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2441"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2465"
     },
     {
       "id": "N12",
@@ -155,7 +155,7 @@
       "next": [
         "N13"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2441"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2465"
     },
     {
       "id": "N13",
@@ -165,7 +165,7 @@
         "N20"
       ],
       "unlock": "抵达第 5 层或完成一次上行",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2442"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2466"
     },
     {
       "id": "N20",
@@ -174,7 +174,7 @@
       "next": [
         "N21"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2445"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2469"
     },
     {
       "id": "N21",
@@ -184,14 +184,14 @@
         "N22",
         "N23"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2445"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2469"
     },
     {
       "id": "N22",
       "name": "声窟·安静的价值",
       "act": "act-3",
       "next": [],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2445"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2469"
     },
     {
       "id": "N23",
@@ -201,7 +201,7 @@
         "N30"
       ],
       "unlock": "抵达第 7 层",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2446"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2470"
     },
     {
       "id": "N30",
@@ -210,7 +210,7 @@
       "next": [
         "N31"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2449"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2473"
     },
     {
       "id": "N31",
@@ -220,14 +220,14 @@
         "N32",
         "N33"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2449"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2473"
     },
     {
       "id": "N32",
       "name": "承重结·建立锚点",
       "act": "act-4",
       "next": [],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2449"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2473"
     },
     {
       "id": "N33",
@@ -237,7 +237,7 @@
         "N40"
       ],
       "unlock": "抵达第 9 层",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2450"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2474"
     },
     {
       "id": "N40",
@@ -246,7 +246,7 @@
       "next": [
         "N41"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2453"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2477"
     },
     {
       "id": "N41",
@@ -255,7 +255,7 @@
       "next": [
         "N42"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2453"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2477"
     },
     {
       "id": "N42",
@@ -270,7 +270,7 @@
         "关掉承重器",
         "交给坼民"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2453"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2477"
     },
     {
       "id": "N43",
@@ -286,7 +286,7 @@
       "marks": [
         "A 带回衡 / B 留在下面 / C 关掉它 / D 分层而居 / E 滞留"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2457"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2481"
     },
     {
       "id": "Q-00",
@@ -548,6 +548,82 @@
         }
       ],
       "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1695"
+    },
+    {
+      "id": "Q-07",
+      "type": "task",
+      "name": "再平衡之前",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "suspicious",
+          "condition": "听到关于衡的重量与第九层去向的矛盾说法（值房转速读数、空槽拓模、《井志》第三卷各执一词）"
+        },
+        {
+          "from": "suspicious",
+          "to": "weighed",
+          "condition": "任两类重证互证（各一次 DF 14 调查），或方梯亲口告知 → flag.heng_weight_known"
+        },
+        {
+          "from": "weighed",
+          "to": "decided",
+          "condition": "上行前公开决定：按真重改装配给、依第九条停机，或与常值暂缓"
+        },
+        {
+          "from": "decided",
+          "to": "budgeted",
+          "condition": "按真重重写 5.2.4 配给与背工价 → 上行判定 −2，再平衡风险可预算"
+        },
+        {
+          "from": "decided",
+          "to": "stopped",
+          "condition": "依值契第九条停机（承接 Q-05 的 entered）→ 承重器静止，第 9 层可安全作业，但上行失去配重遮蔽"
+        },
+        {
+          "from": "decided",
+          "to": "sunk",
+          "condition": "忽略真重强摘配重或输错九位码 → flag.rebalance_triggered，第 9 层下沉结账（与 Q-05 的 rebalanced 同点汇合）"
+        },
+        {
+          "from": "decided",
+          "to": "deferred",
+          "condition": "rep.常值 ≥ −1 时达成暂缓 → 本轮维持运转，停机条件留待后议"
+        }
+      ],
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1706"
+    },
+    {
+      "id": "Q-08",
+      "type": "task",
+      "name": "方梯的遗物",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "heard",
+          "condition": "与方梯对谈或读其井志，得知他当年能活着回来是因为没带回任何东西"
+        },
+        {
+          "from": "heard",
+          "to": "tracing",
+          "condition": "循黑绳编织法与层图残页追查他留下的东西（flag.fangti_map_pages 计数，冼崇婆三张计入）"
+        },
+        {
+          "from": "tracing",
+          "to": "carried",
+          "condition": "五张拼齐九层全图并带走方梯路线 → 全层通行判定 −1；深层物品的“记得”随队上行，终局多一条证词"
+        },
+        {
+          "from": "tracing",
+          "to": "inherited",
+          "condition": "把残页与黑绳交还坼民 → rep.坼民 +1，解锁“留下”类结局对话（承接 flag.left_heng 线）"
+        },
+        {
+          "from": "tracing",
+          "to": "let_go",
+          "condition": "于第 9 层选择不取衡（flag.left_heng）→ 本任务与 Q-00 的坼民结局并线，归档方梯的全部遗物"
+        }
+      ],
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1719"
     }
   ],
   "threads": [
@@ -564,7 +640,7 @@
       ],
       "tasks": [],
       "note": "补给许可线",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2680"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2704"
     },
     {
       "id": "C-02",
@@ -579,7 +655,7 @@
       ],
       "tasks": [],
       "note": "交易线",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2681"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2705"
     },
     {
       "id": "C-03",
@@ -593,7 +669,7 @@
       ],
       "tasks": [],
       "note": "交易线",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2682"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2706"
     },
     {
       "id": "C-04",
@@ -608,7 +684,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2683"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2707"
     },
     {
       "id": "C-05",
@@ -623,7 +699,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2684"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2708"
     },
     {
       "id": "C-06",
@@ -638,7 +714,7 @@
       "tasks": [
         "Q-06"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2685"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2709"
     },
     {
       "id": "C-07",
@@ -653,7 +729,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2686"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2710"
     },
     {
       "id": "C-08",
@@ -668,7 +744,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2687"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2711"
     },
     {
       "id": "C-09",
@@ -683,7 +759,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2688"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2712"
     },
     {
       "id": "C-10",
@@ -698,7 +774,7 @@
       "tasks": [
         "Q-02"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2689"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2713"
     },
     {
       "id": "C-11",
@@ -713,7 +789,7 @@
       "tasks": [
         "Q-03"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2690"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2714"
     },
     {
       "id": "C-12",
@@ -728,7 +804,7 @@
       "tasks": [
         "Q-04"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2691"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2715"
     },
     {
       "id": "C-13",
@@ -748,25 +824,25 @@
         {
           "path": "A（物理）",
           "detail": "值契石板实读",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2705"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2729"
         },
         {
           "path": "B（文档）",
           "detail": "蒙七抄本",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1731"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1755"
         },
         {
           "path": "C（人证）",
           "detail": "声窟保存的旧话",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2705"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2729"
         },
         {
           "path": "D（推理）",
           "detail": "由常值的矛盾指令反推",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2705"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2729"
         }
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2692"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2716"
     },
     {
       "id": "C-14",
@@ -781,7 +857,7 @@
       "tasks": [
         "Q-05"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2693"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2717"
     },
     {
       "id": "C-15",
@@ -796,7 +872,7 @@
       "tasks": [
         "Q-08"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2694"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2718"
     },
     {
       "id": "C-16",
@@ -811,7 +887,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2695"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2719"
     },
     {
       "id": "C-17",
@@ -830,25 +906,25 @@
         {
           "path": "A（物理）",
           "detail": "九槽空位的拓模",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2706"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2730"
         },
         {
           "path": "B（文档）",
           "detail": "观测册第一至三卷",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2706"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2730"
         },
         {
           "path": "C（人证）",
           "detail": "方梯的告白",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2706"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2730"
         },
         {
           "path": "D（推理）",
           "detail": "由承重结的受力方式推出",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2706"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2730"
         }
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2696"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2720"
     },
     {
       "id": "C-18",
@@ -863,7 +939,7 @@
       "tasks": [
         "Q-07"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2697"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2721"
     },
     {
       "id": "C-19",
@@ -882,25 +958,25 @@
         {
           "path": "A（物理）",
           "detail": "第 7 层界语",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2707"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2731"
         },
         {
           "path": "B（文档）",
           "detail": "观测册的缺口",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2707"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2731"
         },
         {
           "path": "C（人证）",
           "detail": "墨鸢的警告",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2707"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2731"
         },
         {
           "path": "D（推理）",
           "detail": "由归处不明的物品清单推出",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2707"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2731"
         }
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2698"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2722"
     },
     {
       "id": "C-20",
@@ -919,25 +995,25 @@
         {
           "path": "A（物理）",
           "detail": "记忆探针实测",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2708"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2732"
         },
         {
           "path": "B（文档）",
           "detail": "董大娘的账",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2708"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2732"
         },
         {
           "path": "C（人证）",
           "detail": "一件物品自己发声",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2708"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2732"
         },
         {
           "path": "D（推理）",
           "detail": "由层压退化曲线推出",
-          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2708"
+          "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2732"
         }
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2699"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2723"
     }
   ],
   "npcs": [
@@ -1509,7 +1585,7 @@
       "variants": [
         "尾声差异：若玩家曾建立锚点并保住回风井，返程损失小、可谈判；若一路硬闯，代价直接落到背工与雇工身上。"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2639"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2663"
     },
     {
       "id": "ending-b",
@@ -1521,7 +1597,7 @@
       "variants": [
         "尾声差异：若九本观测册齐备，玩家可带回停机条件的完整解读，为下一代留下真正的选择。"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2646"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2670"
     },
     {
       "id": "ending-c",
@@ -1533,7 +1609,7 @@
       "variants": [
         "尾声差异：常值失去它的核心指令，役形开始自行寻找新任务；一台役形会来找玩家问“那我现在该做什么”。"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2653"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2677"
     },
     {
       "id": "ending-d",
@@ -1545,7 +1621,7 @@
       "variants": [
         "尾声差异：若菌农会与七炉都参与，新规则会先落在粮食与通行上；若只有坼民与玩家，则它只覆盖第 7–9 层，上方依旧。"
       ],
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2660"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2684"
     },
     {
       "id": "ending-e",
@@ -1554,11 +1630,11 @@
       "requirements": "clock.supply 与 clock.ascent 同时归零，或再平衡触发时选择留在下面。",
       "result": "队伍留在了深层的某一层，成为那一层“新的原住民”。等级、账本事实与装备保留。",
       "cost": "这是失败推进而非惩罚：下一段故事从“上面的人来寻找失踪的这支队伍”开始，而玩家这一方转为了被寻找的人。若队伍中有坼民接纳他们，则这其实是结局 B 的一种延伸。",
-      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2667"
+      "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2691"
     }
   ],
   "flags": {
-    "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1706",
+    "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1730",
     "declared_flag_count": 40,
     "actual_flag_count": 40,
     "flag": [
@@ -1570,7 +1646,7 @@
         "readers": "全部任务状态机",
         "effect": "当前幕次（跨册通用，见 S0 §7.2）",
         "universal": true,
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1712"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1736"
       },
       {
         "id": "flag.entered_well",
@@ -1579,7 +1655,7 @@
         "write": "首次抵达坼口镇",
         "readers": "Q-00",
         "effect": "开启主线",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1713"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1737"
       },
       {
         "id": "flag.downward_permit",
@@ -1588,7 +1664,7 @@
         "write": "取得行会许可或假许可",
         "readers": "各层入口",
         "effect": "正规下潜",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1714"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1738"
       },
       {
         "id": "flag.fake_permit",
@@ -1597,7 +1673,7 @@
         "write": "购买假许可",
         "readers": "缉私队",
         "effect": "DF 16 识破，识破后行会 −2",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1715"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1739"
       },
       {
         "id": "flag.reached_layer",
@@ -1606,7 +1682,7 @@
         "write": "每抵达更深一层",
         "readers": "Q-00、难度曲线",
         "effect": "当前最深 P",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1716"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1740"
       },
       {
         "id": "flag.max_depth_this_run",
@@ -1615,7 +1691,7 @@
         "write": "每次下潜更新",
         "readers": "背工价、结算",
         "effect": "本次最深 P",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1717"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1741"
       },
       {
         "id": "flag.carrying_heng",
@@ -1624,16 +1700,16 @@
         "write": "于第 9 层摘取衡",
         "readers": "Q-00、上行",
         "effect": "触发再平衡风险",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1718"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1742"
       },
       {
         "id": "flag.left_heng",
         "type": "bool",
         "initial": false,
         "write": "于第 9 层选择不取",
-        "readers": "坼民结局线",
+        "readers": "Q-08、坼民结局线",
         "effect": "解锁“留下”类结局",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1719"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1743"
       },
       {
         "id": "flag.backhaul_contract",
@@ -1642,7 +1718,7 @@
         "write": "签背工契约",
         "readers": "Q-02",
         "effect": "运输支线开启",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1720"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1744"
       },
       {
         "id": "flag.cargo_damaged",
@@ -1651,7 +1727,7 @@
         "write": "上行中装备失修",
         "readers": "Q-02 结算",
         "effect": "折价 30%",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1721"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1745"
       },
       {
         "id": "flag.fissure_surveyed",
@@ -1660,7 +1736,7 @@
         "write": "完成裂缝勘察",
         "readers": "Q-03",
         "effect": "开启封固流程",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1722"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1746"
       },
       {
         "id": "flag.sealed_fissure",
@@ -1669,7 +1745,7 @@
         "write": "完成三阶段封固",
         "readers": "区域 flag",
         "effect": "该区安全、封固声望 +2",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1723"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1747"
       },
       {
         "id": "flag.crack_burst",
@@ -1678,7 +1754,7 @@
         "write": "封固失败引发塌方",
         "readers": "区域 flag",
         "effect": "地形永久改变",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1724"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1748"
       },
       {
         "id": "flag.books_found",
@@ -1687,7 +1763,7 @@
         "write": "每得一卷观测册",
         "readers": "Q-04",
         "effect": "9 卷解锁停机条件",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1725"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1749"
       },
       {
         "id": "flag.code_fragments",
@@ -1696,7 +1772,7 @@
         "write": "每得一权限片段",
         "readers": "Q-05",
         "effect": "9 段可输入",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1726"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1750"
       },
       {
         "id": "flag.rebalance_triggered",
@@ -1705,7 +1781,7 @@
         "write": "输错码或强摘配重",
         "readers": "全局",
         "effect": "第 9 层下沉",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1727"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1751"
       },
       {
         "id": "flag.candle_doubted",
@@ -1714,7 +1790,7 @@
         "write": "取得熄烛证据",
         "readers": "Q-06",
         "effect": "守烛院分裂",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1728"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1752"
       },
       {
         "id": "flag.candlekeep_reformed",
@@ -1723,7 +1799,7 @@
         "write": "支持承认熄灭派",
         "readers": "回风井",
         "effect": "回风井可议",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1729"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1753"
       },
       {
         "id": "flag.rekindle_faction",
@@ -1732,16 +1808,16 @@
         "write": "支持重新点燃派",
         "readers": "回风井",
         "effect": "回风井被封",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1730"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1754"
       },
       {
         "id": "flag.mengqi_copy",
         "type": "bool",
         "initial": false,
         "write": "取得蒙七抄本",
-        "readers": "Q-06、值契",
+        "readers": "Q-06、Q-07、值契",
         "effect": "第九条解读入口",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1731"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1755"
       },
       {
         "id": "flag.yuanhe_burnt",
@@ -1750,7 +1826,7 @@
         "write": "记录库失火",
         "readers": "调查",
         "effect": "一条调查入口",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1732"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1756"
       },
       {
         "id": "flag.registry_token",
@@ -1759,7 +1835,7 @@
         "write": "取得权限令牌",
         "readers": "中枢厅",
         "effect": "可读值契原文",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1733"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1757"
       },
       {
         "id": "flag.salt_seals",
@@ -1768,16 +1844,16 @@
         "write": "每得一盐印（上限 9）",
         "readers": "盐印窖",
         "effect": "开启部分上部设施",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1734"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1758"
       },
       {
         "id": "flag.fangti_map_pages",
         "type": "int",
         "initial": 0,
         "write": "每得一张层图残页",
-        "readers": "Q-00",
+        "readers": "Q-00、Q-08",
         "effect": "5 张可拼九层全图",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1735"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1759"
       },
       {
         "id": "flag.xilian_pages",
@@ -1786,7 +1862,7 @@
         "write": "从冼崇婆得到的三张",
         "readers": "拼图",
         "effect": "计入 map_pages",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1736"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1760"
       },
       {
         "id": "flag.quiet_room",
@@ -1795,7 +1871,7 @@
         "write": "使用声窟说话台",
         "readers": "遭遇判定",
         "effect": "该场景不累计合鸣",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1737"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1761"
       },
       {
         "id": "flag.chorus_triggered",
@@ -1804,7 +1880,7 @@
         "write": "合鸣被触发",
         "readers": "区域 flag",
         "effect": "第 6 层结构受损",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1738"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1762"
       },
       {
         "id": "flag.moyuan_estimates",
@@ -1813,16 +1889,16 @@
         "write": "墨鸢给出最省时路线",
         "readers": "上行",
         "effect": "上行时间 −0.5 日",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1739"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1763"
       },
       {
         "id": "flag.heng_weight_known",
         "type": "bool",
         "initial": false,
         "write": "方梯告知衡的真正重量",
-        "readers": "上行",
+        "readers": "Q-07、上行",
         "effect": "配给与背工价可精确预算",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1740"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1764"
       },
       {
         "id": "flag.dong_provenance",
@@ -1831,7 +1907,7 @@
         "write": "董大娘告知深层装备来处",
         "readers": "6.7",
         "effect": "假货率下降、可追溯",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1741"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1765"
       },
       {
         "id": "flag.smuggler_route",
@@ -1840,7 +1916,7 @@
         "write": "发现水线或黑井",
         "readers": "通行",
         "effect": "绕过收费站",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1742"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1766"
       },
       {
         "id": "flag.fold_path_used",
@@ -1849,7 +1925,7 @@
         "write": "使用褶径",
         "readers": "通行",
         "effect": "随机落点，节省时间",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1743"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1767"
       },
       {
         "id": "flag.pump_overflow",
@@ -1858,7 +1934,7 @@
         "write": "手动操作脂泵",
         "readers": "区域 flag",
         "effect": "大量溢脂，极度危险",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1744"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1768"
       },
       {
         "id": "flag.lipid_ignited",
@@ -1867,7 +1943,7 @@
         "write": "点燃或搅动脂海",
         "readers": "第 7 层",
         "effect": "4 小时内必须撤离",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1745"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1769"
       },
       {
         "id": "flag.guild_debt",
@@ -1876,7 +1952,7 @@
         "write": "欠行会款项",
         "readers": "物价/许可",
         "effect": "每章 +20% 利息",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1746"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1770"
       },
       {
         "id": "flag.credit_draft",
@@ -1885,7 +1961,7 @@
         "write": "使用信用点契",
         "readers": "交易",
         "effect": "到期未还则涨价",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1747"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1771"
       },
       {
         "id": "flag.anonymous_buyer_hint",
@@ -1894,7 +1970,7 @@
         "write": "得匿名买家线索",
         "readers": "终局",
         "effect": "揭示“隐性第九方”",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1748"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1772"
       },
       {
         "id": "flag.xue_auction_deal",
@@ -1903,7 +1979,7 @@
         "write": "与薛弼年达成代拍",
         "readers": "拍卖",
         "effect": "可能被匿名买家盯上",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1749"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1773"
       },
       {
         "id": "flag.meng_spared",
@@ -1912,7 +1988,7 @@
         "write": "放过菌仆类可交涉敌体",
         "readers": "菌农会",
         "effect": "rep.菌农会 +1",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1750"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1774"
       },
       {
         "id": "flag.combox",
@@ -1921,7 +1997,7 @@
         "write": "队伍层痕总和（派生）",
         "readers": "层压判定",
         "effect": "越高越危险",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1751"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1775"
       }
     ],
     "rep": [
@@ -1932,7 +2008,7 @@
         "write": "任务/公开行为",
         "readers": "许可/物价",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1754"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1778"
       },
       {
         "id": "rep.缒行",
@@ -1941,7 +2017,7 @@
         "write": "运输/救学徒",
         "readers": "上行/价格",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1755"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1779"
       },
       {
         "id": "rep.灰秤行",
@@ -1950,7 +2026,7 @@
         "write": "鉴定/伪造来处",
         "readers": "定价",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1756"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1780"
       },
       {
         "id": "rep.菌农会",
@@ -1959,7 +2035,7 @@
         "write": "修水管/护菌田",
         "readers": "配给",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1750"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1781"
       },
       {
         "id": "rep.七炉",
@@ -1968,7 +2044,7 @@
         "write": "份子/通行",
         "readers": "第 4 层通行",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1758"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1782"
       },
       {
         "id": "rep.守烛院",
@@ -1977,7 +2053,7 @@
         "write": "尊重秩序/下行",
         "readers": "回风井",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1759"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1783"
       },
       {
         "id": "rep.常值",
@@ -1986,7 +2062,7 @@
         "write": "出示令牌/破坏维护",
         "readers": "役形遭遇",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1760"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1784"
       },
       {
         "id": "rep.坼民",
@@ -1995,7 +2071,7 @@
         "write": "留物/带药",
         "readers": "深层向导",
         "effect": "−3～+3",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1761"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1785"
       }
     ],
     "clock": [
@@ -2006,7 +2082,7 @@
         "write": "每跨一层扣该层日耗",
         "readers": "Q-01、断供",
         "effect": "≤0 转断供表",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1752"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1776"
       },
       {
         "id": "clock.ascent",
@@ -2015,12 +2091,12 @@
         "write": "上行开始时按 5.2.4 设值",
         "readers": "Q-00 结算",
         "effect": "归零即达地表",
-        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1753"
+        "source": "docs/scenario/S5-沉层-遗迹与地窟.md:1777"
       }
     ]
   },
   "ledger_template": {
-    "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2715",
+    "source": "docs/scenario/S5-沉层-遗迹与地窟.md:2739",
     "meta": {
       "world": "foundered-strata",
       "engine": "tactics",
