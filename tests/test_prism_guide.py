@@ -1228,6 +1228,193 @@ def test_tool_reasoning_never_persisted():
     ok("reasoning：不进 guide / to_dict / 叙事请求（重拼 L0–L4 时不带 role: tool）")
 
 
+# ── G5：战役绑定与典范卡 ────────────────────────────────────────────────
+
+
+class _BindWeb:
+    """最小 web_session 替身：`bind` 只按鸭子类型用 lock / guide / save。"""
+
+    def __init__(self):
+        self.lock = threading.RLock()
+        self.guide = pg.empty_guide()
+        self.saved = 0
+
+    def save(self):
+        self.saved += 1
+
+
+def test_l1_bound_card():
+    """绑定后的 L1：字节稳定、含规定专名、不含 salt / `docs/` / `source`。"""
+    first = pg.build_l1("yunji", "yunji")
+    second = pg.build_l1("yunji", "yunji")
+    assert first == second, "同一剧本两次构建必须字节相同"
+    for needle in ("白壁", "绳会账房", "npc-01", "霍砚", "loc-02",
+                   "战役：九钥与元柜", "世界：yunji", "引擎：tactics"):
+        assert needle in first, needle
+    assert "尚未选择战役" not in first
+    assert "docs/" not in first and "source" not in first
+    assert "encounters" not in first and "if_botched" not in first
+    assert len(first) <= pg.L1_LIMIT, len(first)
+    # 地点行是「id 名字｜专名…」；白壁五条专名按文件顺序逐字在行里。
+    wall = next(line for line in first.splitlines() if line.startswith("loc-02 "))
+    assert wall == ("loc-02 白壁｜听泉馆｜白壁行拍卖厅｜白壁行地库｜"
+                    "回声匣保管室｜老园丁小屋"), wall
+    # 人物行带 id / 名字 / 欲望 / 面具 / 秘密；面具取自账本模板的同名条目。
+    huo = next(line for line in first.splitlines()
+               if line.startswith("npc-01 "))
+    assert huo.startswith("npc-01 霍砚｜欲望：") and "｜面具：整洁、礼貌" in huo
+    assert "｜秘密：他是守钥人计霜的儿子" in huo
+    # 未绑定 → 常量；绑定之后按 scenario_id 取卡，salt 不进 L1。
+    assert pg.l1_for(pg.empty_guide()) == pg.L1_UNBOUND
+    a, b = pg.empty_guide(), pg.empty_guide()
+    for guide in (a, b):
+        guide["world_key"] = "yunji"
+        guide["scenario_id"] = "yunji"
+    assert a["salt"] != b["salt"]
+    assert pg.l1_for(a) == pg.l1_for(b) == first, "两份存档的 L1 必须全等"
+    assert a["salt"] not in first
+    # 读不到剧本时退回未绑定常量（不扫描目录找替代）。
+    assert pg.build_l1("nope", "nope") == pg.L1_UNBOUND
+    ok("L1 典范卡：字节稳定、含专名、无 salt / docs/ / source")
+
+
+def test_l1_glossary_only_with_world_file():
+    """术语只在世界文件存在时才带：按 `term` 排序、最多 8 行。"""
+    yunji = pg.build_l1("yunji", "yunji")
+    # 云脊今天没有 data/worlds/yunji.json：术语是零行，不得去借别人的。
+    assert "术语：\n地点：" in yunji, yunji[:200]
+    rain = pg.build_l1("rain_line_seven", "threshold")
+    lines = rain.splitlines()
+    terms = lines[lines.index("术语：") + 1: lines.index("地点：")]
+    assert 0 < len(terms) <= pg.L1_GLOSSARY_LIMIT, terms
+    names = [item.split("：", 1)[0] for item in terms]
+    assert names == sorted(names), names
+    assert all(item.split("：", 1)[1] for item in terms), "含义不得是空的"
+    assert "回声" in names, "阈界的术语应当来自世界文件"
+    assert pg.build_l1("rain_line_seven", "threshold") == rain
+    ok("L1 术语：有世界文件才带、按 term 排序、≤8 行")
+
+
+def test_bind_contract():
+    """`bind`：四种结果与「失败不落盘、salt 不变」。"""
+    web = _BindWeb()
+    salt = web.guide["salt"]
+    # 1) scenario_id 不是文件名主干 → 没有这场战役（不碰磁盘、不落盘）。
+    for bad in ("../etc/passwd", "Yunji", "九钥与元柜", "", "a" * 65, "yu/nji"):
+        try:
+            pg.bind(web, "yunji", bad)
+        except ValueError as exc:
+            assert str(exc) == pg.BIND_NO_SCENARIO, (bad, str(exc))
+        else:
+            raise AssertionError("非法 scenario_id 竟然绑定成功: %r" % (bad,))
+    # 2) 文件不存在 → 没有这场战役。
+    try:
+        pg.bind(web, "nope", "nope")
+    except ValueError as exc:
+        assert str(exc) == pg.BIND_NO_SCENARIO
+    else:
+        raise AssertionError("不存在的剧本竟然绑定成功")
+    # 3) world_key 与 meta.world 不一致 → 世界对不上，**不写** scenario_id。
+    try:
+        pg.bind(web, "other-world", "yunji")
+    except ValueError as exc:
+        assert str(exc) == pg.BIND_WORLD_MISMATCH
+    else:
+        raise AssertionError("世界对不上竟然绑定成功")
+    assert web.guide["scenario_id"] == "" and web.guide["world_key"] == ""
+    assert web.guide["l1_key"] == "unloaded"
+    assert web.saved == 0, "失败的绑定不得落盘"
+
+    # 4) 正绑定：显式记录三个键并落盘；salt 不变。
+    assert pg.bind(web, "yunji", "yunji") == {"world_key": "yunji",
+                                              "scenario_id": "yunji"}
+    assert web.guide["world_key"] == "yunji"
+    assert web.guide["scenario_id"] == "yunji"
+    assert web.guide["l1_key"] == "yunji"
+    assert web.guide["salt"] == salt, "绑定不得重掷 salt"
+    assert web.saved == 1
+    assert pg.l1_for(web.guide) == pg.build_l1("yunji", "yunji")
+
+    # 5) 幂等：同一对 id 再绑一次 → 200，不重掷 salt，不再落盘。
+    assert pg.bind(web, "yunji", "yunji")["scenario_id"] == "yunji"
+    assert web.guide["salt"] == salt and web.saved == 1
+
+    # 6) 另一场（three_wooden_boxes 的 meta.world 也是 yunji）→ 已经绑定。
+    try:
+        pg.bind(web, "yunji", "three_wooden_boxes")
+    except ValueError as exc:
+        assert str(exc) == pg.BIND_ALREADY_BOUND
+    else:
+        raise AssertionError("已绑定还能换一场")
+    assert web.guide["scenario_id"] == "yunji" and web.saved == 1
+    ok("bind：没有这场战役 / 世界对不上 / 幂等 / 已经绑定")
+
+
+def test_bind_phrases_match_web_layer():
+    """绑定短语与网页层 `GUIDE_BIND_ERRORS` 同文（跨模块锁）。"""
+    import importlib
+    import tempfile
+
+    saved = os.environ.get("NOTDND_SAVE")
+    os.environ["NOTDND_SAVE"] = tempfile.mkdtemp(prefix="pg-bind-errors-")
+    try:
+        web = importlib.import_module("notdnd_web")
+    finally:
+        if saved is None:
+            os.environ.pop("NOTDND_SAVE", None)
+        else:
+            os.environ["NOTDND_SAVE"] = saved
+    assert set(web.GUIDE_BIND_ERRORS) == {pg.BIND_NO_SCENARIO,
+                                          pg.BIND_WORLD_MISMATCH,
+                                          pg.BIND_ALREADY_BOUND}
+    assert web.GUIDE_BIND_ERRORS[pg.BIND_NO_SCENARIO] == 400
+    assert web.GUIDE_BIND_ERRORS[pg.BIND_WORLD_MISMATCH] == 400
+    assert web.GUIDE_BIND_ERRORS[pg.BIND_ALREADY_BOUND] == 409
+    ok("绑定短语与 GUIDE_BIND_ERRORS 同文（400 / 400 / 409）")
+
+
+def test_location_ok():
+    """`location_ok`：只认已绑定剧本里的地点 id，不按中文名搜索。"""
+    guide = pg.empty_guide()
+    assert pg.location_ok(guide, "loc-02") is False, "未绑定没有可对上的剧本"
+    guide["scenario_id"] = "yunji"
+    guide["world_key"] = "yunji"
+    assert pg.location_ok(guide, "loc-02") is True
+    assert pg.location_ok(guide, "loc-05") is True
+    assert pg.location_ok(guide, "whitewall") is False, "战役节点不是地点"
+    assert pg.location_ok(guide, "loc-99") is False
+    assert pg.location_ok(guide, "") is False
+    assert pg.location_ok(guide, "白壁") is False, "只认 id，不按中文名搜索"
+    assert pg.location_ok(None, "loc-02") is False
+    ok("location_ok：只认已绑定剧本里的地点 id")
+
+
+def test_ensure_realization_is_noop():
+    """G5 的 `ensure_realization` 只有 `return`：不读上游、不写存档。"""
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append(payload)
+        raise AssertionError("G5 不得打开套接字")
+
+    web = _BindWeb()
+    web.guide["world_key"] = "yunji"
+    web.guide["scenario_id"] = "yunji"
+    saved_transmit = pg.TRANSMIT
+    pg.TRANSMIT = fake
+    try:
+        before = json.dumps(web.guide, ensure_ascii=False, sort_keys=True)
+        assert pg.ensure_realization(web, "loc-02") is None
+        after = json.dumps(web.guide, ensure_ascii=False, sort_keys=True)
+    finally:
+        pg.TRANSMIT = saved_transmit
+    assert calls == [], "G5 的 ensure_realization 不得请求上游"
+    assert before == after, "G5 的 ensure_realization 不得写 guide"
+    assert web.saved == 0
+    assert pg.REALIZATION_CLAIM_S == 120
+    ok("ensure_realization：G5 是空实现，不读上游、不写存档")
+
+
 def test_module_offline_no_socket():
     """`import prism_guide` 不打开套接字：只 import 不改外部状态。"""
     probe = subprocess.run(
@@ -1290,6 +1477,12 @@ def main():
     test_run_tool_call_settle_and_phrases()
     test_run_tool_pass_shape_and_reasoning()
     test_tool_reasoning_never_persisted()
+    test_l1_bound_card()
+    test_l1_glossary_only_with_world_file()
+    test_bind_contract()
+    test_bind_phrases_match_web_layer()
+    test_location_ok()
+    test_ensure_realization_is_noop()
     test_module_offline_no_socket()
     test_env_example()
     print()
