@@ -73,7 +73,9 @@
         "example": {"type": "string"},
         "tag": {"type": "string"},
         "tier": {"type": "string"},
-        "effect": {"type": "string"}
+        "effect": {"type": "string"},
+        "df": {"anyOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
       },
       "additionalProperties": false
     },
