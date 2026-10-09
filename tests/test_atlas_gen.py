@@ -240,6 +240,9 @@ def test_threshold_52_floor_anchor():
     zs = frame_zs(site)
     assert max(zs) >= 52, "「52 层」锚的地点帧应达到第 52 层，实得 %d" % max(zs)
     assert max(zs) <= 80, "层数限制在 1–80"
+    assert min(zs) == 0, \
+        "该锚自身无负层文字，区域级 below 不应让它向负 z 生成（Issue #82）"
+    assert max(zs) - min(zs) <= 80, "地点帧 z 跨度不超过 80"
     assert kp_text in json.dumps(
         [p["name"] for p in atlas["frames"]["threshold/surface"]
          ["places"].values()], ensure_ascii=False), "锚的名字保持原文"

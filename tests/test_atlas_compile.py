@@ -153,6 +153,8 @@ def test_threshold_52_floors_site_not_world():
     spec = info_of(th, region)["kp_specs"][index]["spec"]
     assert spec["z_hi"] >= 52, "地点帧 z 跨度至少覆盖 52"
     assert spec["z_hi"] <= 80, "层数限制在 1–80"
+    assert spec["z_lo"] == 0, \
+        "区域级 below 不应镜像进关键地点规格（52 层的楼没有 52 层地下）"
     # 世界帧不用这 52 层当高度：所有街面区域 z 都是 0
     for place in th["frames"][frame_id_of(th, "surface")]["places"].values():
         if place["kind"] == "region" and "z" in place:
@@ -164,6 +166,36 @@ def test_threshold_negative_floors():
     region, index, _kp = region_with_kp(W_TH, "地下三层")
     spec = info_of(th, region)["kp_specs"][index]["spec"]
     assert spec["z_lo"] <= -3, "「地下三层」的地点向负 z 延伸"
+
+
+def test_region_below_not_inherited_by_kp():
+    """区域级 below 不镜像进关键地点规格；自身命中 below 的关键地点仍镜像。
+
+    区域短文里的「地下」不该让区域内每栋楼都长出地下室（Issue #82）；
+    但区域自己的 site 规格保留 below 偏向（现有行为不变）。
+    """
+    world = {
+        "kind": "world.module",
+        "world": {"key": "t-below-split", "name": "测试世界"},
+        "regions": [{
+            "id": "r-below", "name": "地下街区",
+            "summary": "地下 市场环道。",   # 区域自身命中 below（+ vertical）
+            "key_places": ["空中连廊", "地下市场"],
+        }],
+    }
+    atlas = ac.compile_world(world, LEXICON, seed=0)
+    info = atlas["region_info"]["t-below-split/r-below"]
+    # 区域自己的 site 规格：below 偏向保留，仍向负 z 镜像
+    assert info["site"]["z_lo"] < 0, "区域级 below 仍作用于区域 site 规格"
+    # 关键地点 0 自身不命中 below、无负层数文字 → 不向负 z 镜像
+    spec0 = info["kp_specs"][0]["spec"]
+    assert spec0["z_lo"] == 0, \
+        "区域级 below 不应镜像进自身无 below 的关键地点规格"
+    assert spec0["z_hi"] >= 1, "关键地点仍保留其余性状带来的层数"
+    # 关键地点 1 自身命中 below 且无数字 → 仍向负 z 镜像
+    spec1 = info["kp_specs"][1]["spec"]
+    assert spec1["z_lo"] < 0, \
+        "自身命中 below 且无数字的关键地点仍应向负 z 镜像"
 
 
 def test_threshold_seam():
@@ -479,6 +511,7 @@ CHECKS = [
     test_threshold_settlement_and_bands,
     test_threshold_52_floors_site_not_world,
     test_threshold_negative_floors,
+    test_region_below_not_inherited_by_kp,
     test_threshold_seam,
     test_threshold_unstable_key_place,
     test_emberfall_around_bole,
