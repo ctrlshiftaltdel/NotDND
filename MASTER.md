@@ -40,9 +40,9 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
 - **分支保护**：ruleset「master」为 `active`——须经 PR + **四道 required checks** + 禁 force push / 禁删除。
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门 / 回归门 / 内容防火墙门 / **提交邮箱门**。
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
-- **数据层**：`python3 tests/validate_data.py` → **69 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（六册）+ schema/registry）。
-- **回归**：`bash tests/run_all.sh` → **6 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core`）。
-- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · M1.4 **a ✅（PR #58）/ b 已开（#61）** · M2 **a ✅（PR #57）/ b ✅（PR #70）/ c 已开（#72）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I6 已开单（见 §4 注）** · M4–M6 待。
+- **数据层**：`python3 tests/validate_data.py` → **78 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ schema/registry）。
+- **回归**：`bash tests/run_all.sh` → **7 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel`）。
+- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 a–b ✅（PR #58 / #74）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1 ✅（PR #75）· I2（#64）可开工** · M4–M6 待。
 
 ---
 
@@ -56,6 +56,7 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
   有没有新依赖 / 密钥模样内容。在 PR 评论里留**四行建议**（建议 / 用户能感知的变化 / 没完成的验收项 / 需人拍板的风险）。
   **汇报与审查都写明 PR ↔ Issue 对应**（如 `PR #70（Issue #59）`、`Issue #59（PR #70）`）。
 - **合并**：写「建议合」且 **CI 全绿** → **主管直接合并并删远端分支**（不再逐件请示人）。
+  预审若**无需修改**，主管**直接 `gh pr ready` 代转并合并**，不来回等作者转 Ready（人 2026-10-09 明确）。
   有未完成项 / 问题 → 写四行说明或**开 Issue 跟踪**。
 - **串并行的硬约束**：
   - **数据切片彼此串行**——`data/system/**`、`data/worlds/**`、`data/schema/registry.json`、`data/FORMAT.md` 是共享文件。
@@ -101,8 +102,8 @@ bash tests/content_firewall.sh
 | 　M1.1 | 系统规则数据（`data/system/`） | ✅ a 内核 / b 战术 / c 构建 / d 互动 / e 导引者 |
 | 　M1.2 | 世界模组数据（`data/worlds/`） | a 阈界都市 ✅ / b 余烬纪元 ✅ / c 熵网 ✅ |
 | 　M1.3 | 随机表（`data/random_tables/`：system 08 + S7 70 张；各模组表已在 `data/worlds/*`） | a 通用生成器（docs/system/08）✅ / b S7 70 张（docs/scenario/S7）✅ |
-| 　M1.4 | 剧本（`data/scenarios/`：09/S8 + S1–S6 结构件 + 账本模板） | a S1–S6 结构件 ✅（PR #58）/ **b 09/S8 战役（#61）已开** |
-| **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ b 战斗 / 派生 / 成长 ✅（PR #70）/ **c 构建引擎骰池（#72）已开** |
+| 　M1.4 | 剧本（`data/scenarios/`：09/S8 + S1–S6 结构件 + 账本模板） | a S1–S6 结构件 ✅（PR #58）/ b 09/S8 战役 ✅（PR #74）——**完成** |
+| **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ b 战斗 / 派生 / 成长 ✅（PR #70）/ c 构建引擎 ✅（PR #76）；M2d（符纹 / 插槽 / 构建点 / 互转）待 |
 | **M3** | 会话与存档 + 后端 API | a 规则快照接线 ✅（PR #56）/ b 写接口 / API 待 |
 | **M4** | 前端 UI（`static/`） | 待 |
 | **M5** | AI 导引者（可选模块，import 失败不影响离线） | 待 |
@@ -110,8 +111,9 @@ bash tests/content_firewall.sh
 
 > **ATLAS（自动地图）切片**：`ATLAS-DESIGN.md` §8 的六条 Issue **I1–I6** 与 M2–M4 交叉
 > （内核 → 词表编译 → 地点/战术生成 → {会话接线 / 规则投影 / 账本 place id}）；
-> 依赖顺序 **I1 → I2 → I3 → {I4 / I5 / I6}**。**硬约束**：I2 **独占** `data/schema/registry.json`
-> + `data/FORMAT.md`（期间不并行其它改这两个文件的数据切片）；I5 须等 **#59**；I6 须等 **#61**。
+> 依赖顺序 **I1 → I2 → I3 → {I4 / I5 / I6}**。**进度**：I1 ✅（PR #75），I2（#64）**可开工**。
+> **硬约束**：I2 **独占** `data/schema/registry.json` + `data/FORMAT.md`（期间不并行其它改这两个文件的数据切片）；
+> I5 须等 **#59**（✅ 已合并）；I6 须等 **#61**（✅ 已合并）。
 
 ---
 
@@ -129,8 +131,8 @@ bash tests/content_firewall.sh
 - **DNDWeb 脱敏迁移**（2026-10-09）：M2/M3 的**工程骨架**已由主管派的迁移 Agent 完成并合并
   （`prism_core.py` / `notdnd_web.py`，PR #49 / #48）；实现 Agent 直接在其上继续即可，
   **无需** DNDWeb 访问权（流程见 §3）。`DNDWEB-ASSETS.md` §1/§2 状态已改 ✅、§3 已改 🟡（结构）。
-- **阶段收口**（2026-10-09）：**M1.3 / M1.4a / M2a / M2b / M3a 已完成**（PR #58 / #57 / #70 / #56）；
-  在办与待办切片：**#61（M1.4b）/ #71（data 后续 S1·S5）/ #72（M2c 构建引擎）** 与 **ATLAS I1–I6（#63–#68）**。
+- **阶段收口**（2026-10-09）：**M1.4 剧本 / M2（a–c）规则核心 / M3a 会话接线 / ATLAS I1 已完成**
+  （PR #58 / #74 / #57 / #70 / #76 / #56 / #75）；在办与待办：**ATLAS I2–I6（#64–#68）**。
 - **自动地图（ATLAS）**（2026-10-09 拍板）：跨 M2–M4 的**方向性设计**，方案入库 `ATLAS-DESIGN.md`
   （见 §7 文档地图）；拆六条切片 **I1–I6**（依赖见 §4 注）。**影响面**：新增 `atlas.py` /
   `atlas_compile.py` / `atlas_gen.py` 与 `data/atlas/lexicon.json`（新 kind）；I4 给会话加快照块 `atlas`；
