@@ -679,9 +679,17 @@ data/
 - `resource`：固定为 `prism.random_tables`。
 - `tables[]`：`{id, name, die, purpose?, hook_density?, rows[], use?, on_repeat?, interface?, source}`。
   - `die` 形如 `d20` / `d100`（pattern `^d[0-9]+$`）。
-  - `rows[]`：`{roll, result, example?, tag?, tier?, effect?}`，`roll` 从 1 起。
-- `generators[]`：`{id, name, steps[], budget_ref?, optional_flavor?}`。
-- `ledger_bridge`：对象，把表映射到账本字段。
+  - `rows[]`：`{roll, result, example?, tag?, tier?, effect?, df?, source?}`，`roll` 从 1 起。
+    - `df`：可空整数，用于「场地要素」类行（如 `docs/system/08` 扩展表）；具体数值口径
+      仍以内核 `01-内核CORE.md` 第十节为准，此处只存该行自带的难度值。
+    - `source`：**行级**溯源（可选）；逐行指回 `docs/` 的行号，便于机器核对。
+  - `interface?`：与内核的唯一接口；`type` 说明结果落到哪一类字段，数值一律回查
+    `01`／`02A`／`03`，本族不复制内核数值表。
+- `generators[]`：`{id, name, steps[], budget_ref?, optional_flavor?, source?}`；
+  `steps[]` 为 `{order, table, role?}`，`table` 指向 `tables[].id`。
+- `ledger_bridge`：对象，把表 `id` 映射到账本字段（`npcs` / `locations` / `hooks` / `threads` /
+  `facts` / `factions` 等，见 4.4 的世界账本）。
+- 表与行都可带 `source`；每一行也可另带行级 `source`（M1.3 起）。
 
 ### 4.4 scenario 族
 
