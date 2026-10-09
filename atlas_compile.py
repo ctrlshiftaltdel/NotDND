@@ -465,11 +465,15 @@ def compile_world(world, lexicon, seed=0):
         for index, kp in enumerate(kps):
             kp_traits = set(matcher.match(kp))
             kp_nums = _merge_numbers([_scan_numbers(kp)])
+            # §5.3「below 且层数为负」只对**自身**命中 below（或自身写明负
+            # 层数）的地点成立：区域短文里的「地下停车场」不该让区域内每栋
+            # 楼都长出同样层数的地下室（Issue #82）。区域其余性状仍并入。
+            kp_spec_traits = (traits - {"below"}) | kp_traits
             kp_specs.append({
                 "index": index,
                 "name": kp,
                 "traits": sorted(kp_traits),
-                "spec": _site_spec(kp_nums, traits | kp_traits),
+                "spec": _site_spec(kp_nums, kp_spec_traits),
             })
 
         analysis[rid] = {
