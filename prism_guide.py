@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""AI 导引者 · 标准库客户端、前缀、叙事回合与 pcm16 语音代理（G1 / G2 / G3）。
+"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环与 pcm16 语音代理
+（G1 / G2 / G3 / G4）。
 
 设计依据：GUIDE-DESIGN.md（§2.2 角色行为与对白 / §4.3 已拍板 / §5.1 模块边界 /
 §5.2 回合怎么走 / §5.3 环境 / §5.4 缓存导向的提示词 / §5.5 思考策略 / §5.6 工具 /
 §5.9 语音管线 / §5.10 我们自己的 HTTP / §7 数据模型 / §10 可观测性 /
-PR Plan G1–G3）。
+PR Plan G1–G4）。
 
 G1（前缀与离线骨架）：
 
@@ -38,6 +39,22 @@ G3（pcm16 语音代理，无新前端）：
 - `call_tts` 与叙事走**同一条**可替换传输入口 `TRANSMIT`（TTS 也是 Chat
   Completions），离线 / 失败返回空字节，**不重试**（§5.9）。
 
+G4（工具环，只调用已有公开入口）：
+
+- `needs_tool`：纯函数，只认 `查规则` / `这地方` / `有哪些出口` 三句**整句**，
+  且本回合还没有机械结果（§5.5）；`我想查规则` 不算；
+- `run_tool_pass`：挂在**叙事消息数组**上的工具预通行（§5.2 / §5.6）——
+  思考开、不传温度、1024、`stream` 为 false，内部最多 3 轮，每回合最多一次。
+  工具往返只活在这一次的**内存列表**里（带 `tool_calls` 的助手消息同时带
+  `reasoning_content`，否则供应商返回 400）；调用方随后**重拼 L0–L4**，
+  叙事请求既无 `reasoning_content` 也没有 `role: tool`（§5.5）；
+- 三只工具只走已有公开入口：`lookup_rule` 只读 `data/system/` 那六个 kind 并
+  截到 1500 字；`read_place_card` 只在内存里已有带 `places` 的帧时读
+  `atlas.guide_card`，**不调用** `atlas.restore_state`；`request_check` 走
+  同一个 `settle`，三种 `ValueError` 收成固定短语——状态行早已写出，工具失败
+  只能把短语喂回模型，**不**产生第二行 HTTP 状态（§5.2）；
+- 预通行不读 `data/scenarios/` 猜测战役，也不新增第四只工具（§5.6）。
+
 密钥只放请求头 `api-key`，不进 URL、不进 JSON、不进状态字典、不进日志；
 异常字符串不携带上游响应体（§5.1 / §8）。
 """
@@ -45,11 +62,17 @@ G3（pcm16 语音代理，无新前端）：
 import base64
 import json
 import os
+import pathlib
 import re
 import secrets
 import urllib.request
 
 import prism_core
+
+try:
+    import atlas as atlas_kernel
+except Exception:      # noqa: BLE001 — 地点卡是可选读：缺了不带走整个导引者
+    atlas_kernel = None
 
 # ── 常量 ────────────────────────────────────────────────────────────────
 
@@ -93,6 +116,41 @@ TTS_TIMEOUT_S = 20.0
 # `tone` 就是产品路径的风格卡，「平叙」；G3 只有朗读这一条通道。
 BEAT_TONE = TTS_STYLE_CARD
 BEAT_CHANNEL = "speech"
+
+# ── §5.5 / §5.6 工具环常量 ──────────────────────────────────────────────
+#
+# `needs_tool` 只认这三句**整句**（§5.5）：`我想查规则` 不是子串命中，不算。
+TOOL_TRIGGERS = ("查规则", "这地方", "有哪些出口")
+
+# 预通行的参数（§5.5 表「回合内的工具预通行」）：思考开、**不传温度**、
+# 1024、非流式。内部最多 3 轮，每回合最多开一次（§5.2）。
+TOOL_PASS_MAX_ROUNDS = 3
+TOOL_PASS_MAX_TOKENS = 1024
+TOOL_PASS_TIMEOUT_S = 20.0
+
+# `lookup_rule` 只读这六个 kind（§5.6 / §5.12 表），正文截到 1500 字。
+LOOKUP_RULE_KINDS = {
+    "system.adjudication": "adjudication.json",
+    "system.antipatterns": "antipatterns.json",
+    "system.decision_engine": "decision_engine.json",
+    "system.guardrails": "guardrails.json",
+    "system.ledger_spec": "ledger_spec.json",
+    "system.tone_packs": "tone_packs.json",
+}
+LOOKUP_RULE_LIMIT = 1500
+
+# 工具错误字符串（§5.2 表）：与网页层 `GUIDE_SETTLE_ERRORS` 的固定短语同文
+# （`tests/test_prism_guide.py` 有一条跨模块断言把两边锁在一起）。状态行已经
+# 写出，工具里的失败只能把短语喂回模型，**不**再写第二行 HTTP 状态。
+TOOL_ERRORS = {
+    "行动不存在于当前场景": "没有这个行动",
+    "单位不存在": "没有这个角色",
+    "战斗还没结束，先打完这场": "战斗还没结束",
+}
+TOOL_ERROR_DEFAULT = "这次结算不能做"
+TOOL_UNKNOWN = "没有这只工具"
+TOOL_UNKNOWN_KIND = "没有这条规则"
+TOOL_NO_RULE = "读不到这条规则"
 
 # 叙事段的上游时间盒：§5.11 表「叙事 …… 最多 30 秒，且在回合 45 秒的叙事段之内」。
 NARRATIVE_TIMEOUT_S = 30.0
@@ -472,18 +530,25 @@ def _b64_pcm(data):
 
 
 def assemble_chat_stream(raw):
-    """把 Chat Completions 的响应体组装成 `{content, tool_calls, usage[, audio]}`。
+    """把 Chat Completions 的响应体组装成 `{content, tool_calls, usage[, audio][, reasoning]}`。
 
     流式（`delta`）与非流式（`message`）回包都认：只读 `data:` 行，
     `[DONE]` 结束，畸形块跳过不抛（一次坏块不该把整回合变成兜底）。
-    `reasoning_content` 刻意不收集——它不进存档，也不进 L3（§5.4）。
 
     `audio` 是 TTS（§5.9）的 PCM，**只在这条流真的带过音频块时才出现**，
-    值是 `bytes`；所以纯叙事回包仍是三键、JSON 可序列化的字典，
-    而带音频的回包由 `call_tts` 消费。每个 `delta.audio.data` 非空的块
-    **单独** base64 解码后按到达顺序拼起来；`choices` 为空的块只读用量。
+    值是 `bytes`；`reasoning` 是思考态回包里的 `reasoning_content`（§5.5），
+    **只在真的带过时才出现**。所以纯叙事回包仍是三键、JSON 可序列化的字典，
+    带音频 / 思考的回包分别由 `call_tts` 与工具预通行消费。
+
+    ⚠️ `reasoning` 是**运行期**的东西：只有预通行的那一次内存列表要把它放回
+    `tool_calls` 的助手消息（否则供应商返回 400）。它不进 `guide`、不进 L3、
+    不进 `to_dict`，叙事请求也重拼 L0–L4、不带这个字段（§5.5）。
+
+    每个 `delta.audio.data` 非空的块**单独** base64 解码后按到达顺序拼起来；
+    `choices` 为空的块只读用量。
     """
     content_parts: list[str] = []
+    reasoning_parts: list[str] = []
     tool_calls: list = []
     usage: dict = {}
     audio = bytearray()
@@ -509,6 +574,9 @@ def assemble_chat_stream(raw):
             piece = piece_holder.get("content")
             if isinstance(piece, str):
                 content_parts.append(piece)
+            think = piece_holder.get("reasoning_content")
+            if isinstance(think, str):
+                reasoning_parts.append(think)
             calls = piece_holder.get("tool_calls")
             if isinstance(calls, list):
                 tool_calls.extend(calls)
@@ -521,6 +589,8 @@ def assemble_chat_stream(raw):
            "usage": usage}
     if audio:
         out["audio"] = bytes(audio)
+    if reasoning_parts:
+        out["reasoning"] = "".join(reasoning_parts)
     return out
 
 
@@ -717,6 +787,218 @@ def call_tts(line, voice=VOICE_NARRATOR, env=None, transmit=None):
     if isinstance(audio, (bytes, bytearray)):
         return bytes(audio)
     return b""
+
+
+# ════════════════════════════════════════════════════════════════════════
+# §5.5 / §5.6 工具环 · 只调用已有公开入口
+# ════════════════════════════════════════════════════════════════════════
+
+
+# `data/system/` 的目录：惰性读，**import 不碰磁盘**。
+SYSTEM_DIR = pathlib.Path(__file__).resolve().parent / "data" / "system"
+
+# lookup_rule 的正文缓存（按文件名）。只在读成功时写入。
+_LOOKUP_CACHE: dict[str, str] = {}
+
+
+def needs_tool(text, has_mechanical):
+    """要不要开工具预通行（§5.5）。**纯函数**。
+
+    为真当且仅当本回合还没有机械结果，且 `text.strip()` **整句等于**
+    `查规则` / `这地方` / `有哪些出口` 之一。不是子串——`我想查规则` 不算。
+    """
+    if has_mechanical:
+        return False
+    return str(text or "").strip() in TOOL_TRIGGERS
+
+
+def _compact_json(obj):
+    """紧凑 JSON：给模型的工具正文用，不写进任何存档。"""
+    return json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+
+
+def lookup_rule_text(kind):
+    """`lookup_rule` 的正文（§5.6 / §5.12）：只读那六个 kind，截到 1500 字。
+
+    返回文件自己的 `note`（人写的一句话摘要）加紧凑载荷；读不到就给固定
+    短语，**不抛**——工具正文不该把整回合变成兜底。
+    """
+    name = LOOKUP_RULE_KINDS.get(str(kind or ""))
+    if not name:
+        return TOOL_UNKNOWN_KIND
+    cached = _LOOKUP_CACHE.get(name)
+    if cached is None:
+        try:
+            raw = json.loads((SYSTEM_DIR / name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return TOOL_NO_RULE
+        if not isinstance(raw, dict):
+            return TOOL_NO_RULE
+        note = str(raw.get("note") or "").strip()
+        payload = {key: value for key, value in raw.items()
+                   if key not in ("schema_version", "kind", "note")}
+        cached = (note + "\n" if note else "") + _compact_json(payload)
+        _LOOKUP_CACHE[name] = cached
+    return cached[:LOOKUP_RULE_LIMIT]
+
+
+def _scale_line(frame):
+    """帧的一句尺度（§5.6 工具描述「一句尺度」）。取值全是帧自己的字段。"""
+    frame = frame if isinstance(frame, dict) else {}
+    parts = [str(frame.get("space") or "")]
+    cell = str(frame.get("cell") or "")
+    zed = str(frame.get("z_meaning") or "")
+    if cell:
+        parts.append("一格：" + cell)
+    if zed:
+        parts.append("z：" + zed)
+    return "；".join(item for item in parts if item)
+
+
+def place_card(web_session):
+    """`read_place_card` 的正文（§5.6 / §5.12）。
+
+    只有**内存里已经有**带 `places` 的帧时才读 `atlas.guide_card`：
+    还没物化、或手里只有 `{seed, deltas}` 那种存档块，一律
+    `{"available": false}`，并**不调用** `atlas.restore_state`，也不兜底。
+    深拷贝的整份 `place` **不进提示词**——只回地点名、出口与一句尺度。
+    """
+    atlas = getattr(web_session, "_atlas", None)
+    locus = getattr(web_session, "_locus", None)
+    if atlas_kernel is None or not isinstance(atlas, dict) or not isinstance(locus, dict):
+        return {"available": False}
+    frame = (atlas.get("frames") or {}).get(locus.get("frame_id"))
+    if not isinstance(frame, dict) or not isinstance(frame.get("places"), dict):
+        # `{seed, deltas}` 存档块的帧没有 `places`：这里就是那条 KeyError 防线。
+        return {"available": False}
+    card = atlas_kernel.guide_card(atlas, locus)
+    if not isinstance(card, dict):
+        return {"available": False}
+    place = card.get("place") if isinstance(card.get("place"), dict) else {}
+    exits = [{"via": entry.get("via"), "name": entry.get("name"),
+              "band": entry.get("band")}
+             for entry in (card.get("exits") or []) if isinstance(entry, dict)]
+    return {"available": True, "place_id": place.get("id"),
+            "name": place.get("name"), "exits": exits,
+            "scale": _scale_line(card.get("frame"))}
+
+
+def tool_call_parts(call):
+    """拆一只工具调用：`(name, arguments)`，畸形输入降级成空。"""
+    call = call if isinstance(call, dict) else {}
+    fn = call.get("function") if isinstance(call.get("function"), dict) else {}
+    name = str(fn.get("name") or "")
+    args = fn.get("arguments")
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except ValueError:
+            args = {}
+    return name, (args if isinstance(args, dict) else {})
+
+
+def run_tool_call(web_session, call):
+    """执行一只工具调用，返回 `(工具正文, 是否发生了结算)`。**永不抛**。
+
+    `request_check` 走的就是回合开头那个 `settle`；三种 `ValueError` 收成
+    §5.2 的固定短语——状态行早已写出，这里只把短语喂回模型当**工具错误
+    字符串**，不产生第二行 HTTP 状态。同一个 action_id 再问一次由
+    `prism_core` 的 `done_actions` 短路（`already_done`），不掷第二次。
+    """
+    name, args = tool_call_parts(call)
+    if name == "lookup_rule":
+        return lookup_rule_text(args.get("kind")), False
+    if name == "read_place_card":
+        return _compact_json(place_card(web_session)), False
+    if name == "request_check":
+        try:
+            result = settle(web_session, str(args.get("action_id") or ""))
+        except ValueError as exc:
+            return TOOL_ERRORS.get(str(exc), TOOL_ERROR_DEFAULT), False
+        return _compact_json(result), True
+    return TOOL_UNKNOWN, False
+
+
+def build_tool_body(messages, model=None, env=None):
+    """预通行请求体（§5.5 表）：思考开、**不传温度**、1024、非流式、带工具。
+
+    工具数组与叙事请求逐字节相同（§5.6）；密钥不入体。
+    """
+    env = env if env is not None else load_env()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    return {
+        "model": str(resolved),
+        "messages": list(messages),
+        "tools": TOOLS,
+        "thinking": {"type": "enabled"},
+        "max_completion_tokens": TOOL_PASS_MAX_TOKENS,
+        "stream": False,
+    }
+
+
+def _send_once(url, body, key, timeout, transmit):
+    """经传输入口发一次；离线 / 失败 / 形状不对一律 None（不抛）。"""
+    sender = transmit if transmit is not None else TRANSMIT
+    try:
+        got = sender(url, body, {KEY_HEADER: key}, timeout=timeout)
+    except Exception:  # noqa: BLE001 — 上游失败不回显、不重试
+        return None
+    return got if isinstance(got, dict) else None
+
+
+def call_tool_pass(messages, model=None, env=None, transmit=None):
+    """一次预通行请求（§5.5）。离线 / 上游失败返回 None。
+
+    预通行失败**不**把整回合改成兜底句：后面的叙事请求照走（§5.2）。
+    """
+    env = env if env is not None else load_env()
+    url = chat_url(env.get("BASE_URL"))
+    key = (env.get("API_KEY") or "").strip()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    if not url or not key or not str(resolved or "").strip():
+        return None
+    body = build_tool_body(messages, model=resolved, env=env)
+    return _send_once(url, body, key, TOOL_PASS_TIMEOUT_S, transmit)
+
+
+def run_tool_pass(web_session, messages, model=None, env=None, transmit=None,
+                  *, max_rounds=TOOL_PASS_MAX_ROUNDS):
+    """工具预通行（§5.2 / §5.5 / §5.6）：挂在**叙事消息数组**上，内部最多 3 轮。
+
+    返回一份**运行期**统计 `{"rounds", "tools", "settled"}`，调用方不看也行。
+    工具往返只活在这一次的**内存列表**里：带 `tool_calls` 的助手消息必须
+    同时带 `reasoning_content`（否则供应商返回 400）。调用方随后**重拼
+    L0–L4** 再发叙事请求——叙事那一份既无 `reasoning_content`，也没有
+    `role: tool`（§5.5）。全程不写 `guide`，所以 `reasoning` 不可能进 `to_dict`。
+    """
+    trace = {"rounds": 0, "tools": [], "settled": False}
+    env = env if env is not None else load_env()
+    convo = list(messages or [])
+    for _ in range(max(0, int(max_rounds or 0))):
+        got = call_tool_pass(convo, model=model, env=env, transmit=transmit)
+        if got is None:
+            break
+        calls = [call for call in (got.get("tool_calls") or [])
+                 if isinstance(call, dict)]
+        trace["rounds"] += 1
+        if not calls:
+            break
+        assistant = {"role": "assistant",
+                     "content": str(got.get("content") or ""),
+                     "tool_calls": calls}
+        reasoning = got.get("reasoning")
+        if isinstance(reasoning, str) and reasoning:
+            assistant["reasoning_content"] = reasoning
+        convo.append(assistant)
+        for call in calls:
+            name, _args = tool_call_parts(call)
+            content, did_settle = run_tool_call(web_session, call)
+            trace["tools"].append(name)
+            trace["settled"] = trace["settled"] or did_settle
+            convo.append({"role": "tool",
+                          "tool_call_id": str(call.get("id") or ""),
+                          "content": content})
+    return trace
 
 
 # ── 【裁决】与骰子审查（§5.2）────────────────────────────────────────────

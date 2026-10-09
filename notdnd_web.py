@@ -16,7 +16,9 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     POST /api/atlas/move 移动并返回行程档与时段
   · 导引者接线（可选模块）：`guide` 状态块随存档落盘 / 按键还原；
     GET /api/guide/status 三个布尔；POST /api/guide/turn 先结算、后叙事，
-    叙事走 HTTP/1.1 分块的事件流（上游失败只发 `fallback`，不再动 HTTP 状态）；
+    回合内按需在叙事数组上开一次工具预通行（思考开 / 非流式 / 最多 3 轮，
+    失败只把固定短语喂回模型），叙事走 HTTP/1.1 分块的事件流（上游失败只发
+    `fallback`，不再动 HTTP 状态）；
     POST /api/guide/speak 把上一回合存下的一拍读成 pcm16 流（24 kHz / mono /
     s16le，HTTP/1.1 分块、无 Content-Length；只接受 `last_beats` 里的全文）
 
@@ -1012,6 +1014,17 @@ class Handler(BaseHTTPRequestHandler):
                 env = prism_guide.load_env()
                 messages = prism_guide.build_narrative_messages(
                     session.rules, session.guide, text, result)
+                if prism_guide.needs_tool(text, result is not None):
+                    # 工具预通行（§5.2 / §5.6）：挂在**叙事消息数组**上，思考开、
+                    # 非流式、最多 3 轮。只在状态行已经写出、且本回合还没有
+                    # 机械结果时才开；工具里的 `ValueError` 收成固定短语当
+                    # **工具错误字符串**回给模型，不会再写第二行 HTTP 状态。
+                    prism_guide.run_tool_pass(session, messages, env=env)
+                    # 工具里可能又 settle 了：叙事用的 L4 必须用**写回之后**的
+                    # 快照重做（§5.4）。叙事请求重拼 L0–L4，所以既不带
+                    # `reasoning_content`，也没有 `role: tool`（§5.5）。
+                    messages = prism_guide.build_narrative_messages(
+                        session.rules, session.guide, text, result)
                 completion = prism_guide.call_narrative(messages, env=env)
             except Exception:   # noqa: BLE001 — 上游读取失败不改整回合为 _err
                 completion = None

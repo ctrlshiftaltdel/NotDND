@@ -32,6 +32,18 @@ G3 覆盖：
 - `strip_marks`：长度 1–12 的括号 / 方括号记号；`【裁决】` 三段标题不是记号；
 - `build_tts_body` / `call_tts`：`mimo-v2.5-tts`、平叙风格卡、`pcm16`、
   台词在 `assistant`、密钥不入体、离线与失败返回空字节**不重试**。
+
+G4 覆盖：
+
+- `needs_tool`：三句**整句**；`我想查规则` 不算；有机械结果时永不开；
+- `build_tool_body` / `run_tool_pass`：思考开、不传温度、1024、非流式、带工具；
+  内部最多 3 轮；带 `tool_calls` 的助手消息带 `reasoning_content`；
+- `run_tool_call`：`request_check` 走同一个 `settle`，三种 `ValueError` 收成
+  固定短语（与网页层 `GUIDE_SETTLE_ERRORS` 同文）且**不抛**；
+- `lookup_rule_text`：只读那六个 kind、截到 1500 字、坏输入给固定短语；
+- `place_card`：只有内存里带 `places` 的帧才可读；`{seed, deltas}` 存档块
+  得到 `available: false` 且不抛 `KeyError`，也不调用 `restore_state`；
+- `reasoning` 只活在运行期：不进 `guide`、不进 `to_dict`、不进叙事请求。
 """
 
 import base64
@@ -49,6 +61,7 @@ sys.path.insert(0, str(ROOT))
 
 import prism_core  # noqa: E402
 import prism_guide as pg  # noqa: E402
+import atlas as atlas_kernel  # noqa: E402
 
 _ENV_KEYS = ("BASE_URL", "MODEL", "API_KEY")
 _SALT_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -448,6 +461,11 @@ def test_transport_injectable_and_build_offline():
         pg.beats_of("【叙事】风停了。", pg.empty_guide())
         pg.strip_marks("（低声）风停了。")
         pg.build_tts_body("风停了。", voice="茉莉")
+        # G4 的构建路径同样离线：只查表 / 组请求体，做不了就返回固定短语。
+        pg.needs_tool("查规则", False)
+        pg.lookup_rule_text("system.adjudication")
+        pg.lookup_rule_text("不存在的 kind")
+        pg.build_tool_body([{"role": "user", "content": "查规则"}], env=env)
     finally:
         pg.TRANSMIT = saved
     ok("上游调用只走可替换的传输入口；构建路径离线、不碰传输")
@@ -492,13 +510,20 @@ def test_assemble_chat_stream():
     assert got["tool_calls"] == []
     assert got["usage"] == {"prompt_tokens": 10, "cached_tokens": 4,
                             "completion_tokens": 2, "reasoning_tokens": 1}
-    # tool_calls 与 reasoning_content 的处理：前者收集，后者不落盘。
+    # tool_calls 会收集。`reasoning_content` 从 G4 起**单独**放在 `reasoning`
+    # 键上：工具预通行的那一次内存列表要把它放回带 `tool_calls` 的助手消息
+    # （否则供应商返回 400，见 §5.5）。它仍然**不进存档、不进 L3、不进叙事
+    # 请求**——那条不变量由 `test_tool_reasoning_never_persisted` 锁住，
+    # 不再靠「组装结果里没有这个字符串」来保证。
     streamed = pg.assemble_chat_stream(
         b'data: {"choices":[{"delta":{"tool_calls":[{"id":"t1"}]}}]}\n\n'
         b'data: {"choices":[{"delta":{"reasoning_content":"think"}}]}\n\n')
     assert streamed["tool_calls"] == [{"id": "t1"}]
     assert streamed["content"] == ""
-    assert "think" not in json.dumps(streamed, ensure_ascii=False)
+    assert streamed["reasoning"] == "think"
+    # 没有思考内容的回包**没有**这个键（同 `audio` 的口径）。
+    assert "reasoning" not in pg.assemble_chat_stream(
+        b'data: {"choices":[{"delta":{"content":"\xe5\x81\x9c"}}]}\n\n')
     # 非流式回包（message 而非 delta）。
     plain = pg.assemble_chat_stream(
         b'data: {"choices":[{"message":{"content":"\xe5\x81\x9c"}}]}\n\n')
@@ -884,6 +909,325 @@ def test_beats_of_skips_verdict():
     ok("beats_of：切正文与钩子，裁决那一行不进节拍")
 
 
+# ── G4：工具环 ──────────────────────────────────────────────────────────
+
+
+class _Web:
+    """最小 web_session 替身：`settle` 只按鸭子类型用 lock / rules / save。"""
+
+    def __init__(self, *, party=True, combat=False, actions=None):
+        self.lock = threading.RLock()
+        live = prism_core.RuleSession("s-tool")
+        if party:
+            live.party.append(prism_core.new_unit("u-1", "艾拉",
+                                                  attributes={"MGT": 5, "INS": 7}))
+        live.scene = {"id": "sc-1", "actions": list(actions or [])}
+        if combat:
+            live.combat = {"over": False}
+        self.rules = live.snapshot()
+        self.saved = 0
+
+    def save(self):
+        self.saved += 1
+
+
+_ONE_ACTION = [{"id": "a-auto", "label": "撬锁", "kind": "check", "df": 12,
+                "auto_pass": True, "on_pass": "锁簧弹开。"}]
+
+
+def _tool_call(name, arguments, call_id="call-1"):
+    """一只工具调用的规范形状（arguments 是 JSON 字符串）。"""
+    return {"id": call_id, "type": "function",
+            "function": {"name": name,
+                         "arguments": json.dumps(arguments, ensure_ascii=False)}}
+
+
+def test_needs_tool_exact_sentences():
+    """`needs_tool`：三句整句、必须有机械结果之外的空位；不是子串。"""
+    assert pg.TOOL_TRIGGERS == ("查规则", "这地方", "有哪些出口")
+    for word in pg.TOOL_TRIGGERS:
+        assert pg.needs_tool(word, False) is True
+        assert pg.needs_tool("  " + word + "  ", False) is True, "首尾空白要strip掉"
+    # 子串不算：`我想查规则` / `查规则吧` / `这地方真冷` 都不开预通行。
+    for wrong in ("我想查规则", "查规则吧", "这地方真冷", "有哪些出口呢",
+                  "看看有哪些出口", "", "   ", None):
+        assert pg.needs_tool(wrong, False) is False, wrong
+    # 本回合已经有机械结果：一律不开。
+    for word in pg.TOOL_TRIGGERS:
+        assert pg.needs_tool(word, True) is False
+    ok("needs_tool：只认三句整句，有机械结果时永不开")
+
+
+def test_tool_error_phrases_match_web_layer():
+    """工具错误短语与网页层 `GUIDE_SETTLE_ERRORS` 同文（跨模块锁）。"""
+    import importlib
+    import tempfile
+
+    saved = os.environ.get("NOTDND_SAVE")
+    os.environ["NOTDND_SAVE"] = tempfile.mkdtemp(prefix="pg-tool-errors-")
+    try:
+        web = importlib.import_module("notdnd_web")
+    finally:
+        if saved is None:
+            os.environ.pop("NOTDND_SAVE", None)
+        else:
+            os.environ["NOTDND_SAVE"] = saved
+    assert set(pg.TOOL_ERRORS) == set(web.GUIDE_SETTLE_ERRORS), \
+        "两边必须覆盖同一批异常文本"
+    for text, phrase in web.GUIDE_SETTLE_ERRORS.items():
+        assert pg.TOOL_ERRORS[text] == phrase[0], text
+    assert pg.TOOL_ERROR_DEFAULT == web.GUIDE_SETTLE_DEFAULT[0]
+    ok("工具错误短语与 GUIDE_SETTLE_ERRORS / GUIDE_SETTLE_DEFAULT 同文")
+
+
+def test_lookup_rule_reads_six_kinds():
+    """`lookup_rule`：只读那六个 kind、截到 1500 字、坏输入给固定短语。"""
+    assert set(pg.LOOKUP_RULE_KINDS) == {
+        "system.adjudication", "system.antipatterns", "system.decision_engine",
+        "system.guardrails", "system.ledger_spec", "system.tone_packs"}
+    for kind in pg.LOOKUP_RULE_KINDS:
+        text = pg.lookup_rule_text(kind)
+        assert text and len(text) <= pg.LOOKUP_RULE_LIMIT, (kind, len(text))
+        assert pg.TOOL_NO_RULE not in text[:10]
+    # 裁决堆栈的 note 是人写的一句话摘要，应当出现在正文最前面。
+    assert pg.lookup_rule_text("system.adjudication").startswith("规则冲突或无规则覆盖时")
+    # 不在六个 kind 里的（含空 / 脏值）给固定短语，不抛。
+    for bad in ("system.skills", "", None, "system.adjudication "):
+        assert pg.lookup_rule_text(bad) == pg.TOOL_UNKNOWN_KIND, bad
+    # 每条都截到上限以内（tone_packs 之类本来就长）。
+    assert len(pg.lookup_rule_text("system.guardrails")) <= pg.LOOKUP_RULE_LIMIT
+    ok("lookup_rule：六个 kind 可读、≤1500 字、未知 kind 给固定短语")
+
+
+def _tiny_atlas():
+    """一帧两地点一条边的小地图（都带 `places`）。"""
+    atlas = atlas_kernel.new_atlas("w", 1)
+    atlas_kernel.add_frame(atlas, "f", space="metric", z_meaning="层", cell="街区")
+    for pid, name, x in (("f/here", "听泉馆", 0), ("f/next", "白壁行拍卖厅", 1)):
+        atlas_kernel.add_place(atlas, {
+            "id": pid, "name": name, "kind": "room", "frame_id": "f",
+            "x": x, "y": 0, "z": 0, "source": "authored", "discovered": "seen"})
+    atlas_kernel.add_link(atlas, "f", "f/here", "f/next", "东", band="short")
+    return atlas
+
+
+def test_place_card_save_block_no_keyerror():
+    """存档块地点卡得到 `available: false`；**不**调用 `restore_state`。"""
+    calls = []
+    saved = atlas_kernel.restore_state
+
+    def counting(*args, **kwargs):
+        calls.append(args)
+        return saved(*args, **kwargs)
+
+    atlas_kernel.restore_state = counting
+    try:
+        # 1) 还没物化（只有存档块可看）：老存档读盘后的常态。
+        class _Fresh:
+            _atlas = None
+            _locus = None
+
+            atlas_block = {"version": 1, "world_key": "w", "seed": 3,
+                           "setting_rev": "r",
+                           "party_locus": {"frame_id": "f", "place_id": "f/here"},
+                           "frames": {"f": {"seed": None, "deltas": []}}}
+
+        card = pg.place_card(_Fresh())
+        assert card == {"available": False}, card
+
+        # 2) 手里那个「图」其实就是存档块（`{seed, deltas}`，帧没有 `places`）：
+        #    这里以前会 KeyError，必须给 available: false。
+        class _BlockShaped:
+            _atlas = _Fresh.atlas_block
+            _locus = {"frame_id": "f", "place_id": "f/here"}
+
+        assert pg.place_card(_BlockShaped()) == {"available": False}
+
+        # 3) 真有一份带 places 的内存地图：可读，但只回名称 / 出口 / 一句尺度。
+        class _Live:
+            _atlas = _tiny_atlas()
+            _locus = {"frame_id": "f", "place_id": "f/here"}
+
+        card = pg.place_card(_Live())
+        assert card["available"] is True
+        assert card["name"] == "听泉馆" and card["place_id"] == "f/here"
+        assert card["exits"] == [{"via": "东", "name": "白壁行拍卖厅",
+                                  "band": "short"}]
+        assert card["scale"] == "metric；一格：街区；z：层"
+        # 深拷贝的整份 place 不得进提示词。
+        assert "place" not in card and "frame" not in card and "links" not in card
+        # 未知地点 / 未知帧同样降级，不抛。
+        class _Lost:
+            _atlas = _Live._atlas
+            _locus = {"frame_id": "f", "place_id": "f/nope"}
+
+        assert pg.place_card(_Lost()) == {"available": False}
+    finally:
+        atlas_kernel.restore_state = saved
+    assert calls == [], "read_place_card 不得调用 atlas.restore_state"
+    ok("place_card：存档块 / 未物化 → available: false（无 KeyError、不 restore_state）")
+
+
+def test_run_tool_call_settle_and_phrases():
+    """`request_check` 走同一个 `settle`；三种 `ValueError` 收成固定短语且不抛。"""
+    # 未知工具 → 固定短语。
+    assert pg.run_tool_call(_Web(), _tool_call("do_magic", {})) == \
+        (pg.TOOL_UNKNOWN, False)
+
+    # 正常结算：走 settle，写回快照并 save；工具正文是结果的 JSON。
+    web = _Web(actions=_ONE_ACTION)
+    content, settled = pg.run_tool_call(web, _tool_call("request_check",
+                                                        {"action_id": "a-auto"}))
+    assert settled is True and web.saved == 1
+    assert "a-auto" in web.rules["done_actions"], "工具里的结算也要落盘"
+    assert json.loads(content)["passed"] is True
+
+    # 同一个 id 再问一次：由 prism_core 的 done_actions 短路，不掷第二次。
+    again, _ = pg.run_tool_call(web, _tool_call("request_check",
+                                                {"action_id": "a-auto"}))
+    assert json.loads(again)["already"] is True, again
+
+    # 三种 ValueError → 固定短语，**不抛**（状态行早已写出，不能再要 HTTP 状态）。
+    cases = (
+        ("行动不存在于当前场景", _Web(actions=_ONE_ACTION), "nope",
+         "没有这个行动"),
+        ("战斗还没结束，先打完这场", _Web(actions=_ONE_ACTION, combat=True),
+         "a-auto", "战斗还没结束"),
+    )
+    for _why, session, action_id, phrase in cases:
+        content, settled = pg.run_tool_call(
+            session, _tool_call("request_check", {"action_id": action_id}))
+        assert content == phrase, (action_id, content)
+        assert settled is False
+
+    # 「单位不存在」：行动者 id 指不到人。
+    ghost = _Web(party=False, actions=_ONE_ACTION)
+    ghost.rules["active_unit_id"] = "u-ghost"
+    content, settled = pg.run_tool_call(ghost, _tool_call(
+        "request_check", {"action_id": "a-auto"}))
+    assert content == "没有这个角色", content
+    assert settled is False
+
+    # 坏参数（不是 JSON / 缺 action_id）也只给短语，不抛。
+    for bad in (_tool_call("request_check", {}),
+                {"function": {"name": "request_check", "arguments": "{oops"}}):
+        content, settled = pg.run_tool_call(_Web(actions=_ONE_ACTION), bad)
+        assert content == "没有这个行动" and settled is False, content
+    ok("run_tool_call：走同一个 settle；三种 ValueError → 固定短语，不抛")
+
+
+def test_run_tool_pass_shape_and_reasoning():
+    """预通行：思考开 / 不传温度 / 1024 / 非流式 / 带工具；往返只活在内存列表。"""
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        if len(calls) == 1:
+            return {"content": "", "tool_calls": [
+                _tool_call("lookup_rule", {"kind": "system.adjudication"},
+                           "call-a")],
+                "usage": {"prompt_tokens": 11}, "reasoning": "先查裁决堆栈"}
+        if len(calls) == 2:
+            return {"content": "", "tool_calls": [
+                _tool_call("request_check", {"action_id": "a-auto"}, "call-b")],
+                "usage": {}, "reasoning": "再把行动结算掉"}
+        return {"content": "够了", "tool_calls": [], "usage": {}}
+
+    env = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+           "API_KEY": "kk"}
+    web = _Web(actions=_ONE_ACTION)
+    messages = [{"role": "system", "content": pg.L0},
+                {"role": "user", "content": "查规则"}]
+    trace = pg.run_tool_pass(web, messages, env=env, transmit=fake)
+
+    assert trace["rounds"] == 3, trace
+    assert trace["tools"] == ["lookup_rule", "request_check"], trace
+    assert trace["settled"] is True
+    assert web.saved == 1, "request_check 那一次真的结算并落盘了"
+
+    # 请求体形状（§5.5 表）：思考开、**没有** temperature、1024、非流式、带工具。
+    first = calls[0]["payload"]
+    assert first["thinking"] == {"type": "enabled"}
+    assert "temperature" not in first, "预通行不传温度"
+    assert first["max_completion_tokens"] == 1024
+    assert first["stream"] is False
+    assert first["tools"] == pg.TOOLS
+    assert first["messages"] == messages, "预通行挂在**叙事消息数组**上"
+    assert calls[0]["timeout"] == pg.TOOL_PASS_TIMEOUT_S
+    assert calls[0]["headers"] == {pg.KEY_HEADER: "kk"}
+    assert "kk" not in json.dumps(first, ensure_ascii=False)
+
+    # 第二轮的 messages 里：助手消息带 tool_calls **且**带 reasoning_content
+    # （否则供应商返回 400），随后才是 role: tool。
+    second = calls[1]["payload"]["messages"]
+    assistant = second[len(messages)]
+    assert assistant["role"] == "assistant"
+    assert assistant["tool_calls"][0]["id"] == "call-a"
+    assert assistant["reasoning_content"] == "先查裁决堆栈"
+    tool_msg = second[len(messages) + 1]
+    assert tool_msg["role"] == "tool" and tool_msg["tool_call_id"] == "call-a"
+    assert "规则冲突或无规则覆盖时" in tool_msg["content"]
+    # 第三轮：助手消息也带上了第二轮的 reasoning。
+    third = calls[2]["payload"]["messages"]
+    assert third[-2]["reasoning_content"] == "再把行动结算掉"
+    assert json.loads(third[-1]["content"])["passed"] is True
+
+    # 上限：模型一直要工具也不会超过 3 轮。
+    def always_tool(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        return {"content": "", "tool_calls": [_tool_call("lookup_rule",
+                                                         {"kind": "system.tone_packs"},
+                                                         "c-%d" % len(calls))],
+                "usage": {}}
+
+    started = len(calls)
+    trace = pg.run_tool_pass(_Web(), messages, env=env, transmit=always_tool)
+    assert trace["rounds"] == pg.TOOL_PASS_MAX_ROUNDS == 3
+    assert len(calls) - started == 3, "预通行内部最多 3 轮"
+
+    # 离线 / 上游失败：一次也不请求，返回零统计。
+    for broken in ({"BASE_URL": "", "MODEL": "mm", "API_KEY": "kk"},
+                   {"BASE_URL": "https://api.example.com/v1", "MODEL": "",
+                    "API_KEY": "kk"},
+                   {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+                    "API_KEY": ""}):
+        before = len(calls)
+        assert pg.run_tool_pass(_Web(), messages, env=broken,
+                                transmit=fake)["rounds"] == 0
+        assert len(calls) == before
+    ok("run_tool_pass：形状 / reasoning_content / 3 轮上限 / 离线不请求")
+
+
+def test_tool_reasoning_never_persisted():
+    """`reasoning` 只活在这一次的内存列表：不进 guide、不进 to_dict、不进叙事请求。"""
+    def fake(url, payload, headers, *, timeout):
+        return {"content": "", "tool_calls": [_tool_call("read_place_card", {})],
+                "usage": {}, "reasoning": "思考痕迹-不得落盘"}
+
+    env = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+           "API_KEY": "kk"}
+    web = _Web()
+    guide = pg.empty_guide()
+    messages = pg.build_narrative_messages(web.rules, guide, "这地方", None)
+    pg.run_tool_pass(web, messages, env=env, transmit=fake)
+
+    # guide（也就是落盘那一份）里没有它；叙事请求也没有它，也没有 role: tool。
+    assert "思考痕迹" not in json.dumps(guide, ensure_ascii=False)
+    rebuilt = pg.build_narrative_messages(web.rules, guide, "这地方", None)
+    blob = json.dumps(rebuilt, ensure_ascii=False)
+    assert "思考痕迹" not in blob
+    assert "reasoning_content" not in blob
+    assert not any(m.get("role") == "tool" for m in rebuilt)
+    assert [m["role"] for m in rebuilt] == \
+        ["system", "user", "assistant", "user", "assistant", "user"]
+    # 叙事请求体自己也不带这个字段。
+    body = json.dumps(pg.build_narrative_body(rebuilt), ensure_ascii=False)
+    assert "reasoning_content" not in body
+    ok("reasoning：不进 guide / to_dict / 叙事请求（重拼 L0–L4 时不带 role: tool）")
+
+
 def test_module_offline_no_socket():
     """`import prism_guide` 不打开套接字：只 import 不改外部状态。"""
     probe = subprocess.run(
@@ -939,6 +1283,13 @@ def main():
     test_build_tts_body()
     test_call_tts_offline_and_failure()
     test_beats_of_skips_verdict()
+    test_needs_tool_exact_sentences()
+    test_tool_error_phrases_match_web_layer()
+    test_lookup_rule_reads_six_kinds()
+    test_place_card_save_block_no_keyerror()
+    test_run_tool_call_settle_and_phrases()
+    test_run_tool_pass_shape_and_reasoning()
+    test_tool_reasoning_never_persisted()
     test_module_offline_no_socket()
     test_env_example()
     print()
