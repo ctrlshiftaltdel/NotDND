@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""回归测试：notdnd_web 的规则会话接线（规则快照落盘 + 惰性迁移 + /api/session）。
+"""回归测试：notdnd_web 的规则会话接线与导引路由。
 
 断言都是**真跑**出来的，不是对着实现抄一遍：
 
@@ -14,20 +14,27 @@
   4. ATLAS 存档块（切片 I4，§3.4）：带块落盘 → 载入还原，位置还在；
      老档没有块 → 按当前世界懒编译不报错；世界删掉了队伍所在地点 →
      搬迁到仍存在的区域且日志有说明；HTTP 出口列表是文本，移动返回行程档。
+  5. 导引者（G2）：`guide` 块四处接线与加载合同；`GET /api/guide/status`；
+     `POST /api/guide/turn` 的长度 / 会话 / 速率 / 淡出整句 / 结算 / 分块流 /
+     头写出之后的兜底。要换传输层的用例走**本进程**的服务线程（见 _LocalServer），
+     其余仍用真子进程，保证启动路径也被覆盖。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
 """
 
+import contextlib
 import http.client
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,6 +47,14 @@ os.environ["NOTDND_SAVE"] = _TMP
 sys.path.insert(0, ROOT)                     # 让 tests/ 直接跑时也能 import 根模块
 import notdnd_web   # noqa: E402
 import prism_core   # noqa: E402
+import prism_guide  # noqa: E402
+
+_SALT_RE = re.compile(r"^[0-9a-f]{32}$")
+
+# 一段合格的模型叙事：三段标题齐全，记法与「合计」都对得上结算结果。
+_OK_NARRATION = ("【裁决】你把手按上门栓，锁簧弹开。\n"
+                 "【叙事】铁屑落在脚边，走廊里安静了一拍。\n"
+                 "【钩子】走廊尽头有脚步声。")
 
 
 # --------------------------------------------------------------------------
@@ -180,6 +195,198 @@ def _sample_rules(sid: str) -> dict:
     rules.action_fails["a-1"] = 1
     rules.add_log("check", "勘察 · 判定 → 成功")
     return rules.snapshot()
+
+
+# --------------------------------------------------------------------------
+# 导引者（G2）脚手架：本进程服务线程 / 假传输 / SSE 解析
+# --------------------------------------------------------------------------
+
+
+class _LocalServer:
+    """在**本进程**里起一台服务线程（随机端口）。
+
+    子进程服务（`_Server`）读不到测试进程后来打的补丁——凡是要替换
+    `prism_guide.TRANSMIT`（假传输）或改模块全局的用例都走这一台；
+    其余用例仍用真子进程，保证「从命令行启动」这条路径也被覆盖。
+    """
+
+    def __init__(self):
+        self.server = None
+        self.thread = None
+        self.port = 0
+
+    def __enter__(self):
+        self.server = notdnd_web.ThreadingHTTPServer(
+            ("127.0.0.1", 0), notdnd_web.Handler)
+        self.port = int(self.server.server_address[1])
+        self.thread = threading.Thread(target=self.server.serve_forever,
+                                       daemon=True)
+        self.thread.start()
+        return self
+
+    def __exit__(self, *_exc):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=5)
+        return False
+
+    def get(self, path: str, sid: str = ""):
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
+        headers = {"X-Session": sid} if sid else {}
+        try:
+            conn.request("GET", path, headers=headers)
+            response = conn.getresponse()
+            return response.status, _load_json(response.read())
+        finally:
+            conn.close()
+
+    def post(self, path: str, body: dict, sid: str = ""):
+        """POST 一次，返回 (状态码, JSON, **已解块**的响应体, 响应头字典)。
+
+        `http.client` 会自己把分块体还原，所以这里拿到的 `raw` 直接交给
+        `_parse_sse`；只有裸 socket 的 `_raw_http` 才需要 `_dechunk`。
+        """
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
+        headers = {"Content-Type": "application/json"}
+        if sid:
+            headers["X-Session"] = sid
+        payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        try:
+            conn.request("POST", path, body=payload, headers=headers)
+            response = conn.getresponse()
+            raw = response.read()
+            heads = {key.lower(): value for key, value in response.getheaders()}
+            return response.status, _load_json(raw), raw, heads
+        finally:
+            conn.close()
+
+
+def _dechunk(raw: bytes) -> bytes:
+    """把 HTTP/1.1 分块体还原（十六进制长度行 + CRLF + 数据）。"""
+    _head, sep, rest = raw.partition(b"\r\n\r\n")
+    if not sep:
+        return b""
+    out = []
+    while True:
+        line, sep, rest = rest.partition(b"\r\n")
+        if not sep:
+            break
+        try:
+            size = int(line.split(b";")[0].strip() or b"0", 16)
+        except ValueError:
+            break
+        if size == 0:
+            break
+        out.append(rest[:size])
+        rest = rest[size + 2:]
+    return b"".join(out)
+
+
+def _raw_http(port: int, path: str, body: dict, sid: str = "") -> bytes:
+    """用裸 socket 发一次 POST，读到连接关闭——用来数有几行 HTTP 状态。"""
+    payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    lines = ["POST %s HTTP/1.1" % path, "Host: 127.0.0.1",
+             "Content-Type: application/json",
+             "Content-Length: %d" % len(payload)]
+    if sid:
+        lines.append("X-Session: %s" % sid)
+    request = ("\r\n".join(lines) + "\r\n\r\n").encode("utf-8") + payload
+    with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
+        sock.sendall(request)
+        pieces = []
+        while True:
+            piece = sock.recv(65536)
+            if not piece:
+                break
+            pieces.append(piece)
+        return b"".join(pieces)
+
+
+def _status_lines(raw: bytes) -> int:
+    """原始响应里以 `HTTP/` 开头的行数——出现第二行就是「第二套 HTTP 状态」。"""
+    text = raw.decode("utf-8", "replace")
+    return sum(1 for line in text.splitlines() if line.startswith("HTTP/"))
+
+
+def _parse_sse(raw: bytes):
+    """解析 SSE 体，返回 [(event, payload), …]（按出现顺序）。
+
+    逐行扫、只在 `event:` 之后取紧跟的 `data:`——这样即使分块边界把 `\\r\\n`
+    夹在事件之间也不会把行首认错。
+    """
+    events = []
+    event = None
+    for line in raw.decode("utf-8").replace("\r", "").split("\n"):
+        if line.startswith("event:"):
+            event = line[len("event:"):].strip()
+        elif line.startswith("data:") and event is not None:
+            data = line[len("data:"):].strip()
+            events.append((event, json.loads(data) if data else None))
+            event = None
+    return events
+
+
+class _FakeTransport:
+    """假传输：记录每次请求体，按脚本返回或抛错（默认返回一段合格叙事）。"""
+
+    def __init__(self, script=None):
+        self.calls = []
+        self.script = list(script or [])
+
+    def __call__(self, url, payload, headers, *, timeout):
+        self.calls.append({"url": url, "payload": payload, "headers": headers,
+                           "timeout": timeout})
+        step = self.script.pop(0) if self.script else {
+            "content": _OK_NARRATION, "tool_calls": [],
+            "usage": {"prompt_tokens": 7, "cached_tokens": 6,
+                      "completion_tokens": 3, "reasoning_tokens": 0}}
+        if isinstance(step, Exception):
+            raise step
+        return dict(step)
+
+
+@contextlib.contextmanager
+def _guide_online(env: dict, transmit):
+    """把 prism_guide 的环境解析与传输层换成测试替身（只在**本进程**生效）。
+
+    只打补丁、不写 `os.environ`：否则真子进程服务会继承到「已配置」的
+    环境变量并真的去连上游——测试绝不能出网。
+    """
+    saved_env = prism_guide.load_env
+    saved_tx = prism_guide.TRANSMIT
+    prism_guide.load_env = lambda path=".env": dict(env)
+    prism_guide.TRANSMIT = transmit
+    try:
+        yield transmit
+    finally:
+        prism_guide.load_env = saved_env
+        prism_guide.TRANSMIT = saved_tx
+
+
+_ONLINE_ENV = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+               "API_KEY": "secret123"}
+_OFFLINE_ENV = {"BASE_URL": "", "MODEL": "mm", "API_KEY": "secret123"}
+
+
+def _guide_session(sid: str, *, auto_pass: bool = True,
+                   combat: bool = False) -> "notdnd_web.Session":
+    """造一局带一条行动的存档，写到磁盘（服务端会自己载入）。"""
+    session = notdnd_web.Session(sid)
+    rules = prism_core.RuleSession(sid)
+    rules.party.append(prism_core.new_unit("u-1", "试炼者",
+                                           attributes={"MGT": 6, "INS": 7}))
+    action = {"id": "a-lock", "label": "撬锁", "kind": "check", "df": 12,
+              "on_pass": "锁簧弹开。"}
+    if auto_pass:
+        action["auto_pass"] = True
+    rules.scene = {"id": "sc-1", "actions": [action]}
+    if combat:
+        rules.combat = {"over": False}
+    session.rules = rules.snapshot()
+    session.save()
+    notdnd_web._sessions.pop(sid, None)     # 丢掉缓存，服务端走真实读盘
+    return session
+
 
 
 # --------------------------------------------------------------------------
@@ -463,6 +670,306 @@ def check_api_atlas_exits_and_move():
         # 没有这个出口 → 既有 400 语义
         status, err = server.post("/api/atlas/move", {"via": "不存在方向"}, sid=sid)
         assert status == 400 and err.get("error"), (status, err)
+# 导引者（G2）
+# --------------------------------------------------------------------------
+
+
+def check_guide_block_wiring():
+    """`guide` 块四处接线：新档掷 salt、落盘、重启不变、L2 里没有 salt。"""
+    sid = "guide-wire-1"
+    first = notdnd_web.Session(sid)
+    salt = first.guide["salt"]
+    assert _SALT_RE.match(salt), "新存档的 guide.salt 必须是 32 位十六进制"
+    # 形状归 prism_guide：网页层不得自己再列一遍键。
+    assert set(first.guide.keys()) == set(prism_guide.empty_guide().keys())
+    assert first.guide["realizations"] == {}
+    first.save()
+
+    with open(_save_path(sid), encoding="utf-8") as handle:
+        on_disk = json.load(handle)
+    assert on_disk["guide"]["salt"] == salt, "guide 必须真的落盘"
+
+    again = notdnd_web.Session.load(sid)      # 绕过缓存，走真实读盘路径
+    assert again is not None and again.guide["salt"] == salt, "重新载入后 salt 不变"
+    assert again.guide["l2"] == "【检查点】\n账本：无\n"
+    assert salt not in again.guide["l2"], "G2 的 salt 不得进入 L2"
+    assert salt not in prism_guide.L0 and salt not in prism_guide.L1_UNBOUND
+
+    # 默认值必须是**工厂**：两个新档不能共享同一个 guide dict。
+    other = notdnd_web.Session("guide-wire-2")
+    assert other.guide is not first.guide and other.guide["salt"] != salt
+    assert other.guide["stats"] is not first.guide["stats"]
+
+
+def check_guide_load_contract():
+    """§7 加载合同：不是 dict / 脏键 / 缺键三种老档都要**按键**还原。"""
+    fixed = "0123456789abcdef0123456789abcdef"
+
+    # 1) `guide` 不是 dict，原值本身是 32 位十六进制 → 加载后的 salt 就是这串。
+    _write_save(_save_path("guide-str"), {"sid": "guide-str", "guide": fixed})
+    s = notdnd_web.Session.load("guide-str")
+    assert s is not None and s.guide["salt"] == fixed, s.guide.get("salt")
+    assert s.guide["l2"] == "【检查点】\n账本：无\n"
+
+    # 2) `guide` 是 dict：realizations 合法、旁边一个键类型不对 → 只丢那个键。
+    _write_save(_save_path("guide-mixed"), {"sid": "guide-mixed", "guide": {
+        "salt": fixed,
+        "l2_scene_id": "sc-1",
+        "realizations": {"loc-02": {"source": "model"}},
+        "world_key": 123,           # 类型不对 → 丢
+        "voices": "not-a-dict",     # 类型不对 → 丢
+        "nonsense": [1, 2, 3],      # 不认识 → 丢
+    }})
+    s = notdnd_web.Session.load("guide-mixed")
+    assert s.guide["salt"] == fixed, "合法 salt 不得重掷"
+    assert s.guide["realizations"] == {"loc-02": {"source": "model"}}, \
+        "一个脏键不得连带删掉 realizations"
+    assert s.guide["l2_scene_id"] == "sc-1"
+    assert s.guide["world_key"] == "" and s.guide["voices"] == {}
+    assert "nonsense" not in s.guide
+
+    # 3) 缺 guide 的老档 → 补一份**新** salt 的块，且两个老档不共享。
+    _write_save(_save_path("guide-none"), {"sid": "guide-none", "created": 1.0})
+    a = notdnd_web.Session.load("guide-none")
+    b = notdnd_web.Session.load("guide-none")
+    assert _SALT_RE.match(a.guide["salt"]) and a.guide["salt"] != b.guide["salt"]
+    assert a.guide is not b.guide
+
+
+def check_guide_status_endpoint():
+    """GET /api/guide/status：三个布尔，不需要会话；空 BASE_URL 全假。"""
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, _FakeTransport()):
+            status, body = server.get("/api/guide/status")
+            assert status == 200, status
+            assert body == {"chat": True, "tts": True, "configured": True}, body
+            dumped = json.dumps(body, ensure_ascii=False)
+            assert "secret123" not in dumped and "BASE_URL" not in dumped
+            assert "api.example.com" not in dumped
+        with _guide_online(_OFFLINE_ENV, _FakeTransport()):
+            status, body = server.get("/api/guide/status")
+            assert status == 200, status
+            assert body == {"chat": False, "tts": False, "configured": False}, body
+
+
+def check_guide_turn_validation():
+    """`turn` 的状态行之前四步：长度 → 会话 → 速率 → 淡出整句。"""
+    with _LocalServer() as server:
+        with _guide_online(_OFFLINE_ENV, _FakeTransport()):
+            # 长度：超过 2000 字 → 400「这句话太长」。
+            _guide_session("g2-len")
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn", {"text": "字" * 2001}, sid="g2-len")
+            assert status == 400 and body.get("error") == "这句话太长", body
+            assert "event-stream" not in heads.get("content-type", "")
+            # 边界：正好 2000 字不算超。
+            status, _body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "字" * 2000}, sid="g2-len")
+            assert status == 200, status
+
+            # 会话：没有 X-Session → 400。
+            status, body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "我看看"})
+            assert status == 400 and body.get("error"), body
+
+            # 淡出 / 跳过是**整句相等**，且**不结算**（不调用 perform_action）。
+            _guide_session("g2-fade")
+            seen = []
+            saved_call = prism_core.perform_action
+
+            def counting(*args, **kwargs):
+                seen.append(args)
+                return saved_call(*args, **kwargs)
+
+            prism_core.perform_action = counting
+            try:
+                status, body, _raw, _heads = server.post(
+                    "/api/guide/turn",
+                    {"text": "淡出", "action_id": "a-lock"}, sid="g2-fade")
+                assert status == 200, status
+                assert body["narration"]["text"] == notdnd_web.GUIDE_FADE_TEXT, body
+                status, body, _raw, _heads = server.post(
+                    "/api/guide/turn", {"text": "跳过这段"}, sid="g2-fade")
+                assert status == 200
+                assert body["narration"]["text"] == notdnd_web.GUIDE_SKIP_TEXT, body
+            finally:
+                prism_core.perform_action = saved_call
+            assert seen == [], "淡出 / 跳过整句不得结算"
+
+            # 单独的「跳过」不命中整句，走正常回合（本用例离线 → 兜底流）。
+            status, _body, raw, heads = server.post(
+                "/api/guide/turn", {"text": "跳过"}, sid="g2-fade")
+            assert status == 200 and "event-stream" in heads.get("content-type", "")
+            assert [name for name, _ in _parse_sse(raw)][0] == "fallback"
+
+            # 速率：每 60 秒最多 12 次 turn，第 13 次 429。
+            _guide_session("g2-rate")
+            codes = [server.post("/api/guide/turn", {"text": "淡出"},
+                                 sid="g2-rate")[0] for _ in range(12)]
+            assert codes == [200] * 12, codes
+            status, body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "淡出"}, sid="g2-rate")
+            assert status == 429 and body.get("error") == "太频繁", body
+
+
+def check_guide_turn_settle_stream():
+    """有 `action_id`：先结算（落盘）→ HTTP/1.1 分块 → 审查后的叙事进 L3。"""
+    sid = "g2-turn-1"
+    _guide_session(sid)
+    fake = _FakeTransport()
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, heads = server.post(
+                "/api/guide/turn",
+                {"text": "我按住门栓", "action_id": "a-lock"}, sid=sid)
+            assert status == 200, status
+            assert "event-stream" in heads.get("content-type", ""), heads
+            assert heads.get("transfer-encoding") == "chunked", heads
+            assert "content-length" not in heads, "分块响应不得带 Content-Length"
+
+            events = _parse_sse(raw)
+            assert [name for name, _ in events] == \
+                ["result", "narration", "usage", "done"], events
+            result = events[0][1]
+            assert result["status"] == "resolved" and result["passed"] is True
+            assert result["auto"] is True             # auto_pass 免骰
+            assert result["rolled"] is False and result["roll"] is None
+
+            text = events[1][1]["text"]
+            # 免骰且达成 → 裁决是服务端的「判定：成功」，不是模型自己写的。
+            assert text.startswith("【裁决】判定：成功"), text
+            assert "铁屑落在脚边" in text
+            assert events[2][1] == {"prompt_tokens": 7, "cached_tokens": 6,
+                                    "completion_tokens": 3,
+                                    "reasoning_tokens": 0}, events[2][1]
+
+            # 假传输收到的是叙事请求体：思考关、流式、密钥不入体、L0 在最前。
+            assert len(fake.calls) == 1, fake.calls
+            payload = fake.calls[0]["payload"]
+            assert payload["thinking"] == {"type": "disabled"}
+            assert payload["stream"] is True and payload["temperature"] == 0.7
+            assert payload["model"] == "mm"
+            assert fake.calls[0]["headers"] == {prism_guide.KEY_HEADER: "secret123"}
+            assert payload["messages"][0]["role"] == "system"
+            assert payload["messages"][0]["content"] == prism_guide.L0
+            assert payload["messages"][-1]["role"] == "user"
+            assert "我按住门栓" in payload["messages"][-1]["content"]
+            assert "secret123" not in json.dumps(payload, ensure_ascii=False)
+
+    # 重启后：结算看得见，L3 是审查后的文本。
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded is not None
+    assert "a-lock" in reloaded.rules["done_actions"], "结算必须落盘"
+    transcript = reloaded.guide["transcript"]
+    assert transcript and transcript[-1] == {"role": "assistant",
+                                             "content": text}, transcript
+    assert reloaded.guide["salt"] not in reloaded.guide["l2"]
+
+
+def check_guide_turn_stream_failure():
+    """头写出之后失败：先 `result` 再 `fallback`，且没有第二行 HTTP 状态。"""
+    sid = "g2-fail-1"
+    _guide_session(sid)
+    fake = _FakeTransport([prism_guide.TransportError("boom")])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            raw = _raw_http(server.port, "/api/guide/turn",
+                            {"text": "我按住门栓", "action_id": "a-lock"}, sid=sid)
+    assert _status_lines(raw) == 1, "头写出之后不得再发第二行 HTTP 状态"
+    assert b"event-stream" in raw.split(b"\r\n\r\n", 1)[0]
+    events = _parse_sse(_dechunk(raw))
+    assert [name for name, _ in events] == ["result", "fallback", "done"], events
+    fallback = events[1][1]["text"]
+    assert fallback.startswith("【裁决】判定：成功"), fallback
+    assert prism_guide.FALLBACK_NARRATION in fallback
+    assert len(fake.calls) == 1
+
+    reloaded = notdnd_web.Session.load(sid)
+    # 结算仍落盘了；兜底句**不进** L3（L3 只存审查之后的模型文本）。
+    assert "a-lock" in reloaded.rules["done_actions"]
+    assert reloaded.guide["transcript"] == []
+
+
+def check_guide_turn_review_failure_keeps_verdict():
+    """记法对不上：裁决仍是 `roll["detail"]`，叙事是兜底句。"""
+    sid = "g2-notation"
+    _guide_session(sid, auto_pass=False)
+    bad = {"content": "【裁决】x\n【叙事】你掷出 99d99 = 999，石壁塌了。",
+           "tool_calls": [], "usage": {}}
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, _FakeTransport([bad])):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我按住门栓", "action_id": "a-lock"}, sid=sid)
+    assert status == 200, status
+    events = _parse_sse(raw)
+    assert [name for name, _ in events] == ["result", "fallback", "done"], events
+    result = events[0][1]
+    assert result["rolled"] is True and isinstance(result["roll"], dict)
+    fallback = events[1][1]["text"]
+    assert fallback.startswith("【裁决】" + result["roll"]["detail"]), fallback
+    assert prism_guide.FALLBACK_NARRATION in fallback
+    assert "石壁塌了" not in fallback
+
+
+def check_guide_turn_settle_errors_before_stream():
+    """开头的 `ValueError` 在 SSE 之前变成固定 JSON（含 409）。"""
+    with _LocalServer() as server:
+        with _guide_online(_OFFLINE_ENV, _FakeTransport()):
+            # 战斗没结束 → 409「战斗还没结束」，没有 SSE 头。
+            _guide_session("g2-combat", auto_pass=False, combat=True)
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn",
+                {"text": "我按住门栓", "action_id": "a-lock"}, sid="g2-combat")
+            assert status == 409, (status, body)
+            assert body.get("error") == "战斗还没结束", body
+            assert "event-stream" not in heads.get("content-type", "")
+            raw = _raw_http(server.port, "/api/guide/turn",
+                            {"text": "我按住门栓", "action_id": "a-lock"},
+                            sid="g2-combat")
+            assert _status_lines(raw) == 1
+
+            # 行动不存在 → 400「没有这个行动」。
+            _guide_session("g2-noaction")
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn",
+                {"text": "我按住门栓", "action_id": "nope"}, sid="g2-noaction")
+            assert status == 400, (status, body)
+            assert body.get("error") == "没有这个行动", body
+            assert "event-stream" not in heads.get("content-type", "")
+
+
+def check_guide_missing_module():
+    """模块缺失：状态全假；`turn` 返回固定 JSON 兜底且**不结算**。"""
+    with _LocalServer() as server:
+        saved_module = notdnd_web.prism_guide
+        notdnd_web.prism_guide = None
+        try:
+            status, body = server.get("/api/guide/status")
+            assert status == 200, status
+            assert body == {"chat": False, "tts": False, "configured": False}, body
+
+            _guide_session("g2-nomod")
+            seen = []
+            saved_call = prism_core.perform_action
+
+            def counting(*args, **kwargs):
+                seen.append(args)
+                return saved_call(*args, **kwargs)
+
+            prism_core.perform_action = counting
+            try:
+                status, body, _raw, heads = server.post(
+                    "/api/guide/turn",
+                    {"text": "我按住门栓", "action_id": "a-lock"}, sid="g2-nomod")
+            finally:
+                prism_core.perform_action = saved_call
+            assert status == 200, status
+            assert body["narration"]["text"] == notdnd_web.FALLBACK_NARRATION, body
+            assert "event-stream" not in heads.get("content-type", "")
+            assert seen == [], "模块缺失时不得结算"
+        finally:
+            notdnd_web.prism_guide = saved_module
 
 
 CHECKS = (
@@ -475,6 +982,15 @@ CHECKS = (
     check_atlas_legacy_save_lazy_compile,
     check_atlas_relocation_on_deleted_place,
     check_api_atlas_exits_and_move,
+    check_guide_block_wiring,
+    check_guide_load_contract,
+    check_guide_status_endpoint,
+    check_guide_turn_validation,
+    check_guide_turn_settle_stream,
+    check_guide_turn_stream_failure,
+    check_guide_turn_review_failure_keeps_verdict,
+    check_guide_turn_settle_errors_before_stream,
+    check_guide_missing_module,
 )
 
 

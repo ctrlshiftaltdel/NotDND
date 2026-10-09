@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""G1 · prism_guide 离线骨架回归测试。
+"""G1–G2 · prism_guide 回归测试（前缀 + 叙事回合）。
 
 直接 `python3 tests/test_prism_guide.py` 运行；零依赖，只用标准库，
-不访问网络。覆盖 Issue G1 的验收标准：
+**不访问网络**（上游调用一律走假传输 / 直接喂字节）。
+
+G1 覆盖：
 
 - `.env` 只解析三个键、os.environ 优先、旧名 NOTDND_AI_* 不认；
 - 空 BASE_URL / 空 MODEL / 缺密钥时状态布尔正确；
@@ -11,21 +13,31 @@
 - 工具 JSON 与 GUIDE-DESIGN.md §5.6 规范串全等；
 - L0 / L1 / L2 字节稳定性与内容边界；
 - guide 状态字典（empty_guide / guide_from 按键合同）；
-- cache_hit_ratio；
-- `.env.example` 仍含 NOTDND_HOST / NOTDND_PORT 且不再含 NOTDND_AI_。
+- cache_hit_ratio；`.env.example` 仍含 NOTDND_HOST / NOTDND_PORT。
+
+G2 覆盖：
+
+- 传输层是一个可替换入口（假传输），构建路径离线；
+- `assemble_chat_stream` / `read_usage`（流式与非流式回包）；
+- `settle`：注水 → 结算 → 写回 → save，异常原样抛；
+- `verdict_line` 取句顺序与「判定：成功」；
+- `review_narration` 的骰子审查与裁决替换；`fallback_text` 保留裁决；
+- `build_l4` / `build_narrative_messages` 的段落顺序与上限。
 """
 
-import base64
 import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import tempfile
+import threading
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import prism_core  # noqa: E402
 import prism_guide as pg  # noqa: E402
 
 _ENV_KEYS = ("BASE_URL", "MODEL", "API_KEY")
@@ -368,18 +380,292 @@ def test_cache_hit_ratio():
 # ── 离线与 .env.example ────────────────────────────────────────────────
 
 
-def test_module_offline_no_socket():
-    source = pathlib.Path(ROOT / "prism_guide.py").read_text(
-        encoding="utf-8")
-    assert "urlopen" not in source and "socket" not in source
-    assert "urllib" not in source and "http.client" not in source
-    # 构建路径全程不需要网络。
+def test_transport_injectable_and_build_offline():
+    """上游调用只有一个可替换入口（假传输）；构建路径离线、不碰网络。
+
+    G1 时本模块完全不引用网络设施；G2 起它必须真的读上游（§5.3「同一套
+    标准库 HTTP」），但**所有**上游调用都收在 `TRANSMIT` 这一个入口上，
+    测试换成假传输即全程不开套接字。因此这里断言的是「可替换 + 构建路径离线」，
+    不再断言源码里没有 `urllib`。
+    """
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        return {"content": "【叙事】风停了。", "tool_calls": [],
+                "usage": {"prompt_tokens": 3}}
+
     env = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
            "API_KEY": "kk"}
-    pg.build_narrative_body([{"role": "system", "content": pg.L0}], env=env)
-    pg.status(env)
-    pg.build_l2(_fixture_rules())
-    ok("模块不引用任何网络设施，构建路径离线")
+    done = pg.call_narrative([{"role": "user", "content": "x"}], env=env,
+                             transmit=fake)
+    assert done and done["content"] == "【叙事】风停了。"
+    assert len(calls) == 1
+    assert calls[0]["url"] == "https://api.example.com/v1/chat/completions"
+    assert calls[0]["headers"] == {pg.KEY_HEADER: "kk"}
+    assert calls[0]["timeout"] == pg.NARRATIVE_TIMEOUT_S
+    assert "kk" not in json.dumps(calls[0]["payload"], ensure_ascii=False)
+
+    # 离线（空 BASE_URL / 空模型 / 空密钥）时**不请求**，直接返回 None。
+    for broken in ({"BASE_URL": "", "MODEL": "mm", "API_KEY": "kk"},
+                   {"BASE_URL": "  ", "MODEL": "mm", "API_KEY": "kk"},
+                   {"BASE_URL": "https://api.example.com/v1", "MODEL": "",
+                    "API_KEY": "kk"},
+                   {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+                    "API_KEY": ""}):
+        assert pg.call_narrative([{"role": "user", "content": "x"}],
+                                 env=broken, transmit=fake) is None
+    assert len(calls) == 1, "离线时不得调用传输"
+
+    # 构建路径不碰传输：换成会炸的传输，把纯函数逐条跑一遍。
+    def boom(*_args, **_kwargs):
+        raise AssertionError("构建路径不得调用传输")
+
+    saved, pg.TRANSMIT = pg.TRANSMIT, boom
+    try:
+        assert callable(saved)
+        pg.build_narrative_body([{"role": "system", "content": pg.L0}], env=env)
+        pg.status(env)
+        pg.build_l2(_fixture_rules())
+        pg.build_l4(_fixture_rules(), pg.empty_guide(), "看一下")
+        pg.build_narrative_messages(_fixture_rules(), pg.empty_guide(), "看一下")
+        pg.verdict_line({"rolled": False, "outcome": "success"})
+        pg.review_narration({"rolled": False},
+                            {"content": "【叙事】风停了。", "tool_calls": []})
+    finally:
+        pg.TRANSMIT = saved
+    ok("上游调用只走可替换的传输入口；构建路径离线、不碰传输")
+
+
+def test_transport_error_hides_upstream_body():
+    """传输失败只抛类型名，不带上游响应体 / 密钥（§5.1 / §8）。"""
+    saved = pg.urllib.request.urlopen
+
+    def boom(*_args, **_kwargs):
+        raise OSError("upstream said: secret-body")
+
+    pg.urllib.request.urlopen = boom
+    try:
+        try:
+            pg.http_transmit("https://api.example.com/v1/chat/completions",
+                             {"model": "mm"}, {pg.KEY_HEADER: "kk"},
+                             timeout=0.1)
+        except pg.TransportError as error:
+            assert "secret-body" not in str(error)
+            assert "kk" not in str(error)
+            assert "OSError" in str(error)
+        else:
+            raise AssertionError("上游失败应抛 TransportError")
+    finally:
+        pg.urllib.request.urlopen = saved
+    ok("传输失败抛 TransportError，不带上游响应体与密钥")
+
+
+def test_assemble_chat_stream():
+    """流式 / 非流式回包都组装；用量缺字段按 0；坏块跳过不抛。"""
+    raw = (b'data: {"choices":[{"delta":{"content":"\xe4\xbd\xa0"}}]}\n\n'
+           b'data: {"choices":[{"delta":{"content":"\xe5\xa5\xbd"}}]}\n\n'
+           b'data: not-json\n\n'
+           b'data: {"choices":[],"usage":{"prompt_tokens":10,'
+           b'"prompt_tokens_details":{"cached_tokens":4},'
+           b'"completion_tokens":2,'
+           b'"completion_tokens_details":{"reasoning_tokens":1}}}\n\n'
+           b'data: [DONE]\n\n')
+    got = pg.assemble_chat_stream(raw)
+    assert got["content"] == "你好"
+    assert got["tool_calls"] == []
+    assert got["usage"] == {"prompt_tokens": 10, "cached_tokens": 4,
+                            "completion_tokens": 2, "reasoning_tokens": 1}
+    # tool_calls 与 reasoning_content 的处理：前者收集，后者不落盘。
+    streamed = pg.assemble_chat_stream(
+        b'data: {"choices":[{"delta":{"tool_calls":[{"id":"t1"}]}}]}\n\n'
+        b'data: {"choices":[{"delta":{"reasoning_content":"think"}}]}\n\n')
+    assert streamed["tool_calls"] == [{"id": "t1"}]
+    assert streamed["content"] == ""
+    assert "think" not in json.dumps(streamed, ensure_ascii=False)
+    # 非流式回包（message 而非 delta）。
+    plain = pg.assemble_chat_stream(
+        b'data: {"choices":[{"message":{"content":"\xe5\x81\x9c"}}]}\n\n')
+    assert plain["content"] == "停"
+    # 缺字段按 0。
+    assert pg.read_usage({}) == {"prompt_tokens": 0, "cached_tokens": 0,
+                                 "completion_tokens": 0, "reasoning_tokens": 0}
+    ok("assemble_chat_stream：delta / message / usage / 坏块 / [DONE]")
+
+
+# ── G2：结算与叙事审查 ──────────────────────────────────────────────────
+
+
+def test_settle_uses_snapshot_roundtrip():
+    """`settle`：注水 → perform_action（不传 unit_id）→ 写回 → save。"""
+    class _Web:
+        def __init__(self):
+            self.lock = threading.RLock()
+            self.rules = prism_core.RuleSession("s-1").snapshot()
+            self.saved = 0
+
+        def save(self):
+            self.saved += 1
+
+    web = _Web()
+    live = prism_core.RuleSession.from_snapshot(web.rules)
+    live.party.append(prism_core.new_unit("u-1", "艾拉",
+                                          attributes={"MGT": 5, "INS": 7}))
+    live.scene = {"id": "sc-1", "actions": [
+        {"id": "a-auto", "label": "撬锁", "kind": "check", "df": 12,
+         "auto_pass": True, "on_pass": "锁簧弹开。"},
+        {"id": "a-check", "label": "勘察", "kind": "check", "df": 12},
+    ]}
+    web.rules = live.snapshot()
+
+    result = pg.settle(web, "a-auto")
+    assert result["status"] == "resolved" and result["passed"] is True
+    assert result["auto"] is True and result["rolled"] is False
+    assert web.saved == 1, "结算必须落盘一次"
+    assert "a-auto" in web.rules["done_actions"], "结算要写回快照"
+    # 行动者是 active_unit_id 为空时的 party[0]，行动者不是「单位不存在」。
+    assert result["unit"]["id"] == "u-1"
+
+    # 未知行动 → 照原样抛 ValueError（映射成 HTTP 码是网页层的合同）。
+    try:
+        pg.settle(web, "nope")
+    except ValueError as error:
+        assert str(error) == "行动不存在于当前场景"
+    else:
+        raise AssertionError("未知行动应抛 ValueError")
+
+    # 战斗没结束的锁也照原样抛。
+    live = prism_core.RuleSession.from_snapshot(web.rules)
+    live.combat = {"over": False}
+    web.rules = live.snapshot()
+    try:
+        pg.settle(web, "a-check")
+    except ValueError as error:
+        assert str(error) == "战斗还没结束，先打完这场"
+    else:
+        raise AssertionError("战斗未结束应抛 ValueError")
+    ok("settle：注水 / 结算 / 写回 / save；异常原样抛给网页层")
+
+
+def test_verdict_line_order():
+    """`【裁决】` 取句顺序：roll.detail → message → text → 判定：档位 → 无掷骰。"""
+    assert pg.verdict_line({"rolled": True, "roll": {"detail": "1d20+5 = 18"},
+                            "message": "忽略我"}) == "1d20+5 = 18"
+    assert pg.verdict_line({"rolled": False, "message": "已经完成过了"}) == \
+        "已经完成过了"
+    assert pg.verdict_line({"text": "锁簧弹开。"}) == "锁簧弹开。"
+    # 免骰且达成 = 判定：成功（五档中文不导入 prism_core._OUTCOME_ZH）。
+    assert pg.verdict_line({"rolled": False, "roll": None,
+                            "outcome": "success"}) == "判定：成功"
+    assert pg.verdict_line({"outcome": "catastrophe"}) == "判定：灾难"
+    assert pg.verdict_line({}) == pg.NO_ROLL_VERDICT
+    assert pg.verdict_line(None) == pg.NO_ROLL_VERDICT
+    ok("verdict_line：取句顺序与「判定：成功」")
+
+
+def test_review_narration():
+    """骰子审查 + 裁决替换；对不上就丢叙事（返回 None）。"""
+    result = {"rolled": True,
+              "roll": {"detail": "1d20+5 = 18", "notation": "1d20+5",
+                       "total": 18},
+              "unit": {"vitality": 9, "guard": 12,
+                       "resources": {"focus": 3, "tempo": 2, "strain": 1,
+                                     "resolve": 3}}}
+
+    # 通过：裁决换成服务端句子，正文与钩子照留。
+    text = ("【裁决】你掷出 1d20+5 = 18\n"
+            "【叙事】剑锋擦过石壁，火花落进积水。\n"
+            "【钩子】巷口有人影。")
+    out = pg.review_narration(result,
+                              {"content": text, "tool_calls": []})
+    assert out.startswith("【裁决】1d20+5 = 18"), out
+    assert "剑锋擦过石壁，火花落进积水。" in out
+    assert "【钩子】巷口有人影。" in out
+    # 正文里记法一致、合计一致 → 通过。
+    assert pg.review_narration(
+        result, {"content": "【叙事】你掷出 1d20+5 = 18，剑锋擦过石壁。",
+                 "tool_calls": []})
+    # 记法不一致 → 丢叙事。
+    assert pg.review_narration(
+        result, {"content": "【叙事】掷出 1d20+9 = 18。",
+                 "tool_calls": []}) is None
+    # 合计不一致 → 丢叙事。
+    assert pg.review_narration(
+        result, {"content": "【叙事】合计 11，剑锋擦过石壁。",
+                 "tool_calls": []}) is None
+    # 带标签数字不一致 → 丢叙事；一致则通过；单位没有该字段时不判死。
+    assert pg.review_narration(
+        result, {"content": "【叙事】活力：4，你退到墙根。",
+                 "tool_calls": []}) is None
+    assert pg.review_narration(
+        result, {"content": "【叙事】活力：9，你退到墙根。",
+                 "tool_calls": []})
+    assert pg.review_narration(
+        {"rolled": False}, {"content": "【叙事】负担 6。", "tool_calls": []})
+    # 空正文 / 纯空白 / 带 tool_calls / 完成不是字典 → 丢。
+    assert pg.review_narration(result, {"content": "   ",
+                                        "tool_calls": []}) is None
+    assert pg.review_narration(result, {"content": "【裁决】x\n【叙事】  ",
+                                        "tool_calls": []}) is None
+    assert pg.review_narration(result, {"content": text,
+                                        "tool_calls": [{"id": "t"}]}) is None
+    assert pg.review_narration(result, None) is None
+    ok("review_narration：记法 / 合计 / 带标签数字审查与裁决替换")
+
+
+def test_fallback_text_keeps_verdict():
+    """叙事失败：**保留服务端裁决**，正文用兜底句（§5.2）。"""
+    result = {"rolled": True, "roll": {"detail": "1d20+5 = 18"}}
+    text = pg.fallback_text(result)
+    assert text.startswith("【裁决】1d20+5 = 18"), text
+    assert pg.FALLBACK_NARRATION in text
+    # 没有掷骰时裁决是「本回合没有新的掷骰。」
+    assert pg.NO_ROLL_VERDICT in pg.fallback_text(None)
+    ok("fallback_text：裁决仍是 roll['detail']，正文是兜底句")
+
+
+def test_build_l4_and_messages():
+    """L4 块与 L0–L4 消息数组：段落顺序、L4 上限、纯函数不改 guide。"""
+    rules = _fixture_rules()
+    rules["scene"]["actions"] = [{"id": "a-1", "label": "勘察"}]
+    rules["active_unit_id"] = "u-1"
+    rules["party"][0]["vitality"] = 9
+    rules["party"][0]["max_vitality"] = 12
+    rules["party"][0]["resources"] = {"focus": 3, "tempo": 2, "strain": 0,
+                                      "resolve": 3}
+    guide = pg.empty_guide()
+    pg.ensure_l2(guide, rules)
+    messages = pg.build_narrative_messages(rules, guide, "我去看看")
+    assert [m["role"] for m in messages] == ["system", "user", "assistant",
+                                             "user", "assistant", "user"]
+    assert messages[1]["content"] == pg.L1_UNBOUND
+    assert messages[3]["content"] == guide["l2"]
+    assert "我去看看" in messages[-1]["content"]
+    assert "无判定" in messages[-1]["content"]
+    assert "a-1 勘察" in messages[-1]["content"]
+    assert "活力 9/12" in messages[-1]["content"]
+    # L3 只追加进消息数组，不改 guide。
+    guide["transcript"].append({"role": "assistant", "content": "旧对白"})
+    again = pg.build_narrative_messages(rules, guide, "再看一眼")
+    assert any(m["content"] == "旧对白" for m in again)
+    assert len(guide["transcript"]) == 1
+    # L4 超长：先截玩家原文的尾部，不超上限。
+    blob = pg.build_l4(rules, guide, "长" * 5000)
+    assert len(blob) <= pg.L4_LIMIT, len(blob)
+    ok("build_l4 / build_narrative_messages：段落顺序、L4 上限、纯函数")
+
+
+def test_module_offline_no_socket():
+    """`import prism_guide` 不打开套接字：只 import 不改外部状态。"""
+    probe = subprocess.run(
+        [sys.executable, "-c",
+         "import prism_guide, socket, sys; "
+         "sys.stdout.write('imported')"],
+        cwd=str(ROOT), capture_output=True, text=True)
+    assert probe.returncode == 0, probe.stderr
+    assert "imported" in probe.stdout
+    ok("import prism_guide 成功且无副作用")
 
 
 def test_env_example():
@@ -410,6 +696,14 @@ def main():
     test_empty_guide()
     test_guide_from_contract()
     test_cache_hit_ratio()
+    test_transport_injectable_and_build_offline()
+    test_transport_error_hides_upstream_body()
+    test_assemble_chat_stream()
+    test_settle_uses_snapshot_roundtrip()
+    test_verdict_line_order()
+    test_review_narration()
+    test_fallback_text_keeps_verdict()
+    test_build_l4_and_messages()
     test_module_offline_no_socket()
     test_env_example()
     print()
