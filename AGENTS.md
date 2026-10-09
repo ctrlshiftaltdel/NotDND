@@ -144,6 +144,7 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 | `README.md`、`HANDOVER.md` | 文档 |
 | `AGENTS.md`、`CONTRIBUTING.md` | 协作契约 |
 | `MASTER.md`、`DNDWEB-ASSETS.md` | 主管接手手册 / 参考项目资产清单 |
+| `ATLAS-DESIGN.md` | 自动地图（ATLAS）设计方案（主管维护，拆单依据） |
 | `docs/` | PRISM 原创规则与剧本，**可修订**（须独自成 PR，见下） |
 | `save/`、`web-saves/`、`screenshots/`、`tests/shots/`、`.worktrees/`、`.workbuddy/`、`.codegraph/`、`.opencode/`、`.env` | 本地运行物 / 本地索引 / 密钥，**禁入库** |
 
