@@ -23,8 +23,18 @@ G2 覆盖：
 - `verdict_line` 取句顺序与「判定：成功」；
 - `review_narration` 的骰子审查与裁决替换；`fallback_text` 保留裁决；
 - `build_l4` / `build_narrative_messages` 的段落顺序与上限。
+
+G3 覆盖：
+
+- `assemble_chat_stream` 的 `audio`：每个 `delta.audio.data` **单独** base64 解码
+  再拼接（把 base64 文本接起来再解是**错的**）；纯叙事回包没有 `audio` 键；
+- `split_beats` / `beats_of`：默认整拍旁白、对白切拍、6 拍上限、不按姓名推断；
+- `strip_marks`：长度 1–12 的括号 / 方括号记号；`【裁决】` 三段标题不是记号；
+- `build_tts_body` / `call_tts`：`mimo-v2.5-tts`、平叙风格卡、`pcm16`、
+  台词在 `assistant`、密钥不入体、离线与失败返回空字节**不重试**。
 """
 
+import base64
 import json
 import os
 import pathlib
@@ -433,6 +443,11 @@ def test_transport_injectable_and_build_offline():
         pg.verdict_line({"rolled": False, "outcome": "success"})
         pg.review_narration({"rolled": False},
                             {"content": "【叙事】风停了。", "tool_calls": []})
+        # G3 的构建路径同样离线：切拍、风格卡、组装都只是纯函数。
+        pg.split_beats("风从巷口灌进来。霍砚：「别出声。」")
+        pg.beats_of("【叙事】风停了。", pg.empty_guide())
+        pg.strip_marks("（低声）风停了。")
+        pg.build_tts_body("风停了。", voice="茉莉")
     finally:
         pg.TRANSMIT = saved
     ok("上游调用只走可替换的传输入口；构建路径离线、不碰传输")
@@ -656,6 +671,219 @@ def test_build_l4_and_messages():
     ok("build_l4 / build_narrative_messages：段落顺序、L4 上限、纯函数")
 
 
+# ── G3：切拍 / 平叙风格卡 / pcm16 ────────────────────────────────────────
+
+
+# 两段**各自带填充**的 base64：单独解码各得 2 / 4 字节，拼起来 6 字节。
+# 这正是「把 base64 文本接成一串再解码」会出错的形状。
+_PCM_A = b"\x01\x02"
+_PCM_B = b"\x03\x04\x05\x06"
+
+
+def _audio_chunk(pcm: bytes) -> bytes:
+    """一条 TTS 音频 delta 的 SSE 行（`delta.audio.data` 是自带填充的 base64）。"""
+    data = base64.b64encode(pcm).decode("ascii")
+    return ('data: {"choices":[{"delta":{"audio":{"data":"%s"}}}]}\n\n'
+            % data).encode("utf-8")
+
+
+def test_audio_delta_decoded_one_by_one():
+    """每个音频 delta **单独**解码再拼接；不是把 base64 文本接起来再解。"""
+    raw = (_audio_chunk(_PCM_A)
+           + b'data: {"choices":[],"usage":{"prompt_tokens":5,'
+             b'"completion_tokens":0}}\n\n'          # 空 choices 的块只读用量
+           + _audio_chunk(_PCM_B)
+           + b"data: [DONE]\n\n")
+    got = pg.assemble_chat_stream(raw)
+    assert got["audio"] == _PCM_A + _PCM_B, got.get("audio")
+    assert got["usage"]["prompt_tokens"] == 5
+    assert got["content"] == "" and got["tool_calls"] == []
+
+    # 反证：把 base64 文本直接接起来再解，得不到 `PCM_A + PCM_B`。
+    naive = (base64.b64encode(_PCM_A).decode("ascii")
+             + base64.b64encode(_PCM_B).decode("ascii"))
+    try:
+        wrong = base64.b64decode(naive)
+    except Exception:  # noqa: BLE001 — 中间那道填充会让它直接报错
+        wrong = None
+    assert wrong != _PCM_A + _PCM_B, "拼接 base64 文本这条路必须是错的"
+
+    # 缺填充也能容忍；坏块跳过不抛。
+    tolerant = pg.assemble_chat_stream(
+        b'data: {"choices":[{"delta":{"audio":{"data":"AQI"}}}]}\n\n')
+    assert tolerant["audio"] == _PCM_A
+    broken = pg.assemble_chat_stream(
+        b'data: {"choices":[{"delta":{"audio":{"data":"!!!not-base64!!!"}}}]}\n\n')
+    assert broken.get("audio") is None, "坏音频块不该产出字节"
+
+    # 纯叙事回包**没有** `audio` 键：组装结果仍可 JSON 序列化（G2 的不变量）。
+    plain = pg.assemble_chat_stream(
+        b'data: {"choices":[{"delta":{"content":"\xe5\x81\x9c"}}]}\n\n')
+    assert "audio" not in plain
+    assert json.dumps(plain, ensure_ascii=False)
+    ok("音频：每个 delta 单独 base64 解码再拼接；叙事回包没有 audio 键")
+
+
+def test_split_beats_default_and_dialogue():
+    """切拍：默认整拍旁白；对白按「名字＋冒号＋「…」」切；无显式说话人只用白桦。"""
+    # 一句话：整段一拍旁白。
+    beats = pg.split_beats("风从巷口灌进来。")
+    assert len(beats) == 1
+    assert beats[0]["text"] == "风从巷口灌进来。"
+    assert beats[0]["voice"] == pg.VOICE_NARRATOR
+    assert beats[0]["tone"] == pg.BEAT_TONE and beats[0]["channel"] == pg.BEAT_CHANNEL
+    assert beats[0]["speaker"] == ""
+
+    # 空文本 → 没有拍（speak 也就无从匹配）。
+    assert pg.split_beats("") == [] and pg.split_beats("   ") == []
+
+    # 对白切拍：旁白 / 对白 / 旁白 三段。
+    text = "风从巷口灌进来。霍砚：「别出声。」随后灯灭了。"
+    beats = pg.split_beats(text)
+    assert [b["text"] for b in beats] == ["风从巷口灌进来。", "别出声。", "随后灯灭了。"]
+    # 没传名字表 → 对白拍仍未标记，音色白桦。**不从姓名推断**（G7 才按 id 分配）。
+    assert all(b["voice"] == pg.VOICE_NARRATOR for b in beats)
+    assert all(b["speaker"] == "" for b in beats)
+    assert "霍砚" in text and "霍砚" not in "".join(b["text"] for b in beats)
+
+    # 传了名字表 + guide.voices：对白拍带说话人 id，音色取自那一拍。
+    beats = pg.split_beats("温苔：「灯还亮着。」",
+                           speakers={"温苔": "npc-02"},
+                           voices={"npc-02": "茉莉"})
+    assert beats[-1]["speaker"] == "npc-02"
+    assert beats[-1]["voice"] == "茉莉"
+    # 名字在表里但声线还没记录 → 白桦（不是「猜一个」）。
+    beats = pg.split_beats("温苔：「灯还亮着。」", speakers={"温苔": "npc-02"})
+    assert beats[-1]["speaker"] == "npc-02"
+    assert beats[-1]["voice"] == pg.VOICE_NARRATOR
+
+    # 名字上界 8 个汉字照样切；没有「名字＋冒号」时整段保持旁白。
+    assert len(pg.split_beats("一二三四五六七八：「喂。」")) == 1
+    assert len(pg.split_beats("霍砚说 别出声。")) == 1
+    assert pg.split_beats("霍砚说 别出声。")[0]["speaker"] == ""
+    ok("split_beats：默认旁白 / 对白切拍 / 无显式说话人只用白桦 / 不按姓名推断")
+
+
+def test_split_beats_limit_merges_tail():
+    """一回合最多 6 拍；多出来的并进最后一拍旁白。"""
+    text = "".join("%s：「第%d句。」" % ("霍砚温苔甲乙丙丁"[i], i + 1)
+                   for i in range(7))
+    beats = pg.split_beats(text)
+    assert len(pg.split_beats(text, limit=None)) == 7, "先确认确实切出了 7 拍"
+    assert len(beats) == pg.MAX_BEATS == 6
+    assert beats[-1]["voice"] == pg.VOICE_NARRATOR
+    assert beats[-1]["speaker"] == ""
+    assert "第6句。第7句。" in beats[-1]["text"], beats[-1]["text"]
+    # 文本一字不丢：0–4 拍照留，第 6、7 句并进最后一拍。
+    assert [b["text"] for b in beats[:5]] == ["第%d句。" % (i + 1) for i in range(5)]
+    ok("split_beats：6 拍上限，多出来的并进最后一拍旁白（文本不丢）")
+
+
+def test_strip_marks():
+    """送去合成前删掉长度 1–12 的括号 / 方括号记号；三段标题不是记号。"""
+    assert pg.strip_marks("（低声）风停了。") == "风停了。"
+    assert pg.strip_marks("(whisper) 风停了。") == " 风停了。"
+    assert pg.strip_marks("风停了。[叹气]") == "风停了。"
+    assert pg.strip_marks("风停了。［远远地］") == "风停了。"
+    # 超过 12 个字的括号不是「记号」，原样留着（避免把正文吃掉）。
+    keep = "（" + "很" * 13 + "）"
+    assert pg.strip_marks(keep) == keep
+    # 三段标题是叙事合同，`【】` 不在记号表里。
+    assert pg.strip_marks("【裁决】判定：成功") == "【裁决】判定：成功"
+    ok("strip_marks：只删长度 1–12 的括号 / 方括号记号，标题不动")
+
+
+def test_build_tts_body():
+    """TTS 请求体（§5.9）：平叙风格卡、台词在 assistant、pcm16、密钥不入体。"""
+    body = pg.build_tts_body("（低声）风停了。", voice="茉莉")
+    assert body["model"] == "mimo-v2.5-tts"
+    assert body["stream"] is True
+    assert body["audio"] == {"format": "pcm16"}
+    assert body["voice"] == "茉莉"
+    assert body["messages"][0] == {"role": "user", "content": "平叙"}
+    assert body["messages"][1]["role"] == "assistant"
+    assert body["messages"][1]["content"] == "风停了。", "记号要在送合成前删掉"
+    assert pg.TTS_STYLE_CARD == "平叙"
+    # 风格卡是常量：不含台词、不含 sid、不含日期。
+    dumped = json.dumps(body, ensure_ascii=False)
+    assert not re.search(r"\d{4}-\d{2}-\d{2}", dumped)
+    assert "API_KEY" not in dumped and "BASE_URL" not in dumped
+    # 不知名的音色一律退回白桦；不传就是旁白。
+    assert pg.build_tts_body("x", voice="机器人")["voice"] == pg.VOICE_NARRATOR
+    assert pg.build_tts_body("x")["voice"] == pg.VOICE_NARRATOR
+    assert tuple(pg.VOICES) == ("白桦", "茉莉")
+    # 24 kHz / 单声道 / s16le 的规格常量（§4.3）。
+    assert pg.TTS_SAMPLE_RATE == 24000 and pg.TTS_FORMAT == "pcm16"
+    ok("build_tts_body：模型 / 平叙卡 / assistant 台词 / pcm16 / 音色白名单")
+
+
+def test_call_tts_offline_and_failure():
+    """`call_tts`：与叙事同一条传输入口；离线与失败都返回空字节，**不重试**。"""
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        return {"content": "", "tool_calls": [], "usage": {},
+                "audio": _PCM_A + _PCM_B}
+
+    # TTS 不需要 MODEL（§5.3 的 `tts` 只看 BASE_URL 与密钥）。
+    env = {"BASE_URL": "https://api.example.com/v1", "MODEL": "",
+           "API_KEY": "super-secret-value"}
+    assert pg.call_tts("风停了。", env=env, transmit=fake) == _PCM_A + _PCM_B
+    assert len(calls) == 1
+    assert calls[0]["url"] == "https://api.example.com/v1/chat/completions"
+    assert calls[0]["headers"] == {pg.KEY_HEADER: "super-secret-value"}
+    assert calls[0]["timeout"] == pg.TTS_TIMEOUT_S
+    assert calls[0]["payload"]["model"] == "mimo-v2.5-tts"
+    assert "super-secret-value" not in json.dumps(calls[0]["payload"],
+                                                  ensure_ascii=False)
+
+    # 离线（空 BASE_URL / 空白 BASE_URL / 空密钥）：不请求，返回空字节。
+    for broken in ({"BASE_URL": "", "MODEL": "mm", "API_KEY": "kk"},
+                   {"BASE_URL": "   ", "MODEL": "mm", "API_KEY": "kk"},
+                   {"BASE_URL": "https://api.example.com/v1", "MODEL": "",
+                    "API_KEY": ""}):
+        assert pg.call_tts("风停了。", env=broken, transmit=fake) == b""
+    assert len(calls) == 1, "离线时不得调用传输"
+
+    # 上游失败 / 返回形状不对：空字节，且**只调用一次**（不重试）。
+    def boom(*_args, **_kwargs):
+        calls.append({})
+        raise pg.TransportError("boom")
+
+    assert pg.call_tts("风停了。", env=env, transmit=boom) == b""
+    assert len(calls) == 2
+    assert pg.call_tts("风停了。", env=env,
+                       transmit=lambda *a, **k: "not-a-dict") == b""
+    assert pg.call_tts("风停了。", env=env,
+                       transmit=lambda *a, **k: {"content": ""}) == b""
+    ok("call_tts：不重试；离线 / 失败 / 坏回包一律空字节")
+
+
+def test_beats_of_skips_verdict():
+    """`beats_of`：节拍从「正文 + 钩子」切，**不朗读**服务端的 `【裁决】`。"""
+    reviewed = ("【裁决】判定：成功\n\n"
+                "【叙事】风从巷口灌进来。霍砚：「别出声。」\n\n"
+                "【钩子】巷口有人影。")
+    guide = pg.empty_guide()
+    beats = pg.beats_of(reviewed, guide)
+    assert [b["text"] for b in beats] == \
+        ["风从巷口灌进来。", "别出声。", "\n\n巷口有人影。"]
+    joined = "".join(b["text"] for b in beats)
+    assert "【裁决】" not in joined and "判定：成功" not in joined
+    assert "【叙事】" not in joined and "【钩子】" not in joined
+    # guide.voices 里的声线会被用上（G7 写入，G3 只读）。
+    guide["voices"] = {"npc-02": "茉莉"}
+    beats = pg.beats_of("【叙事】温苔：「灯还亮着。」", guide)
+    assert beats[-1]["voice"] == pg.VOICE_NARRATOR, "没有名字表就仍是白桦"
+    # 模型没按三段格式写时，整段当正文。
+    beats = pg.beats_of("风停了。", guide)
+    assert [b["text"] for b in beats] == ["风停了。"]
+    assert pg.beats_of("", guide) == []
+    ok("beats_of：切正文与钩子，裁决那一行不进节拍")
+
+
 def test_module_offline_no_socket():
     """`import prism_guide` 不打开套接字：只 import 不改外部状态。"""
     probe = subprocess.run(
@@ -704,6 +932,13 @@ def main():
     test_review_narration()
     test_fallback_text_keeps_verdict()
     test_build_l4_and_messages()
+    test_audio_delta_decoded_one_by_one()
+    test_split_beats_default_and_dialogue()
+    test_split_beats_limit_merges_tail()
+    test_strip_marks()
+    test_build_tts_body()
+    test_call_tts_offline_and_failure()
+    test_beats_of_skips_verdict()
     test_module_offline_no_socket()
     test_env_example()
     print()

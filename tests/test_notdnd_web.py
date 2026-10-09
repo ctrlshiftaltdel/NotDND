@@ -18,12 +18,16 @@
      `POST /api/guide/turn` 的长度 / 会话 / 速率 / 淡出整句 / 结算 / 分块流 /
      头写出之后的兜底。要换传输层的用例走**本进程**的服务线程（见 _LocalServer），
      其余仍用真子进程，保证启动路径也被覆盖。
+  6. 导引者朗读（G3）：`turn` 切出的节拍写进 `last_beats`；`POST /api/guide/speak`
+     的长度 / 会话 / 速率 / 语音可用 / 全文匹配，以及 HTTP/1.1 分块音频流
+     （24 kHz + pcm16 头、无 Content-Length、每个音频 delta 单独 base64 解码后拼接）。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
 """
 
+import base64
 import contextlib
 import http.client
 import json
@@ -366,6 +370,42 @@ def _guide_online(env: dict, transmit):
 _ONLINE_ENV = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
                "API_KEY": "secret123"}
 _OFFLINE_ENV = {"BASE_URL": "", "MODEL": "mm", "API_KEY": "secret123"}
+
+
+def _set_last_beats(sid: str, beats: list) -> None:
+    """把 `last_beats` 写进磁盘上的存档（服务端会自己载入；绕开内存缓存）。"""
+    session = notdnd_web.Session.load(sid)
+    session.guide["last_beats"] = beats
+    session.save()
+    notdnd_web._sessions.pop(sid, None)
+
+
+def _tts_transport(chunks: list):
+    """假 TTS 传输：回**真实形状**的 SSE 体，交给 prism_guide 组装。
+
+    与叙事共用 `TRANSMIT` 这一个入口，所以「传输未被调用」数的是同一个计数器。
+    每个 delta 的 base64 自带填充——组装要能把它们**分别**解码再拼接。
+    """
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        lines = []
+        for chunk in chunks:
+            data = base64.b64encode(chunk).decode("ascii")
+            lines.append('data: {"choices":[{"delta":{"audio":{"data":"%s"}}}]}'
+                         % data)
+            lines.append("")
+        lines.append('data: {"choices":[],"usage":{"prompt_tokens":4,'
+                     '"completion_tokens":0}}')
+        lines.append("")
+        lines.append("data: [DONE]")
+        lines.append("")
+        return prism_guide.assemble_chat_stream("\n".join(lines).encode("utf-8"))
+
+    fake.calls = calls
+    return fake
 
 
 def _guide_session(sid: str, *, auto_pass: bool = True,
@@ -972,6 +1012,174 @@ def check_guide_missing_module():
             notdnd_web.prism_guide = saved_module
 
 
+# --------------------------------------------------------------------------
+# 导引者朗读（G3，§5.9 / §5.10）
+# --------------------------------------------------------------------------
+
+
+def _beats_fixture() -> list:
+    """两条拍：一条旁白（白桦）、一条由夹具标成茉莉的对白。"""
+    return [
+        {"text": "风停了。", "voice": notdnd_web.prism_guide.VOICE_NARRATOR,
+         "tone": "平叙", "channel": "speech", "speaker": ""},
+        {"text": "有人应了一声。", "voice": "茉莉", "tone": "平叙",
+         "channel": "speech", "speaker": "npc-02"},
+    ]
+
+
+def check_guide_turn_writes_beats():
+    """`turn` 切拍：随 `narration` 回给浏览器，并写进 `last_beats`（§5.8 / §5.9）。"""
+    sid = "g3-turn-beats"
+    _guide_session(sid)
+    narration = ("【裁决】你把手按上门栓。\n"
+                 "【叙事】风从巷口灌进来。霍砚：「别出声。」\n"
+                 "【钩子】巷口有人影。")
+    fake = _FakeTransport([{"content": narration, "tool_calls": [],
+                            "usage": {"prompt_tokens": 3}}])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我按住门栓", "action_id": "a-lock"}, sid=sid)
+    assert status == 200, status
+    payload = dict(_parse_sse(raw))["narration"]
+    assert payload["text"].startswith("【裁决】判定：成功"), payload["text"]
+    beats = payload["beats"]
+    assert [b["text"] for b in beats] == \
+        ["风从巷口灌进来。", "别出声。", "\n\n巷口有人影。"], beats
+    # G3 还不按 `npc.id` 分配声线（那是 G7）：一律白桦。
+    assert all(b["voice"] == notdnd_web.prism_guide.VOICE_NARRATOR for b in beats)
+    assert all(b["tone"] == "平叙" and b["channel"] == "speech" for b in beats)
+    assert all(b["speaker"] == "" for b in beats)
+    # 服务端的裁决那一行不朗读。
+    assert not any("【裁决】" in b["text"] or "判定：" in b["text"] for b in beats)
+
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded.guide["last_beats"] == beats, \
+        "节拍必须随存档落盘——speak 只认 last_beats"
+
+
+def check_guide_speak_validation():
+    """`speak` 的状态行之前：长度 → 会话 → 速率 → 语音可用 → 全文匹配。
+
+    验收：不在 `last_beats` 里的文本返回 400，**且传输未被调用**。
+    """
+    sid = "g3-speak-bad"
+    _guide_session(sid)
+    _set_last_beats(sid, _beats_fixture())
+    fake = _tts_transport([b"\x01\x02"])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            # 不在 last_beats 里 → 400「没有可朗读的句子」，传输未被调用。
+            status, body, _raw, heads = server.post(
+                "/api/guide/speak", {"text": "换一句吧。"}, sid=sid)
+            assert status == 400, (status, body)
+            assert body.get("error") == "没有可朗读的句子", body
+            assert "audio/" not in heads.get("content-type", ""), heads
+            assert fake.calls == [], "没匹配上就不许调用传输"
+
+            # 近似但不全等（少一个字 / 多一个空格 / 空文本）同样不算命中。
+            for wrong in ("风停了", " 风停了。", ""):
+                status, body, _raw, _heads = server.post(
+                    "/api/guide/speak", {"text": wrong}, sid=sid)
+                assert status == 400 and body.get("error") == "没有可朗读的句子", \
+                    (wrong, status, body)
+            assert fake.calls == []
+
+            # 没有 X-Session → 400；超长 → 400「这句话太长」。
+            status, body, _raw, heads = server.post("/api/guide/speak",
+                                                    {"text": "风停了。"})
+            assert status == 400 and body.get("error"), body
+            assert "audio/" not in heads.get("content-type", "")
+            status, body, _raw, _heads = server.post(
+                "/api/guide/speak", {"text": "字" * 2001}, sid=sid)
+            assert status == 400 and body.get("error") == "这句话太长", body
+            assert fake.calls == []
+
+        # 没配 BASE_URL / 密钥：语音不可用，仍然**不请求**（§5.1 没有第二套降级）。
+        with _guide_online(_OFFLINE_ENV, fake):
+            status, body, _raw, _heads = server.post(
+                "/api/guide/speak", {"text": "风停了。"}, sid=sid)
+            assert status == 400 and body.get("error") == "语音不可用", body
+            assert fake.calls == []
+
+
+def check_guide_speak_stream():
+    """`speak` 合法路径：HTTP/1.1 + 分块 + 24 kHz / pcm16 头 + 拼接后的 PCM。"""
+    sid = "g3-speak-ok"
+    _guide_session(sid)
+    _set_last_beats(sid, _beats_fixture())
+    pcm_a, pcm_b = b"\x01\x02", b"\x03\x04\x05\x06"
+    fake = _tts_transport([pcm_a, pcm_b])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, heads = server.post(
+                "/api/guide/speak", {"text": "风停了。"}, sid=sid)
+            assert status == 200, status
+            assert raw == pcm_a + pcm_b, (raw, "每个 delta 单独解码后按序拼接")
+            assert heads.get("content-type") == "audio/pcm16", heads
+            assert heads.get("x-audio-format") == "pcm16", heads
+            assert heads.get("x-audio-sample-rate") == "24000", heads
+            assert heads.get("transfer-encoding") == "chunked", heads
+            assert "content-length" not in heads, "分块响应不得带 Content-Length"
+
+            # 请求体是 TTS 形状：台词在 assistant、user 是平叙卡、密钥不入体。
+            payload = fake.calls[-1]["payload"]
+            assert payload["model"] == "mimo-v2.5-tts"
+            assert payload["stream"] is True
+            assert payload["audio"] == {"format": "pcm16"}
+            assert payload["messages"][0] == {"role": "user", "content": "平叙"}
+            assert payload["messages"][1] == {"role": "assistant",
+                                              "content": "风停了。"}
+            assert payload["voice"] == notdnd_web.prism_guide.VOICE_NARRATOR
+            assert fake.calls[-1]["headers"] == \
+                {prism_guide.KEY_HEADER: "secret123"}
+            assert "secret123" not in json.dumps(payload, ensure_ascii=False)
+
+            # 夹具把这一拍标成茉莉：音色**取自那一拍**，不按 id 重算（分配是 G7）。
+            status, _body, raw2, _heads = server.post(
+                "/api/guide/speak", {"text": "有人应了一声。"}, sid=sid)
+            assert status == 200 and raw2 == pcm_a + pcm_b, (status, raw2)
+            assert fake.calls[-1]["payload"]["voice"] == "茉莉"
+            assert fake.calls[-1]["payload"]["messages"][1]["content"] == \
+                "有人应了一声。"
+
+            # 客户端多传的字段被忽略（§5.8）。
+            status, _body, raw3, _heads = server.post(
+                "/api/guide/speak",
+                {"text": "风停了。", "voice": "茉莉", "tone": "激昂"}, sid=sid)
+            assert status == 200 and raw3 == pcm_a + pcm_b
+            assert fake.calls[-1]["payload"]["voice"] == "白桦"
+
+            # 裸 socket：整条响应只有**一行** HTTP 状态，头块里 24000 / pcm16 都在。
+            raw_http = _raw_http(server.port, "/api/guide/speak",
+                                 {"text": "风停了。"}, sid=sid)
+    assert _status_lines(raw_http) == 1, "音频流也不许发第二行 HTTP 状态"
+    head_block = raw_http.split(b"\r\n\r\n", 1)[0]
+    assert b"HTTP/1.1 200" in head_block, head_block
+    assert b"pcm16" in head_block and b"24000" in head_block, head_block
+    assert b"Transfer-Encoding: chunked" in head_block, head_block
+    assert _dechunk(raw_http) == pcm_a + pcm_b, "分块体还原后仍是 PCM 相接"
+
+
+def check_guide_speak_rate_limit():
+    """每会话每 60 秒最多 30 次 `speak`，第 31 次 429「太频繁」（§5.10）。"""
+    sid = "g3-speak-rate"
+    _guide_session(sid)
+    _set_last_beats(sid, _beats_fixture())
+    fake = _tts_transport([b"\x01\x02"])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            codes = [server.post("/api/guide/speak", {"text": "风停了。"},
+                                 sid=sid)[0] for _ in range(30)]
+            assert codes == [200] * 30, codes
+            status, body, _raw, heads = server.post(
+                "/api/guide/speak", {"text": "风停了。"}, sid=sid)
+            assert status == 429 and body.get("error") == "太频繁", (status, body)
+            assert "audio/" not in heads.get("content-type", "")
+            assert len(fake.calls) == 30, "超限那一次不得调用传输"
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -991,6 +1199,10 @@ CHECKS = (
     check_guide_turn_review_failure_keeps_verdict,
     check_guide_turn_settle_errors_before_stream,
     check_guide_missing_module,
+    check_guide_turn_writes_beats,
+    check_guide_speak_validation,
+    check_guide_speak_stream,
+    check_guide_speak_rate_limit,
 )
 
 

@@ -16,7 +16,9 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     POST /api/atlas/move 移动并返回行程档与时段
   · 导引者接线（可选模块）：`guide` 状态块随存档落盘 / 按键还原；
     GET /api/guide/status 三个布尔；POST /api/guide/turn 先结算、后叙事，
-    叙事走 HTTP/1.1 分块的事件流（上游失败只发 `fallback`，不再动 HTTP 状态）
+    叙事走 HTTP/1.1 分块的事件流（上游失败只发 `fallback`，不再动 HTTP 状态）；
+    POST /api/guide/speak 把上一回合存下的一拍读成 pcm16 流（24 kHz / mono /
+    s16le，HTTP/1.1 分块、无 Content-Length；只接受 `last_beats` 里的全文）
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -88,6 +90,12 @@ GUIDE_TEXT_LIMIT = 2000
 # 只放内存，**不进存档**（to_dict 是白名单，速率不是局内状态）。
 GUIDE_RATE_WINDOW_S = 60.0
 GUIDE_TURN_LIMIT = 12
+GUIDE_SPEAK_LIMIT = 30
+
+# `POST /api/guide/speak` 回传的音频规格（§4.3：24 kHz、单声道、s16le /
+# PCM16LE）。头里同时给出速率与格式，浏览器不必猜。
+GUIDE_AUDIO_FORMAT = "pcm16"
+GUIDE_AUDIO_RATE = "24000"
 
 # 淡出与跳过是**整句相等**，不是关键字包含（§5.10）：单独的「跳过」不命中。
 GUIDE_FADE_WORD = "淡出"
@@ -132,6 +140,16 @@ def _guide_fallback_text(result=None) -> str:
     if prism_guide is not None:
         return prism_guide.fallback_text(result)
     return FALLBACK_NARRATION
+
+
+def _guide_beats(narration, guide) -> list:
+    """切出这一回合的节拍（§5.9）。模块缺失时没有拍——不朗读。"""
+    if prism_guide is None:
+        return []
+    try:
+        return prism_guide.beats_of(narration, guide)
+    except Exception:      # noqa: BLE001 — 切拍失败不该带走整回合
+        return []
 
 
 # 速率窗口：{sid: {"turn": [时间戳…], "speak": […]}}。窗口滑动、只留 60 秒内的。
@@ -773,6 +791,23 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Transfer-Encoding", "chunked")
         self.end_headers()
 
+    def _begin_audio_stream(self):
+        """打开导引者的音频流式响应（§5.9 / §5.10）：HTTP/1.1 + 分块。
+
+        与叙事同一条流式口径（无 `Content-Length`，`Connection: close`），
+        但体是 pcm16 字节而不是 SSE。速率与格式都写进头：浏览器不必猜
+        24 kHz / mono / s16le。
+        """
+        self.protocol_version = "HTTP/1.1"
+        self.send_response(200)
+        self.send_header("Content-Type", "audio/" + GUIDE_AUDIO_FORMAT)
+        self.send_header("X-Audio-Format", GUIDE_AUDIO_FORMAT)
+        self.send_header("X-Audio-Sample-Rate", GUIDE_AUDIO_RATE)
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Connection", "close")
+        self.send_header("Transfer-Encoding", "chunked")
+        self.end_headers()
+
     def _chunk(self, data: bytes) -> None:
         """写一个 HTTP/1.1 分块：十六进制长度 + CRLF + 数据 + CRLF。"""
         self.wfile.write(("%x\r\n" % len(data)).encode("ascii") + data + b"\r\n")
@@ -854,6 +889,9 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/guide/turn":
                 return self._guide_turn(b)
+
+            if path == "/api/guide/speak":
+                return self._guide_speak(b)
 
             if path == "/api/save/rename":
                 # 目标 sid 来自请求体，不是 X-Session 头（头里是当前打开那局）。
@@ -987,19 +1025,71 @@ class Handler(BaseHTTPRequestHandler):
                 # 头已写出：失败只能用 fallback，拿不到第二行 HTTP 状态。
                 self._sse("fallback", {"text": _guide_fallback_text(result)})
             else:
+                # 切拍在审查之后（§5.9）：节拍从**玩家将要看到的**整段里切，
+                # 与 L3 同一份字；`last_beats` 只留这一回合的拍（§1114：
+                # 「speak 只接受上一回合存下的拍」），下一回合整批换掉。
                 with session.lock:
+                    beats = _guide_beats(reviewed, session.guide)
                     session.guide["transcript"].append(
                         {"role": "assistant", "content": reviewed})
+                    session.guide["last_beats"] = beats
                     stats = session.guide.get("stats")
                     if isinstance(stats, dict):
                         stats["calls"] = int(stats.get("calls") or 0) + 1
                     session.save()      # L3 要跟着落盘，重启后才接得上
-                self._sse("narration", {"text": reviewed, "beats": []})
+                self._sse("narration", {"text": reviewed, "beats": beats})
                 self._sse("usage", completion.get("usage") or {})
             self._sse("done", {"status": "ok"})
             self._sse_close()
         except (BrokenPipeError, ConnectionResetError):
             pass                # 客户端中途断线（锁屏 / 切网）不该让服务端报错
+
+    # ── 导引者朗读（G3，§5.9 / §5.10）───────────────────────
+    def _guide_speak(self, body: dict):
+        """`POST /api/guide/speak`：把**上一回合存下的**一拍读成 pcm16。
+
+        体只有 `{"text"}`。状态行之前依次判：长度 → 会话 → 速率 → 语音是否
+        可用 → 文本是否等于 `last_beats` 里某一拍的**全文**。任何一条不过
+        都是固定 JSON（4xx），**不调用传输**，也不打开音频流。
+        音色**取自那一拍**，忽略客户端多传的字段（§5.8）。
+
+        头写出之后上游失败只有一条路：不发第二行 HTTP 状态，直接收尾——
+        TTS 不重试（§5.9），文本已经通过叙事 SSE 给过浏览器。
+        """
+        text = str(body.get("text") or "")
+        if len(text) > GUIDE_TEXT_LIMIT:
+            return self._err("这句话太长", 400)
+        sid = (self.headers.get("X-Session") or "").strip()
+        session = get_session(sid) if sid else None
+        if not session:
+            return self._err("会话不存在或已过期", 400)
+        if not _rate_ok(sid, "speak", GUIDE_SPEAK_LIMIT):
+            return self._err("太频繁", 429)
+        if prism_guide is None or not prism_guide.status().get("tts"):
+            # 模块缺失 / 没配 BASE_URL 或密钥：没有第二套降级（§5.1）。
+            return self._err("语音不可用", 400)
+
+        with session.lock:
+            beats = session.guide.get("last_beats")
+            beats = list(beats) if isinstance(beats, list) else []
+        matched = next((entry for entry in beats
+                        if isinstance(entry, dict) and entry.get("text") == text),
+                       None)
+        if matched is None:
+            return self._err("没有可朗读的句子", 400)
+        voice = str(matched.get("voice") or prism_guide.VOICE_NARRATOR)
+
+        try:
+            self._begin_audio_stream()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        try:
+            pcm = prism_guide.call_tts(text, voice=voice)
+            if pcm:
+                self._chunk(pcm)
+            self._sse_close()       # 零长度块收尾：空合成也是一条完整的流
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
 
 def lan_ip() -> str:

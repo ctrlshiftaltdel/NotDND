@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""AI 导引者 · 标准库客户端、前缀与叙事回合（G1 前缀 / G2 回合）。
+"""AI 导引者 · 标准库客户端、前缀、叙事回合与 pcm16 语音代理（G1 / G2 / G3）。
 
-设计依据：GUIDE-DESIGN.md（§5.1 模块边界 / §5.2 回合怎么走 / §5.3 环境 /
-§5.4 缓存导向的提示词 / §5.5 思考策略 / §5.6 工具 / §7 数据模型 /
-§10 可观测性 / PR Plan G1–G2）。
+设计依据：GUIDE-DESIGN.md（§2.2 角色行为与对白 / §4.3 已拍板 / §5.1 模块边界 /
+§5.2 回合怎么走 / §5.3 环境 / §5.4 缓存导向的提示词 / §5.5 思考策略 / §5.6 工具 /
+§5.9 语音管线 / §5.10 我们自己的 HTTP / §7 数据模型 / §10 可观测性 /
+PR Plan G1–G3）。
 
 G1（前缀与离线骨架）：
 
@@ -23,10 +24,25 @@ G2（回合）：
 - L0–L4 叙事消息数组（§5.4）与 L4 的本回合块；
 - 骰子审查与 `【裁决】` 替换：记法 / 合计 / 带标签数字对不上就丢叙事（§5.2）。
 
+G3（pcm16 语音代理，无新前端）：
+
+- 切拍（§5.9）：整段叙事默认是**一拍旁白**；「名字（1–8 个汉字）＋冒号＋「…」」
+  切出对白拍；一回合最多 6 拍，多出来的并进最后一拍旁白。**不按姓名推断音色**：
+  无显式说话人只用白桦（按 `npc.id` 分配声线是 G7）；
+- 平叙风格卡与 TTS 请求体（§5.9）：`mimo-v2.5-tts`、`stream` 为 true、台词在
+  `assistant`、`user` 是常量「平叙」（不含台词 / `sid` / 日期）、`audio.format`
+  为 `pcm16`、`voice` 为白桦或茉莉；送去合成之前删掉长度 1–12 的括号 / 方括号记号；
+- 音频组装（§4.3 / Key Decision 11）：对每一个 `delta.audio.data` 非空的块
+  **单独** base64 解码再拼接 PCM——禁止把 base64 文本接成一串再解码；
+  `choices` 为空的块只读用量；
+- `call_tts` 与叙事走**同一条**可替换传输入口 `TRANSMIT`（TTS 也是 Chat
+  Completions），离线 / 失败返回空字节，**不重试**（§5.9）。
+
 密钥只放请求头 `api-key`，不进 URL、不进 JSON、不进状态字典、不进日志；
 异常字符串不携带上游响应体（§5.1 / §8）。
 """
 
+import base64
 import json
 import os
 import re
@@ -49,6 +65,34 @@ NARRATIVE_MAX_TOKENS = 700
 
 # 语音模型是代码常量，不是第四个环境变量（§4.3 已拍板）。
 TTS_MODEL = "mimo-v2.5-tts"
+
+# ── §5.9 语音管线常量 ───────────────────────────────────────────────────
+#
+# 音色只用这两个（§4.3 已拍板）。G3 的**无显式说话人**一律白桦：按 `npc.id`
+# 分配声线是 G7 的事，本切片不推断姓名，也不给 NPC 加字段。
+VOICE_NARRATOR = "白桦"
+VOICE_ALT = "茉莉"
+VOICES = (VOICE_NARRATOR, VOICE_ALT)
+
+# 产品路径的风格卡（§5.9）：常量「平叙」，不含台词、不含 `sid`、不含日期。
+# 它是 TTS 请求里那条稳定的 `user` 消息，应当命中前缀缓存。
+TTS_STYLE_CARD = "平叙"
+
+# 一回合最多几拍；多出来的并进最后一拍旁白（§5.9）。
+MAX_BEATS = 6
+
+# 音频规格（§4.3）：24 kHz、单声道、s16le（PCM16LE）。HTTP 头回传这两个值。
+TTS_SAMPLE_RATE = 24000
+TTS_FORMAT = "pcm16"
+
+# 单拍 TTS 的时间盒（§5.11：「首包 8 秒 / 总长 20 秒」）。不占叙事的 45 秒。
+TTS_TIMEOUT_S = 20.0
+
+# 节拍的 `tone` / `channel` 取值：设计文档只钉了元素键名（§5.8 的
+# `{text, voice, tone, channel}`），没钉取值。这里取最小闭包：
+# `tone` 就是产品路径的风格卡，「平叙」；G3 只有朗读这一条通道。
+BEAT_TONE = TTS_STYLE_CARD
+BEAT_CHANNEL = "speech"
 
 # 叙事段的上游时间盒：§5.11 表「叙事 …… 最多 30 秒，且在回合 45 秒的叙事段之内」。
 NARRATIVE_TIMEOUT_S = 30.0
@@ -409,16 +453,40 @@ def read_usage(raw):
     }
 
 
+def _b64_pcm(data):
+    """把一个音频 delta 的 base64 块解码成 PCM 字节。
+
+    **每块单独解码**（§5.9 / Key Decision 11）：`data` 自带填充，合法时读
+    多少字节就是多少字节。缺填充也能容忍（补到 4 的倍数再解）；坏块返回
+    空字节——一个坏音频块不该把整拍变成失败。
+    """
+    if not isinstance(data, str) or not data:
+        return b""
+    text = data.strip()
+    if not text:
+        return b""
+    try:
+        return base64.b64decode(text + "=" * (-len(text) % 4))
+    except Exception:  # noqa: BLE001 — 坏块跳过，不抛
+        return b""
+
+
 def assemble_chat_stream(raw):
-    """把 Chat Completions 的响应体组装成 `{content, tool_calls, usage}`。
+    """把 Chat Completions 的响应体组装成 `{content, tool_calls, usage[, audio]}`。
 
     流式（`delta`）与非流式（`message`）回包都认：只读 `data:` 行，
     `[DONE]` 结束，畸形块跳过不抛（一次坏块不该把整回合变成兜底）。
     `reasoning_content` 刻意不收集——它不进存档，也不进 L3（§5.4）。
+
+    `audio` 是 TTS（§5.9）的 PCM，**只在这条流真的带过音频块时才出现**，
+    值是 `bytes`；所以纯叙事回包仍是三键、JSON 可序列化的字典，
+    而带音频的回包由 `call_tts` 消费。每个 `delta.audio.data` 非空的块
+    **单独** base64 解码后按到达顺序拼起来；`choices` 为空的块只读用量。
     """
     content_parts: list[str] = []
     tool_calls: list = []
     usage: dict = {}
+    audio = bytearray()
     for line in (raw or b"").decode("utf-8", "replace").splitlines():
         line = line.strip()
         if not line.startswith("data:"):
@@ -444,10 +512,16 @@ def assemble_chat_stream(raw):
             calls = piece_holder.get("tool_calls")
             if isinstance(calls, list):
                 tool_calls.extend(calls)
+            sound = piece_holder.get("audio")
+            if isinstance(sound, dict):
+                audio.extend(_b64_pcm(sound.get("data")))
         if isinstance(obj.get("usage"), dict):
             usage = read_usage(obj["usage"])
-    return {"content": "".join(content_parts), "tool_calls": tool_calls,
-            "usage": usage}
+    out = {"content": "".join(content_parts), "tool_calls": tool_calls,
+           "usage": usage}
+    if audio:
+        out["audio"] = bytes(audio)
+    return out
 
 
 def http_transmit(url, payload, headers, *, timeout):
@@ -499,6 +573,150 @@ def call_narrative(messages, model=None, env=None, transmit=None):
     got.setdefault("tool_calls", [])
     got.setdefault("usage", {})
     return got
+
+
+# ════════════════════════════════════════════════════════════════════════
+# §5.9 语音管线 · 切拍 → 平叙风格卡 → pcm16
+# ════════════════════════════════════════════════════════════════════════
+
+
+# 对白拍的记号：「名字（1–8 个汉字）＋冒号＋「……」」（§5.9）。
+_BEAT_DIALOGUE_RE = re.compile(r"([\u4e00-\u9fff]{1,8})[：:]\s*「([^」]*)」")
+
+# 送去合成之前要删掉的记号：长度 1–12 的括号与方括号（§5.9）。
+# 刻意**不含** `【】`：三段标题 `【裁决】`/`【叙事】`/`【钩子】` 是叙事合同，
+# 不是表演记号。
+_MARK_RE = re.compile(
+    r"[（(][^（()）]{1,12}[)）]|\[[^\[\]]{1,12}\]|［[^［］]{1,12}］")
+
+
+def strip_marks(line):
+    """删掉送去合成前的括号 / 方括号记号（§5.9）。不改 `last_beats` 里的字。"""
+    return _MARK_RE.sub("", str(line or ""))
+
+
+def narration_beat(text, voice=VOICE_NARRATOR, speaker=""):
+    """一拍旁白（或未标记的对白）：`{text, voice, tone, channel, speaker}`。
+
+    `speaker` 是**附加**键：§5.9 要求对白拍带上说话人 id（G7 还要用它写
+    `npc_at`），而元素键名表 `{text, voice, tone, channel}` 里没有它。
+    """
+    return {"text": str(text or ""), "voice": voice, "tone": BEAT_TONE,
+            "channel": BEAT_CHANNEL, "speaker": str(speaker or "")}
+
+
+def split_beats(text, *, speakers=None, voices=None, limit=MAX_BEATS):
+    """把一段（已涂掉秘密的）正文切成节拍（§5.9）。
+
+    - 默认整段是**一拍旁白**，音色白桦；
+    - 「名字（1–8 个汉字）＋冒号＋「…」」切出对白拍；切不出就保持旁白；
+    - `speakers` 是「名字 → 说话人 id」（在场 NPC / 路人），G3 的调用方
+      不传——所以对白拍一律 `speaker=""`、音色白桦，**不按姓名推断**；
+      传了映射时，`speaker` 用那个 id，音色取 `voices[id]`（没记录则白桦）；
+    - 一回合最多 `limit` 拍；多出来的并进最后一拍旁白；
+    - 纯函数：不改 `text`、不改 `voices`。空文本返回空列表。
+    """
+    text = str(text or "")
+    if not text.strip():
+        return []
+    speakers = speakers if isinstance(speakers, dict) else {}
+    voices = voices if isinstance(voices, dict) else {}
+
+    beats = []
+    cursor = 0
+    for match in _BEAT_DIALOGUE_RE.finditer(text):
+        head = text[cursor:match.start()]
+        if head.strip():
+            beats.append(narration_beat(head))
+        name, line = match.group(1), match.group(2)
+        speaker = str(speakers.get(name) or "")
+        voice = str(voices.get(speaker) or "") if speaker else ""
+        if voice not in VOICES:
+            voice = VOICE_NARRATOR
+        beats.append(narration_beat(line, voice=voice, speaker=speaker))
+        cursor = match.end()
+    tail = text[cursor:]
+    if tail.strip():
+        beats.append(narration_beat(tail))
+
+    if not beats:
+        beats = [narration_beat(text)]
+    if limit and len(beats) > limit:
+        # 多出来的并进最后一拍旁白：前 limit-1 拍照留，剩下的一律合成
+        # 一拍白桦旁白——文本一字不丢，音色不再按原来的说话人猜。
+        merged = "".join(item["text"] for item in beats[limit - 1:])
+        beats = beats[:limit - 1] + [narration_beat(merged)]
+    return beats
+
+
+def beats_of(narration, guide=None):
+    """从玩家可见的整段叙事里切出这一回合的节拍（§5.9）。
+
+    `guide` 只用来取 `voices`（G3 里恒为空）与 `npc_at` / 剧本名字表
+    （G5 起才有）。**裁决那一行不朗读**：`【裁决】` 是服务端按掷骰重写的
+    机械句，这里只切「正文 + 钩子」——与 §5.8 对「玩家将要看到的整段
+    （正文和钩子）」的划法一致。
+    """
+    parts = sections(narration)
+    body = parts["narration"].strip()
+    hook = parts["hook"].strip()
+    spoken = "\n\n".join(item for item in (body, hook) if item)
+    if not spoken:
+        # 模型没照三段格式写（`sections` 把整段当正文）时的兜底路径。
+        spoken = str(narration or "").strip()
+    voices = (guide or {}).get("voices") if isinstance(guide, dict) else None
+    return split_beats(spoken, voices=voices)
+
+
+# ── TTS 请求体与调用（§5.9）──────────────────────────────────────────────
+
+
+def build_tts_body(line, voice=VOICE_NARRATOR, style=TTS_STYLE_CARD):
+    """TTS 请求体（§5.9）：台词在 `assistant`，`user` 是稳定风格卡。
+
+    形状：`model` = `mimo-v2.5-tts`、`stream` 为 true、`audio.format` 为
+    `pcm16`、`voice` 为白桦或茉莉。密钥不入体（调用方只放进请求头
+    `api-key`）。`tone` 为「平叙」时 `style` 就是那条常量卡。
+    """
+    if voice not in VOICES:
+        voice = VOICE_NARRATOR
+    return {
+        "model": TTS_MODEL,
+        "messages": [
+            {"role": "user", "content": str(style or TTS_STYLE_CARD)},
+            {"role": "assistant", "content": strip_marks(line)},
+        ],
+        "audio": {"format": TTS_FORMAT},
+        "voice": voice,
+        "stream": True,
+    }
+
+
+def call_tts(line, voice=VOICE_NARRATOR, env=None, transmit=None):
+    """经传输层把一段已定稿的台词合成成 pcm16 字节（§5.9）。
+
+    与叙事**同一条**可替换入口 `TRANSMIT`（TTS 也是 Chat Completions）。
+    离线（空 `BASE_URL` / 空密钥）或上游失败时返回空字节，**不重试**——
+    「TTS 失败不重试。文本已经通过叙事 SSE 给过浏览器」（§5.9）。
+    只看 `tts` 那两个键：TTS 不需要 `MODEL`（§5.3）。
+    """
+    env = env if env is not None else load_env()
+    url = chat_url(env.get("BASE_URL"))
+    key = (env.get("API_KEY") or "").strip()
+    if not url or not key:
+        return b""
+    body = build_tts_body(line, voice=voice)
+    sender = transmit if transmit is not None else TRANSMIT
+    try:
+        got = sender(url, body, {KEY_HEADER: key}, timeout=TTS_TIMEOUT_S)
+    except Exception:  # noqa: BLE001 — 上游失败不回显、不重试
+        return b""
+    if not isinstance(got, dict):
+        return b""
+    audio = got.get("audio")
+    if isinstance(audio, (bytes, bytearray)):
+        return bytes(audio)
+    return b""
 
 
 # ── 【裁决】与骰子审查（§5.2）────────────────────────────────────────────
