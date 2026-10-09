@@ -1,0 +1,490 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/09-起步战役.md:61",
+  "meta": {
+    "world": "threshold",
+    "engine": "tactics",
+    "campaign": "雨夜七号线",
+    "party_level": 1,
+    "tone_pack": "冷硬"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕：钩住",
+      "level_range": "1–3",
+      "summary": "目标：弄清楚「你们为什么都收到了那条短信」。收束条件：玩家确认「那个人是真实存在的、且他在等人的到来」。",
+      "scenes": [
+        "场景 1（张力 3）：一场普通的夜雨。角色各自在七号线的同一节车厢里，看见对面站台站着一个人——不要解释，只描述",
+        "场景 2（张力 4）：三天后，六个人收到短信「你们看见我了」。有人开始调查其他人是谁",
+        "场景 3（张力 6）：第一次集体行动——回到那节车厢的位置。青龙寺站已停用十四年，但门开着"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/09-起步战役.md:101"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕：恶化",
+      "level_range": "1–3",
+      "summary": "目标：决定要不要给沈砚他想要的第七个人。收束条件：玩家选定一种做法，并为此付出第一个真实代价。",
+      "scenes": [
+        "场景 1（张力 5）：沈砚的妹妹出现。她已经找了三年",
+        "场景 2（张力 7）：陶铮提出交易：他帮你们进入站台，条件是你们带一个人出来（他要的是证据，不是救人）",
+        "场景 3（张力 8）：第一次尝试让七号线在青龙寺站停靠——在某节车厢里，让七个活人同时看见他"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/09-起步战役.md:120"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕：摊牌",
+      "level_range": "1–3",
+      "summary": "目标：在青龙寺站做一个决定。高潮三要素：代价的可能性（处理失败会有角色被留在站台上）；知情的选择；无法回头（七号线此后永远多停一站）。",
+      "source": "docs/scenario/09-起步战役.md:141"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "七号线夜班车厢",
+      "act": "act-1",
+      "next": [
+        "N12"
+      ],
+      "source": "docs/scenario/09-起步战役.md:105"
+    },
+    {
+      "id": "N12",
+      "name": "短信「你们看见我了」",
+      "act": "act-1",
+      "next": [
+        "N13"
+      ],
+      "source": "docs/scenario/09-起步战役.md:106"
+    },
+    {
+      "id": "N13",
+      "name": "青龙寺站（门开着）",
+      "act": "act-1",
+      "next": [
+        "N21",
+        "N22",
+        "N23"
+      ],
+      "marks": [
+        "代价",
+        "牵连",
+        "回响"
+      ],
+      "source": "docs/scenario/09-起步战役.md:107"
+    },
+    {
+      "id": "N21",
+      "name": "沈砚的妹妹出现",
+      "act": "act-2",
+      "next": [
+        "N23"
+      ],
+      "source": "docs/scenario/09-起步战役.md:124"
+    },
+    {
+      "id": "N22",
+      "name": "陶铮的交易",
+      "act": "act-2",
+      "next": [
+        "N23"
+      ],
+      "source": "docs/scenario/09-起步战役.md:125"
+    },
+    {
+      "id": "N23",
+      "name": "让七号线在青龙寺站停靠",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "unlock": "确认「站台上的东西不是沈砚」任一途径",
+      "source": "docs/scenario/09-起步战役.md:126"
+    },
+    {
+      "id": "N31",
+      "name": "站台上的决定",
+      "act": "act-3",
+      "next": [
+        "ending-huanhui",
+        "ending-liaojie",
+        "ending-chenmo"
+      ],
+      "source": "docs/scenario/09-起步战役.md:143"
+    },
+    {
+      "id": "Q-00",
+      "name": "第七个目击者",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "flag.sms_received == true（六人收到短信「你们看见我了」）"
+        },
+        {
+          "from": "active",
+          "to": "confirmed",
+          "condition": "玩家确认「那个人是真实存在的、且他在等人的到来」（第一幕收束条件）"
+        },
+        {
+          "from": "confirmed",
+          "to": "committed",
+          "condition": "玩家选定一种做法，并为此付出第一个真实代价（第二幕收束条件）"
+        },
+        {
+          "from": "committed",
+          "to": "exchange",
+          "condition": "有人自愿进入站台，把沈砚换出来（结局：换回）"
+        },
+        {
+          "from": "committed",
+          "to": "resolve",
+          "condition": "让妹妹与他告别，站台失去「被等待」的意义（结局：了结）"
+        },
+        {
+          "from": "committed",
+          "to": "silence",
+          "condition": "什么都不做，让办公厅接管（结局：沉默）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "confirmed",
+        "committed",
+        "exchange",
+        "resolve",
+        "silence"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/09-起步战役.md:101"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "三年前，沈砚在七号线青龙寺站的站台上看见了对面站台的自己；他走过去，然后就没有回来",
+      "carrier": "青龙寺站（已停用十四年）",
+      "npcs": [
+        "沈砚",
+        "老孟"
+      ],
+      "flags": [
+        "flag.sms_received",
+        "flag.witness_count"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "回响",
+          "detail": "找到老孟，他讲出 1984 年第三隧道事件的一部分，并提到「车不会停在没人叫的站」——必须主动叫站，它才会停",
+          "source": "docs/scenario/09-起步战役.md:115"
+        },
+        {
+          "path": "代价",
+          "detail": "走进站台，与沈砚第一次对话。他非常友好，并请你们「下周三晚上再来，还差一个」",
+          "source": "docs/scenario/09-起步战役.md:111"
+        },
+        {
+          "path": "观察",
+          "detail": "他从不眨眼，也从不踩到水——因为他没有倒影也没有重量",
+          "source": "docs/scenario/09-起步战役.md:79"
+        }
+      ],
+      "source": "docs/scenario/09-起步战役.md:68"
+    },
+    {
+      "id": "C-02",
+      "name": "沈砚已经死了，站台上的东西不是他",
+      "carrier": "三条独立途径",
+      "npcs": [
+        "老孟",
+        "陶铮"
+      ],
+      "flags": [
+        "flag.witness_count"
+      ],
+      "paths": [
+        {
+          "path": "人证",
+          "detail": "老孟会说出「三年里七号线停过两次青龙寺，那两次都有人消失」",
+          "source": "docs/scenario/09-起步战役.md:129"
+        },
+        {
+          "path": "观察",
+          "detail": "站台上的他没有倒影，且从不踩到积水",
+          "source": "docs/scenario/09-起步战役.md:130"
+        },
+        {
+          "path": "文档",
+          "detail": "办公厅 1984 年的档案里有完全一样的记录",
+          "source": "docs/scenario/09-起步战役.md:131"
+        }
+      ],
+      "source": "docs/scenario/09-起步战役.md:128"
+    },
+    {
+      "id": "C-03",
+      "name": "要让列车停靠青龙寺站，需要七个活人同时看见他——他需要七个，已经有了六个",
+      "carrier": "停靠机制",
+      "npcs": [
+        "沈砚"
+      ],
+      "flags": [
+        "flag.witness_count"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "note": "编号为本册册内编号；与 S8 各则及主册的 C-xx 不通用。",
+      "source": "docs/scenario/09-起步战役.md:70"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "沈砚",
+      "role": "三年前失踪的人，仍在青龙寺站",
+      "drive": "回家。他不知道自己已经死了",
+      "lever": "他的妹妹（如果玩家能找到她，并让她说话）",
+      "mask": "平静、有礼、像一个刚下班的人",
+      "tell": "他从不眨眼，也从不踩到水——因为他没有倒影也没有重量",
+      "threshold": "如果被告知真相，他会试图把一个活人换进站台",
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/09-起步战役.md:75"
+    },
+    {
+      "id": "npc-02",
+      "name": "沈砚青",
+      "alias": "沈砚的妹妹",
+      "role": "三十岁，仍在找哥哥",
+      "drive": "知道哥哥到底怎么了，无论结果是什么",
+      "lever": "她已经花了三年，愿意付出任何代价",
+      "mask": "干练、理性、不谈私事",
+      "tell": "讲到第三年时会改用过去时，然后自己纠正",
+      "source": "docs/scenario/09-起步战役.md:82"
+    },
+    {
+      "id": "npc-03",
+      "name": "陶铮",
+      "role": "办公厅行动组的负责人",
+      "drive": "在三天内完成一次「敷面」，以保住自己的职位",
+      "lever": "他其实也想弄清楚青龙寺站到底发生了什么",
+      "mask": "公事公办，且总是很累",
+      "tell": "提到「1984 年第三隧道」时会停顿",
+      "source": "docs/scenario/09-起步战役.md:88"
+    },
+    {
+      "id": "npc-04",
+      "name": "老孟",
+      "role": "七号线的老员工，三人组中最后一位",
+      "drive": "让有人继承他知道的东西",
+      "lever": "他没有继承人，只有听众",
+      "mask": "啰嗦、爱讲旧事、看起来不太可靠",
+      "tell": "每次讲到最后一段都会岔开话题",
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/09-起步战役.md:94"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "七号线夜班车厢",
+      "purpose": "六名乘客在同一节车厢看见对面站台站着一个人",
+      "source": "docs/scenario/09-起步战役.md:105"
+    },
+    {
+      "id": "loc-02",
+      "name": "青龙寺站",
+      "atmosphere": "已停用十四年，但门开着",
+      "key_places": [
+        "对面站台（沈砚所在处）",
+        "积水覆盖的月台"
+      ],
+      "source": "docs/scenario/09-起步战役.md:107"
+    },
+    {
+      "id": "loc-03",
+      "name": "办公厅档案库",
+      "purpose": "1984 年的档案里有完全一样的记录",
+      "source": "docs/scenario/09-起步战役.md:131"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-huanhui",
+      "name": "换回",
+      "type": "代价",
+      "requirements": "有人自愿进入站台，把沈砚换出来",
+      "result": "沈砚以某种不完整的状态回来；那位自愿者成为新的「站台上的东西」，且他会继续等七个",
+      "source": "docs/scenario/09-起步战役.md:155"
+    },
+    {
+      "id": "ending-liaojie",
+      "name": "了结",
+      "type": "安息",
+      "requirements": "让妹妹与他告别，站台失去「被等待」的意义",
+      "result": "沈砚消散。妹妹得到答案。青龙寺站永久停用，且从此地图上不再有它",
+      "source": "docs/scenario/09-起步战役.md:156"
+    },
+    {
+      "id": "ending-chenmo",
+      "name": "沉默",
+      "type": "掩盖",
+      "requirements": "什么都不做，让办公厅接管",
+      "result": "陶铮完成敷面。事件被掩盖。三人组中的老孟此后不再说话——这是最沉重也最真实的结局",
+      "source": "docs/scenario/09-起步战役.md:157"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/09-起步战役.md:61",
+    "declared_flag_count": 0,
+    "actual_flag_count": 4,
+    "flag": [
+      {
+        "id": "flag.sms_received",
+        "type": "bool",
+        "initial": false,
+        "write": "场景 2：六人收到短信「你们看见我了」",
+        "readers": "Q-00",
+        "effect": "开启主线",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:106"
+      },
+      {
+        "id": "flag.witness_count",
+        "type": "int",
+        "initial": 6,
+        "write": "每有一个活人同时看见他 +1",
+        "readers": "C-03/Q-00",
+        "effect": "需七个活人同时看见，列车才会停靠青龙寺站",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:70"
+      },
+      {
+        "id": "flag.station_open",
+        "type": "bool",
+        "initial": false,
+        "write": "场景 3：回到车厢位置，发现青龙寺站门开着",
+        "readers": "Q-00",
+        "effect": "站台可进入",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:107"
+      },
+      {
+        "id": "flag.sealed_again",
+        "type": "bool",
+        "initial": false,
+        "write": "分支 B：陶铮把青龙寺站重新封了",
+        "readers": "N13",
+        "effect": "必须想办法绕过封锁，或者与陶铮交易",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:113"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.tao",
+        "type": "int",
+        "initial": 0,
+        "write": "与陶铮合作 / 对抗",
+        "readers": "act-2/act-3",
+        "effect": "办公厅行动组态度",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:125"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.deadline",
+        "type": "int",
+        "initial": 3,
+        "write": "每过一天 −1",
+        "readers": "Q-00",
+        "effect": "陶铮要在三天内完成一次「敷面」",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:89"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "threshold",
+      "engine": "tactics",
+      "campaign": "雨夜七号线",
+      "session": 1,
+      "party_level": 1,
+      "tone_pack": "冷硬",
+      "safety_boundaries": []
+    },
+    "clock": {
+      "day": 1,
+      "watch": "夜",
+      "witness_count": 6,
+      "deadline": 3,
+      "active_pressure": "第七个目击者尚缺一人"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "沈砚",
+        "role": "三年前失踪的人，仍在青龙寺站",
+        "drive": "回家。他不知道自己已经死了",
+        "lever": "他的妹妹",
+        "mask": "平静、有礼、像一个刚下班的人",
+        "tell": "从不眨眼，也从不踩到水",
+        "affinity": 0,
+        "location": "青龙寺站站台",
+        "status": "waiting",
+        "knows": [
+          "C-01"
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "三年前沈砚在青龙寺站看见对面的自己，走过去就没有回来",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "老孟抽屉里还有 1984 年那次的完整记录",
+      "陶铮在敷面报告里写下了你们所有人的名字",
+      "第七个人（如果你们没凑齐）其实一直都在——他是列车员"
+    ],
+    "flags": {
+      "sms_received": false,
+      "witness_count": 6,
+      "station_open": false,
+      "sealed_again": false,
+      "rep_tao": 0,
+      "deadline": 3
+    },
+    "source": "docs/scenario/09-起步战役.md:61"
+  }
+}

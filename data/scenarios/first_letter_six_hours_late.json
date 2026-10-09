@@ -1,0 +1,624 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S8-起步战役集.md:586",
+  "meta": {
+    "world": "still-sea",
+    "engine": "build",
+    "engine_note": "本则同时给出战术引擎（02A）的 DF 换算",
+    "campaign": "迟到六小时的第一封信",
+    "party_level": 1,
+    "party_size": 4,
+    "tone_pack": "冷硬"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 窗口",
+      "level_range": "1",
+      "summary": "目标：让玩家第一次面对「资源不够，必须有人做决定」，并完成一次真正的轨道计算。幕末应当发生：玩家选定去哑铃还是去汀洲，并为这个选择承担一个即时的、关系性的代价。",
+      "scenes": [
+        "1.1 砾海·锚地（船坞）：查航路卡／找沙棠喝一杯打听／直接谈去哑铃的合同（轨道学 DF 13，构建 2 成功；算错＝多花 2 格 Δv）",
+        "1.2 船坞工会（岑岭）：雇佣技师／借设备／修闭环（维生 DF 12；失败＝闭环降级，恢复类效果减半）",
+        "1.3 与席砚生对谈：问哑铃旧事／要旧规程密码／请他同行（共感 DF 14；失败＝他拒绝，但留下一个名字）",
+        "1.4 出发前（窗口开启）：玩家做最终配平（轨道学 DF 14；失败＝货物超重，必须抛掉一件，可能是救命药）",
+        "1.5 航行中（延迟通信）：玩家发第一封信，等待回复（信延 DF 13；回复永远比预期晚）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:606"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 出舱",
+      "level_range": "1",
+      "summary": "目标：让玩家在真空里作业，第一次体会「每一次破舱都在闭环上留一个洞」。幕末应当发生：玩家带回哑铃站里的第一手证据（不是样本库，是别的东西），并知道站里只剩两个人。",
+      "scenes": [
+        "2.1 哑铃外壳（系绳出舱）：从对接环进入／从破损舱门／先敲壳听回声（舱外 DF 14，系留势 +2 防护；系绳断裂＝队友需救援判定）",
+        "2.2 站内走廊：找主控／找样本库／找发信的人（维生 DF 13；失败＝氧气只够一次深入，必须在两者之间选）",
+        "2.3 样本库：取样／只看不取／封库（科学或分析 DF 15；失败＝样本被污染，但得到完整实验日志）",
+        "2.4 遭遇（有人不希望他们带东西走）：谈判／潜行／动手（潜行 DF 14／说服 DF 14；动手＝走私船长介入，暴露「谁雇的走私船长」）",
+        "2.5 返船：玩家必须在闭环耗尽前回到船上（舱外 DF 13；超时＝全队各受一次失温或缺氧，留下永久辐射载荷）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:647"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 回信",
+      "level_range": "1",
+      "summary": "目标：让玩家在「信息永远不完全、资源永远不够」的条件下，替一群人做一个必须有人做的决定。幕末应当发生：玩家把真相（或它的一个版本）送达某一方，并永久改变这条航线的联络方式。",
+      "scenes": [
+        "3.1 返回航路（延迟通信）：直接公开／私发给某方／再发一封信问清楚（信延 DF 15；回复都会迟到，必须凭发信时的信息决定）",
+        "3.2 汀洲·冷滩港：找共同事务局韩砚秋／找沈知微／走何燎（熄灯会）（说服 DF 15；失败＝真相被压，但一名公务员私下备份）",
+        "3.3 哑铃隔离站攻防（可选）：阻止检疫署强制接管／协助接管／撤离（安保或技术 DF 14；战斗非必需，可用一次论战让检疫署退让）",
+        "3.4 收束：谁承担代价——玩家决定谁为这个决定负责（无判定；这是本册「没有无损按钮」的落地）"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:683"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "砾海·锚地（船坞）",
+      "act": "act-1",
+      "next": [
+        "N14"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:618"
+    },
+    {
+      "id": "N12",
+      "name": "船坞工会（岑岭）",
+      "act": "act-1",
+      "next": [
+        "N14"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:619"
+    },
+    {
+      "id": "N13",
+      "name": "与席砚生对谈",
+      "act": "act-1",
+      "next": [
+        "N14"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:620"
+    },
+    {
+      "id": "N14",
+      "name": "出发前（窗口开启）",
+      "act": "act-1",
+      "next": [
+        "N21"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:621"
+    },
+    {
+      "id": "N21",
+      "name": "哑铃外壳（系绳出舱）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:659"
+    },
+    {
+      "id": "N22",
+      "name": "站内走廊",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:660"
+    },
+    {
+      "id": "N23",
+      "name": "样本库",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:661"
+    },
+    {
+      "id": "N24",
+      "name": "遭遇（有人不希望他们带东西走）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:662"
+    },
+    {
+      "id": "N25",
+      "name": "返船",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:663"
+    },
+    {
+      "id": "N31",
+      "name": "返回航路（延迟通信）",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:695"
+    },
+    {
+      "id": "N32",
+      "name": "汀洲·冷滩港",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:696"
+    },
+    {
+      "id": "N33",
+      "name": "哑铃隔离站攻防（可选）",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:697"
+    },
+    {
+      "id": "N34",
+      "name": "收束：谁承担代价",
+      "act": "act-3",
+      "next": [
+        "ending-disclose",
+        "ending-archive",
+        "ending-again"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:698"
+    },
+    {
+      "id": "Q-00",
+      "name": "别信例行报告",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "flag.oldspec_message == true（收到旧规程电文「别信例行报告。库里不是样本。」）"
+        },
+        {
+          "from": "active",
+          "to": "chosen",
+          "condition": "flag.window_chosen 已选定（哑铃或汀洲，第一幕收束）"
+        },
+        {
+          "from": "chosen",
+          "to": "evidence",
+          "condition": "flag.dullbell_entered == true（已进入哑铃，带回第一手证据）"
+        },
+        {
+          "from": "evidence",
+          "to": "disclose",
+          "condition": "公开：真相进入公共信道，检疫署被迫改组（收束 1）"
+        },
+        {
+          "from": "evidence",
+          "to": "archive",
+          "condition": "封存：真相被压回档案，换取暂时的秩序（收束 2）"
+        },
+        {
+          "from": "evidence",
+          "to": "again",
+          "condition": "再问一次：玩家选择继续追查（收束 3）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "chosen",
+        "evidence",
+        "disclose",
+        "archive",
+        "again"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/S8-起步战役集.md:606"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "哑铃静默是有人下令的，不是事故",
+      "carrier": "旧规程电文",
+      "npcs": [
+        "席砚生",
+        "「回声」"
+      ],
+      "flags": [
+        "flag.oldspec_message"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "调查",
+          "detail": "旧规程电文的时戳异常（信延 DF 13）",
+          "source": "docs/scenario/S8-起步战役集.md:632"
+        },
+        {
+          "path": "社交",
+          "detail": "席砚生或韩砚秋的一句「这不是第一次」",
+          "source": "docs/scenario/S8-起步战役集.md:633"
+        },
+        {
+          "path": "环境",
+          "detail": "哑铃外壳的一次出舱观测（舱外 DF 14）",
+          "source": "docs/scenario/S8-起步战役集.md:634"
+        }
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:631"
+    },
+    {
+      "id": "C-02",
+      "name": "样本库里不是病原——「库里不是样本」",
+      "carrier": "实验日志／发信人的口述／样本本身的同位素读数",
+      "npcs": [
+        "「回声」"
+      ],
+      "flags": [
+        "flag.sample_taken"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "分析",
+          "detail": "实验日志",
+          "source": "docs/scenario/S8-起步战役集.md:670"
+        },
+        {
+          "path": "共感",
+          "detail": "发信人的口述",
+          "source": "docs/scenario/S8-起步战役集.md:670"
+        },
+        {
+          "path": "科学",
+          "detail": "样本本身的同位素读数",
+          "source": "docs/scenario/S8-起步战役集.md:670"
+        }
+      ],
+      "note": "文档在 S8:670 一行内给出三条路径，path 行号同源。",
+      "source": "docs/scenario/S8-起步战役集.md:670"
+    },
+    {
+      "id": "C-03",
+      "name": "返航第九天的电文说「别来。也别告诉他。」——落款是三年前就注销的哑铃站长旧编号",
+      "carrier": "一封落款已注销的电文",
+      "npcs": [
+        "「回声」"
+      ],
+      "flags": [
+        "flag.dullbell_entered"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:689"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "韦守拙",
+      "alias": "老韦",
+      "role": "驿船「回信号」船长",
+      "drive": "把这一船人完整地带回去",
+      "attitude": {
+        "affinity": 1,
+        "note": "务实、护短"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:626"
+    },
+    {
+      "id": "npc-02",
+      "name": "岑岭",
+      "role": "锚地船坞工会技师班长",
+      "drive": "不让锚地的船带病出坞",
+      "note": "可提供设备与技师",
+      "source": "docs/scenario/S8-起步战役集.md:627"
+    },
+    {
+      "id": "npc-03",
+      "name": "席砚生",
+      "role": "检疫署退役站长 · 哑铃前技术员 · 关键证人",
+      "drive": "让哑铃那件事有个说法",
+      "attitude": {
+        "affinity": 0
+      },
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:628"
+    },
+    {
+      "id": "npc-04",
+      "name": "罗敷",
+      "role": "「回信号」通信官 · 可玩家扮演",
+      "drive": "把每一条迟到的信都念完",
+      "source": "docs/scenario/S8-起步战役集.md:629"
+    },
+    {
+      "id": "npc-05",
+      "name": "宁执中",
+      "role": "检疫署区域督察 · 机构对手",
+      "drive": "把哑铃重新纳入管制",
+      "note": "本幕不在场，但会通过无线电施压",
+      "source": "docs/scenario/S8-起步战役集.md:667"
+    },
+    {
+      "id": "npc-06",
+      "name": "「回声」",
+      "role": "自称来自哑铃、查无实据的旧规程信号",
+      "drive": "把真相说出来",
+      "note": "身份存疑",
+      "delayed": true,
+      "knows": [
+        "C-01",
+        "C-02",
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:668"
+    },
+    {
+      "id": "npc-07",
+      "name": "韩砚秋",
+      "role": "共同事务局协调专员",
+      "drive": "让汀洲的配给不出乱子",
+      "attitude": {
+        "affinity": 0
+      },
+      "source": "docs/scenario/S8-起步战役集.md:702"
+    },
+    {
+      "id": "npc-08",
+      "name": "何燎",
+      "role": "熄灯会传道人 · 意识形态对手／同盟",
+      "drive": "永久关闭中继与远航",
+      "note": "他会支持「封存」",
+      "source": "docs/scenario/S8-起步战役集.md:703"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "砾海·锚地",
+      "atmosphere": "驿船「回信号」的锚地；两个窗口在本衡日零点同时打开，只够选一个",
+      "source": "docs/scenario/S8-起步战役集.md:618"
+    },
+    {
+      "id": "loc-02",
+      "name": "哑铃隔离站",
+      "atmosphere": "已静默的隔离站；中继串的消息比官方通报晚六小时",
+      "source": "docs/scenario/S8-起步战役集.md:659"
+    },
+    {
+      "id": "loc-03",
+      "name": "样本库",
+      "atmosphere": "库里不是样本（科学或分析 DF 15）",
+      "source": "docs/scenario/S8-起步战役集.md:661"
+    },
+    {
+      "id": "loc-04",
+      "name": "汀洲·冷滩港",
+      "atmosphere": "共同事务局、沈知微与熄灯会所在的港站",
+      "source": "docs/scenario/S8-起步战役集.md:696"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-disclose",
+      "name": "公开",
+      "type": "公开",
+      "requirements": "真相进入公共信道",
+      "result": "检疫署被迫改组。→ 接 S4 正式战役的「揭幕」路线",
+      "source": "docs/scenario/S8-起步战役集.md:706"
+    },
+    {
+      "id": "ending-archive",
+      "name": "封存",
+      "type": "封存",
+      "requirements": "真相被压回档案，换取暂时的秩序",
+      "result": "接「换手」路线，玩家得赦免与一笔钱",
+      "source": "docs/scenario/S8-起步战役集.md:707"
+    },
+    {
+      "id": "ending-again",
+      "name": "再问一次",
+      "type": "追查",
+      "requirements": "玩家选择继续追查",
+      "result": "进入正式战役的长期线——「为发信时的对方和收信时的对方分别准备」",
+      "source": "docs/scenario/S8-起步战役集.md:708"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S8-起步战役集.md:586",
+    "declared_flag_count": 7,
+    "actual_flag_count": 7,
+    "flag": [
+      {
+        "id": "flag.window_chosen",
+        "type": "str",
+        "initial": "dull_bell/tingzhou",
+        "write": "第一幕幕末：选中的窗口",
+        "readers": "Q-00",
+        "effect": "哑铃或汀洲，承担即时的关系性代价",
+        "source": "docs/scenario/S8-起步战役集.md:638"
+      },
+      {
+        "id": "flag.oldspec_message",
+        "type": "bool",
+        "initial": false,
+        "write": "收到旧规程电文",
+        "readers": "Q-00/C-01",
+        "effect": "「别信例行报告。库里不是样本。」",
+        "source": "docs/scenario/S8-起步战役集.md:640"
+      },
+      {
+        "id": "flag.crew_paid",
+        "type": "bool",
+        "initial": false,
+        "write": "闭环保养是否完成",
+        "readers": "act-1",
+        "effect": "维生状态",
+        "source": "docs/scenario/S8-起步战役集.md:641"
+      },
+      {
+        "id": "flag.dullbell_entered",
+        "type": "bool",
+        "initial": false,
+        "write": "已进入哑铃",
+        "readers": "Q-00/C-03",
+        "effect": "第二幕开启",
+        "source": "docs/scenario/S8-起步战役集.md:674"
+      },
+      {
+        "id": "flag.sample_taken",
+        "type": "bool",
+        "initial": false,
+        "write": "是否取样",
+        "readers": "C-02",
+        "effect": "取样失败＝样本被污染，但得到完整实验日志",
+        "source": "docs/scenario/S8-起步战役集.md:675"
+      },
+      {
+        "id": "flag.radiation_load",
+        "type": "int",
+        "initial": 0,
+        "write": "出舱超时等事件累积",
+        "readers": "act-2/act-3",
+        "effect": "辐射载荷累积（0~2）",
+        "source": "docs/scenario/S8-起步战役集.md:677"
+      },
+      {
+        "id": "flag.crew_a",
+        "type": "int",
+        "initial": 2,
+        "write": "进站后记录",
+        "readers": "act-2",
+        "effect": "站内存活人数（默认 2）",
+        "source": "docs/scenario/S8-起步战役集.md:676"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.bureau",
+        "type": "int",
+        "initial": 0,
+        "write": "第一幕行为结算",
+        "readers": "act-1/act-3",
+        "effect": "共同事务局态度",
+        "source": "docs/scenario/S8-起步战役集.md:642"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.dv_used",
+        "type": "int",
+        "initial": 10,
+        "write": "每次机动累加",
+        "readers": "act-1",
+        "effect": "已花 Δv（格）（10~17）",
+        "source": "docs/scenario/S8-起步战役集.md:639"
+      },
+      {
+        "id": "clock.dv_left",
+        "type": "int",
+        "initial": 40,
+        "write": "每次机动扣减",
+        "readers": "act-2/act-3",
+        "effect": "剩余 Δv（40~48）",
+        "source": "docs/scenario/S8-起步战役集.md:678"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "still-sea",
+      "engine": "build",
+      "campaign": "迟到六小时的第一封信",
+      "session": 1,
+      "party_level": 1,
+      "party_size": 4,
+      "tone_pack": "冷硬",
+      "safety_boundaries": [
+        "天灾式伤亡、辐射；先对强度口味"
+      ]
+    },
+    "clock": {
+      "day": 1,
+      "watch": "班",
+      "dv_used": 10,
+      "dv_left": 48,
+      "active_pressure": "燃料表只剩五十八格"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "席砚生",
+        "role": "检疫署退役站长 · 哑铃前技术员 · 关键证人",
+        "drive": "让哑铃那件事有个说法",
+        "affinity": 0,
+        "location": "砾海·锚地",
+        "status": "retired",
+        "knows": [
+          "C-01"
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "哑铃静默是有人下令的，不是事故",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "想赚钱的：舱里有一批抗癌药要送汀洲；同时哑铃隔离站失联，送去能救人也可能白跑",
+      "想知道真相的：一封加密方式三年前就废弃的旧规程电文：「别信例行报告。库里不是样本。」",
+      "被卷入的：燃料表只剩五十八格，补给证在窗口关闭前必须动身"
+    ],
+    "flags": {
+      "window_chosen": "none",
+      "oldspec_message": false,
+      "crew_paid": false,
+      "dullbell_entered": false,
+      "sample_taken": false,
+      "radiation_load": 0,
+      "crew_a": 2,
+      "rep_bureau": 0
+    },
+    "orbits": {
+      "dv_total": 58,
+      "window": "dull_bell|tingzhou",
+      "note": "轨道力学即政府；Δv 即预算"
+    },
+    "comms": {
+      "delay_hours": 6,
+      "note": "延迟通信：回复永远比预期晚"
+    },
+    "source": "docs/scenario/S8-起步战役集.md:638"
+  }
+}

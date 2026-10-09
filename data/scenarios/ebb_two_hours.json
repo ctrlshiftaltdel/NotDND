@@ -1,0 +1,676 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S8-起步战役集.md:444",
+  "meta": {
+    "world": "潮金港",
+    "engine": "tactics",
+    "engine_note": "S0 §八：战术/构建引擎皆可；本则用战术引擎跑",
+    "campaign": "退潮的两个时辰",
+    "party_level": 1,
+    "party_size": 4,
+    "tone_pack": "湿冷 / 市井江湖 / 群像博弈"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 赊来的铲子",
+      "level_range": "1",
+      "summary": "目标：让玩家亲身体验「退潮窗口只有一个」，并在第一幕末尾第一次公开看到八家字号的轨格。幕末应当发生：玩家带回一件真实的落滩收获（一处刻名、一枚汐金样本、或一具旧靴），并意识到「城里有人在跟他们抢同一片滩」。",
+      "scenes": [
+        "1.1 三号码头（出发）：向老蚬婆问退潮时辰／直接下滩／先去鱼栏巷找陈三娘打听（人脉或说服 DF 12）",
+        "1.2 蚝壳滩·碎壳带：按路引走／跟拾滩人下铲／找会改道的潮沟迷宫（水情·读泥 DF 13；失败＝掉进深沟，但沟底露出线索）",
+        "1.3 老蚝架（O1 年木桩）：拓印刻名／数桩基走向／与拾滩人蚬仔搭话（历史或共感 DF 13；失败＝蚬仔说「那上面有个『晚』字」）",
+        "1.4 城门口（第一次公开轨格）：玩家听导引者宣布八家字号轨格（无判定；无论玩家做什么，轨格照推）",
+        "1.5 交割（与卢铁牛）：老实分三成／藏起一部分／问他船板的来历（欺骗 DF 13；失败＝修船/借船路线涨价或关闭）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:463"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 公开的竞速",
+      "level_range": "1",
+      "summary": "目标：让玩家见识八家字号如何推进，并第一次面对「换边」的诱惑与代价。幕末应当发生：玩家要么挂靠了某一家（共享其轨），要么开了自己的散客轨；并且至少让一家字号减了一格。",
+      "scenes": [
+        "2.1 落市负二层（秤仙）：称自己的水钱／买一条线索／请他转让一份债权（称量或人脉 DF 13）",
+        "2.2 盐仓区：查账本／找账房温秉文／伪造查验文书（欺骗 DF 14／分析 DF 13）",
+        "2.3 船坞／蚝壳帮：找柯九斤谈／揭发阮阿蟹／直接站队（论战立场 13；谈崩＝阿箩私下给一条巷子路线）",
+        "2.4 桩林区（浅区）：退潮进入／遭遇夜汐会暗桩岑晚／目击浮台（水情 DF 14／潜行 DF 13）",
+        "2.5 势力对账（幕末）：导引者公开全部轨格，玩家选择挂靠或散客（无判定；换边代价见 S3 第 5.1 节）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:506"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 满汐日",
+      "level_range": "1",
+      "summary": "目标：让玩家在「抢一笔钱」与「不让城被淹」之间做选择，并第一次下到沉闸外围。幕末应当发生：玩家做出一个方向性的选择（独吞／交给某势力／谁都没拿到／不挖），并留下下一季的钩子。",
+      "scenes": [
+        "3.1 满汐日前的落市：买齐装备／买单条情报／掺和一次拍卖（谈判 DF 13；失败＝满汐日溢价 ×1.5）",
+        "3.2 深退·桩林区深处：走桩顶／涉水／绕对手的路线（杂技 DF 14／水情 DF 15；失败＝陷入淤泥，救援过程给一条新路）",
+        "3.3 沉闸外围：用闸钥开门／强行开启（技术 DF 20，3 时段）／撤退（技术 DF 18-20；门开不了也推进——带走闸室内部结构图）",
+        "3.4 回涨（场地级计时器）：每回合水位 +1 米，必须在时限内撤离（运动 DF 16；失败＝失去一半携带物，但人活着）",
+        "3.5 收束：玩家在「独吞／交付／不挖」之间选择（无判定；三种收束各自接 S3 正式战役的不同终局）"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:545"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "三号码头（出发）",
+      "act": "act-1",
+      "next": [
+        "N12"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:475"
+    },
+    {
+      "id": "N12",
+      "name": "蚝壳滩·碎壳带",
+      "act": "act-1",
+      "next": [
+        "N13"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:476"
+    },
+    {
+      "id": "N13",
+      "name": "老蚝架（O1 年木桩）",
+      "act": "act-1",
+      "next": [
+        "N14"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:477"
+    },
+    {
+      "id": "N14",
+      "name": "城门口（第一次公开轨格）",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:478"
+    },
+    {
+      "id": "N15",
+      "name": "交割（与卢铁牛）",
+      "act": "act-1",
+      "next": [
+        "N21"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:479"
+    },
+    {
+      "id": "N21",
+      "name": "落市负二层（秤仙）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:518"
+    },
+    {
+      "id": "N22",
+      "name": "盐仓区",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:519"
+    },
+    {
+      "id": "N23",
+      "name": "船坞／蚝壳帮",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:520"
+    },
+    {
+      "id": "N24",
+      "name": "桩林区（浅区）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:521"
+    },
+    {
+      "id": "N25",
+      "name": "势力对账（幕末）",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:522"
+    },
+    {
+      "id": "N31",
+      "name": "满汐日前的落市",
+      "act": "act-3",
+      "next": [
+        "N35"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:557"
+    },
+    {
+      "id": "N32",
+      "name": "深退·桩林区深处",
+      "act": "act-3",
+      "next": [
+        "N35"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:558"
+    },
+    {
+      "id": "N33",
+      "name": "沉闸外围",
+      "act": "act-3",
+      "next": [
+        "N35"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:559"
+    },
+    {
+      "id": "N34",
+      "name": "回涨（场地级计时器）",
+      "act": "act-3",
+      "next": [
+        "N35"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:560"
+    },
+    {
+      "id": "N35",
+      "name": "收束",
+      "act": "act-3",
+      "next": [
+        "ending-solo",
+        "ending-faction",
+        "ending-nobody"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:561"
+    },
+    {
+      "id": "Q-00",
+      "name": "退潮的两个时辰",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "flag.t0_board == true（取得长庚号船板或等价物）"
+        },
+        {
+          "from": "active",
+          "to": "known",
+          "condition": "flag.c01_known == true（得知报关单的异常：没有第七舱）"
+        },
+        {
+          "from": "known",
+          "to": "final",
+          "condition": "flag.faction_hooked 已选定（挂靠某字号或开散客轨）"
+        },
+        {
+          "from": "final",
+          "to": "solo",
+          "condition": "独吞：玩家带着汐金离城（收束 1）"
+        },
+        {
+          "from": "final",
+          "to": "faction",
+          "condition": "玩家把汐金交给挂靠的字号（收束 2）"
+        },
+        {
+          "from": "final",
+          "to": "nobody",
+          "condition": "谁都没拿到：回涨把汐金冲散，或对手先达第 7 格（收束 3）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "known",
+        "final",
+        "solo",
+        "faction",
+        "nobody"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/S8-起步战役集.md:463"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "长庚号的报关单上没有第七舱",
+      "carrier": "船板／报关单",
+      "npcs": [
+        "陈三娘",
+        "老蚬婆"
+      ],
+      "flags": [
+        "flag.t0_board",
+        "flag.c01_known"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "调查",
+          "detail": "甲字七号仓的账本或公会报潮房的测潮记录（分析 DF 13）",
+          "source": "docs/scenario/S8-起步战役集.md:489"
+        },
+        {
+          "path": "社交",
+          "detail": "瞎子阿潮的说书（指出矛盾 DF 13）或陈三娘的闲话",
+          "source": "docs/scenario/S8-起步战役集.md:490"
+        },
+        {
+          "path": "战斗／环境",
+          "detail": "拆船场里一具写有编号的船板（察觉 DF 12）",
+          "source": "docs/scenario/S8-起步战役集.md:491"
+        }
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:488"
+    },
+    {
+      "id": "C-02",
+      "name": "汐金是卵衣，是潮汐债的抵押物",
+      "carrier": "潮汐债担保物清单",
+      "npcs": [
+        "温秉文",
+        "柯九斤"
+      ],
+      "flags": [
+        "flag.faction_hooked"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "账户",
+          "detail": "潮汐债担保物清单",
+          "source": "docs/scenario/S8-起步战役集.md:531"
+        },
+        {
+          "path": "人证",
+          "detail": "温秉文／柯九斤",
+          "source": "docs/scenario/S8-起步战役集.md:531"
+        },
+        {
+          "path": "环境",
+          "detail": "桩林区汐巢样本",
+          "source": "docs/scenario/S8-起步战役集.md:531"
+        }
+      ],
+      "note": "文档在 S8:531 一行内给出三条路径，path 行号同源；本册编号册内唯一，不与主册《满汐日》C-xx 通用。",
+      "source": "docs/scenario/S8-起步战役集.md:531"
+    },
+    {
+      "id": "C-03",
+      "name": "那个时辰之后，海底会露出一个不该露出来的门",
+      "carrier": "潮汛表上被圈中的同一时辰",
+      "npcs": [
+        "老蚬婆"
+      ],
+      "flags": [
+        "clock.tide_window"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:551"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "卢铁牛",
+      "role": "船坞匠 · 中立",
+      "drive": "修好船，别的不管",
+      "attitude": {
+        "affinity": 1,
+        "note": "问他父亲的事 +2"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:483"
+    },
+    {
+      "id": "npc-02",
+      "name": "陈三娘",
+      "role": "鱼栏巷面摊 · 情报源",
+      "drive": "把儿子送出潮金港",
+      "attitude": {
+        "affinity": 1,
+        "note": "会加蛋"
+      },
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:484"
+    },
+    {
+      "id": "npc-03",
+      "name": "蚬仔",
+      "role": "拾滩少年",
+      "drive": "想上学",
+      "attitude": {
+        "affinity": 1,
+        "note": "骗他 −3"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:485"
+    },
+    {
+      "id": "npc-04",
+      "name": "老蚬婆",
+      "alias": "何蚬",
+      "role": "拾滩人头目 · 沿用 S3 既定 NPC",
+      "drive": "攒够钱让蚬仔这一代不必拾滩",
+      "note": "认潮汐表不认人，可被水钱或伪造拾滩名额骗过（欺骗 DF 15）；3 点水钱换一条落滩路线（DF −4）或一组杂兵",
+      "knows": [
+        "C-01",
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:486"
+    },
+    {
+      "id": "npc-05",
+      "name": "卜守秤",
+      "alias": "秤仙",
+      "role": "落市负二层的称量掮客",
+      "drive": "只做称量",
+      "attitude": {
+        "affinity": 0,
+        "note": "在他这里成交 +1，动手 −3（永久关闭负二层）"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:526"
+    },
+    {
+      "id": "npc-06",
+      "name": "柯九斤",
+      "role": "蚝壳帮帮主",
+      "drive": "给四百个兄弟一人一份养老钱",
+      "attitude": {
+        "affinity": 1,
+        "note": "一起喝过酒 +1"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:527"
+    },
+    {
+      "id": "npc-07",
+      "name": "岑晚",
+      "role": "夜汐会潮使 · 敌对→可倒戈",
+      "drive": "孵化潮母，「让该回去的东西回去」",
+      "attitude": {
+        "affinity": -1,
+        "note": "带来她父亲的物件 +3；第三幕可能倒戈带路进沉闸"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:528"
+    },
+    {
+      "id": "npc-08",
+      "name": "温秉文",
+      "role": "公会账房 · 可被收买",
+      "drive": "想离开潮金港",
+      "attitude": {
+        "affinity": 1
+      },
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:529"
+    },
+    {
+      "id": "npc-09",
+      "name": "屠怀舟",
+      "role": "北舷打捞行领队",
+      "drive": "在泊期倒计时内完成打捞",
+      "note": "泊期倒计时归零即出局",
+      "source": "docs/scenario/S8-起步战役集.md:567"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "三号码头",
+      "atmosphere": "晨汐刚退，落滩上的水汽还没散",
+      "source": "docs/scenario/S8-起步战役集.md:475"
+    },
+    {
+      "id": "loc-02",
+      "name": "蚝壳滩·碎壳带",
+      "atmosphere": "泥没到脚踝；有会改道的潮沟迷宫",
+      "source": "docs/scenario/S8-起步战役集.md:476"
+    },
+    {
+      "id": "loc-03",
+      "name": "老蚝架（O1 年木桩）",
+      "atmosphere": "桩上有刻名可拓印",
+      "source": "docs/scenario/S8-起步战役集.md:477"
+    },
+    {
+      "id": "loc-04",
+      "name": "落市",
+      "atmosphere": "四层下沉广场，越往下柜台越窄、灯光越红；第四层没人承认它存在",
+      "source": "docs/scenario/S8-起步战役集.md:518"
+    },
+    {
+      "id": "loc-05",
+      "name": "盐仓区",
+      "atmosphere": "账本与查验文书；公会账房温秉文在此",
+      "source": "docs/scenario/S8-起步战役集.md:519"
+    },
+    {
+      "id": "loc-06",
+      "name": "桩林区",
+      "atmosphere": "夜汐会暗桩与浮台；深退时通向沉闸",
+      "source": "docs/scenario/S8-起步战役集.md:521"
+    },
+    {
+      "id": "loc-07",
+      "name": "沉闸外围",
+      "atmosphere": "闸钥／强行开启（技术 DF 18-20）；门后是下一季的钥匙",
+      "source": "docs/scenario/S8-起步战役集.md:547"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-solo",
+      "name": "独吞",
+      "type": "独吞",
+      "requirements": "玩家带着汐金离城",
+      "result": "接 S3 正式战役的「独吞」结局线，但先要过一次全城追索",
+      "source": "docs/scenario/S8-起步战役集.md:570"
+    },
+    {
+      "id": "ending-faction",
+      "name": "交给某势力",
+      "type": "交付",
+      "requirements": "玩家把汐金交给挂靠的字号",
+      "result": "接该字号的终局，玩家得酬劳与新身份",
+      "source": "docs/scenario/S8-起步战役集.md:571"
+    },
+    {
+      "id": "ending-nobody",
+      "name": "谁都没拿到",
+      "type": "旁观",
+      "requirements": "回涨把汐金冲散，或对手先达第 7 格",
+      "result": "接「旁观」结局，城按胜者的方式改变",
+      "source": "docs/scenario/S8-起步战役集.md:572"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S8-起步战役集.md:444",
+    "declared_flag_count": 6,
+    "actual_flag_count": 6,
+    "flag": [
+      {
+        "id": "flag.t0_board",
+        "type": "bool",
+        "initial": false,
+        "write": "第一幕：取得长庚号船板（或等价物）",
+        "readers": "Q-00/C-01",
+        "effect": "开启主线",
+        "source": "docs/scenario/S8-起步战役集.md:496"
+      },
+      {
+        "id": "flag.lu_paid",
+        "type": "bool",
+        "initial": false,
+        "write": "是否偿还赊账",
+        "readers": "N15",
+        "effect": "影响卢铁牛线（与 S2 的 flag.ropeclan_settled 勿混用）",
+        "source": "docs/scenario/S8-起步战役集.md:497"
+      },
+      {
+        "id": "flag.c01_known",
+        "type": "bool",
+        "initial": false,
+        "write": "得知报关单的异常",
+        "readers": "Q-00/C-01",
+        "effect": "报关单上没有第七舱",
+        "source": "docs/scenario/S8-起步战役集.md:498"
+      },
+      {
+        "id": "flag.faction_hooked",
+        "type": "str",
+        "initial": "none",
+        "write": "第二幕幕末：玩家挂靠选择",
+        "readers": "Q-00/C-02",
+        "effect": "某势力/none",
+        "source": "docs/scenario/S8-起步战役集.md:535"
+      },
+      {
+        "id": "flag.player_track",
+        "type": "int",
+        "initial": 1,
+        "write": "第二幕幕末起记录",
+        "readers": "act-2/act-3",
+        "effect": "玩家轨格（1~3）",
+        "source": "docs/scenario/S8-起步战役集.md:536"
+      },
+      {
+        "id": "flag.beachcomber_children_hurt",
+        "type": "bool",
+        "initial": false,
+        "write": "未伤拾滩人孩子",
+        "readers": "act-3",
+        "effect": "好结局保留",
+        "source": "docs/scenario/S8-起步战役集.md:537"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.oyster",
+        "type": "int",
+        "initial": 0,
+        "write": "第一幕行为结算",
+        "readers": "act-1/act-2",
+        "effect": "蚝壳帮态度（0~1）",
+        "source": "docs/scenario/S8-起步战役集.md:500"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.tide_window",
+        "type": "int",
+        "initial": 1,
+        "write": "落滩窗口消耗",
+        "readers": "act-1/act-3",
+        "effect": "本退潮窗口剩余（归零则涨潮）",
+        "source": "docs/scenario/S8-起步战役集.md:499"
+      },
+      {
+        "id": "clock.northrail",
+        "type": "int",
+        "initial": 29,
+        "write": "每幕 −1",
+        "readers": "act-2/act-3",
+        "effect": "北舷泊期倒计时",
+        "source": "docs/scenario/S8-起步战役集.md:540"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "潮金港",
+      "engine": "tactics",
+      "campaign": "退潮的两个时辰",
+      "session": 1,
+      "party_level": 1,
+      "party_size": 4,
+      "tone_pack": "湿冷 / 市井江湖 / 群像博弈",
+      "safety_boundaries": [
+        "人情债、市井暴力；节奏快"
+      ]
+    },
+    "clock": {
+      "day": 1,
+      "watch": "晨",
+      "tide_window": 1,
+      "northrail": 29,
+      "active_pressure": "八家字号圈了同一个时辰"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "老蚬婆",
+        "role": "拾滩人头目",
+        "drive": "攒够钱让下一代不必拾滩",
+        "affinity": 0,
+        "location": "三号码头",
+        "status": "neutral",
+        "knows": [
+          "C-01",
+          "C-03"
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "长庚号的报关单上没有第七舱",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "想赚钱的：赊了船坞匠卢铁牛一把铲子和一张落滩路引，挖到什么分他三成",
+      "想知道真相的：一块写着「长庚」二字的船板——「别信报关单。」",
+      "被卷入的：替人送一封没署名的信到盐仓区，信却被蚝壳帮的人盯上了"
+    ],
+    "flags": {
+      "t0_board": false,
+      "lu_paid": false,
+      "c01_known": false,
+      "faction_hooked": "none",
+      "player_track": 0,
+      "beachcomber_children_hurt": false,
+      "rep_oyster": 0
+    },
+    "tracks": {
+      "player": 0,
+      "night": 4,
+      "guild": 0,
+      "salt": 0,
+      "note": "八家字号潮信轨（节选）；全场以夜汐会推进最快（4~5）"
+    },
+    "source": "docs/scenario/S8-起步战役集.md:501"
+  }
+}

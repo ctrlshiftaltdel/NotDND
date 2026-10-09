@@ -1,0 +1,663 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S8-起步战役集.md:169",
+  "meta": {
+    "world": "ashen-crown",
+    "engine": "tactics",
+    "campaign": "钟响十三次之前",
+    "party_level": 1,
+    "party_size": 4,
+    "tone_pack": "悲剧英雄"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 雾中归路",
+      "level_range": "1",
+      "summary": "目标：让玩家在活雾里走完第一段路，理解「路会被弯回原处」，并第一次接触伊蕾芙（她主动接触玩家）。幕末应当发生：玩家确认「谷地在循环，而领主知道这件事，并且她想找人帮她结束它」。",
+      "scenes": [
+        "1.1 雾中的返途驿：跟车轮印走／跟小女孩走／上高地测路（雾行或洞察 DF 13；失败＝走回原地一轮，但线索反而更多）",
+        "1.2 驿站遗址：进驿站找活人／先翻账本／屋外埋绳做路标（辨忆或分析 DF 12；失败＝登记簿损毁，伊诺·空铃补一句关键信息）",
+        "1.3 雾中第二次相遇：与小女孩交谈／无视她／试着抓住她（共感或心智 DF 14；失败＝她一路跟随，终局会用到她）",
+        "1.4 烬冠堡门前：递请柬进堡／绕侧门／护城河对岸观察（说服或欺骗 DF 13；失败＝塞芙兰·铜誓提出交换）",
+        "1.5 宴会厅（第一次接触）：玩家自由回应对白（论战，立场 12；谈崩不是死路，伊蕾芙记下名字，终局论战 +2）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:188"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 五项冠证",
+      "level_range": "1",
+      "summary": "目标：玩家用「物证／人证／亡者回声」三条路径中的任意两条，拼出「循环是人造的」。幕末应当发生：玩家手里至少握有 2 件冠证，并知道摘冠会迁冠（杀死领主不是答案）。",
+      "scenes": [
+        "2.1 哀市（忆晶黑市）：买一枚净忆／找缪岑·空袋问路／查一枚剪忆的来源（辨忆 DF 13；失败＝假忆晶口音指向钟烬庭）",
+        "2.2 钟骨修院：找玛铎恩长老／偷钟序记录／参与一次守夜（隐秘学或历史 DF 14；失败＝年轻抄士斐罗·碎钟私下塞残页）",
+        "2.3 留名院：听妲芮·百名主持留名礼／查未入册的亡者名／与阿弥莎·无姓对话（悼仪 DF 14；失败＝获得「被抹去的名字」碎片）",
+        "2.4 白穗乡：读农户的旧约／帮蒂宛·七户修渠／被素莱·轻灰跟踪（察觉 DF 13；失败＝密探脚印通向钟烬庭私兵名单）",
+        "2.5 冠证汇合点：玩家把线索摆上桌做一次推理（无判定，纯推理；不完整也推进，终局论战立场 +4）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:223"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 第十三响",
+      "level_range": "1",
+      "summary": "目标：让玩家在杀死／取代／解放／交易四条路线里选一条，并承担代价。幕末应当发生：循环被改变（不必被终结），谷地的下一个「黎明」由玩家的选择定义。",
+      "scenes": [
+        "3.1 宴会厅（谈判）：完成一次完整论战／提出修复守冠誓／直接动手（论战立场 16，说服点 3；谈崩进入混战但伊蕾芙保留犹豫）",
+        "3.2 王座厅（若开战）：对战伊蕾芙·冠下暴相／破坏冠炉／保护平民撤离（战斗＋一次气场 DF 18；杀死者失败则成为临时冠主）",
+        "3.3 冠炉／钟塔：停钟／改钟序／用冠证撬动守冠誓（技术或历史 DF 16；失败＝钟仍响，但获得提前准备下一次循环的机会）",
+        "3.4 雾岬界墙（收束）：玩家选择离开、留下、或取代（无判定；无论选哪条，雾都会给出一个信号）"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:265"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "雾中的返途驿",
+      "act": "act-1",
+      "next": [
+        "N12"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:200"
+    },
+    {
+      "id": "N12",
+      "name": "驿站遗址",
+      "act": "act-1",
+      "next": [
+        "N13"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:201"
+    },
+    {
+      "id": "N13",
+      "name": "雾中第二次相遇",
+      "act": "act-1",
+      "next": [
+        "N14"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:202"
+    },
+    {
+      "id": "N14",
+      "name": "烬冠堡门前",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:203"
+    },
+    {
+      "id": "N15",
+      "name": "宴会厅（第一次接触）",
+      "act": "act-1",
+      "next": [
+        "N21"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:204"
+    },
+    {
+      "id": "N21",
+      "name": "哀市（忆晶黑市）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:235"
+    },
+    {
+      "id": "N22",
+      "name": "钟骨修院",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:236"
+    },
+    {
+      "id": "N23",
+      "name": "留名院",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:237"
+    },
+    {
+      "id": "N24",
+      "name": "白穗乡",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:238"
+    },
+    {
+      "id": "N25",
+      "name": "冠证汇合点",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "unlock": "冠证≥2",
+      "source": "docs/scenario/S8-起步战役集.md:239"
+    },
+    {
+      "id": "N31",
+      "name": "宴会厅（谈判）",
+      "act": "act-3",
+      "next": [
+        "N32",
+        "N33",
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:277"
+    },
+    {
+      "id": "N32",
+      "name": "王座厅（若开战）",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:278"
+    },
+    {
+      "id": "N33",
+      "name": "冠炉／钟塔",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:279"
+    },
+    {
+      "id": "N34",
+      "name": "雾岬界墙（收束）",
+      "act": "act-3",
+      "next": [
+        "ending-liberate",
+        "ending-replace",
+        "ending-bargain"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:280"
+    },
+    {
+      "id": "Q-00",
+      "name": "钟响十三次之前",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "flag.tidebell_entered == true（玩家已进入缄钟谷）"
+        },
+        {
+          "from": "active",
+          "to": "crownproof",
+          "condition": "flag.crownproofs >= 2（第二幕收束：至少握有两件冠证）"
+        },
+        {
+          "from": "crownproof",
+          "to": "final",
+          "condition": "flag.migration_known == true 且 clock.bell <= 2（已知摘冠会迁冠，距第十三响仅剩两天）"
+        },
+        {
+          "from": "final",
+          "to": "liberate",
+          "condition": "玩家用冠证与冠炉重写守冠誓（收束 1：解放）"
+        },
+        {
+          "from": "final",
+          "to": "replace",
+          "condition": "玩家中一人主动戴冠，成为新的守门人（收束 2：取代）"
+        },
+        {
+          "from": "final",
+          "to": "bargain",
+          "condition": "玩家用冠证换取穿雾而出的权利（收束 3：交易）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "crownproof",
+        "final",
+        "liberate",
+        "replace",
+        "bargain"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/S8-起步战役集.md:188"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "你们中的一人，昨晚在讣告墙上看见了自己的名字，死因一栏空白，日期是三天后；告示背面的忆晶里有人在说「别让她戴冠」",
+      "carrier": "讣告墙／背面粘着的温热忆晶",
+      "npcs": [
+        "伊诺·空铃"
+      ],
+      "flags": [
+        "flag.verdict_board_seen"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:183"
+    },
+    {
+      "id": "C-02",
+      "name": "循环是人造的，摘冠会迁冠——杀死领主不是答案",
+      "carrier": "冠证（物证／人证／亡者回声任得其一即可推进；三条全得则终局可开启「修复古约」路线）",
+      "npcs": [
+        "玛铎恩",
+        "莱娅·温烛",
+        "阿弥莎·无姓"
+      ],
+      "flags": [
+        "flag.migration_known",
+        "flag.crownproofs"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "物证",
+          "detail": "哀市或修院里的钟序记录（分析／隐秘学 DF 14）",
+          "source": "docs/scenario/S8-起步战役集.md:248"
+        },
+        {
+          "path": "人证",
+          "detail": "莱娅·温烛（无眠医师）保存的伊蕾芙加冕前最后一夜净忆（共感 DF 15）",
+          "source": "docs/scenario/S8-起步战役集.md:249"
+        },
+        {
+          "path": "亡者回声",
+          "detail": "留名院里阿弥莎·无姓的证词（悼仪 DF 14）",
+          "source": "docs/scenario/S8-起步战役集.md:250"
+        }
+      ],
+      "note": "编号为本册册内编号，不与主册《灰冠无晓》的 C-xx 通用；主题与 S1 主册「冠主无法自行摘冠」「灰冕原为分责制度」同源。",
+      "source": "docs/scenario/S8-起步战役集.md:247"
+    },
+    {
+      "id": "C-03",
+      "name": "如何解除循环：物证（冠证＋钟序）、人证（莱娅与索弥安）、仪式（用未入册的亡者名完成一次特殊的留名礼）三条路径同时对玩家开放",
+      "carrier": "冠证＋钟序／莱娅与索弥安／未入册亡者名的留名礼",
+      "npcs": [
+        "莱娅·温烛",
+        "索弥安·听骨"
+      ],
+      "flags": [
+        "flag.crownproofs"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:288"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "伊蕾芙·烬冕",
+      "alias": "灰冠者 · 领主",
+      "role": "缄钟谷统治者，一顶以万人临终记忆熔成的灰冕把她固定在领主身份上",
+      "drive": "在不把灰冕转嫁给无辜者的前提下结束自己的统治",
+      "attitude": {
+        "affinity": 0,
+        "note": "会主动接触、试探、也真诚求助"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:208"
+    },
+    {
+      "id": "npc-02",
+      "name": "伊诺·空铃",
+      "alias": "讣告匠 · 中立",
+      "role": "讣告匠",
+      "drive": "把每一张讣告都送对人",
+      "note": "手里有「玩家名字的讣告」这条线索",
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:209"
+    },
+    {
+      "id": "npc-03",
+      "name": "塞芙兰·铜誓",
+      "alias": "守冠队长",
+      "role": "守冠队长",
+      "drive": "在钟烬庭煽动内战前维持治安",
+      "attitude": {
+        "affinity": 0,
+        "note": "避免无谓伤亡会 +1"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:210"
+    },
+    {
+      "id": "npc-04",
+      "name": "玛铎恩",
+      "alias": "灰砾修会长老",
+      "role": "灰砾修会长老",
+      "drive": "维持循环直到有人证明亡者潮能被别的方法承接",
+      "attitude": {
+        "affinity": 0,
+        "note": "提出「给我一个替代方案」"
+      },
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:243"
+    },
+    {
+      "id": "npc-05",
+      "name": "妲芮·百名",
+      "alias": "无名合唱团领唱者",
+      "role": "无名合唱团领唱者",
+      "drive": "让每个无名者被念到一次",
+      "attitude": {
+        "affinity": 1,
+        "note": "认真参加留名礼 +2"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:244"
+    },
+    {
+      "id": "npc-06",
+      "name": "素莱·轻灰",
+      "alias": "钟烬庭密探",
+      "role": "钟烬庭密探",
+      "drive": "清证所有对循环不利的人",
+      "attitude": {
+        "affinity": -1,
+        "note": "本幕敌对，但可被反向利用"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:245"
+    },
+    {
+      "id": "npc-07",
+      "name": "莱娅·温烛",
+      "alias": "宫廷医师 · 退冠派",
+      "role": "宫廷医师",
+      "drive": "让伊蕾芙获得一次不以重置抹除的完整睡眠",
+      "note": "终局关键证人",
+      "knows": [
+        "C-02",
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:284"
+    },
+    {
+      "id": "npc-10",
+      "name": "阿弥莎·无姓",
+      "role": "留名院的亡者代表",
+      "drive": "让未入册的亡者被听见",
+      "note": "第二幕三线索法则「亡者回声」路径的证词来源（悼仪 DF 14）",
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:237"
+    },
+    {
+      "id": "npc-08",
+      "name": "赫铎·三钥",
+      "alias": "内堡总管 · 续冠派",
+      "role": "内堡总管",
+      "drive": "让城堡在任何冠主之下继续运转",
+      "note": "若玩家路线威胁城堡，他会反水",
+      "source": "docs/scenario/S8-起步战役集.md:285"
+    },
+    {
+      "id": "npc-09",
+      "name": "索弥安·听骨",
+      "alias": "失踪侍钟官 · 中立囚犯",
+      "role": "侍钟官",
+      "drive": "把钟序的秘密讲给一个愿意听的人",
+      "note": "终局「修复古约」路线的钥匙",
+      "knows": [
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:286"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "返途驿",
+      "atmosphere": "活雾封锁的谷地入口；路会被弯回原处，越过雾墙的人会从原处走回",
+      "source": "docs/scenario/S8-起步战役集.md:200"
+    },
+    {
+      "id": "loc-02",
+      "name": "驿站遗址",
+      "atmosphere": "有登记簿可读（辨忆或分析 DF 12）",
+      "source": "docs/scenario/S8-起步战役集.md:201"
+    },
+    {
+      "id": "loc-03",
+      "name": "烬冠堡",
+      "atmosphere": "谷地统治者的居所；守门盘查需说服或欺骗 DF 13",
+      "source": "docs/scenario/S8-起步战役集.md:203"
+    },
+    {
+      "id": "loc-04",
+      "name": "哀市",
+      "atmosphere": "可买净忆、查剪忆来源；债契掮客缪岑·空袋在此问路",
+      "source": "docs/scenario/S8-起步战役集.md:235"
+    },
+    {
+      "id": "loc-05",
+      "name": "钟骨修院",
+      "atmosphere": "灰砾修会所在；有钟序记录可偷",
+      "source": "docs/scenario/S8-起步战役集.md:236"
+    },
+    {
+      "id": "loc-06",
+      "name": "留名院",
+      "atmosphere": "妲芮·百名主持留名礼；可查未入册的亡者名",
+      "source": "docs/scenario/S8-起步战役集.md:237"
+    },
+    {
+      "id": "loc-07",
+      "name": "白穗乡",
+      "atmosphere": "农户旧约与修渠事务；钟烬庭密探素莱·轻灰在此活动",
+      "source": "docs/scenario/S8-起步战役集.md:238"
+    },
+    {
+      "id": "loc-08",
+      "name": "冠炉／钟塔",
+      "atmosphere": "停钟／改钟序／用冠证撬动守冠誓（技术或历史 DF 16）",
+      "source": "docs/scenario/S8-起步战役集.md:279"
+    },
+    {
+      "id": "loc-09",
+      "name": "雾岬界墙",
+      "atmosphere": "谷地边界；收束之处，无论选哪条，雾都会给出一个信号",
+      "source": "docs/scenario/S8-起步战役集.md:280"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-liberate",
+      "name": "解放（修复古约）",
+      "type": "解放",
+      "requirements": "玩家用冠证与冠炉重写守冠誓",
+      "result": "灰冕被拆解，伊蕾芙得以在黎明中睡去。→ 接 S1 正式战役的「终局路线一」",
+      "source": "docs/scenario/S8-起步战役集.md:291"
+    },
+    {
+      "id": "ending-replace",
+      "name": "取代（知情地戴上）",
+      "type": "取代",
+      "requirements": "玩家中一人主动戴冠",
+      "result": "成为新的守门人。→ 接 S1 正式战役的「终局路线二」，且这一角色永久入册",
+      "source": "docs/scenario/S8-起步战役集.md:292"
+    },
+    {
+      "id": "ending-bargain",
+      "name": "交易（带着记忆离开）",
+      "type": "交易",
+      "requirements": "玩家用冠证换取穿雾而出的权利",
+      "result": "谷地循环照旧但被削弱。→ 接 S1 正式战役的「长期开放结局」",
+      "source": "docs/scenario/S8-起步战役集.md:293"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S8-起步战役集.md:169",
+    "declared_flag_count": 4,
+    "actual_flag_count": 4,
+    "flag": [
+      {
+        "id": "flag.tidebell_entered",
+        "type": "bool",
+        "initial": false,
+        "write": "第一幕幕末：玩家已进入缄钟谷",
+        "readers": "Q-00",
+        "effect": "开启主线",
+        "source": "docs/scenario/S8-起步战役集.md:214"
+      },
+      {
+        "id": "flag.verdict_board_seen",
+        "type": "bool",
+        "initial": false,
+        "write": "第一幕幕末：看见了写有自己名字的讣告",
+        "readers": "C-01",
+        "effect": "入场钩子落地",
+        "source": "docs/scenario/S8-起步战役集.md:215"
+      },
+      {
+        "id": "flag.crownproofs",
+        "type": "int",
+        "initial": 2,
+        "write": "第二幕幕末：已收集冠证数量",
+        "readers": "Q-00/C-02",
+        "effect": "≥2 推进；三条全得则终局可开启「修复古约」路线",
+        "source": "docs/scenario/S8-起步战役集.md:255"
+      },
+      {
+        "id": "flag.migration_known",
+        "type": "bool",
+        "initial": false,
+        "write": "第二幕幕末：已知「摘冠会迁冠」",
+        "readers": "Q-00/C-02",
+        "effect": "杀死领主不是答案",
+        "source": "docs/scenario/S8-起步战役集.md:256"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.guard",
+        "type": "int",
+        "initial": 0,
+        "write": "守门成功 +1 / 强闯 −1",
+        "readers": "act-1",
+        "effect": "守冠庭态度",
+        "source": "docs/scenario/S8-起步战役集.md:216"
+      },
+      {
+        "id": "rep.sorrow_relic",
+        "type": "int",
+        "initial": 1,
+        "write": "认真参与守夜 +1",
+        "readers": "act-2",
+        "effect": "灰砾修会态度",
+        "source": "docs/scenario/S8-起步战役集.md:257"
+      },
+      {
+        "id": "rep.mourning_house",
+        "type": "int",
+        "initial": 1,
+        "write": "第二幕幕末记录",
+        "readers": "act-2",
+        "effect": "无名合唱团态度",
+        "source": "docs/scenario/S8-起步战役集.md:258"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.bell",
+        "type": "int",
+        "initial": 3,
+        "write": "每幕 −1（第一幕末 3／第二幕末 2）",
+        "readers": "Q-00",
+        "effect": "距第十三响的天数",
+        "source": "docs/scenario/S8-起步战役集.md:217"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "ashen-crown",
+      "engine": "tactics",
+      "campaign": "钟响十三次之前",
+      "session": 1,
+      "party_level": 1,
+      "party_size": 4,
+      "tone_pack": "悲剧英雄",
+      "safety_boundaries": [
+        "记忆买卖、死亡与哀悼题材需先对边界"
+      ]
+    },
+    "clock": {
+      "day": 1,
+      "watch": "昏",
+      "bell": 3,
+      "active_pressure": "距第十三响还有三天"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "伊蕾芙·烬冕",
+        "role": "灰冠者 · 领主",
+        "drive": "在不把灰冕转嫁给无辜者的前提下结束自己的统治",
+        "mask": "冷静的行政者",
+        "affinity": 0,
+        "location": "烬冠堡",
+        "status": "crowned",
+        "knows": []
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-02",
+        "name": "循环是人造的，摘冠会迁冠",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "想赚钱的：替商队押运忆晶进谷，商队在雾里消失，而「货主」三年前就下葬了",
+      "想知道真相的：讣告墙上有你的名字，死因空白，日期是三天后；背面忆晶里有人说「别让她戴冠」",
+      "被卷入的：没有车夫的黑马车停在你面前，请柬写着「请来见证我最后一次失败」"
+    ],
+    "flags": {
+      "tidebell_entered": false,
+      "verdict_board_seen": false,
+      "crownproofs": 0,
+      "migration_known": false,
+      "irene_contact": false,
+      "qimo_card": false,
+      "rep_guard": 0,
+      "rep_sorrow_relic": 0,
+      "rep_mourning_house": 0
+    },
+    "source": "docs/scenario/S8-起步战役集.md:218"
+  }
+}

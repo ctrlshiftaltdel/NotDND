@@ -1,0 +1,654 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S8-起步战役集.md:307",
+  "meta": {
+    "world": "yunji",
+    "engine": "tactics",
+    "campaign": "三只木匣",
+    "party_level": 1,
+    "party_size": 4,
+    "tone_pack": "noir"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 第一票",
+      "level_range": "1",
+      "summary": "目标：让玩家体验「接活—踩点—动手—撤离」的完整循环，并在撤离段第一次体会「出来比进去难」。幕末应当发生：玩家拿到第一件赃物（一份不起眼的文件），并第一次遇见雇主霍砚或追猎者岑照中的至少一个。",
+      "scenes": [
+        "1.1 五阶·灰市（绳会账房）：接活／砍价／追问东西是什么（人脉或欺骗 DF 13；追问失败＝带着疑问接活）",
+        "1.2 四阶·铜环（判牍阁外踩点）：白天以查档身份进／夜间走外墙／找内应黎望留门（察觉 DF 12／欺骗 DF 13；失败＝预案点 −1）",
+        "1.3 判牍阁内（动手）：潜行开柜／伪装调档／策反黎望（巧手 DF 14／分析 DF 13；失败＝静默值 +2，增援提前）",
+        "1.4 撤离段（铜环走廊）：走外墙下行／混进吊篮／走检修井（潜行 DF 13／杂技 DF 12；失败＝静默值 +2 且一次遭遇）",
+        "1.5 交货（霍砚的第一次接触）：玩家自由应对（论战立场 10；谈崩＝之后每次结算 −5%，但委托继续）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:326"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 上行",
+      "level_range": "1",
+      "summary": "目标：玩家进入二阶白壁，面对「不偷也能赢」的第一次考验，并遭遇同行竞争者罗屏。幕末应当发生：玩家确认赃物不是普通赃物，而是某种「钥匙」，并且知道雇主手里不止他们一队。",
+      "scenes": [
+        "2.1 二阶·白壁（听泉馆）：夜间取鸟（潜行）／冒充检修（伪装）／听完老夫人讲完（不偷）（潜行 DF 14／欺骗 DF 13）",
+        "2.2 听泉馆地库：看洗印模具／找阿宓留的东西／直接撤（手艺 DF 13；失败＝改走循环泵通道，杂技 DF 15）",
+        "2.3 三阶·中庭（竞争者遭遇）：抢在罗屏之前／与罗屏合作／让罗屏先得手（先攻或杂技 DF 13；让先＝拿到罗屏的图）",
+        "2.4 后巷（对账）：玩家把三件赃物摆上桌（分析 DF 14；没拼出也无妨，霍砚会「不经意地」提醒）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:368"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 回响",
+      "level_range": "1",
+      "summary": "目标：玩家识破霍砚「用他们的手凑齐九钥」，并做出第一次立场选择。幕末应当发生：玩家进入冠台前哨，获得「元柜」的线索，并明确下一步是继续替霍砚干活、反水、还是自立。",
+      "scenes": [
+        "3.1 冠台前哨：混进礼仪队伍／从竖井摸进／用公文调档（欺骗 DF 16／技术 DF 15；失败＝守夜局围拢，岑照提出交易）",
+        "3.2 与霍砚对质：直接质问／交钥匙留副本／不交（说服 DF 16／欺骗 DF 16；谈崩＝霍砚取消委托并排布后续，玩家获得反制窗口）",
+        "3.3 与岑照周旋（若触发）：交一样换安全／反问她要哪样／开打（直觉 DF 15；动手＝岑照首领战，可选）",
+        "3.4 收束：三只匣子——玩家在三只相似木匣中选择（无判定；选错也推进，解锁「同行竞争者反应」）"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:404"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "五阶·灰市（绳会账房）",
+      "act": "act-1",
+      "next": [
+        "N12"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:338"
+    },
+    {
+      "id": "N12",
+      "name": "四阶·铜环（判牍阁外踩点）",
+      "act": "act-1",
+      "next": [
+        "N13"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:339"
+    },
+    {
+      "id": "N13",
+      "name": "判牍阁内（动手）",
+      "act": "act-1",
+      "next": [
+        "N14"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:340"
+    },
+    {
+      "id": "N14",
+      "name": "撤离段（铜环走廊）",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:341"
+    },
+    {
+      "id": "N15",
+      "name": "交货（霍砚的第一次接触）",
+      "act": "act-1",
+      "next": [
+        "N21"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:342"
+    },
+    {
+      "id": "N21",
+      "name": "二阶·白壁（听泉馆）",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:380"
+    },
+    {
+      "id": "N22",
+      "name": "听泉馆地库",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:381"
+    },
+    {
+      "id": "N23",
+      "name": "三阶·中庭（竞争者遭遇）",
+      "act": "act-2",
+      "next": [
+        "N24"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:382"
+    },
+    {
+      "id": "N24",
+      "name": "后巷（对账）",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:383"
+    },
+    {
+      "id": "N31",
+      "name": "冠台前哨",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:416"
+    },
+    {
+      "id": "N32",
+      "name": "与霍砚对质",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:417"
+    },
+    {
+      "id": "N33",
+      "name": "与岑照周旋（若触发）",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:418"
+    },
+    {
+      "id": "N34",
+      "name": "收束：三只匣子",
+      "act": "act-3",
+      "next": [
+        "ending-continue",
+        "ending-defect",
+        "ending-expose"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:419"
+    },
+    {
+      "id": "Q-00",
+      "name": "九枚钥匙的第一双手",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "flag.v0_board == true（拿到了第一件赃物）"
+        },
+        {
+          "from": "active",
+          "to": "key",
+          "condition": "flag.key_v1 == true（取得第一枚权钥）"
+        },
+        {
+          "from": "key",
+          "to": "final",
+          "condition": "flag.huo_motive_suspected == true（识破「雇主在雇两队」）"
+        },
+        {
+          "from": "final",
+          "to": "continue",
+          "condition": "玩家把钥匙交给霍砚（收束 1：继续接活）"
+        },
+        {
+          "from": "final",
+          "to": "defect",
+          "condition": "玩家扣下钥匙，反水自立（收束 2）"
+        },
+        {
+          "from": "final",
+          "to": "expose",
+          "condition": "玩家把真相带给岑照或胡同舟（收束 3：另寻雇主）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "key",
+        "final",
+        "continue",
+        "defect",
+        "expose"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/S8-起步战役集.md:326"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "价钱是你们去年一年加起来的三倍，但雇主不肯说那是什么——你们只是别人凑齐九枚「钥匙」的第一双手",
+      "carrier": "没开口的木匣",
+      "npcs": [
+        "温苔",
+        "霍砚"
+      ],
+      "flags": [
+        "flag.v0_board"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:312"
+    },
+    {
+      "id": "C-02",
+      "name": "被判牍阁压下的判决书与雇主有关",
+      "carrier": "档案索引／黎望／巡逻日志",
+      "npcs": [
+        "黎望"
+      ],
+      "flags": [
+        "flag.v0_board"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "调查",
+          "detail": "开柜时顺手比对档案索引（分析 DF 13）",
+          "source": "docs/scenario/S8-起步战役集.md:351"
+        },
+        {
+          "path": "社交",
+          "detail": "直接问黎望「被压下的判决书是谁的」（说服 DF 12）",
+          "source": "docs/scenario/S8-起步战役集.md:352"
+        },
+        {
+          "path": "战斗／环境",
+          "detail": "击倒或绕开夜巡骑手后检查其巡逻日志（察觉 DF 12）",
+          "source": "docs/scenario/S8-起步战役集.md:353"
+        }
+      ],
+      "note": "任得其一即可获得「雇主在雇两队」的第一块拼图。",
+      "source": "docs/scenario/S8-起步战役集.md:350"
+    },
+    {
+      "id": "C-03",
+      "name": "赃物是权钥——雇主手里不止你们一队",
+      "carrier": "元柜传说／计晚的反钥／老钳的模",
+      "npcs": [
+        "罗屏",
+        "霍砚",
+        "胡同舟"
+      ],
+      "flags": [
+        "flag.key_v1",
+        "flag.huo_motive_suspected"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "元柜传说",
+          "detail": "胡同舟的报馆铅字",
+          "source": "docs/scenario/S8-起步战役集.md:391"
+        },
+        {
+          "path": "静默社技术线",
+          "detail": "计晚的反钥",
+          "source": "docs/scenario/S8-起步战役集.md:391"
+        },
+        {
+          "path": "井底线",
+          "detail": "老钳的模",
+          "source": "docs/scenario/S8-起步战役集.md:391"
+        }
+      ],
+      "note": "文档在 S8:391 一行内给出三条路径，path 行号同源；本册编号册内唯一，不与主册《九钥与元柜》C-xx 通用。",
+      "source": "docs/scenario/S8-起步战役集.md:391"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "温苔",
+      "role": "绳会总掮客",
+      "drive": "让绳会不可替代并活着退场",
+      "attitude": {
+        "affinity": 0,
+        "note": "砍价成功 −15%、失败留一句讥讽"
+      },
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:346"
+    },
+    {
+      "id": "npc-02",
+      "name": "黎望",
+      "role": "判牍阁书记官 · 可被策反",
+      "drive": "让一份三年前被压下的判决书重见天日",
+      "attitude": {
+        "affinity": 0,
+        "note": "谈成 +1，威胁则 −3 且可能把玩家报给守夜局"
+      },
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:347"
+    },
+    {
+      "id": "npc-03",
+      "name": "霍砚",
+      "role": "白壁行副理 · 雇主",
+      "drive": "凑齐九枚权钥（本幕玩家尚不知）",
+      "attitude": {
+        "affinity": 0,
+        "note": "永远比玩家知道得多"
+      },
+      "knows": [
+        "C-01",
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:348"
+    },
+    {
+      "id": "npc-04",
+      "name": "尤梨",
+      "role": "白壁行首席拍卖师",
+      "drive": "让每一件带印的东西都被「洗干净」",
+      "note": "可交涉，收 15%—40% 洗印费",
+      "source": "docs/scenario/S8-起步战役集.md:387"
+    },
+    {
+      "id": "npc-05",
+      "name": "宓老夫人",
+      "role": "听泉馆主人 · 中立失主",
+      "drive": "等一个六十年前没回来的人",
+      "note": "「不偷」路线的关键",
+      "source": "docs/scenario/S8-起步战役集.md:388"
+    },
+    {
+      "id": "npc-06",
+      "name": "罗屏",
+      "role": "同行竞争者 · 敌对",
+      "drive": "先你们一步",
+      "note": "若被击败，其全套踩点图可被拿走",
+      "knows": [
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:389"
+    },
+    {
+      "id": "npc-07",
+      "name": "岑照",
+      "role": "守夜局总巡查使 · 敌对→可交易",
+      "drive": "拿名单换一个不会塌的秩序",
+      "attitude": {
+        "affinity": -2,
+        "note": "永远可以谈"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:424"
+    },
+    {
+      "id": "npc-08",
+      "name": "胡同舟",
+      "role": "镜台报馆主编 · 中立",
+      "drive": "把真相印出来",
+      "note": "若玩家透露真相，可成为「把名单印出来」的路线",
+      "knows": [
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:425"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "五阶·灰市（绳会账房）",
+      "atmosphere": "五阶没有天，只有六阶的地板缝；接活之处",
+      "source": "docs/scenario/S8-起步战役集.md:338"
+    },
+    {
+      "id": "loc-02",
+      "name": "四阶·铜环（判牍阁）",
+      "atmosphere": "高安保档案重地；踩点、动手与撤离的第一票主场",
+      "source": "docs/scenario/S8-起步战役集.md:339"
+    },
+    {
+      "id": "loc-03",
+      "name": "撤离段（铜环走廊）",
+      "atmosphere": "出来比进去难：外墙、吊篮、检修井三条路",
+      "source": "docs/scenario/S8-起步战役集.md:341"
+    },
+    {
+      "id": "loc-04",
+      "name": "二阶·白壁（听泉馆）",
+      "atmosphere": "厚地毯、双层玻璃的安静；锁序的第三节在第二声水滴之后开三十七秒",
+      "source": "docs/scenario/S8-起步战役集.md:380"
+    },
+    {
+      "id": "loc-05",
+      "name": "三阶·中庭",
+      "atmosphere": "同行竞争者罗屏出没之处",
+      "source": "docs/scenario/S8-起步战役集.md:382"
+    },
+    {
+      "id": "loc-06",
+      "name": "冠台前哨",
+      "atmosphere": "终局入口；守夜局六分半可达，消防梯在防火闸另一边",
+      "source": "docs/scenario/S8-起步战役集.md:416"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-continue",
+      "name": "继续接活",
+      "type": "顺从",
+      "requirements": "玩家把钥匙交给霍砚",
+      "result": "进入 S2 正式战役第二幕（V2 听泉馆已在开场跑完，可直接接 V3）",
+      "source": "docs/scenario/S8-起步战役集.md:428"
+    },
+    {
+      "id": "ending-defect",
+      "name": "反水自立",
+      "type": "反水",
+      "requirements": "玩家扣下钥匙",
+      "result": "霍砚排布追索，进入正式战役的「独行线」，从灰市重新起步",
+      "source": "docs/scenario/S8-起步战役集.md:429"
+    },
+    {
+      "id": "ending-expose",
+      "name": "另寻雇主",
+      "type": "转向",
+      "requirements": "玩家把真相带给岑照或胡同舟",
+      "result": "进入正式战役的「守夜局线」或「报馆线」",
+      "source": "docs/scenario/S8-起步战役集.md:430"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S8-起步战役集.md:307",
+    "declared_flag_count": 7,
+    "actual_flag_count": 7,
+    "flag": [
+      {
+        "id": "flag.v0_board",
+        "type": "bool",
+        "initial": false,
+        "write": "第一幕幕末：拿到了第一件赃物（木匣内文件）",
+        "readers": "Q-00/C-01",
+        "effect": "开启主线",
+        "source": "docs/scenario/S8-起步战役集.md:358"
+      },
+      {
+        "id": "flag.ropeclan_settled",
+        "type": "bool",
+        "initial": false,
+        "write": "已向绳会交付／欠账结算",
+        "readers": "act-1",
+        "effect": "绳会线；勿与 S3 的 flag.lu_paid 混用",
+        "source": "docs/scenario/S8-起步战役集.md:359"
+      },
+      {
+        "id": "flag.prep_pool",
+        "type": "int",
+        "initial": 2,
+        "write": "踩点失败 −1",
+        "readers": "act-1/act-2",
+        "effect": "剩余预案点（1~2）",
+        "source": "docs/scenario/S8-起步战役集.md:361"
+      },
+      {
+        "id": "flag.insider_liwang",
+        "type": "bool",
+        "initial": false,
+        "write": "第一幕幕末：黎望已可被策反",
+        "readers": "N12/N13",
+        "effect": "内应可用",
+        "source": "docs/scenario/S8-起步战役集.md:363"
+      },
+      {
+        "id": "flag.key_v1",
+        "type": "bool",
+        "initial": false,
+        "write": "第二幕幕末：取得第一枚权钥",
+        "readers": "Q-00/C-03",
+        "effect": "赃物是权钥的实证",
+        "source": "docs/scenario/S8-起步战役集.md:395"
+      },
+      {
+        "id": "flag.huo_motive_suspected",
+        "type": "bool",
+        "initial": false,
+        "write": "第二幕幕末：开始怀疑雇主隐藏动机",
+        "readers": "Q-00/C-03",
+        "effect": "识破「雇主在雇两队」",
+        "source": "docs/scenario/S8-起步战役集.md:396"
+      },
+      {
+        "id": "flag.rival_luo_first",
+        "type": "bool",
+        "initial": false,
+        "write": "罗屏是否先得手",
+        "readers": "N23",
+        "effect": "影响竞争者线",
+        "source": "docs/scenario/S8-起步战役集.md:397"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.ropeclan",
+        "type": "int",
+        "initial": 1,
+        "write": "守规矩 +1",
+        "readers": "act-1",
+        "effect": "绳会态度",
+        "source": "docs/scenario/S8-起步战役集.md:362"
+      },
+      {
+        "id": "rep.baihang",
+        "type": "int",
+        "initial": 0,
+        "write": "第二幕行为结算",
+        "readers": "act-2/act-3",
+        "effect": "白壁行态度（0~2）",
+        "source": "docs/scenario/S8-起步战役集.md:399"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.silence",
+        "type": "int",
+        "initial": 0,
+        "write": "开柜／撤离失败 +2；潜行失败 +1",
+        "readers": "act-1/act-2/act-3",
+        "effect": "静默值（干净 0／带痕 3；二幕 3~6）",
+        "source": "docs/scenario/S8-起步战役集.md:360"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "yunji",
+      "engine": "tactics",
+      "campaign": "三只木匣",
+      "session": 1,
+      "party_level": 1,
+      "party_size": 4,
+      "tone_pack": "noir",
+      "safety_boundaries": [
+        "涉及犯罪，需确认玩家接受度"
+      ]
+    },
+    "clock": {
+      "day": 1,
+      "watch": "夜",
+      "silence": 0,
+      "active_pressure": "静默值随动静上升"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "霍砚",
+        "role": "白壁行副理 · 雇主",
+        "drive": "凑齐九枚权钥（玩家尚不知）",
+        "affinity": 0,
+        "location": "白壁行",
+        "status": "employer",
+        "knows": [
+          "C-01",
+          "C-03"
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-03",
+        "name": "赃物是权钥——雇主手里不止你们一队",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "想赚钱的：温苔给你们一个没开口的木匣和一句「东西在四阶判牍阁，名字我不能说」",
+      "想知道真相的：灰市有人用你们的作案手法作案；要洗清自己，只能偷出真正的证据",
+      "被卷入的：你们欠绳会一笔钱——还钱，或者替他们去四阶「取一样东西」"
+    ],
+    "flags": {
+      "v0_board": false,
+      "ropeclan_settled": false,
+      "prep_pool": 2,
+      "insider_liwang": false,
+      "key_v1": false,
+      "huo_motive_suspected": false,
+      "rival_luo_first": false,
+      "rep_ropeclan": 0,
+      "rep_baihang": 0
+    },
+    "silence": {
+      "current": 0,
+      "note": "静默轨（干净 0／带痕 3）"
+    },
+    "prep": {
+      "pool": 2,
+      "note": "预案点"
+    },
+    "keys": {
+      "collected": 0,
+      "target": 9
+    },
+    "source": "docs/scenario/S8-起步战役集.md:363"
+  }
+}

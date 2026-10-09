@@ -1,0 +1,549 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/09-起步战役.md:273",
+  "meta": {
+    "world": "entropic-net",
+    "engine": "build",
+    "campaign": "第 41 次备份",
+    "party_level": 1,
+    "tone_pack": "冷硬"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕：钩住",
+      "level_range": "1–3",
+      "summary": "目标：弄清楚为什么「第 41 次备份」会在网里自己动。收束条件：玩家确认「第 41 次备份里有两个意识，而且其中一个不属于这个世界」。",
+      "scenes": [
+        "场景 1（张力 3）：一次普通的例行备份。玩家在档案层的一个隔间里，看见一台老式备份舱里躺着叶槐——他只说了一句话：「你们终于来了。」",
+        "场景 2（张力 5）：备份数据里出现了一段不该存在的日志——它记录的是一段三十一年前的、网潜退出的失败尝试。时间戳早于叶槐出生",
+        "场景 3（张力 6）：裴晚失踪了。她的工位被清空，只剩一张纸条和一个坐标——指向无名区的一处旧中继"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/09-起步战役.md:325"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕：恶化",
+      "level_range": "1–3",
+      "summary": "目标：决定要不要把第 41 次备份带出熵网。收束条件：玩家选定一种做法，并为此付出第一个真实代价——删掉自己的一段记忆，或失去一个身份。",
+      "scenes": [
+        "场景 1（张力 5）：玩家第一次真正下网。第四十一次备份在网里有一个「影子」——它会在玩家靠近时用叶槐无法知道的细节描述玩家",
+        "场景 2（张力 7）：裴晚的清洗次数被揭示：她已经删掉了自己近二十年的记忆。她记不清母亲的脸了。而她不记得自己记不清",
+        "场景 3（张力 8）：邵诤不再等交易了。云枢启动「回收程序」，加密整个隔间，开始把备份上传到云端——一旦上传完成，裴芜会被拆成训练数据"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/09-起步战役.md:341"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕：摊牌",
+      "level_range": "1–3",
+      "summary": "目标：在上传完成前，对容器做最后一个决定。高潮三要素：无论选什么，都会有人失去一段自己；知情的选择；第 41 次备份一旦被写入或清除，这个「她」就再也不会以同样的方式存在第二次。",
+      "source": "docs/scenario/09-起步战役.md:362"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "档案层隔间",
+      "act": "act-1",
+      "next": [
+        "N12"
+      ],
+      "source": "docs/scenario/09-起步战役.md:329"
+    },
+    {
+      "id": "N12",
+      "name": "不该存在的日志",
+      "act": "act-1",
+      "next": [
+        "N13"
+      ],
+      "source": "docs/scenario/09-起步战役.md:330"
+    },
+    {
+      "id": "N13",
+      "name": "裴晚失踪",
+      "act": "act-1",
+      "next": [
+        "N21",
+        "N22",
+        "N23"
+      ],
+      "marks": [
+        "代价",
+        "牵连",
+        "回响"
+      ],
+      "source": "docs/scenario/09-起步战役.md:331"
+    },
+    {
+      "id": "N21",
+      "name": "第一次下网",
+      "act": "act-2",
+      "next": [
+        "N23"
+      ],
+      "source": "docs/scenario/09-起步战役.md:345"
+    },
+    {
+      "id": "N22",
+      "name": "清洗次数揭示",
+      "act": "act-2",
+      "next": [
+        "N23"
+      ],
+      "source": "docs/scenario/09-起步战役.md:346"
+    },
+    {
+      "id": "N23",
+      "name": "回收程序启动",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "unlock": "选定做法并付出第一个真实代价",
+      "source": "docs/scenario/09-起步战役.md:347"
+    },
+    {
+      "id": "N31",
+      "name": "容器的最后决定",
+      "act": "act-3",
+      "next": [
+        "ending-daichu",
+        "ending-qingchu",
+        "ending-liuxia"
+      ],
+      "source": "docs/scenario/09-起步战役.md:364"
+    },
+    {
+      "id": "Q-00",
+      "name": "第 41 次备份里有什么",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "叶槐在备份舱里说「你们终于来了」（第一幕场景 1）"
+        },
+        {
+          "from": "active",
+          "to": "confirmed",
+          "condition": "玩家确认「第 41 次备份里有两个意识，而且其中一个不属于这个世界」（第一幕收束条件）"
+        },
+        {
+          "from": "confirmed",
+          "to": "committed",
+          "condition": "玩家选定一种做法，并付出第一个真实代价——删掉自己的一段记忆，或失去一个身份（第二幕收束条件）"
+        },
+        {
+          "from": "committed",
+          "to": "bring_out",
+          "condition": "完成转移，把裴芜写进叶槐的容器（结局：带出）"
+        },
+        {
+          "from": "committed",
+          "to": "erase",
+          "condition": "让云枢完成回收，或由玩家亲手清除（结局：清除）"
+        },
+        {
+          "from": "committed",
+          "to": "leave",
+          "condition": "让第 41 次留在熵网里，成为一个稳定的锚点（结局：留下）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "confirmed",
+        "committed",
+        "bring_out",
+        "erase",
+        "leave"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/09-起步战役.md:325"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "第四十一次备份里装的，不是原主叶槐的意识，而是三十一年前坍缩那天没能退出的裴芜",
+      "carrier": "备份舱（叶槐，编号 E-2047）",
+      "npcs": [
+        "裴晚",
+        "叶槐",
+        "裴芜"
+      ],
+      "flags": [
+        "flag.backup_count"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "文档",
+          "detail": "备份日志里那段三十一年前的时间戳",
+          "source": "docs/scenario/09-起步战役.md:350"
+        },
+        {
+          "path": "人证",
+          "detail": "叶槐说出只有裴芜知道的事（一条河、一个名字）",
+          "source": "docs/scenario/09-起步战役.md:351"
+        },
+        {
+          "path": "环境",
+          "detail": "阿箬在无名区见过同样「不该存在」的中继——坍缩那天，有不止一个人没出来",
+          "source": "docs/scenario/09-起步战役.md:352"
+        }
+      ],
+      "source": "docs/scenario/09-起步战役.md:280"
+    },
+    {
+      "id": "C-02",
+      "name": "第 41 次备份里是裴芜，而「叶槐」正在被两个意识共同占据",
+      "carrier": "容器",
+      "npcs": [
+        "叶槐",
+        "裴芜"
+      ],
+      "flags": [
+        "flag.backup_count"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/09-起步战役.md:349"
+    },
+    {
+      "id": "C-03",
+      "name": "裴晚已经删掉了自己近二十年的记忆——她记不清母亲的脸了，而她不记得自己记不清",
+      "carrier": "清洗记录",
+      "npcs": [
+        "裴晚"
+      ],
+      "flags": [
+        "flag.memory_deleted"
+      ],
+      "source": "docs/scenario/09-起步战役.md:346"
+    },
+    {
+      "id": "C-04",
+      "name": "云枢盯上第四十一次备份：一个能被反复备份而不同步崩解的意识，是三十一年来最贵的技术样本",
+      "carrier": "云枢的收购意向",
+      "npcs": [
+        "邵诤"
+      ],
+      "flags": [
+        "flag.upload_started"
+      ],
+      "source": "docs/scenario/09-起步战役.md:288"
+    },
+    {
+      "id": "C-05",
+      "name": "裴芜不是唯一一个被留在里面的人",
+      "carrier": "复原的日志",
+      "npcs": [
+        "阿箬"
+      ],
+      "flags": [
+        "flag.log_restored"
+      ],
+      "note": "后续钩子：云枢的回收清单上，第 42 行到第 47 行，都不是空的（09 册后续钩子）。",
+      "source": "docs/scenario/09-起步战役.md:337"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "裴晚",
+      "role": "备份技师，三十六岁",
+      "drive": "把妹妹带回来——无论要清洗多少次自己",
+      "lever": "每做一次备份，她都要删掉自己的一段记忆来腾出带宽",
+      "mask": "冷静、程序化、把一切说成技术问题",
+      "tell": "说到「第 41 次」时，手会在键盘上停一拍",
+      "threshold": "如果被告知妹妹其实不想回来，她会先沉默，然后继续做",
+      "knows": [
+        "C-01",
+        "C-03"
+      ],
+      "source": "docs/scenario/09-起步战役.md:293"
+    },
+    {
+      "id": "npc-02",
+      "name": "叶槐",
+      "alias": "编号 E-2047，容器",
+      "role": "被反复备份的容器",
+      "drive": "想知道自己到底还是不是自己",
+      "lever": "他记得一些不属于自己的童年——一条河、一个叫「芜」的名字",
+      "mask": "顺从、配合、几乎不反抗",
+      "tell": "偶尔会用别人的口气说话，然后自己愣住",
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/09-起步战役.md:300"
+    },
+    {
+      "id": "npc-03",
+      "name": "邵诤",
+      "role": "云枢财团执行人",
+      "drive": "把样本完整地、可复制地交给公司",
+      "lever": "他的合同还剩两年，而他需要一份足以升职的成果",
+      "mask": "客气、专业、永远在谈流程",
+      "tell": "提到「同步率上限」时会露出一点得意——他知道别人不知道的事",
+      "knows": [
+        "C-04"
+      ],
+      "source": "docs/scenario/09-起步战役.md:306"
+    },
+    {
+      "id": "npc-04",
+      "name": "阿箬",
+      "role": "网潜者，二十三岁，引路人",
+      "drive": "挣够钱，把父亲从无名区找回来（他也在熵网里）",
+      "lever": "她下过很多次网，从没遇到过像「第 41 次」这样的东西",
+      "mask": "吊儿郎当、嘴上不饶人",
+      "tell": "说法说到一半会突然停下来「听」——她真的听见了",
+      "knows": [
+        "C-05"
+      ],
+      "source": "docs/scenario/09-起步战役.md:312"
+    },
+    {
+      "id": "npc-05",
+      "name": "裴芜",
+      "alias": "熵网里的意识（三十一年前失踪时十七岁）",
+      "role": "第 41 次备份里的第二个意识",
+      "drive": "出去；或者，至少被记住",
+      "lever": "她只记得姐姐叫过一次她的名字，而那一次姐姐在哭",
+      "mask": "她通过叶槐说话，语气很轻，像怕吵到谁",
+      "tell": "她会用裴晚的口气讲裴晚做过的梦",
+      "knows": [
+        "C-01",
+        "C-02"
+      ],
+      "source": "docs/scenario/09-起步战役.md:318"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "档案层隔间",
+      "atmosphere": "老式备份舱里躺着叶槐",
+      "source": "docs/scenario/09-起步战役.md:329"
+    },
+    {
+      "id": "loc-02",
+      "name": "无名区旧中继",
+      "purpose": "裴晚失踪后留下的坐标所指之处",
+      "source": "docs/scenario/09-起步战役.md:331"
+    },
+    {
+      "id": "loc-03",
+      "name": "高同步区",
+      "atmosphere": "在里面待太久的人会开始分不清自己是本体还是备份",
+      "source": "docs/scenario/09-起步战役.md:358"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-daichu",
+      "name": "带出",
+      "type": "转移",
+      "requirements": "完成转移，把裴芜写进叶槐的容器",
+      "result": "一具身体里有两个人。叶槐同意共用，代价是他从此再也不能确定哪段记忆是自己的。裴晚终于认得出妹妹的脸——然后发现自己认不出母亲的",
+      "source": "docs/scenario/09-起步战役.md:376"
+    },
+    {
+      "id": "ending-qingchu",
+      "name": "清除",
+      "type": "消散",
+      "requirements": "让云枢完成回收，或由玩家亲手清除",
+      "result": "裴芜永久消散。叶槐恢复「干净」，但失去了一整段情感记忆。裴晚崩溃——而且她连自己被删掉的部分都记不得了，所以她的崩溃看起来很平静",
+      "source": "docs/scenario/09-起步战役.md:377"
+    },
+    {
+      "id": "ending-liuxia",
+      "name": "留下",
+      "type": "锚点",
+      "requirements": "让第 41 次留在熵网里，成为一个稳定的锚点",
+      "result": "裴芜不出去，但也不再消散；她成了网里一个能被人找到的坐标。云枢失手，叶槐恢复原状，裴晚把剩下的日子用来做一件事：每个月下一次网，去看她一次",
+      "source": "docs/scenario/09-起步战役.md:378"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/09-起步战役.md:273",
+    "declared_flag_count": 0,
+    "actual_flag_count": 7,
+    "flag": [
+      {
+        "id": "flag.backup_count",
+        "type": "int",
+        "initial": 41,
+        "write": "第四十一次备份成功，容器稳住",
+        "readers": "C-01/C-02/Q-00",
+        "effect": "因为这一次，裴芜也学会了配合",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:280"
+      },
+      {
+        "id": "flag.memory_deleted",
+        "type": "bool",
+        "initial": false,
+        "write": "裴晚的清洗次数被揭示",
+        "readers": "C-03",
+        "effect": "她已删掉自己近二十年的记忆；她不记得自己记不清",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:346"
+      },
+      {
+        "id": "flag.log_restored",
+        "type": "bool",
+        "initial": false,
+        "write": "从备份舱的残留数据里复原三十一年前的日志",
+        "readers": "C-05",
+        "effect": "得知裴芜不是唯一一个被留在里面的人",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:337"
+      },
+      {
+        "id": "flag.upload_started",
+        "type": "bool",
+        "initial": false,
+        "write": "场景 3：云枢启动「回收程序」，加密整个隔间",
+        "readers": "C-04/act-3",
+        "effect": "开始把备份上传到云端；一旦上传完成，裴芜会被拆成训练数据",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:347"
+      },
+      {
+        "id": "flag.peiwan_contacted",
+        "type": "bool",
+        "initial": false,
+        "write": "分支 A：按坐标去无名区找到裴晚",
+        "readers": "Q-00",
+        "effect": "你们知道了真相的方向，也成了她的共犯",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:335"
+      },
+      {
+        "id": "flag.deal_refused",
+        "type": "bool",
+        "initial": false,
+        "write": "分支 B：拒绝邵诤的正式收购",
+        "readers": "act-2/act-3",
+        "effect": "在「卖掉一个人」和「拒绝财团」之间选了后者",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:336"
+      },
+      {
+        "id": "flag.identity_lost",
+        "type": "bool",
+        "initial": false,
+        "write": "第二幕收束：付出第一个真实代价",
+        "readers": "Q-00",
+        "effect": "删掉自己的一段记忆，或失去一个身份",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:360"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.yunshu",
+        "type": "int",
+        "initial": 0,
+        "write": "与云枢交易 / 对抗",
+        "readers": "act-2/act-3",
+        "effect": "云枢财团态度",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:336"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.upload",
+        "type": "int",
+        "initial": 0,
+        "write": "回收程序每推进一段 +1",
+        "readers": "act-2/act-3",
+        "effect": "一旦上传完成，裴芜会被拆成训练数据",
+        "note": "09 册未设变量表，本行由正文机制推导（declared=0 如实记录）",
+        "source": "docs/scenario/09-起步战役.md:347"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "entropic-net",
+      "engine": "build",
+      "campaign": "第 41 次备份",
+      "session": 1,
+      "party_level": 1,
+      "tone_pack": "冷硬",
+      "safety_boundaries": []
+    },
+    "clock": {
+      "day": 1,
+      "watch": "班",
+      "upload": 0,
+      "backup_count": 41,
+      "active_pressure": "云枢回收程序进行中"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "裴晚",
+        "role": "备份技师，三十六岁",
+        "drive": "把妹妹带回来——无论要清洗多少次自己",
+        "lever": "每做一次备份，她都要删掉自己的一段记忆来腾出带宽",
+        "mask": "冷静、程序化、把一切说成技术问题",
+        "tell": "说到「第 41 次」时，手会在键盘上停一拍",
+        "affinity": 0,
+        "location": "档案层隔间",
+        "status": "missing",
+        "knows": [
+          "C-01",
+          "C-03"
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "第 41 次备份里装的是三十一年前没能退出的裴芜",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "阿箬父亲的名字，出现在三十一年前那段日志的下一行",
+      "无名区里那个「不该存在」的中继，编号是 41",
+      "裴晚删掉的那二十年里，有一段是关于她母亲的——而她的母亲，当年也在线上",
+      "云枢的回收清单上，第 42 行到第 47 行，都不是空的"
+    ],
+    "flags": {
+      "backup_count": 41,
+      "memory_deleted": false,
+      "log_restored": false,
+      "peiwan_contacted": false,
+      "deal_refused": false,
+      "identity_lost": false,
+      "rep_yunshu": 0,
+      "upload": 0
+    },
+    "source": "docs/scenario/09-起步战役.md:273"
+  }
+}
