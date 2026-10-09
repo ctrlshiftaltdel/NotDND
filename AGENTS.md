@@ -8,6 +8,14 @@
 
 > ⚠️ 本仓库默认分支是 **`master`**（不是 `main`）。下文所有「主分支」都指 `master`。
 
+## 0. 接手入口
+
+- **主管 / Master Agent**：接手只需一句 **「你是主管/Master Agent，继续工作」**。
+  先读 [`MASTER.md`](MASTER.md)（当前状态 / 路线图 / 全面检查清单），再读本文件，
+  然后以 **GitHub 的 Issues / PRs** 为唯一事实来源继续；参考项目可复用资产见
+  [`DNDWEB-ASSETS.md`](DNDWEB-ASSETS.md)。
+- **实现 Agent**：只领人指定的 Issue；从最新 `master` 开分支、尽早开 Draft PR，**不合并**。
+
 ## 1. 项目速览
 
 | 项 | 内容 |
@@ -125,6 +133,7 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 | `tests/` | 回归测试 |
 | `README.md`、`HANDOVER.md` | 文档 |
 | `AGENTS.md`、`CONTRIBUTING.md` | 协作契约 |
+| `MASTER.md`、`DNDWEB-ASSETS.md` | 主管接手手册 / 参考项目资产清单 |
 | `docs/` | PRISM 原创规则与剧本，**可修订**（须独自成 PR，见下） |
 | `save/`、`web-saves/`、`screenshots/`、`tests/shots/`、`.worktrees/`、`.workbuddy/`、`.codegraph/`、`.opencode/`、`.env` | 本地运行物 / 本地索引 / 密钥，**禁入库** |
 
