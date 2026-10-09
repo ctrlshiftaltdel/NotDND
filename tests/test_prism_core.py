@@ -358,6 +358,9 @@ def check_pressure_tension():
     assert pc.risk_roll("dangerous", rng=SeqRandom(4))["triggered"] is True
     assert pc.risk_roll("safe", rng=SeqRandom(7))["triggered"] is False
     assert pc.risk_roll("standard", rng=SeqRandom(6))["triggered"] is True
+    # 「5–6 触发」变体：face 覆盖默认触发面（03:53）。
+    assert pc.risk_roll("standard", rng=SeqRandom(5), face=5)["triggered"] is True
+    assert pc.risk_roll("standard", rng=SeqRandom(4), face=5)["triggered"] is False
     try:
         pc.risk_roll("void")
     except ValueError:
@@ -373,11 +376,11 @@ def check_check_notation():
     assert pc._check_notation({"notation": "2d6"}, None) == "2d6"
     # 无修正 → 默认 1d20。
     assert pc._check_notation({}, _unit()) == "1d20"
-    # 负担 6 → −3；疲惫 → 再 −1。
+    # 负担与疲惫**不折入记法**（统一走劣势层口径，主管预审裁定）。
     unit = _unit()
     unit["resources"]["strain"] = 6
     unit["conditions"] = ["疲惫"]
-    assert pc._check_notation({}, unit) == "1d20-4"
+    assert pc._check_notation({}, unit) == "1d20"
     # 属性 8 → +2；1 级熟练 +2 → 合计 +4；专精再 +1。
     unit = _unit(attributes={"MGT": 8})
     action = {"attribute": "MGT", "proficient": True}
@@ -391,12 +394,29 @@ def check_check_notation():
         pass
     else:
         raise AssertionError("未知属性应报错")
-    # 状态劣势层数：失衡 / 中毒 / 恐惧 各 −1，上限 −3。
+
+    # 劣势层（统一口径）：失衡 / 中毒 / 恐惧 / 疲惫 各 −1 层。
     unit = _unit()
     unit["conditions"] = ["失衡", "中毒", "恐惧", "流血"]
-    assert pc._condition_disadvantage(unit) == 3
+    assert pc._unit_disadvantage(unit) == 3
+    # 负担档位：2–3 → 1 层；4–5 → 2 层；6 → 3 层。
+    unit = _unit()
+    unit["resources"]["strain"] = 2
+    assert pc._unit_disadvantage(unit) == 1
+    unit["resources"]["strain"] = 5
+    assert pc._unit_disadvantage(unit) == 2
+    unit["resources"]["strain"] = 6
+    assert pc._unit_disadvantage(unit) == 3
+    # 疲惫单独 −1 层；与负担合并后封顶 3 层（02A:83）。
+    unit = _unit()
+    unit["conditions"] = ["疲惫"]
+    assert pc._unit_disadvantage(unit) == 1
+    unit["resources"]["strain"] = 6
+    assert pc._unit_disadvantage(unit) == 3
+    # 增益不计层。
+    unit = _unit()
     unit["conditions"] = ["加速", "护持"]
-    assert pc._condition_disadvantage(unit) == 0
+    assert pc._unit_disadvantage(unit) == 0
 
 
 # ── 十一、perform_action 集成 ───────────────────────────────────────────

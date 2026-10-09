@@ -793,11 +793,17 @@ def _fire_pressure_event(session: RuleSession) -> dict | None:
 RISK_POOL_ZONES = {"safe": (8, 8), "standard": (6, 6), "dangerous": (4, 4)}
 
 
-def risk_roll(zone: str = "standard", *, rng=None) -> dict:
-    """风险池的一次触发判定（纯函数，不碰会话状态）。"""
+def risk_roll(zone: str = "standard", *, rng=None, face: int | None = None) -> dict:
+    """风险池的一次触发判定（纯函数，不碰会话状态）。
+
+    `face` 覆盖默认触发面：docs/system/03:53 写「掷出 6（或 5–6，
+    取决于区域危险度）」——标准区想用 5–6 变体时传 face=5 即可
+    （掷出 ≥ face 触发）；缺省按区域默认面（d6→6 / d8→8 / d4→4）。
+    """
     if zone not in RISK_POOL_ZONES:
         raise ValueError(f"未知区域类型：{zone}")
-    sides, face = RISK_POOL_ZONES[zone]
+    sides, default_face = RISK_POOL_ZONES[zone]
+    face = default_face if face is None else int(face)
     value = int((rng or random).randint(1, sides))
     return {"zone": zone, "die": f"d{sides}", "value": value,
             "face": face, "triggered": value >= face}
@@ -888,7 +894,7 @@ def perform_action(session: RuleSession, action_id: str, unit_id: str = "",
         result = roll(_check_notation(action, unit),
                       advantage=int(action.get("advantage") or 0),
                       disadvantage=int(action.get("disadvantage") or 0)
-                      + _condition_disadvantage(unit),
+                      + _unit_disadvantage(unit),
                       rng=rng)
         rolled = True
 
@@ -1013,41 +1019,34 @@ def judge_check(total: int, df: int, *, auto_pass: bool = False,
     return "catastrophe"
 
 
-def _condition_disadvantage(unit: dict | None) -> int:
-    """单位状态带来的劣势层数（docs/system/02A 第二节劣势来源表）。
+def _unit_disadvantage(unit: dict | None) -> int:
+    """单位自身状态与负担带来的劣势层数，合并后封顶 3 层。
 
-    处于【失衡】【中毒】【恐惧】等状态：每个 −1 层，上限 −3。
-    其余劣势来源（掩体、照明、分心……）是情境裁定，由调用方通过
-    action["disadvantage"] 显式传入，本层不猜测。
+    口径统一为**劣势层**（主管预审裁定，PR #57 审查线）：文档里
+    「所有判定 −N 骰」与本引擎唯一的骰惩罚机制（劣势骰，02A 第二节 /
+    02A:655 命中公式「助势骰 - 劣势骰」）是同一件事——
+      · 【失衡】【中毒】【恐惧】等状态：每个 −1 层（02A:112）；
+      · 【疲惫】：−1 层（01:276「所有判定 −1 骰」）；
+      · 负担 2–3 → −1 层；4–5 → −2 层；6 → −3 层（01:670-672）。
+    合并后封顶 3 层（02A:83「劣势同样最多 3 层」）。
+    注（文档级张力）：01:253 写恐惧「对恐惧来源的攻击 −1 骰」，此处
+    取 02A:112 的「所有判定」口径——前者是攻击的子集情形，见 PR。
+    行动数据显式传入的情境劣势（`action["disadvantage"]`）另计，
+    最终仍由 roll() 按 02A:83 封顶。
     """
     if not unit:
         return 0
-    count = sum(1 for item in unit.get("conditions") or []
-                if item in ("失衡", "中毒", "恐惧"))
-    return min(3, count)
-
-
-def _flat_check_penalty(unit: dict | None) -> int:
-    """负担与【疲惫】带来的固定判定减值（负数）。
-
-    负担档位按 docs/system/01 第十二节：2–3 → −1；4–5 → −2；6 → −3；
-    【疲惫】按 data/system/conditions.json derived：所有判定 −1。
-    注：源文档写作「判定 −1 骰」，本实现按固定减值处理（等效于把
-    一层劣势折算为 −1），与助势骰劣势层不混算——理由与对照见 PR。
-    """
-    if not unit:
-        return 0
-    penalty = 0
+    conditions = unit.get("conditions") or []
+    layers = sum(1 for item in conditions
+                 if item in ("失衡", "中毒", "恐惧", "疲惫"))
     strain = int((unit.get("resources") or {}).get("strain", 0) or 0)
     if strain >= 6:
-        penalty -= 3
+        layers += 3
     elif strain >= 4:
-        penalty -= 2
+        layers += 2
     elif strain >= 2:
-        penalty -= 1
-    if "疲惫" in (unit.get("conditions") or []):
-        penalty -= 1
-    return penalty
+        layers += 1
+    return min(3, layers)
 
 
 def _check_notation(action: dict, unit: dict | None) -> str:
@@ -1059,16 +1058,16 @@ def _check_notation(action: dict, unit: dict | None) -> str:
       · `attribute` / `proficient` / `specialty` 字段存在时按公式折入
         固定加值（属性修正表见 data/system/attributes.json；熟练量表见
         docs/system/01 第十四节；专精额外 +1，见 02A 第一节）；
-      · 负担与【疲惫】的固定减值一并折入；
-      · 助势骰不进记法，由 roll() 的 advantage / disadvantage 参数
-        按 docs/system/02A 第二节结算。
+      · 助势骰（含优势与劣势层）不进记法：状态与负担的劣势层经
+        `_unit_disadvantage`、情境劣势经 `action["disadvantage"]`，
+        由 roll() 的 advantage / disadvantage 参数按 02A 第二节结算。
     情境修正（态势、高地、掩体等）由调用方折入 `notation` 或
     `advantage` / `disadvantage`，本层不臆测场景。
     """
     explicit = str(action.get("notation") or "").strip()
     if explicit:
         return explicit
-    flat = _flat_check_penalty(unit)
+    flat = 0
     attribute = str(action.get("attribute") or "").strip().upper()
     if attribute:
         if attribute not in ATTRIBUTES:
@@ -1076,7 +1075,8 @@ def _check_notation(action: dict, unit: dict | None) -> str:
         value = int(((unit or {}).get("attributes") or {}).get(attribute, 4))
         flat += attribute_modifier(value)
         if action.get("proficient"):
-            level = int((unit or {}).get("level") or 1)
+            level = 1 if (unit or {}).get("level") is None \
+                else int(unit["level"])
             flat += proficiency_bonus(level)
         if action.get("specialty"):
             flat += 1
