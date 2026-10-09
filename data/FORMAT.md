@@ -750,6 +750,14 @@ data/
 - 可选：`locations`、`debts`、`nemeses`、`factions`、`flags`，以及各世界模组
   独有的节（如 `depth`、`frontline`、`supply`）——允许 `additionalProperties`，
   以便「不强求三套模组同构」。
+- **地点钉住（ATLAS 切片 I6）**：账本 `locations[]` 条目与 `npcs[]` 中
+  `location` 为非空字符串的条目，附带 `place_id`（string|null）与 `pinned`
+  （boolean）两个可选字段。`place_id` 是该世界编译后地图的 place id
+  （如 `entropic-net/region-06`）。钉住规则：地点字符串与区域主名
+  （区域 `name` 全角竖线前部分）或关键地点全文**互为包含**且命中唯一时才钉；
+  命中 0 个或多个、或 `meta.world` 在 `data/worlds/` 暂无世界模组时，
+  保持原字符串不动，记 `place_id: null`、`pinned: false`，**不臆造坐标**。
+  回归锁：`tests/test_atlas_ledger_pins.py`。
 
 **场地要素**（site element）统一为对象：
 

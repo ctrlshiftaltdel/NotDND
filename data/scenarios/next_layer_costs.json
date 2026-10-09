@@ -675,7 +675,9 @@
         "affinity": 0,
         "location": "口上·行会",
         "status": "neutral",
-        "knows": []
+        "knows": [],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "threads": [

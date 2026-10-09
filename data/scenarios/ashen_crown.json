@@ -2892,7 +2892,9 @@
           "C-01",
           "C-04",
           "C-12"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "factions": {
@@ -2929,7 +2931,9 @@
           "四碗客栈"
         ],
         "changed": false,
-        "notes": []
+        "notes": [],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "flags": {

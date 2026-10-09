@@ -486,7 +486,9 @@
         "status": "waking",
         "knows": [
           "C-02"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "threads": [

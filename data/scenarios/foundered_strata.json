@@ -2157,7 +2157,9 @@
         "knows": [
           "匿名买家",
           "第九张图归属"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "factions": {
@@ -2199,7 +2201,9 @@
           "裂隙营地"
         ],
         "changed": false,
-        "notes": []
+        "notes": [],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "flags": {

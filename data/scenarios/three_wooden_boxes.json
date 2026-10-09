@@ -610,7 +610,9 @@
         "knows": [
           "C-01",
           "C-03"
-        ]
+        ],
+        "place_id": null,
+        "pinned": false
       }
     ],
     "threads": [
