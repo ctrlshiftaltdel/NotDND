@@ -22,6 +22,7 @@ data/
 │   └── scenario.schema.json
 ├── system/                   # 跨世界规则（源自 docs/system/）
 ├── worlds/                   # 世界模组（源自 docs/scenario/05、06、07）
+├── atlas/                    # ATLAS 空间词表（atlas.lexicon）
 ├── scenarios/                # 剧本 / 战役（源自 docs/scenario/09、S8、S1–S6）
 └── random_tables/            # 随机表（源自 docs/system/08 与 docs/scenario/S7）
 ```
@@ -772,6 +773,28 @@ costs: [ { unit, amount, raw? } ]
 ```
 world_rules.tracks: [ { key, name, range?, effects[], recovery[] } ]
 ```
+
+### 4.5 atlas 族
+
+**`atlas.lexicon`**（`data/atlas/lexicon.json`；ATLAS 自动地图切片 I2）
+
+- 空间词表：`entries[]` 为 `{id, trait, terms[]}`；`trait` 只用枚举
+  （`settlement | wilderness | span_country | vertical | below | network |
+  water | barrier | unlisted | abstract | unstable | carry | shortcut`），
+  `terms[]` 在同一 trait 内不得重复（schema `uniqueItems`）。
+- **本 kind 无 `source`**：词表是通用空间词，不是某份 `docs/` 引文，不逐字溯源；
+  条目**禁止携带 `source` 键**（schema `additionalProperties: false` 拒绝）。
+  第 6 节的 `source` 校验对本 kind 不适用。
+- 编译器（`atlas_compile.py`）的**扫描范围**（设计依据 ATLAS-DESIGN.md §4.3）：
+  - `regions[]` 的 `name`、`summary`、`atmosphere`：方位、围绕、性状、数字；
+  - `regions[]` 的 `key_places[]`、`events[]`：性状、数字、关键地点锚
+    （**不从这里取方位**）；
+  - `glossary[]` 的 `term`、`meaning`：世界级性状（另开一帧、可携带），
+    不安到某一个区域上；
+  - `world_rules` 里的字符串值：同上；跳过键名以 `_source` 结尾的值，
+    跳过符合 `docs/...md:行号` 形式的值。
+  - **不读**：`history`、`factions`、`tracks`、`careers`、`abilities`、
+    `equipment`、`enemies`、`random_tables`、`powers`。
 
 ## 5. 散文策略
 
