@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "atlas 族（atlas.lexicon）",
+  "description": "ATLAS 空间词表（ATLAS-DESIGN.md §4）。通用空间词与性状的对应表，供 atlas_compile.py 从世界模组短文本推出尺度与构成。本 kind 无 source：词表是通用空间词，不是某份 docs/ 引文，不逐字溯源；条目也禁止携带 source 键。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "entries"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "atlas.lexicon"},
+    "entries": {"type": "array", "items": {"$ref": "#/$defs/entry"}}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "entry": {
+      "title": "词表条目",
+      "type": "object",
+      "required": ["id", "trait", "terms"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+        "trait": {
+          "enum": ["settlement", "wilderness", "span_country", "vertical",
+                   "below", "network", "water", "barrier", "unlisted",
+                   "abstract", "unstable", "carry", "shortcut"]
+        },
+        "terms": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

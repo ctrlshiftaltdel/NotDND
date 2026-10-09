@@ -60,6 +60,7 @@
     "system.guardrails": "system.guardrails.schema.json",
     "system.antipatterns": "system.antipatterns.schema.json",
     "world.module": "world.schema.json",
+    "atlas.lexicon": "atlas.lexicon.schema.json",
     "random_tables.catalog": "random_tables.schema.json",
     "scenario.campaign": "scenario.schema.json"
   }

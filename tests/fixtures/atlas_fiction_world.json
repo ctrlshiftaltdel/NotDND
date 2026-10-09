@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "kind": "world.module",
+  "world": {"key": "fiction-test", "name": "虚构测试世界", "engine": "tactics"},
+  "glossary": [
+    {"term": "虚境", "meaning": "不存在的物理空间，访客的意识在此短暂停留"}
+  ],
+  "regions": [
+    {"id": "r-north", "name": "北岭",
+     "summary": "北方的冻土荒野。半径 30 公里。",
+     "key_places": ["北岭哨站", "冻瀑", "雪线营地"],
+     "events": ["补给断绝"]},
+    {"id": "r-core", "name": "核心城",
+     "summary": "中央的老城区，市场昼夜不歇。",
+     "key_places": ["大市集", "钟塔", "旧市政厅"],
+     "events": ["走私"]},
+    {"id": "r-ring", "name": "环城",
+     "summary": "围绕核心城的一圈住宅与仓库。"},
+    {"id": "r-deep", "name": "深库",
+     "summary": "地下三层的档案库，楼层通道相连。",
+     "key_places": ["负一层闸口", "负二层机阵", "负三层库心"]}
+  ],
+  "world_rules": {
+    "passage": {"note": "穿行约需 1 个时段（而不是数天的路程）。"}
+  }
+}

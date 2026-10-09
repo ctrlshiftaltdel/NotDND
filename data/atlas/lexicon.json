@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "kind": "atlas.lexicon",
+  "entries": [
+    {"id": "settlement", "trait": "settlement",
+     "terms": ["城区", "街区", "港口", "市场", "住宅", "都市", "工业区", "老港"]},
+    {"id": "wilderness", "trait": "wilderness",
+     "terms": ["荒野", "山脉", "极地", "平原", "林城", "地下林", "废墟"]},
+    {"id": "span_country", "trait": "span_country",
+     "terms": ["小国"]},
+    {"id": "vertical", "trait": "vertical",
+     "terms": ["环道", "崖壁", "楼层"]},
+    {"id": "below", "trait": "below",
+     "terms": ["地下", "负一层", "负二层", "负三层"]},
+    {"id": "network", "trait": "network",
+     "terms": ["地铁", "根系", "桥", "通道"]},
+    {"id": "water", "trait": "water",
+     "terms": ["群岛", "水上"]},
+    {"id": "barrier", "trait": "barrier",
+     "terms": ["山脉", "封锁", "雷区"]},
+    {"id": "unlisted", "trait": "unlisted",
+     "terms": ["地图上没有", "导航到不了"]},
+    {"id": "abstract", "trait": "abstract",
+     "terms": ["不存在的物理", "无法解析", "数据区域", "网潜"]},
+    {"id": "unstable", "trait": "unstable",
+     "terms": ["每次测量不同", "渗溢", "薄处", "没有几何"]},
+    {"id": "carry", "trait": "carry",
+     "terms": ["带出来", "成为现实"]},
+    {"id": "shortcut", "trait": "shortcut",
+     "terms": ["而不是数天", "穿行约需"]}
+  ]
+}
