@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环、pcm16 语音代理与战役绑定
-（G1 / G2 / G3 / G4 / G5）。
+"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环、pcm16 语音代理、战役绑定
+与实相（G1 / G2 / G3 / G4 / G5 / G6）。
 
-设计依据：GUIDE-DESIGN.md（§2.1 走进地点的定义 / §2.2 角色行为与对白 /
+设计依据：GUIDE-DESIGN.md（§2.1 走进地点的定义与实相 / §2.2 角色行为与对白 /
 §4.3 已拍板 / §5.1 模块边界 / §5.2 回合怎么走 / §5.3 环境 / §5.4 缓存导向的提示词 /
-§5.5 思考策略 / §5.6 工具 / §5.9 语音管线 / §5.10 我们自己的 HTTP / §6 接口变化 /
-§7 数据模型 / §10 可观测性 / PR Plan G1–G5）。
+§5.5 思考策略 / §5.6 工具 / §5.7 实相请求体 / §5.9 语音管线 / §5.10 我们自己的 HTTP /
+§6 接口变化 / §7 数据模型 / §10 可观测性 / PR Plan G1–G6）。
 
 G1（前缀与离线骨架）：
 
@@ -66,8 +66,23 @@ G5（战役绑定与典范卡）：
   名字、顶层线索的 id 与名字。**纯函数**，两次构建字节相同；salt 不进 L1；
 - `location_ok`：`turn` 的可选 `location_id` 必须等于已绑定剧本里某个地点的 `id`
   （§2.1）。对不上在状态行之前 400「没有这个地点」，不叫模型；
-- `ensure_realization`：**G5 的函数体只有 `return`**——不打开套接字、不画街道。
-  G6 才替换这个函数体（锁内写 `pending` → 锁外读上游 → 校验 → 换图或要点退回）。
+- `ensure_realization`：**G5 的函数体只有 `return`**——不打开套接字、不画街道；
+  G6 才替换这个函数体。
+
+G6（实相）：
+
+- `ensure_realization`（§5.2 / §5.7）：锁内写 `pending` 并 `save`（`claim` +
+  `claimed_at`）；新鲜 `pending`（120 秒内）直接返回，不重画，也不写要点退回；
+  锁外才读上游，硬失败再请求一次，两次都失败或超时就由服务端造要点链，
+  `source` 为 `fallback`；只有自己仍是 `claim` 的主人才用图或退回替换 `pending`，
+  删掉 `claim` / `claimed_at`，此时才重写 L2（salt 与实相摘要在这时才进 L2）并
+  清空 L3。焦点仍是显式 `location_id`，实相只落 `guide.realizations`；
+- `validate_realization`：**纯函数**（§2.1）。硬失败只来自整张图（`失败：`），
+  多一个近名、多一条指向已丢节点的边只丢弃（`丢弃：`），不是整张图失败；
+- 实相请求体：思考开、`stream` 为 false、4096、无工具、自己的 messages；
+  user 消息 = 典范切片 + salt + 输出合同（合同按这一张卡的专名填，不写进 L0）；
+- 种类印证词写在 Python 元组里，**不**写进 `data/atlas/lexicon.json`（那是 ATLAS
+  的数据）；实相不带坐标，不改 ATLAS，不改 `data/` 与 `docs/`。
 
 密钥只放请求头 `api-key`，不进 URL、不进 JSON、不进状态字典、不进日志；
 异常字符串不携带上游响应体（§5.1 / §8）。
@@ -79,6 +94,7 @@ import os
 import pathlib
 import re
 import secrets
+import time
 import urllib.request
 
 import prism_core
@@ -357,12 +373,13 @@ _ATTR_LABELS = (
 )
 
 
-def build_l2(rules):
+def build_l2(rules, guide=None):
     """由规则快照构建检查点（L2）。
 
-    未提交过实相时不含 salt、声线与实相摘要（G1 永未提交）；
-    队员为空则整段是 `【检查点】\\n账本：无\\n`。纯函数：同一输入
-    两次构建字节相同。
+    未提交实相时不含 salt、声线与实相摘要；**只有**当 `guide` 里焦点地点已经有一份
+    定稿的实相（`source` 为 `model` / `fallback`）时才追加「焦点 / salt」两行——`pending`
+    不是提交，`claimed_at` 永不进 L2（§5.2 / §7）。队员为空且未提交实相则整段是
+    `【检查点】\\n账本：无\\n`。纯函数：同一输入两次构建字节相同。
     """
     rules = rules or {}
     lines = ["【检查点】"]
@@ -382,22 +399,31 @@ def build_l2(rules):
                 value = 0
             fields.append(label + " " + str(value))
         lines.append("队员：" + " / ".join(fields))
+    guide = guide if isinstance(guide, dict) else {}
+    realization = focus_realization(guide)
+    if realization is not None:
+        lines.append("焦点：" + realization_summary(realization))
+        lines.append("salt：" + str(guide.get("salt") or ""))
     lines.append(L2_TAIL)
     return "\n".join(lines) + "\n"
 
 
 def ensure_l2(guide, rules):
-    """`scene.id` 变化时重写 L2 并清空 L3（transcript）；否则原样复用。
+    """`scene.id` 变化时重写 L2 并清空 L3（transcript）；否则复用。
 
-    只改等级或六维、不改 `scene.id` 时，L2 原样复用（§5.4）。
-    返回当前 L2 文本。
+    只改等级或六维、不改 `scene.id` 时 L2 原样复用（§5.4）。实相提交会让焦点行
+    变化，此时即使 `scene.id` 没变也要刷新 L2（但**不**清空 L3——清空 L3 只由
+    `scene.id` 变化或实相提交那一刻负责）。返回当前 L2 文本。
     """
     scene = (rules or {}).get("scene") or {}
     scene_id = str(scene.get("id") or "")
+    text = build_l2(rules, guide)
     if guide.get("l2_scene_id") != scene_id:
         guide["l2_scene_id"] = scene_id
-        guide["l2"] = build_l2(rules)
+        guide["l2"] = text
         guide["transcript"] = []
+    elif guide.get("l2") != text:
+        guide["l2"] = text
     return guide["l2"]
 
 
@@ -705,14 +731,822 @@ def location_ok(guide, location_id):
     return False
 
 
-def ensure_realization(web_session, location_id):
-    """确保焦点地点的实相（地点图）已经生成（§2.1 / §5.2）。
+# ── §2.1 / §5.2 / §5.7 实相（G6）───────────────────────────────────────
+#
+# 实相 = 「把一张地点卡读成可走的地方」。只把模型输出收成 `guide.realizations`，
+# 不写 `rules`、不写 ATLAS 帧、不要坐标（§2.1）。种类印证词写在下面的元组里，
+# **不**写进 `data/atlas/lexicon.json`（那是 ATLAS 的数据，G6 不改 `data/`）。
 
-    **G5 的函数体只有 `return`**：不打开套接字、不画街道、一个字都不写。
-    位置（在状态行之后、叙事之前调用）、写 `pending` 的顺序与 `claim` 的语义
-    由 G6 决定；G6 只替换这个函数体，不改 `notdnd_web.py`，也不再开 SSE 分支。
+# 实相请求参数（§5.7）：思考开、非流式、4096、无工具、自己的 messages。
+REALIZATION_MAX_TOKENS = 4096
+
+# 实相的时间盒（§5.11）：另计 40 秒，不从叙事的 45 秒里扣。硬失败再请求一次，
+# 两次共用这一个盒子。
+REALIZATION_TIMEOUT_S = 40.0
+
+# 典范切片上限（§2.1：**不含输出合同**）；区域摘要先截到 200 字（§2.1）。
+REALIZATION_SLICE_LIMIT = 4000
+REALIZATION_REGION_LIMIT = 200
+
+# `people` 至多 4 个（§5.7）；id 由服务端生成，前缀 `inc-`（§2.2）。
+REALIZATION_PEOPLE_LIMIT = 4
+INCIDENTAL_PREFIX = "inc-"
+
+# 六种 kind 的闭集（§2.1）。`要点` 只留给典范专名本身。
+REALIZATION_KINDS = ("街", "建筑", "富区", "贫区", "下层", "要点")
+
+# 引用合法：`field` 只能是这五种（§2.1「引用合法」）。
+REALIZATION_CITE_FIELDS = ("atmosphere", "key_places", "glossary",
+                           "faction", "region_summary")
+
+# 非 `key_places` 的引用至少连续 4 个码位（§2.1）。
+REALIZATION_CITE_MIN = 4
+
+# 秘密的连续窗口（§2.1 / §2.2「连续 8 个码位」）。
+REALIZATION_SECRET_WINDOW = 8
+
+# 种类印证词（§2.1，写在 Python 元组里，**不**进 `data/atlas/lexicon.json`）。
+# `街` 与 `建筑` 不套这张表，只要引用合法。
+REALIZATION_EVIDENCE = {
+    "富区": ("钱", "富", "宅", "拍卖"),
+    "贫区": ("贫", "棚", "租", "陋", "檐", "工人", "下水道"),
+    "下层": ("地", "井", "渠", "排", "涝", "渗", "库", "下层"),
+}
+REALIZATION_OLD_MONEY = "老钱"
+REALIZATION_NEGATIONS = ("不是", "并非", "没有")
+
+# 实相的 `source`（§7）：`pending` 不是提交，只有这两个才叫「已定稿」。
+REALIZATION_PENDING = "pending"
+REALIZATION_MODEL = "model"
+REALIZATION_FALLBACK = "fallback"
+REALIZATION_DONE_SOURCES = (REALIZATION_MODEL, REALIZATION_FALLBACK)
+
+FAIL_PREFIX = "失败："
+DROP_PREFIX = "丢弃："
+REALIZE_FAIL_JSON = "失败：输出不是 JSON"
+REALIZE_FAIL_ONLY_KEY = "失败：只有要点"
+
+
+def realize_fail_renamed(name):
+    """`失败：改了典范名：{看到的名字}`（§2.1）。"""
+    return FAIL_PREFIX + "改了典范名：" + str(name)
+
+
+def realize_fail_missing(head):
+    """`失败：缺少要点：{专名}`（§2.1）。"""
+    return FAIL_PREFIX + "缺少要点：" + str(head)
+
+
+def realize_fail_no_cite(node_id):
+    """`失败：无引用：{节点 id}`（§2.1）。"""
+    return FAIL_PREFIX + "无引用：" + str(node_id)
+
+
+def realize_fail_kind(node_id):
+    """`失败：种类不对：{节点 id}`（§2.1）。"""
+    return FAIL_PREFIX + "种类不对：" + str(node_id)
+
+
+def realize_fail_parent(node_id):
+    """`失败：父地点不对：{节点 id}`（§2.1）。"""
+    return FAIL_PREFIX + "父地点不对：" + str(node_id)
+
+
+def realize_drop(node_id, why):
+    """`丢弃：{节点 id}：{原因}`（§2.1）。"""
+    return DROP_PREFIX + "%s：%s" % (str(node_id), str(why))
+
+
+DROP_NAME_CLASH = "撞了别人的名字"
+DROP_NEAR_NAME = "近名"
+DROP_SECRET = "写了秘密"
+DROP_GLOSSARY = "与术语含义相抵"
+DROP_OLD_MONEY = "和老钱矛盾"
+DROP_NO_EVIDENCE = "种类没有印证"
+
+
+def realization_id_re(location_id):
+    """节点 id 的形状：`^{地点 id}/[a-z0-9-]{1,24}$`（§2.1）。"""
+    return re.compile("^" + re.escape(str(location_id or ""))
+                      + r"/[a-z0-9-]{1,24}$")
+
+
+def _region_main_name(region):
+    """区域主名：`name` 里全角 `｜` 之前的部分（§2.1）。"""
+    return str((region or {}).get("name") or "").split("｜", 1)[0]
+
+
+def _match_region_summary(world, location_name):
+    """对上地点的那条区域 `summary`（先截到 200 字）；对不上返回空串（§2.1）。
+
+    主名等于地点名、或包含地点名才算对上；多个时取得最长的主名。
     """
-    return
+    location_name = str(location_name or "")
+    if not location_name:
+        return ""
+    best_main = ""
+    best_summary = ""
+    for region in (world or {}).get("regions") or []:
+        if not isinstance(region, dict):
+            continue
+        main = _region_main_name(region)
+        if main == location_name or location_name in main:
+            if len(main) > len(best_main):
+                best_main = main
+                best_summary = str(region.get("summary") or "")
+    return best_summary[:REALIZATION_REGION_LIMIT]
+
+
+def canon_for(guide, location_id):
+    """把一张地点卡摘成**短字段**的典范（§2.1）。读盘但**不**访问网络。
+
+    读不到剧本 / 找不到这个地点 / 该地点没有 `key_places` → 空字典（调用方据此
+    不生成实相）。`docs/` 路径不进这里（`source` 一律丢掉）。
+    """
+    guide = guide if isinstance(guide, dict) else {}
+    scenario_id = str(guide.get("scenario_id") or "")
+    location_id = str(location_id or "")
+    if not scenario_id or not location_id:
+        return {}
+    data = load_scenario(scenario_id)
+    if data is None:
+        return {}
+    location = None
+    for item in data.get("locations") or []:
+        if isinstance(item, dict) and str(item.get("id") or "") == location_id:
+            location = item
+            break
+    if location is None:
+        return {}
+    heads = key_place_heads(location)
+    if not heads:
+        return {}
+    location_name = str(location.get("name") or "")
+    fulls = [str(entry or "") for entry in (location.get("key_places") or [])]
+
+    meta = data.get("meta") if isinstance(data.get("meta"), dict) else {}
+    world_key = str(guide.get("world_key") or "") or str(meta.get("world") or "")
+    world = load_world(world_key)
+
+    glossary = []
+    for entry in (world or {}).get("glossary") or []:
+        if isinstance(entry, dict):
+            glossary.append({"term": str(entry.get("term") or ""),
+                             "meaning": str(entry.get("meaning") or "")})
+    glossary.sort(key=lambda item: item["term"])
+    glossary = glossary[:L1_GLOSSARY_LIMIT]
+
+    factions = [str(entry.get("name") or "")
+                for entry in (world or {}).get("factions") or []
+                if isinstance(entry, dict) and entry.get("name")]
+
+    npc_names = []
+    npc_secrets = {}
+    for npc in data.get("npcs") or []:
+        if not isinstance(npc, dict):
+            continue
+        npc_names.append(str(npc.get("name") or ""))
+        npc_secrets[str(npc.get("id") or "")] = str(npc.get("secret") or "")
+
+    other_locations = [str(item.get("name") or "")
+                       for item in data.get("locations") or []
+                       if isinstance(item, dict)
+                       and str(item.get("id") or "") != location_id]
+    node_names = [str(item.get("name") or "")
+                  for item in data.get("nodes") or [] if isinstance(item, dict)]
+
+    # 撞名（非要点）：另一处地点名、战役节点名、NPC 名（§2.1）。
+    clash_names = [name for name in (npc_names + other_locations + node_names)
+                   if name]
+    # 近名：专名、地点名（含本次）、战役节点名（§2.1）。
+    near_names = [name for name in (heads + [location_name] + other_locations
+                                    + node_names) if name]
+
+    return {
+        "location_id": location_id,
+        "location_name": location_name,
+        "key_place_heads": heads,
+        "key_place_full": fulls,
+        "atmosphere": str(location.get("atmosphere") or ""),
+        "unlock": str(location.get("unlock") or ""),
+        "if_botched": str(location.get("if_botched") or ""),
+        "glossary": glossary,
+        "region_summary": _match_region_summary(world, location_name),
+        "factions": factions,
+        "npc_names": npc_names,
+        "npc_secrets": npc_secrets,
+        "forbidden_names": clash_names,
+        "near_names": near_names,
+    }
+
+
+def _cite_field_text(canon, field):
+    """引用字段对应的典范文本（`faction` 用势力短名拼起来）。"""
+    if field == "atmosphere":
+        return str(canon.get("atmosphere") or "")
+    if field == "region_summary":
+        return str(canon.get("region_summary") or "")
+    if field == "faction":
+        return "\n".join(str(item) for item in (canon.get("factions") or []))
+    return ""
+
+
+def cites_valid(cites, canon):
+    """每个 `cite` 的 `field` / `ref` 是否合法（§2.1「引用合法」）。**纯函数**。"""
+    if not isinstance(cites, list) or not cites:
+        return False
+    heads = list(canon.get("key_place_heads") or [])
+    fulls = list(canon.get("key_place_full") or [])
+    terms = [str(entry.get("term") or "")
+             for entry in (canon.get("glossary") or []) if isinstance(entry, dict)]
+    for cite in cites:
+        if not isinstance(cite, dict):
+            return False
+        field = str(cite.get("field") or "")
+        ref = str(cite.get("ref") or "")
+        if field not in REALIZATION_CITE_FIELDS or not ref:
+            return False
+        if field == "key_places":
+            found = False
+            for head, full in zip(heads, fulls):
+                if ref == head or (len(ref) >= REALIZATION_CITE_MIN
+                                   and ref in full):
+                    found = True
+                    break
+            if not found:
+                return False
+        elif field == "glossary":
+            if ref not in terms:
+                return False
+        else:
+            text = _cite_field_text(canon, field)
+            if len(ref) < REALIZATION_CITE_MIN or ref not in text:
+                return False
+    return True
+
+
+def _cite_refs(cites):
+    """引用句列表（`ref` 文本）。"""
+    refs = []
+    for cite in cites or []:
+        if isinstance(cite, dict):
+            refs.append(str(cite.get("ref") or ""))
+    return refs
+
+
+def _near_name(name, targets):
+    """近名判定（§2.1）：去空白后相等但原文不等 / 等长且恰好差一个码位 /
+    一方是另一方的子串且长度差 ≤ 1。"""
+    seen = str(name or "")
+    seen_strip = seen.strip()
+    if not seen_strip:
+        return False
+    for other in targets or []:
+        known = str(other or "")
+        if not known:
+            continue
+        known_strip = known.strip()
+        if seen_strip == known_strip and seen != known:
+            return True
+        if len(seen_strip) == len(known_strip):
+            if sum(1 for a, b in zip(seen_strip, known_strip) if a != b) == 1:
+                return True
+        if abs(len(seen_strip) - len(known_strip)) <= 1:
+            if seen_strip in known_strip or known_strip in seen_strip:
+                return True
+    return False
+
+
+def _contains_secret(text, secret):
+    """`text` 含 `secret` 全文，或其中连续 8 个码位（§2.1）。"""
+    if not secret:
+        return False
+    if secret in text:
+        return True
+    window = REALIZATION_SECRET_WINDOW
+    for index in range(0, len(secret) - window + 1):
+        if secret[index:index + window] in text:
+            return True
+    return False
+
+
+def _contradicts_glossary(fact, cites, canon):
+    """引用了某条术语，且 `fact` 在该术语 `meaning` 的连续 4 字之前 4 字以内
+    出现「不是」「并非」「没有」（§2.1）。"""
+    by_term = {str(entry.get("term") or ""): str(entry.get("meaning") or "")
+               for entry in (canon.get("glossary") or [])
+               if isinstance(entry, dict)}
+    for cite in cites or []:
+        if not isinstance(cite, dict) or str(cite.get("field") or "") != "glossary":
+            continue
+        meaning = by_term.get(str(cite.get("ref") or ""))
+        if not meaning:
+            continue
+        for start in range(0, len(meaning) - 3):
+            window = meaning[start:start + 4]
+            index = fact.find(window)
+            while index >= 0:
+                before = fact[max(0, index - 4):index]
+                if any(word in before for word in REALIZATION_NEGATIONS):
+                    return True
+                index = fact.find(window, index + 1)
+    return False
+
+
+def _cites_all_old_money(cites, canon):
+    """所有引用句所在的典范字段都含「老钱」（§2.1）。"""
+    cites = [cite for cite in (cites or []) if isinstance(cite, dict)]
+    if not cites:
+        return False
+    for cite in cites:
+        text = _cite_field_text(canon, str(cite.get("field") or ""))
+        if not text or REALIZATION_OLD_MONEY not in text:
+            return False
+    return True
+
+
+def _has_evidence(refs, words):
+    return any(word in ref for ref in refs for word in words)
+
+
+def drop_why(node, canon):
+    """节点的丢弃原因（不含 `丢弃：{id}：` 前缀）；不合任何丢弃规则返回 None。
+
+    顺序按 §2.1 的表：撞名 → 近名 → 写了秘密 → 与术语含义相抵 → 和老钱矛盾 →
+    种类没有印证。`要点` 不参与撞名与近名（它就是规定专名）。
+    """
+    node = node if isinstance(node, dict) else {}
+    kind = str(node.get("kind") or "")
+    name = str(node.get("name") or "")
+    fact = str(node.get("fact") or "")
+    cites = node.get("cites") if isinstance(node.get("cites"), list) else []
+    if kind != "要点" and name:
+        if name in (canon.get("forbidden_names") or []):
+            return DROP_NAME_CLASH
+        if _near_name(name, canon.get("near_names") or []):
+            return DROP_NEAR_NAME
+    for secret in (canon.get("npc_secrets") or {}).values():
+        if _contains_secret(fact, str(secret or "")):
+            return DROP_SECRET
+    if _contradicts_glossary(fact, cites, canon):
+        return DROP_GLOSSARY
+    refs = _cite_refs(cites)
+    if (kind == "贫区" and _cites_all_old_money(cites, canon)
+            and not _has_evidence(refs, REALIZATION_EVIDENCE["贫区"])):
+        return DROP_OLD_MONEY
+    if kind in REALIZATION_EVIDENCE and not _has_evidence(
+            refs, REALIZATION_EVIDENCE[kind]):
+        return DROP_NO_EVIDENCE
+    return None
+
+
+def _realization_links(realization, node, node_ids):
+    """把模型写在**节点上**的 `links` 并入（顶层 `links` 由调用方处理）。"""
+    out = []
+    for other in node.get("links") or []:
+        other = str(other or "")
+        if other in node_ids:
+            out.append(other)
+    return out
+
+
+def validate_realization(realization, canon):
+    """把模型输出收成可落盘的实相，或判死整张图（§2.1）。**纯函数**。
+
+    返回 `(可落盘的实相或 None, 原因列表)`：`失败：` 开头时第一个元素必须是 None；
+    `丢弃：` 开头时该节点已从返回的实相里去掉。列表为空且实相非 None 才可以 save。
+    """
+    canon = canon if isinstance(canon, dict) else {}
+    if not isinstance(realization, dict):
+        return None, [REALIZE_FAIL_JSON]
+    location_id = str(canon.get("location_id") or "")
+    location_name = str(canon.get("location_name") or "")
+    heads = [str(head) for head in (canon.get("key_place_heads") or [])]
+
+    seen_name = str(realization.get("location_name") or "")
+    if seen_name != location_name:
+        return None, [realize_fail_renamed(seen_name)]
+
+    raw_nodes = [node for node in (realization.get("nodes") or [])
+                 if isinstance(node, dict)]
+
+    # 要点的名字必须逐字等于专名，差一个字是整张图的 `改了典范名`。
+    for node in raw_nodes:
+        if str(node.get("kind") or "") == "要点":
+            if str(node.get("name") or "") not in heads:
+                return None, [realize_fail_renamed(str(node.get("name") or ""))]
+
+    # 整张图的硬失败：id / 父地点、种类、引用。
+    id_re = realization_id_re(location_id)
+    for node in raw_nodes:
+        node_id = str(node.get("id") or "")
+        if str(node.get("parent") or "") != location_id \
+                or not id_re.fullmatch(node_id):
+            return None, [realize_fail_parent(node_id)]
+    for node in raw_nodes:
+        if str(node.get("kind") or "") not in REALIZATION_KINDS:
+            return None, [realize_fail_kind(str(node.get("id") or ""))]
+    for node in raw_nodes:
+        if not cites_valid(node.get("cites"), canon):
+            return None, [realize_fail_no_cite(str(node.get("id") or ""))]
+
+    # 丢弃只拿掉那个节点；原因累积，不判死。
+    reasons = []
+    kept = []
+    for node in raw_nodes:
+        why = drop_why(node, canon)
+        if why is None:
+            kept.append(node)
+        else:
+            reasons.append(realize_drop(str(node.get("id") or ""), why))
+
+    present = {str(node.get("name") or "") for node in kept
+               if str(node.get("kind") or "") == "要点"}
+    missing = [head for head in heads if head not in present]
+    if missing:
+        return None, reasons + [realize_fail_missing(missing[0])]
+
+    has_non_key = any(str(node.get("kind") or "") != "要点" for node in kept)
+    if not has_non_key:
+        return None, reasons + [REALIZE_FAIL_ONLY_KEY]
+
+    node_ids = {str(node.get("id") or "") for node in kept}
+    adjacency = {node_id: set() for node_id in node_ids}
+    for link in realization.get("links") or []:
+        if isinstance(link, dict):
+            left, right = str(link.get("a") or ""), str(link.get("b") or "")
+        elif isinstance(link, (list, tuple)) and len(link) == 2:
+            left, right = str(link[0] or ""), str(link[1] or "")
+        else:
+            continue
+        if left in node_ids and right in node_ids and left != right:
+            adjacency[left].add(right)
+            adjacency[right].add(left)
+    for node in kept:
+        node_id = str(node.get("id") or "")
+        for other in _realization_links(realization, node, node_ids):
+            if other != node_id:
+                adjacency[node_id].add(other)
+                adjacency[other].add(node_id)
+
+    nodes_out = []
+    for node in kept:
+        node_id = str(node.get("id") or "")
+        nodes_out.append({
+            "id": node_id,
+            "parent": location_id,
+            "kind": str(node.get("kind") or ""),
+            "name": str(node.get("name") or ""),
+            "fact": str(node.get("fact") or ""),
+            "cites": [{"field": str(cite.get("field") or ""),
+                       "ref": str(cite.get("ref") or "")}
+                      for cite in (node.get("cites") or [])
+                      if isinstance(cite, dict)],
+            "links": sorted(adjacency.get(node_id, set())),
+        })
+
+    people_out = []
+    for person in realization.get("people") or []:
+        if len(people_out) >= REALIZATION_PEOPLE_LIMIT:
+            break
+        if not isinstance(person, dict):
+            continue
+        at = str(person.get("node") or "")
+        if at not in node_ids:
+            continue
+        people_out.append({"id": INCIDENTAL_PREFIX + secrets.token_hex(4),
+                           "at": at,
+                           "manner": str(person.get("manner") or ""),
+                           "secret": ""})
+
+    stored = {
+        "version": 1,
+        "location_id": location_id,
+        "location_name": location_name,
+        "source": REALIZATION_MODEL,
+        "preserved": {"unlock": str(canon.get("unlock") or ""),
+                      "if_botched": str(canon.get("if_botched") or "")},
+        "nodes": nodes_out,
+        "people": people_out,
+    }
+    return stored, reasons
+
+
+def fallback_realization(canon):
+    """服务端自己造的要点链（§2.1）：`source` 为 `fallback`，可以只有要点。
+
+    每个专名一个要点，`fact` 就用专名本身，按数组顺序串成一条链，`people` 为空，
+    `unlock` / `if_botched` 照抄典范。这份**不**再过「只有要点」那一关。
+    """
+    canon = canon if isinstance(canon, dict) else {}
+    location_id = str(canon.get("location_id") or "")
+    nodes = []
+    for index, head in enumerate(canon.get("key_place_heads") or []):
+        nodes.append({
+            "id": "%s/key-%d" % (location_id, index + 1),
+            "parent": location_id,
+            "kind": "要点",
+            "name": str(head),
+            "fact": str(head),
+            "cites": [{"field": "key_places", "ref": str(head)}],
+            "links": [],
+        })
+    for index in range(len(nodes) - 1):
+        nodes[index]["links"] = [nodes[index + 1]["id"]]
+        nodes[index + 1]["links"] = [nodes[index]["id"]]
+    return {
+        "version": 1,
+        "location_id": location_id,
+        "location_name": str(canon.get("location_name") or ""),
+        "source": REALIZATION_FALLBACK,
+        "preserved": {"unlock": str(canon.get("unlock") or ""),
+                      "if_botched": str(canon.get("if_botched") or "")},
+        "nodes": nodes,
+        "people": [],
+    }
+
+
+def realization_summary(realization, limit=400):
+    """L2 里的实相摘要：地点 id / 名字与节点名字（§5.2「实相摘要」）。"""
+    realization = realization if isinstance(realization, dict) else {}
+    head = "%s %s" % (str(realization.get("location_id") or ""),
+                      str(realization.get("location_name") or ""))
+    names = [str(node.get("name"))
+             for node in (realization.get("nodes") or [])
+             if isinstance(node, dict) and node.get("name")]
+    blob = head + ("｜" + "｜".join(names) if names else "")
+    return blob[:limit]
+
+
+def focus_realization(guide):
+    """焦点地点**已定稿**的实相；`pending` / 缺失 → None（§7）。"""
+    guide = guide if isinstance(guide, dict) else {}
+    records = guide.get("realizations")
+    if not isinstance(records, dict):
+        return None
+    record = records.get(str(guide.get("focus_location_id") or ""))
+    if not isinstance(record, dict):
+        return None
+    if str(record.get("source") or "") not in REALIZATION_DONE_SOURCES:
+        return None
+    return record
+
+
+def realization_slice(canon, salt=""):
+    """实相请求 user 消息里的**典范切片**（§2.1），不含输出合同。
+
+    地点卡只放 `name` / `atmosphere` / `unlock` / `key_places` 原串 / `if_botched`；
+    世界切片只放术语（≤8 行）与一条对得上的区域摘要。上限 `REALIZATION_SLICE_LIMIT`：
+    先截 `atmosphere` 尾部，再截区域摘要，再从末尾少带术语；地点名、专名、`unlock`、
+    `if_botched` 永不截断。salt 单列一行（§5.7）。
+    """
+    canon = canon if isinstance(canon, dict) else {}
+    location_id = str(canon.get("location_id") or "")
+    location_name = str(canon.get("location_name") or "")
+    fulls = [str(entry) for entry in (canon.get("key_place_full") or [])]
+    unlock = str(canon.get("unlock") or "")
+    if_botched = str(canon.get("if_botched") or "")
+    region = str(canon.get("region_summary") or "")
+    terms = [(str(entry.get("term") or ""), str(entry.get("meaning") or ""))
+             for entry in (canon.get("glossary") or []) if isinstance(entry, dict)]
+    salt_line = "salt：" + str(salt or "")
+
+    def render(atmosphere, region_text, term_items):
+        lines = ["【地点卡】",
+                 "地点：" + location_id + " " + location_name,
+                 "氛围：" + atmosphere,
+                 "要点："]
+        lines += ["- " + item for item in fulls]
+        if unlock:
+            lines.append("unlock：" + unlock)
+        if if_botched:
+            lines.append("if_botched：" + if_botched)
+        if region_text:
+            lines.append("区域：" + region_text)
+        if term_items:
+            lines.append("术语：")
+            lines += [term + "：" + meaning for term, meaning in term_items]
+        lines.append(salt_line)
+        return "\n".join(lines)
+
+    atmosphere = str(canon.get("atmosphere") or "")
+    region_text = region[:REALIZATION_REGION_LIMIT] if region else ""
+    blob = render(atmosphere, region_text, terms)
+    if len(blob) > REALIZATION_SLICE_LIMIT:
+        keep = max(0, len(atmosphere) - (len(blob) - REALIZATION_SLICE_LIMIT))
+        atmosphere = atmosphere[:keep]
+        blob = render(atmosphere, region_text, terms)
+    if len(blob) > REALIZATION_SLICE_LIMIT:
+        region_text = ""
+        blob = render(atmosphere, region_text, terms)
+    while len(blob) > REALIZATION_SLICE_LIMIT and terms:
+        terms = terms[:-1]
+        blob = render(atmosphere, region_text, terms)
+    if len(blob) > REALIZATION_SLICE_LIMIT:
+        blob = blob[:REALIZATION_SLICE_LIMIT]
+    return blob
+
+
+def realization_contract(canon):
+    """输出合同（§5.7）：按**这一张卡**填专名与 id 语法，不写进 L0。"""
+    canon = canon if isinstance(canon, dict) else {}
+    location_id = str(canon.get("location_id") or "")
+    location_name = str(canon.get("location_name") or "")
+    heads = [str(head) for head in (canon.get("key_place_heads") or [])]
+    lines = [
+        "这次不要遵守系统消息里的三段标题。不要输出【裁决】【叙事】【钩子】。"
+        "不要调用工具。",
+        "不要输出 unlock。不要输出 if_botched。不要输出坐标，不要输出 x、y、z。",
+        "只输出一个 JSON 对象。键只有 location_id、location_name、nodes、links、people。",
+        "location_id 必须是 " + location_id + "。location_name 必须逐字是 "
+        + location_name + "。",
+        "nodes 里每个对象的键：id、name、kind、parent、fact、cites。",
+        "kind 只能是这六个字之一：街、建筑、富区、贫区、下层、要点。",
+        "id 必须匹配 ^" + location_id + "/[a-z0-9-]{1,24}$。parent 必须是 "
+        + location_id + "。",
+        "要点的 name 必须逐字等于下面每一条专名，一条都不能少，也不能多字、少字、"
+        "换字：",
+    ]
+    lines += heads
+    lines += [
+        'cites 是非空数组，元素为 {"field","ref"}。field 只能是 atmosphere、'
+        "key_places、glossary、faction、region_summary。ref 必须是上面切片里对应"
+        "字段的连续文本。",
+        "除了全部要点，还要有街、建筑、下层。贫区不是必填。引用句若只靠「老钱」这类"
+        "句子，不要为了凑种类输出贫区。",
+        'links 的元素是 {"a","b"}，a 与 b 都是本次 nodes 里的 id。',
+        "people 至多 4 个，每个只有 node 与 manner。不要自己编 id，不要写 secret。",
+        "fact 只写一句话。不得改写典范专名。",
+    ]
+    return "\n".join(lines)
+
+
+def realization_user(canon, salt="", reasons=None):
+    """实相请求的 user 消息：切片 + salt + 输出合同（+ 可选上一次失败原因）。"""
+    lines = [realization_slice(canon, salt), realization_contract(canon)]
+    if reasons:
+        lines.append("上一次失败的原因：\n"
+                     + "\n".join(str(item) for item in reasons))
+    return "\n".join(lines)
+
+
+def build_realization_body(canon, salt="", reasons=None, model=None, env=None):
+    """实相请求体（§5.7）：思考开、非流式、4096、无工具、自己的 messages。
+
+    不带 `temperature`，不带工具数组，密钥不入体。
+    """
+    env = env if env is not None else load_env()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    return {
+        "model": str(resolved),
+        "messages": [
+            {"role": "system", "content": L0},
+            {"role": "user",
+             "content": realization_user(canon, salt, reasons=reasons)},
+        ],
+        "thinking": {"type": "enabled"},
+        "max_completion_tokens": REALIZATION_MAX_TOKENS,
+        "stream": False,
+    }
+
+
+def parse_realization_json(got):
+    """从一次非流式回包里取 JSON 对象；不是合法 JSON 返回 None（§5.7）。"""
+    if not isinstance(got, dict):
+        return None
+    content = got.get("content")
+    if not isinstance(content, str) or not content.strip():
+        return None
+    text = content.strip()
+    try:
+        payload = json.loads(text)
+    except ValueError:
+        start, end = text.find("{"), text.rfind("}")
+        if start < 0 or end <= start:
+            return None
+        try:
+            payload = json.loads(text[start:end + 1])
+        except ValueError:
+            return None
+    return payload if isinstance(payload, dict) else None
+
+
+def call_realization(canon, salt="", reasons=None, env=None, transmit=None):
+    """经传输入口发一次实相请求（§5.7 / §5.10）。离线 / 失败返回 None。
+
+    与叙事、TTS 走**同一条**可替换入口 `TRANSMIT`。实相失败**不**把整回合改成
+    兜底句；调用方据此造要点链。
+    """
+    env = env if env is not None else load_env()
+    url = chat_url(env.get("BASE_URL"))
+    key = (env.get("API_KEY") or "").strip()
+    model = (env.get("MODEL") or "").strip()
+    if not url or not key or not model:
+        return None
+    body = build_realization_body(canon, salt, reasons=reasons, model=model,
+                                  env=env)
+    return _send_once(url, body, key, REALIZATION_TIMEOUT_S, transmit)
+
+
+def generate_realization(canon, salt="", env=None, transmit=None):
+    """硬失败再请求一次；全失败返回 None（调用方造要点链）。**永不抛**。
+
+    只发生丢弃、而且丢完之后还有非要点节点 → 直接采用这张图，**不再**重试。
+    """
+    reasons = None
+    for _attempt in (1, 2):
+        try:
+            got = call_realization(canon, salt, reasons=reasons, env=env,
+                                   transmit=transmit)
+        except Exception:  # noqa: BLE001 — 上游失败走要点链，不回显原文
+            got = None
+        if got is None:
+            return None
+        payload = parse_realization_json(got)
+        if payload is None:
+            reasons = [REALIZE_FAIL_JSON]
+            continue
+        try:
+            stored, why = validate_realization(payload, canon)
+        except Exception:  # noqa: BLE001 — 脏形状按硬失败处理，不冒泡
+            stored, why = None, [REALIZE_FAIL_JSON]
+        if stored is not None:
+            return stored
+        reasons = why
+    return None
+
+
+def ensure_realization(web_session, location_id, env=None, transmit=None):
+    """确保焦点地点的实相（地点图）已经生成（§2.1 / §5.2 / §5.7）。
+
+    步骤（§5.2）：
+
+    1. 已有定稿（`source` 为 `model` / `fallback`）→ 直接返回，不读上游；
+    2. `source` 是 `pending` 且 `time.time() - claimed_at < 120` → 返回：不再发
+       实相请求，也不写要点退回（城还没被冻住，主人回来仍可写入真正的图）；
+    3. 否则在锁内写 `pending`（新的 `claim` / `claimed_at`）并 `save()`，再解锁；
+    4. 锁外读上游：硬失败再请求一次，两次都失败 / 超时就造要点链；
+    5. 再次加锁：只有 `claim` 仍是自己的那一枚才替换 `pending`，删掉
+       `claimed_at` / `claim`，重写 L2（此时 salt 与实相摘要才进 L2）并清空 L3；
+    6. `pending` 不是提交；`claimed_at` 不进 L0–L4。
+
+    本函数只改 `prism_guide.py`，不改 `notdnd_web.py`，也不开 SSE 分支。
+    """
+    location_id = str(location_id or "")
+    if not location_id:
+        return
+    guide = getattr(web_session, "guide", None)
+    if not isinstance(guide, dict):
+        return
+    canon = canon_for(guide, location_id)
+    if not canon:
+        return
+
+    now = time.time()
+    with web_session.lock:
+        records = web_session.guide.get("realizations")
+        if not isinstance(records, dict):
+            records = {}
+            web_session.guide["realizations"] = records
+        record = records.get(location_id)
+        if isinstance(record, dict):
+            source = str(record.get("source") or "")
+            if source in REALIZATION_DONE_SOURCES:
+                return
+            if source == REALIZATION_PENDING:
+                claimed_at = record.get("claimed_at")
+                if isinstance(claimed_at, (int, float)) \
+                        and not isinstance(claimed_at, bool) \
+                        and now - float(claimed_at) < REALIZATION_CLAIM_S:
+                    return
+        claim = secrets.token_hex(8)
+        records[location_id] = {
+            "version": 1,
+            "location_id": location_id,
+            "source": REALIZATION_PENDING,
+            "claimed_at": now,
+            "claim": claim,
+        }
+        web_session.save()
+
+    committed = generate_realization(canon, str(guide.get("salt") or ""),
+                                     env=env, transmit=transmit)
+    if committed is None:
+        committed = fallback_realization(canon)
+
+    with web_session.lock:
+        records = web_session.guide.get("realizations")
+        record = records.get(location_id) if isinstance(records, dict) else None
+        if not isinstance(record, dict) or record.get("claim") != claim:
+            return          # 迟到的写入：claim 已不是自己，不覆盖新主人
+        records[location_id] = committed
+        heads = canon.get("key_place_heads") or []
+        if heads:
+            web_session.guide["here"] = str(heads[0])
+        web_session.guide["l2"] = build_l2(
+            getattr(web_session, "rules", None), web_session.guide)
+        web_session.guide["transcript"] = []
+        web_session.save()
 
 
 # ── §10 可观测性 ────────────────────────────────────────────────────────

@@ -30,7 +30,9 @@
      绑定后叙事请求的第 2 条消息换成这场剧本的典范卡（含专名、无 salt / `docs/`），
      同一剧本的两份存档 L1 全等；`turn` 的可选 `location_id` 在状态行之前校验
      （非法 → 400「没有这个地点」且不开 SSE），合法时写入 `focus_location_id`
-     并落盘，且恰恰调用一次 `ensure_realization`（G5 是空实现，上游只有叙事那一次）。
+     并落盘；带 `location_id` 的回合在状态行之后、叙事之前调用一次
+     `ensure_realization`（G6 起它会先发一次**非流式**实相请求，所以这一回合的上游
+     不止叙事那一次；实相请求体与占位语义由 `tests/test_prism_guide.py` 自己测）。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -1559,7 +1561,13 @@ def check_guide_turn_location_focus():
             assert seen == ["loc-02"], seen
             assert [name for name, _ in _parse_sse(raw)] == \
                 ["narration", "usage", "done"], _parse_sse(raw)
-            assert len(fake.calls) == 1, \
+            # G6 起，带 location_id 的回合会先发一次**非流式**实相请求（假传输
+            # 第一次回的不是合法实相 JSON，服务端按 §5.7 重试一次），之后才是叙事
+            # 请求。这里只锁「叙事请求恰有一次」；实相请求的形状与次数归
+            # `tests/test_prism_guide.py` 自己测。
+            narrative_calls = [call for call in fake.calls
+                               if call["payload"].get("stream") is True]
+            assert len(narrative_calls) == 1, \
                 [call["payload"].get("stream") for call in fake.calls]
             assert notdnd_web.get_session(sid).guide["focus_location_id"] == "loc-02"
 

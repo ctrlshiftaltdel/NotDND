@@ -44,6 +44,20 @@ G4 覆盖：
 - `place_card`：只有内存里带 `places` 的帧才可读；`{seed, deltas}` 存档块
   得到 `available: false` 且不抛 `KeyError`，也不调用 `restore_state`；
 - `reasoning` 只活在运行期：不进 `guide`、不进 `to_dict`、不进叙事请求。
+
+G6 覆盖（实相）：
+
+- `canon_for`：白壁五条专名逐字在；灰市第一条是 `绳会账房`；没有 `key_places`
+  的地点不生成实相；
+- `validate_realization`（纯函数）：改了典范名 / 缺少要点 / 无引用 / 只有要点；
+  近名只丢弃那个节点，不是整张图失败；只靠「老钱」的贫区丢弃并删边；落盘的是
+  典范原文的 `unlock` / `if_botched`；实相对象没有坐标；
+- `build_realization_body`：思考开、非流式、4096、无工具；输出合同在 user 消息，
+  不在 L0；
+- `ensure_realization`：第一次坏 JSON → 第二次合法图，只存第二次；两次只有要点 →
+  `source: fallback` 要点链；离线直接要点链；同一地点第二次不请求；新鲜 `pending`
+  不请求也不写 fallback；过期 `pending` 可再占一次；两次重叠只有一次上游；提交后
+  重写 L2（salt + 听泉馆）并清空 L3。
 """
 
 import base64
@@ -55,6 +69,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -466,6 +481,18 @@ def test_transport_injectable_and_build_offline():
         pg.lookup_rule_text("system.adjudication")
         pg.lookup_rule_text("不存在的 kind")
         pg.build_tool_body([{"role": "user", "content": "查规则"}], env=env)
+        # G6 的构建路径同样离线：典范切片 / 输出合同 / 校验都是纯函数或本地读盘。
+        bound = pg.empty_guide()
+        bound["scenario_id"] = "yunji"
+        bound["world_key"] = "yunji"
+        canon = pg.canon_for(bound, "loc-02")
+        pg.realization_slice(canon, bound["salt"])
+        pg.realization_contract(canon)
+        pg.build_realization_body(canon, bound["salt"], env=env)
+        pg.validate_realization(_payload("loc-02", "白壁",
+                                         _wall_key_nodes() + [_wall_street()]),
+                                canon)
+        pg.fallback_realization(canon)
     finally:
         pg.TRANSMIT = saved
     ok("上游调用只走可替换的传输入口；构建路径离线、不碰传输")
@@ -1389,32 +1416,6 @@ def test_location_ok():
     ok("location_ok：只认已绑定剧本里的地点 id")
 
 
-def test_ensure_realization_is_noop():
-    """G5 的 `ensure_realization` 只有 `return`：不读上游、不写存档。"""
-    calls = []
-
-    def fake(url, payload, headers, *, timeout):
-        calls.append(payload)
-        raise AssertionError("G5 不得打开套接字")
-
-    web = _BindWeb()
-    web.guide["world_key"] = "yunji"
-    web.guide["scenario_id"] = "yunji"
-    saved_transmit = pg.TRANSMIT
-    pg.TRANSMIT = fake
-    try:
-        before = json.dumps(web.guide, ensure_ascii=False, sort_keys=True)
-        assert pg.ensure_realization(web, "loc-02") is None
-        after = json.dumps(web.guide, ensure_ascii=False, sort_keys=True)
-    finally:
-        pg.TRANSMIT = saved_transmit
-    assert calls == [], "G5 的 ensure_realization 不得请求上游"
-    assert before == after, "G5 的 ensure_realization 不得写 guide"
-    assert web.saved == 0
-    assert pg.REALIZATION_CLAIM_S == 120
-    ok("ensure_realization：G5 是空实现，不读上游、不写存档")
-
-
 def test_module_offline_no_socket():
     """`import prism_guide` 不打开套接字：只 import 不改外部状态。"""
     probe = subprocess.run(
@@ -1425,6 +1426,417 @@ def test_module_offline_no_socket():
     assert probe.returncode == 0, probe.stderr
     assert "imported" in probe.stdout
     ok("import prism_guide 成功且无副作用")
+
+
+# ── G6：实相（ensure_realization / validate_realization）──────────────────
+
+
+class _RealizationWeb:
+    """最小 web_session 替身：`ensure_realization` 只用 lock / guide / rules / save。"""
+
+    def __init__(self, *, focus="loc-02", scenario="yunji", world="yunji"):
+        self.lock = threading.RLock()
+        self.guide = pg.empty_guide()
+        self.guide["scenario_id"] = scenario
+        self.guide["world_key"] = world
+        self.guide["focus_location_id"] = focus
+        self.rules = {"scene": {"id": "sc-1"}, "party": []}
+        self.saved = 0
+
+    def save(self):
+        self.saved += 1
+
+
+def _canon(location_id="loc-02", scenario="yunji", world="yunji"):
+    guide = pg.empty_guide()
+    guide["scenario_id"] = scenario
+    guide["world_key"] = world
+    return pg.canon_for(guide, location_id)
+
+
+def _key_node(location_id, node_id, name):
+    return {"id": location_id + "/" + node_id, "parent": location_id,
+            "kind": "要点", "name": name, "fact": "一句事实。",
+            "cites": [{"field": "key_places", "ref": name}]}
+
+
+def _other_node(location_id, node_id, name, kind, fact, ref,
+                field="atmosphere"):
+    return {"id": location_id + "/" + node_id, "parent": location_id,
+            "kind": kind, "name": name, "fact": fact,
+            "cites": [{"field": field, "ref": ref}]}
+
+
+def _wall_key_nodes():
+    return [_key_node("loc-02", "tingquan", "听泉馆"),
+            _key_node("loc-02", "auction", "白壁行拍卖厅"),
+            _key_node("loc-02", "vault", "白壁行地库"),
+            _key_node("loc-02", "echo-box", "回声匣保管室"),
+            _key_node("loc-02", "gardener", "老园丁小屋")]
+
+
+def _wall_street():
+    return _other_node("loc-02", "wash-lane", "洗墙巷", "街",
+                       "一排白房子之间的窄巷。", "每月洗一次")
+
+
+def _payload(location_id, location_name, nodes, links=None, people=None):
+    return {"location_id": location_id, "location_name": location_name,
+            "nodes": list(nodes), "links": list(links or []),
+            "people": list(people or [])}
+
+
+def test_realization_canon_fixtures():
+    """典范夹具：白壁五条专名逐字在；灰市第一条是 `绳会账房`。"""
+    wall = _canon("loc-02")
+    assert wall["location_id"] == "loc-02" and wall["location_name"] == "白壁"
+    assert wall["key_place_heads"] == ["听泉馆", "白壁行拍卖厅", "白壁行地库",
+                                       "回声匣保管室", "老园丁小屋"]
+    assert wall["key_place_full"][0].startswith("听泉馆——")
+    assert wall["unlock"] and wall["if_botched"]
+    assert "每月洗一次" in wall["atmosphere"]
+    # 云脊没有世界文件：术语为零行，区域摘要为空（不得去借别的世界）。
+    assert wall["glossary"] == [] and wall["region_summary"] == ""
+    assert "npc-01" in wall["npc_secrets"] and "绳会账房的后间木匣" in wall["forbidden_names"]
+    market = _canon("loc-05")
+    assert market["key_place_heads"][0] == "绳会账房"
+    assert "绳会账房" in market["key_place_heads"]
+    # 没有 key_places 的地点不生成实相（canon 为空）。
+    guide = pg.empty_guide()
+    guide["scenario_id"] = "yunji"
+    assert pg.canon_for(guide, "loc-99") == {}
+    ok("实相典范夹具：白壁五专名 / 灰市绳会账房 / 无 key_places 不生成")
+
+
+def test_validate_realization_hard_failures():
+    """纯函数硬失败：改了典范名 / 缺少要点 / 无引用 / 只有要点；合法图可落盘。"""
+    canon = _canon("loc-02")
+    nodes = _wall_key_nodes() + [_wall_street()]
+    good = _payload("loc-02", "白壁", nodes)
+    stored, why = pg.validate_realization(good, canon)
+    assert stored is not None and why == [], why
+    assert stored["source"] == "model" and stored["version"] == 1
+    # 落盘的是典范原文的 unlock / if_botched（模型改一个字也盖不掉）。
+    assert stored["preserved"]["unlock"] == canon["unlock"]
+    assert stored["preserved"]["if_botched"] == canon["if_botched"]
+    # 实相对象里没有坐标。
+    blob = json.dumps(stored, ensure_ascii=False)
+    for axis in ('"x"', '"y"', '"z"'):
+        assert axis not in blob, axis
+
+    # 缺一条要点 → 缺少要点：老园丁小屋。
+    four = _payload("loc-02", "白壁",
+                    _wall_key_nodes()[:4] + [_wall_street()])
+    assert pg.validate_realization(four, canon) == \
+        (None, ["失败：缺少要点：老园丁小屋"])
+    # location_name 改了 → 改了典范名：白璧。
+    renamed = _payload("loc-02", "白璧", nodes)
+    assert pg.validate_realization(renamed, canon) == \
+        (None, ["失败：改了典范名：白璧"])
+    # 要点名改了 → 同样是整张图的 改了典范名。
+    bad_key = _wall_key_nodes()
+    bad_key[0] = _key_node("loc-02", "tingquan", "白璧")
+    assert pg.validate_realization(_payload("loc-02", "白壁", bad_key
+                                            + [_wall_street()]), canon) == \
+        (None, ["失败：改了典范名：白璧"])
+    # cites 为空 → 无引用。
+    empty_cite = _wall_key_nodes() + [
+        {"id": "loc-02/wash-lane", "parent": "loc-02", "kind": "街",
+         "name": "洗墙巷", "fact": "窄巷。", "cites": []}]
+    assert pg.validate_realization(_payload("loc-02", "白壁", empty_cite),
+                                   canon) == (None, ["失败：无引用：loc-02/wash-lane"])
+    # 只有要点 → 只有要点（不落盘）。
+    only = _payload("loc-02", "白壁", _wall_key_nodes())
+    assert pg.validate_realization(only, canon) == (None, ["失败：只有要点"])
+    # 五个要点 + 一条会被丢掉的贫区 → 丢弃之后也只剩要点 → 只有要点。
+    poor = _other_node("loc-02", "poor-lane", "贫民棚屋", "贫区",
+                       "一片棚户。", "这里是老钱")
+    only_after_drop = _payload("loc-02", "白壁", _wall_key_nodes() + [poor])
+    stored2, why2 = pg.validate_realization(only_after_drop, canon)
+    assert stored2 is None and "失败：只有要点" in why2, why2
+    ok("validate_realization：改了典范名 / 缺少要点 / 无引用 / 只有要点")
+
+
+def test_validate_realization_near_name_is_drop_not_fail():
+    """近名只丢那个节点，不是整张图失败；旁边还有合法街就不重试。"""
+    canon = _canon("loc-02")
+    for node_id, name in (("tingquan-out", "听泉馆外"),
+                          ("white-lane", "白壁巷"),
+                          ("white-jade", "白璧")):
+        near = _other_node("loc-02", node_id, name, "建筑",
+                           "一个加出来的建筑。", "每月洗一次")
+        payload = _payload("loc-02", "白壁",
+                           _wall_key_nodes() + [_wall_street(), near],
+                           links=[{"a": "loc-02/wash-lane",
+                                   "b": "loc-02/" + node_id}])
+        stored, why = pg.validate_realization(payload, canon)
+        assert stored is not None, (name, why)
+        assert why == ["丢弃：loc-02/%s：近名" % node_id], (name, why)
+        kept = [item["name"] for item in stored["nodes"]]
+        assert name not in kept and "洗墙巷" in kept
+        # 指向被丢节点的边一并删掉（不是 `链接越界`）。
+        wash = next(item for item in stored["nodes"]
+                    if item["id"] == "loc-02/wash-lane")
+        assert wash["links"] == [], wash["links"]
+    ok("validate_realization：听泉馆外 / 白壁巷 / 白璧 只丢弃近名，图留下")
+
+
+def test_validate_realization_old_money_poor_zone():
+    """五要点 + 只靠「老钱」的贫区（街连着它）：贫区丢、边删、街与要点留下。"""
+    canon = _canon("loc-02")
+    poor = _other_node("loc-02", "poor-lane", "贫民棚屋", "贫区",
+                       "一片棚户。", "这里是老钱")
+    payload = _payload(
+        "loc-02", "白壁", _wall_key_nodes() + [_wall_street(), poor],
+        links=[{"a": "loc-02/wash-lane", "b": "loc-02/poor-lane"},
+               {"a": "loc-02/wash-lane", "b": "loc-02/gardener"}])
+    stored, why = pg.validate_realization(payload, canon)
+    assert stored is not None, why
+    assert why == ["丢弃：loc-02/poor-lane：和老钱矛盾"], why
+    ids = [item["id"] for item in stored["nodes"]]
+    assert "loc-02/poor-lane" not in ids and "loc-02/wash-lane" in ids
+    wash = next(item for item in stored["nodes"]
+                if item["id"] == "loc-02/wash-lane")
+    assert wash["links"] == ["loc-02/gardener"], wash["links"]
+    ok("validate_realization：白壁的贫区按「和老钱矛盾」丢弃并删边")
+
+
+def test_validate_realization_market_street_kind():
+    """灰市夹具：五个要点在，绳会账房不被替换；街与建筑留下。"""
+    canon = _canon("loc-05")
+    heads = canon["key_place_heads"]
+    assert heads[0] == "绳会账房"
+    key_nodes = [_key_node("loc-05", "acc-%d" % index, head)
+                 for index, head in enumerate(heads)]
+    street = _other_node("loc-05", "copper-lane", "铜毫巷", "街",
+                         "窄巷。", "永远不亮")
+    payload = _payload("loc-05", "灰市", key_nodes + [street])
+    stored, why = pg.validate_realization(payload, canon)
+    assert stored is not None and why == [], why
+    names = [item["name"] for item in stored["nodes"]]
+    assert names.count("绳会账房") == 1
+    for head in heads:
+        assert head in names, head
+    ok("validate_realization：灰市绳会账房在且不被替换，街留下")
+
+
+def test_realization_request_body_contract():
+    """实相请求体：思考开 / 非流式 / 4096 / 无工具；user 带切片与输出合同。"""
+    canon = _canon("loc-02")
+    salt = "0123456789abcdef0123456789abcdef"
+    body = pg.build_realization_body(canon, salt, model="mm")
+    assert body["thinking"] == {"type": "enabled"}
+    assert body["stream"] is False
+    assert body["max_completion_tokens"] == pg.REALIZATION_MAX_TOKENS == 4096
+    assert "tools" not in body and "temperature" not in body
+    assert body["messages"][0] == {"role": "system", "content": pg.L0}
+    user = body["messages"][1]["content"]
+    # 合同句子在 user 里，且**不在** L0。
+    for needle in ("只输出一个 JSON 对象", "不要输出【裁决】【叙事】【钩子】",
+                   "街、建筑、下层", "不要为了凑种类输出贫区",
+                   "^loc-02/[a-z0-9-]{1,24}$"):
+        assert needle in user, needle
+        assert needle not in pg.L0, needle
+    for head in canon["key_place_heads"]:
+        assert head in user, head
+    # 切片含 salt 与典范原文的 unlock；密钥不入体。
+    assert ("salt：" + salt) in user
+    assert canon["unlock"][:12] in user
+    assert "API_KEY" not in json.dumps(body, ensure_ascii=False)
+    ok("实相请求体：思考开 / 非流式 / 4096 / 无工具 / 合同在 user 不在 L0")
+
+
+def test_realization_retry_only_second_saved():
+    """假传输第一次非法 JSON、第二次合法含非要点图 → 只保存第二次。"""
+    canon = _canon("loc-02")
+    good = json.dumps(_payload(
+        "loc-02", "白壁", _wall_key_nodes() + [_wall_street()],
+        links=[{"a": "loc-02/wash-lane", "b": "loc-02/tingquan"}]),
+        ensure_ascii=False)
+    queue = [{"content": "这不是 JSON", "tool_calls": [], "usage": {}},
+             {"content": good, "tool_calls": [], "usage": {}}]
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        return dict(queue.pop(0))
+
+    web = _RealizationWeb()
+    pg.ensure_realization(web, "loc-02",
+                          env={"BASE_URL": "https://api.example.com/v1",
+                               "MODEL": "mm", "API_KEY": "super-secret-value"},
+                          transmit=fake)
+    assert len(calls) == 2, len(calls)
+    record = web.guide["realizations"]["loc-02"]
+    assert record["source"] == "model"
+    assert len(record["nodes"]) == 6, record["nodes"]
+    # 请求形状：思考开、非流式、无工具；密钥只在请求头。
+    first = calls[0]["payload"]
+    assert first["thinking"] == {"type": "enabled"}
+    assert first["stream"] is False and "tools" not in first
+    assert calls[0]["timeout"] == pg.REALIZATION_TIMEOUT_S
+    assert calls[0]["headers"] == {pg.KEY_HEADER: "super-secret-value"}
+    assert "super-secret-value" not in json.dumps(first, ensure_ascii=False)
+    # 重试的 user 消息再次带上合同、id 语法、专名与「上一次失败的原因」。
+    retry_user = calls[1]["payload"]["messages"][1]["content"]
+    assert "上一次失败的原因" in retry_user
+    assert "^loc-02/[a-z0-9-]{1,24}$" in retry_user
+    for head in canon["key_place_heads"]:
+        assert head in retry_user, head
+    assert "街、建筑、下层" in retry_user
+    ok("实相重试：第一次坏 JSON → 第二次合法图；只存第二次，形状正确")
+
+
+def test_realization_double_failure_falls_back():
+    """连续两次只有要点 → 要点链 `source: fallback`，没有第三次请求。"""
+    canon = _canon("loc-02")
+    only_key = json.dumps(_payload("loc-02", "白壁", _wall_key_nodes()),
+                          ensure_ascii=False)
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append(payload)
+        return {"content": only_key, "tool_calls": [], "usage": {}}
+
+    web = _RealizationWeb()
+    pg.ensure_realization(web, "loc-02",
+                          env={"BASE_URL": "https://api.example.com/v1",
+                               "MODEL": "mm", "API_KEY": "kk"},
+                          transmit=fake)
+    assert len(calls) == 2, len(calls)
+    record = web.guide["realizations"]["loc-02"]
+    assert record["source"] == "fallback"
+    assert [item["name"] for item in record["nodes"]] == \
+        canon["key_place_heads"]
+    assert record["people"] == []
+    # 要点链**不**再过「只有要点」那一关：直接落盘并有 L2 摘要。
+    assert "听泉馆" in web.guide["l2"] and web.guide["salt"] in web.guide["l2"]
+    assert web.guide["transcript"] == []
+    ok("实相退回：两次只有要点 → fallback 要点链，无第三次请求")
+
+
+def test_realization_offline_falls_back():
+    """离线（空密钥 / 空 BASE_URL）不发请求，直接落要点链 fallback。"""
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append(payload)
+        return {"content": "", "tool_calls": [], "usage": {}}
+
+    web = _RealizationWeb()
+    pg.ensure_realization(web, "loc-02",
+                          env={"BASE_URL": "", "MODEL": "mm", "API_KEY": "kk"},
+                          transmit=fake)
+    assert calls == [], "离线不得调用传输"
+    assert web.guide["realizations"]["loc-02"]["source"] == "fallback"
+    ok("实相：离线不请求、直接要点链 fallback")
+
+
+def test_realization_pending_and_dedup():
+    """同一地点第二次不请求；新鲜 pending 不请求；超 120 秒才可再占一次。"""
+    canon = _canon("loc-02")
+    good = json.dumps(_payload("loc-02", "白壁",
+                               _wall_key_nodes() + [_wall_street()]),
+                      ensure_ascii=False)
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append(payload)
+        return {"content": good, "tool_calls": [], "usage": {}}
+
+    env = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+           "API_KEY": "kk"}
+    web = _RealizationWeb()
+    pg.ensure_realization(web, "loc-02", env=env, transmit=fake)
+    assert len(calls) == 1
+    pg.ensure_realization(web, "loc-02", env=env, transmit=fake)
+    assert len(calls) == 1, "同一地点第二次不得再请求"
+
+    # 新鲜 pending：不调用模型，也不写 fallback；L2 里没有 claimed_at。
+    fresh = _RealizationWeb()
+    fresh.guide["realizations"]["loc-02"] = {
+        "version": 1, "location_id": "loc-02", "source": "pending",
+        "claimed_at": time.time(), "claim": "aa"}
+    before = json.dumps(fresh.guide["realizations"], sort_keys=True)
+    pg.ensure_realization(fresh, "loc-02", env=env, transmit=fake)
+    assert len(calls) == 1, "新鲜 pending 不得请求"
+    assert json.dumps(fresh.guide["realizations"], sort_keys=True) == before
+    assert fresh.guide["realizations"]["loc-02"]["source"] == "pending"
+    l2_pending = pg.build_l2(fresh.rules, fresh.guide)
+    assert "claimed_at" not in l2_pending and "听泉馆" not in l2_pending
+
+    # 超过 120 秒的 pending：允许再占一次并生成。
+    stale = _RealizationWeb()
+    stale.guide["realizations"]["loc-02"] = {
+        "version": 1, "location_id": "loc-02", "source": "pending",
+        "claimed_at": time.time() - pg.REALIZATION_CLAIM_S - 80,
+        "claim": "bb"}
+    pg.ensure_realization(stale, "loc-02", env=env, transmit=fake)
+    assert len(calls) == 2, "过期 pending 应当再占一次"
+    assert stale.guide["realizations"]["loc-02"]["source"] == "model"
+    ok("实相占位：第二次不请求 / 新鲜 pending 不请求 / 过期可再占一次")
+
+
+def test_realization_overlap_single_upstream():
+    """两次重叠的 `ensure_realization` 只有一次上游。"""
+    canon = _canon("loc-02")
+    good = json.dumps(_payload("loc-02", "白壁",
+                               _wall_key_nodes() + [_wall_street()]),
+                      ensure_ascii=False)
+    upstream = []
+    guard = threading.Lock()
+
+    def slow(url, payload, headers, *, timeout):
+        with guard:
+            upstream.append(payload)
+        time.sleep(0.15)
+        return {"content": good, "tool_calls": [], "usage": {}}
+
+    web = _RealizationWeb()
+    env = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+           "API_KEY": "kk"}
+    threads = [threading.Thread(target=pg.ensure_realization,
+                                args=(web, "loc-02"),
+                                kwargs={"env": env, "transmit": slow})
+               for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert len(upstream) == 1, len(upstream)
+    assert web.guide["realizations"]["loc-02"]["source"] == "model"
+    ok("实相并发：两次重叠只有一次上游（占位串起来）")
+
+
+def test_realization_commit_rewrites_l2():
+    """提交之后 L2 含 salt 与 `听泉馆`，L3 为空；`pending` 不重写 L2。"""
+    canon = _canon("loc-02")
+    good = json.dumps(_payload("loc-02", "白壁",
+                               _wall_key_nodes() + [_wall_street()],
+                               links=[{"a": "loc-02/wash-lane",
+                                       "b": "loc-02/tingquan"}]),
+                      ensure_ascii=False)
+    web = _RealizationWeb()
+    web.guide["transcript"] = [{"role": "assistant", "content": "旧对白"}]
+    web.guide["l2"] = "旧检查点"
+    pg.ensure_realization(web, "loc-02",
+                          env={"BASE_URL": "https://api.example.com/v1",
+                               "MODEL": "mm", "API_KEY": "kk"},
+                          transmit=lambda *a, **k: {"content": good,
+                                                    "tool_calls": [],
+                                                    "usage": {}})
+    assert "听泉馆" in web.guide["l2"] and web.guide["salt"] in web.guide["l2"]
+    assert "claimed_at" not in web.guide["l2"]
+    assert web.guide["transcript"] == [], "提交实相要清空 L3"
+    # `here` 初始放在第一条要点上。
+    assert web.guide["here"] == canon["key_place_heads"][0]
+    # 定稿后的记录里没有 `claimed_at`。
+    assert "claimed_at" not in web.guide["realizations"]["loc-02"]
+    # 未提交（pending）时不重写 L2：ensure_l2 也不会把 pending 写进去。
+    assert pg.build_l2(web.rules, web.guide).count("salt：") == 1
+    ok("实相提交：重写 L2（salt + 听泉馆）、清空 L3、删 claimed_at")
+
 
 
 def test_env_example():
@@ -1482,7 +1894,18 @@ def main():
     test_bind_contract()
     test_bind_phrases_match_web_layer()
     test_location_ok()
-    test_ensure_realization_is_noop()
+    test_realization_canon_fixtures()
+    test_validate_realization_hard_failures()
+    test_validate_realization_near_name_is_drop_not_fail()
+    test_validate_realization_old_money_poor_zone()
+    test_validate_realization_market_street_kind()
+    test_realization_request_body_contract()
+    test_realization_retry_only_second_saved()
+    test_realization_double_failure_falls_back()
+    test_realization_offline_falls_back()
+    test_realization_pending_and_dedup()
+    test_realization_overlap_single_upstream()
+    test_realization_commit_rewrites_l2()
     test_module_offline_no_socket()
     test_env_example()
     print()
