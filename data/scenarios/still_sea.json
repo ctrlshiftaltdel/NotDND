@@ -1,0 +1,2500 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S4-静海-硬科幻.md:1",
+  "meta": {
+    "world": "still-sea",
+    "engine": "build",
+    "campaign": "静海·迟到的回信",
+    "party_level": 1,
+    "tone_pack": "冷硬"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕：窗口",
+      "level_range": "1–3 级",
+      "summary": "让玩家亲手算一次 Δv 与窗口，并第一次体验\"必须选一个才能救到\"。两个窗口（哑铃/汀洲）同时打开，只够选一个。",
+      "nodes": [
+        "N00",
+        "N01",
+        "N02",
+        "N03",
+        "N04"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2376"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕：沉默",
+      "level_range": "3–5 级",
+      "summary": "让\"信息不完全\"从规则变成切身体验。进入哑铃站，在冷链倒计时、幸存者与迟到的信之间做延迟中的抉择。",
+      "nodes": [
+        "N10",
+        "N11",
+        "N12",
+        "N13",
+        "N14",
+        "N15"
+      ],
+      "tasks": [
+        "Q-01",
+        "Q-05"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2398"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕：真相",
+      "level_range": "5–8 级",
+      "summary": "让玩家查明\"迟信被压下的评估\"与\"熄灯会的真实手段\"，并把真相变成可用的杠杆。",
+      "nodes": [
+        "N20",
+        "N21",
+        "N22",
+        "N23",
+        "N24",
+        "N25",
+        "N26",
+        "N27",
+        "N28",
+        "N29"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2425"
+    },
+    {
+      "id": "act-4",
+      "name": "第四幕：分派",
+      "level_range": "8–10 级",
+      "summary": "让 Δv 的有限性变成一场真正的分派会议——救谁、弃谁，由玩家决定并承担。",
+      "nodes": [
+        "N30",
+        "N31",
+        "N32",
+        "N33"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2452"
+    },
+    {
+      "id": "act-5",
+      "name": "第五幕：回信",
+      "level_range": "10–12 级",
+      "summary": "先阻止（或执行）全系统静默，再作出知情选择：终局四选一。",
+      "nodes": [
+        "N40",
+        "N41",
+        "N50"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2472"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N00",
+      "name": "锚地整备",
+      "act": "act-1",
+      "next": [
+        "N01"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2350"
+    },
+    {
+      "id": "N01",
+      "name": "两枚筹码",
+      "act": "act-1",
+      "next": [
+        "N02"
+      ],
+      "marks": [
+        "窗口抉择：去哑铃核实失联，或去汀洲送汀胺药，两个窗口同时打开，只够选一个"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2350"
+    },
+    {
+      "id": "N02",
+      "name": "第一次转移",
+      "act": "act-1",
+      "next": [
+        "N03",
+        "N04"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2350"
+    },
+    {
+      "id": "N03",
+      "name": "去哑铃线",
+      "act": "act-1",
+      "next": [
+        "N10"
+      ],
+      "marks": [
+        "去哑铃 → 进入第二幕主线"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2353"
+    },
+    {
+      "id": "N04",
+      "name": "去汀洲线",
+      "act": "act-1",
+      "next": [
+        "N10"
+      ],
+      "marks": [
+        "去汀洲 → 先完成 Q-02 再前往哑铃（汀洲线会给\"药与呼吸塔\"的另一重压力，并使哑铃延后 130 衡日，触发若干世界时钟）"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2353"
+    },
+    {
+      "id": "N10",
+      "name": "哑铃对接",
+      "act": "act-2",
+      "next": [
+        "N11"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+    },
+    {
+      "id": "N11",
+      "name": "冷链倒计时",
+      "act": "act-2",
+      "next": [
+        "N12",
+        "N14"
+      ],
+      "marks": [
+        "进入 clock.dumbbell_cold（12 时段），在\"救样本\"与\"救人\"之间分配时段"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+    },
+    {
+      "id": "N12",
+      "name": "幸存者",
+      "act": "act-2",
+      "next": [
+        "N13",
+        "N15"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+    },
+    {
+      "id": "N13",
+      "name": "旧中继房",
+      "act": "act-2",
+      "marks": [
+        "揭示：静默不是事故（flag.lingering_signal）"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2355"
+    },
+    {
+      "id": "N14",
+      "name": "样本库核心",
+      "act": "act-2",
+      "marks": [
+        "与\"样本库核心\"（首领）对抗/交涉；它只为保护样本，不惜牺牲人"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2357"
+    },
+    {
+      "id": "N15",
+      "name": "迟到的信",
+      "act": "act-2",
+      "marks": [
+        "全幕的情感高点：先看到卫长庚的尸体，几小时后收到他\"还活着\"的、早已发出的回信；导引者必须演出这次延迟落差，不得抹去"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2357"
+    },
+    {
+      "id": "N20",
+      "name": "评估残页",
+      "act": "act-3",
+      "next": [
+        "N21"
+      ],
+      "marks": [
+        "三条路径取得：韩砚秋 / 邵霜 / 档案室（见 Q-03）"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+    },
+    {
+      "id": "N21",
+      "name": "邵霜",
+      "act": "act-3",
+      "next": [
+        "N22"
+      ],
+      "marks": [
+        "对白树三。可将其争取为首领级盟友。她复算的原始结论是：\"未必有害，但确实未知。\""
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+    },
+    {
+      "id": "N22",
+      "name": "宁执中封锁",
+      "act": "act-3",
+      "next": [
+        "N23"
+      ],
+      "marks": [
+        "宁执中（首领）的封锁权，可让一处区域\"消失\""
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+    },
+    {
+      "id": "N23",
+      "name": "公开复算",
+      "act": "act-3",
+      "marks": [
+        "用《公开复算》/《灯塔宣讲》把真相变成公共事件；这是\"回信\"结局的必要条件之一"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2359"
+    },
+    {
+      "id": "N24",
+      "name": "七号中继",
+      "act": "act-3",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+    },
+    {
+      "id": "N25",
+      "name": "缓存舱",
+      "act": "act-3",
+      "next": [
+        "N26"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+    },
+    {
+      "id": "N26",
+      "name": "熄灯会接触",
+      "act": "act-3",
+      "next": [
+        "N27"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+    },
+    {
+      "id": "N27",
+      "name": "何燎",
+      "act": "act-3",
+      "marks": [
+        "与何燎对白树四。揭示：熄灯会掌握让全系统静默九衡日的技术（flag.truth_lamplighter）；何燎其实不想永久熄灯，他的手下更激进"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2360"
+    },
+    {
+      "id": "N28",
+      "name": "盐冢远岸号",
+      "act": "act-3",
+      "marks": [
+        "支线：盐冢远岸号残骸（首领）提供旧岸数据"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2361"
+    },
+    {
+      "id": "N29",
+      "name": "云脊台母星",
+      "act": "act-3",
+      "marks": [
+        "支线：云脊台/长夜林提供母星悬念。二者可并行，用延迟通信完成"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2361"
+    },
+    {
+      "id": "N30",
+      "name": "呼吸塔危机",
+      "act": "act-4",
+      "next": [
+        "N31"
+      ],
+      "marks": [
+        "clock.breath_tower 逼近归零。可用本船货物补齐，或从主砧调件（需另派船、耗时 334 衡日）"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2363"
+    },
+    {
+      "id": "N31",
+      "name": "白隼危机",
+      "act": "act-4",
+      "next": [
+        "N32"
+      ],
+      "marks": [
+        "蒋叠山与沈蕤的线；制冷剂只够到下一个窗口。可救援、可调停、可无视"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2363"
+    },
+    {
+      "id": "N32",
+      "name": "燃料分派会议",
+      "act": "act-4",
+      "next": [
+        "N33"
+      ],
+      "marks": [
+        "本幕的核心场景：有限的 Δv 与多个殖民地之间做分派。建议用一次真实的多目标 Δv 计算。会议用集体检定 + 论战（各势力代表立场），并允许《窗口分派》"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2363"
+    },
+    {
+      "id": "N33",
+      "name": "熄灯会静默母站",
+      "act": "act-4",
+      "marks": [
+        "熄灯会静默母站（首领）。可谈判（何燎线）或夺取"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2365"
+    },
+    {
+      "id": "N40",
+      "name": "全系统广播/静默",
+      "act": "act-5",
+      "next": [
+        "N41"
+      ],
+      "marks": [
+        "用《全系统广播》或《静默航行》/《熄灯协议》执行终局通信动作。每个此前争取到的势力提供固定 +1；每项真相提供一名失败者重掷的机会"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2367"
+    },
+    {
+      "id": "N41",
+      "name": "哑铃终局（样本逃逸体）",
+      "act": "act-5",
+      "next": [
+        "N50"
+      ],
+      "marks": [
+        "若样本在幕二一息尚存，此刻可能融合为\"样本逃逸体\"（首领）。破韧三次后可分割灭活并保住样本"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2367"
+    },
+    {
+      "id": "N50",
+      "name": "终局四选一",
+      "act": "act-5",
+      "marks": [
+        "回信（公开真相 + 组织救援）",
+        "熄灯（关闭中继，永久隔离）",
+        "静默航行（少数人带证据远航）",
+        "火种（牺牲一处保全多处）",
+        "导引者公开四方案的所需、立即收益与长期代价，逐名询问确认。若队伍意见分裂，用角色内论战或投票；不替玩家决定情绪"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2369"
+    },
+    {
+      "id": "Q-00",
+      "type": "task",
+      "name": "静海·迟到的回信",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.anchor_ready == true（抵达锚地整备完成）"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受第一航段（去哑铃 或 去汀洲），并支付对应 Δv"
+        },
+        {
+          "from": "active",
+          "to": "confirmed",
+          "condition": "flag.dumbbell_arrived == true 且 flag.truth_count >= 1"
+        },
+        {
+          "from": "confirmed",
+          "to": "midgame",
+          "condition": "flag.truth_count >= 3（迟信真相、检疫封锁、熄灯会三方信息各一）"
+        },
+        {
+          "from": "midgame",
+          "to": "reply",
+          "condition": "flag.public_broadcast == true 且 rep_plus2_count >= 3"
+        },
+        {
+          "from": "midgame",
+          "to": "lights_out",
+          "condition": "flag.relay_seized >= 4（熄灯会先手）"
+        },
+        {
+          "from": "midgame",
+          "to": "running_dark",
+          "condition": "flag.silent_run == true 且 flag.sample_secured == true"
+        },
+        {
+          "from": "midgame",
+          "to": "ember",
+          "condition": "flag.sacrifice_choice == true（主动放弃一处殖民地）"
+        },
+        {
+          "from": "任意 active 状态",
+          "to": "expired",
+          "condition": "clock.window_missed >= 1（关键窗口关闭且未补救）"
+        }
+      ],
+      "note": "expired 不是全盘清零：保留已获取的真相、账本事实、等级；但一处殖民地永久失联（写入 clock.lost_colonies），熄灯会声望 +1，主线转入\"收拾残局\"的变体。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:1605"
+    },
+    {
+      "id": "Q-01",
+      "type": "task",
+      "name": "哑铃的两端",
+      "time_window": "抵达后 6 个时段内必须决定是否进入样本库",
+      "transitions": [
+        {
+          "from": "approaching",
+          "to": "docked",
+          "condition": "完成转移并成功对接（轨道学/操舵判定）"
+        },
+        {
+          "from": "docked",
+          "to": "cold_safe",
+          "condition": "在 clock.dumbbell_cold 归零前修复制冷（维生 DF 16）"
+        },
+        {
+          "from": "docked",
+          "to": "cold_fail",
+          "condition": "clock.dumbbell_cold 归零（样本失活，转 Q-05 备用链）"
+        },
+        {
+          "from": "docked",
+          "to": "evacuated",
+          "condition": "优先撤离幸存者（放弃样本，flag.survivors_saved=true）"
+        },
+        {
+          "from": "docked",
+          "to": "sealed",
+          "condition": "执行检疫封锁，站内人样本皆弃（检疫署声望 +2，其余 −2）"
+        }
+      ],
+      "note": "窗口：clock.dumbbell_cold 初值 12 时段，每完成一次舱内行动 −1。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:1623"
+    },
+    {
+      "id": "Q-02",
+      "type": "task",
+      "name": "把呼吸还回去",
+      "time_window": "呼吸塔余量 20 衡日",
+      "transitions": [
+        {
+          "from": "alerted",
+          "to": "supplied",
+          "condition": "用本船货物或白隼挥发分补齐呼吸塔（耗 Δv 一段内环腿）"
+        },
+        {
+          "from": "alerted",
+          "to": "rerouted",
+          "condition": "从主砧调来闭环部件（耗时 334 衡日，需另派船）"
+        },
+        {
+          "from": "alerted",
+          "to": "collapsed",
+          "condition": "clock.breath_tower 归零，冷滩港进入配给恐慌，物价 +1 层"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:1635"
+    },
+    {
+      "id": "Q-03",
+      "type": "task",
+      "name": "一份被压下的评估",
+      "transitions": [
+        {
+          "from": "picking",
+          "to": "proved",
+          "condition": "取得评估原版（邵霜/席砚生/档案室三路之一）+ 一次公开复算"
+        },
+        {
+          "from": "picking",
+          "to": "forged",
+          "condition": "接受检疫署的\"官方版本\"，终局真相判定 DF +2"
+        },
+        {
+          "from": "picking",
+          "to": "buried",
+          "condition": "flag.sha_shuang_dead == true 且 flag.xi_notes_lost == true"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:1644"
+    },
+    {
+      "id": "Q-04",
+      "type": "task",
+      "name": "熄灯之前",
+      "time_window": "静默母站启动前 10 衡日",
+      "transitions": [
+        {
+          "from": "watching",
+          "to": "infiltrating",
+          "condition": "flag.relay_6_controlled == true 或何燎会面成功"
+        },
+        {
+          "from": "infiltrating",
+          "to": "talked_down",
+          "condition": "说服何燎并暴露其内部分裂（说服 DF 18）"
+        },
+        {
+          "from": "infiltrating",
+          "to": "seized",
+          "condition": "武力夺取母站控制权"
+        },
+        {
+          "from": "infiltrating",
+          "to": "lights_out",
+          "condition": "clock.blackout 归零，全系统进入九衡日静默"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:1653"
+    },
+    {
+      "id": "Q-05",
+      "type": "task",
+      "name": "迟信的另一半",
+      "note": "备用链，Q-01 失败时激活。",
+      "transitions": [
+        {
+          "from": "searching",
+          "to": "recovered",
+          "condition": "从长夜林彗核或主砧黑炉找到第二份样本（跨数年或延迟获取）"
+        },
+        {
+          "from": "searching",
+          "to": "lost",
+          "condition": "两处皆不可得，稳态结局中\"利用迟信\"路线永久关闭"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:1663"
+    },
+    {
+      "id": "Q-06",
+      "type": "task",
+      "name": "最长的一趟",
+      "note": "长夜林线，可用延迟完成。corresponding 状态：与温勿离建立延迟通信（每次往返约 30 时段 = 5 小时，跨数衡日）。",
+      "transitions": [
+        {
+          "from": "corresponding",
+          "to": "confirmed",
+          "condition": "交叉验证窄带信号为真"
+        },
+        {
+          "from": "corresponding",
+          "to": "unconfirmed",
+          "condition": "三次尝试皆无法确认，母星悬念维持开放"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:1671"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "迟信的评估报告不完整，且原始结论被压下",
+      "carrier": "证据：评估原版、席砚生旧笔记",
+      "npcs": [
+        "邵霜",
+        "席砚生"
+      ],
+      "flags": [
+        "flag.truth_assessment",
+        "flag.forged_assessment"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "席砚生的旧笔记",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2557"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "评估原版",
+          "source": "docs/scenario/S4-静海-硬科幻.md:1648"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "邵霜复算",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2557"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由封锁令的删号推出",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2557"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2525"
+    },
+    {
+      "id": "C-02",
+      "name": "汀胺药源吃紧，呼吸塔余量被瞒报",
+      "carrier": "证据：药源配额单",
+      "npcs": [
+        "宁执中",
+        "韦守拙"
+      ],
+      "flags": [
+        "flag.tng_amine_shipped",
+        "flag.breath_tower_alert"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2526"
+    },
+    {
+      "id": "C-03",
+      "name": "熄灯会掌握静默技术",
+      "carrier": "证据：七号中继的操作手册残页",
+      "npcs": [
+        "何燎"
+      ],
+      "flags": [
+        "flag.truth_lamplighter"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "七号中继实查",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2558"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "操作手册残页",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2527"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "何燎布道",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2558"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由布道内容的专业度反推",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2558"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2527"
+    },
+    {
+      "id": "C-04",
+      "name": "穹顶存在未公开的结构隐患",
+      "carrier": "场景：穹顶外壁检修区",
+      "npcs": [
+        "蒋叠山"
+      ],
+      "flags": [
+        "flag.breath_tower_saved"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2528"
+    },
+    {
+      "id": "C-05",
+      "name": "主砧黑炉存在，且结构疲劳常被瞒报",
+      "carrier": "证据：黑炉的承载记录",
+      "npcs": [
+        "蒋叠山"
+      ],
+      "flags": [
+        "flag.relay_7_controlled"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2529"
+    },
+    {
+      "id": "C-06",
+      "name": "悬赏的真正来源不是白隼公司",
+      "carrier": "证据：悬赏的付款凭据",
+      "npcs": [
+        "何燎",
+        "柯砚"
+      ],
+      "flags": [
+        "flag.public_broadcast"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2530"
+    },
+    {
+      "id": "C-07",
+      "name": "窗口赤字的历史可以追溯",
+      "carrier": "证据：历次窗口结算表",
+      "npcs": [
+        "席砚生"
+      ],
+      "flags": [
+        "flag.bai_sun_crisis"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2531"
+    },
+    {
+      "id": "C-08",
+      "name": "白隼工人状况恶化，罢工在即",
+      "carrier": "证据：工人签到记录",
+      "npcs": [
+        "沈蕤"
+      ],
+      "flags": [
+        "flag.bai_sun_strike"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2532"
+    },
+    {
+      "id": "C-09",
+      "name": "主砧黑炉是唯一能重启静默装置的地方",
+      "carrier": "场景：主砧黑炉",
+      "npcs": [
+        "蒋叠山"
+      ],
+      "flags": [
+        "flag.relay_seized"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2533"
+    },
+    {
+      "id": "C-10",
+      "name": "双生礁存在一条黑市路线",
+      "carrier": "场景：双生礁",
+      "npcs": [
+        "温勿离"
+      ],
+      "flags": [
+        "flag.cache_raided"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2534"
+    },
+    {
+      "id": "C-11",
+      "name": "封锁令的编号被删，真实目的另有其事",
+      "carrier": "证据：编号缺口、封锁令原件",
+      "npcs": [
+        "宁执中"
+      ],
+      "flags": [
+        "flag.truth_quarantine"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "档案室原件",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2559"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "编号缺口",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2535"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "宁执中被驳倒后的默认",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2559"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由命令的时间线矛盾推出",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2559"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2535"
+    },
+    {
+      "id": "C-12",
+      "name": "远岸号日志落在某处，可查旧航段",
+      "carrier": "证据：远岸号日志",
+      "npcs": [
+        "温勿离"
+      ],
+      "flags": [
+        "flag.lingering_signal"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2536"
+    },
+    {
+      "id": "C-13",
+      "name": "呼吸塔的余量被系统性瞒报",
+      "carrier": "证据：塔内余量日志",
+      "npcs": [
+        "韦守拙"
+      ],
+      "flags": [
+        "flag.breath_tower_alert"
+      ],
+      "tasks": [
+        "Q-02"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2537"
+    },
+    {
+      "id": "C-14",
+      "name": "存在一条走私航线，绕开检疫",
+      "carrier": "场景／证据：走私航线图",
+      "npcs": [
+        "柯砚"
+      ],
+      "flags": [
+        "flag.silent_run"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2538"
+    },
+    {
+      "id": "C-15",
+      "name": "配给存在双重标准",
+      "carrier": "证据：配给发放记录",
+      "npcs": [
+        "宁执中"
+      ],
+      "flags": [
+        "flag.jiang_note"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2539"
+    },
+    {
+      "id": "C-16",
+      "name": "旧岸信号的最后确认时间可考",
+      "carrier": "证据：旧岸信号记录",
+      "npcs": [
+        "邵霜"
+      ],
+      "flags": [
+        "flag.lingering_signal"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2540"
+    },
+    {
+      "id": "C-17",
+      "name": "样本库的真实状态与设计被隐瞒",
+      "carrier": "场景：哑铃样本库",
+      "npcs": [
+        "邵霜"
+      ],
+      "flags": [
+        "flag.sample_secured"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "站内实探",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "样本库权限记录",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "幸存者口述",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由设计容量与实际不符推出",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2560"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2541"
+    },
+    {
+      "id": "C-18",
+      "name": "哑铃站内还有人活着",
+      "carrier": "场景：站内居住舱",
+      "npcs": [
+        "何燎"
+      ],
+      "flags": [
+        "flag.survivors_saved"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "居住舱搜索",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "生命维持日志",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "回声中的应答",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由消耗量反推人数",
+          "source": "docs/scenario/S4-静海-硬科幻.md:2561"
+        }
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2542"
+    },
+    {
+      "id": "C-19",
+      "name": "静默令的执行细节被人为保留",
+      "carrier": "证据：静默令执行记录",
+      "npcs": [
+        "何燎"
+      ],
+      "flags": [
+        "flag.silent_run"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2543"
+    },
+    {
+      "id": "C-20",
+      "name": "中继缓存舱保存着被缓存的历史消息",
+      "carrier": "场景：缓存舱",
+      "npcs": [
+        "邵霜"
+      ],
+      "flags": [
+        "flag.echo_debunked"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2544"
+    },
+    {
+      "id": "C-21",
+      "name": "白隼的补给窗口有明确期限",
+      "carrier": "证据：补给窗口表",
+      "npcs": [
+        "沈蕤"
+      ],
+      "flags": [
+        "flag.bai_sun_crisis"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2545"
+    },
+    {
+      "id": "C-22",
+      "name": "外缘的辐射环境超出设计余量",
+      "carrier": "证据：辐射监测记录",
+      "npcs": [
+        "蒋叠山"
+      ],
+      "flags": [
+        "flag.blackout"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2546"
+    },
+    {
+      "id": "C-23",
+      "name": "熄灯会内部存在分裂",
+      "carrier": "NPC：熄灯会成员口述",
+      "npcs": [
+        "何燎"
+      ],
+      "flags": [
+        "flag.truth_lamplighter"
+      ],
+      "tasks": [
+        "Q-04"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2547"
+    },
+    {
+      "id": "C-24",
+      "name": "有一条绕过检疫的紧急航线",
+      "carrier": "证据：航线申请记录",
+      "npcs": [
+        "柯砚"
+      ],
+      "flags": [
+        "flag.silent_run"
+      ],
+      "tasks": [
+        "Q-05"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2548"
+    },
+    {
+      "id": "C-25",
+      "name": "迟信可能存在闭环价值",
+      "carrier": "证据：迟信原件",
+      "npcs": [
+        "邵霜"
+      ],
+      "flags": [
+        "flag.lingering_signal"
+      ],
+      "note": "终局",
+      "source": "docs/scenario/S4-静海-硬科幻.md:2549"
+    },
+    {
+      "id": "C-26",
+      "name": "一条被扣下的关键电文",
+      "carrier": "证据：电文存根",
+      "npcs": [
+        "席砚生"
+      ],
+      "flags": [
+        "flag.jiang_note"
+      ],
+      "tasks": [
+        "Q-03"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2550"
+    },
+    {
+      "id": "C-27",
+      "name": "冷棺里存着一份旧身份",
+      "carrier": "场景：冷棺",
+      "npcs": [
+        "温勿离"
+      ],
+      "flags": [
+        "flag.survivors_saved"
+      ],
+      "tasks": [
+        "Q-01"
+      ],
+      "source": "docs/scenario/S4-静海-硬科幻.md:2551"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "韦守拙",
+      "alias": "老韦",
+      "role": "驿船\"回信号\"船长",
+      "faction": "锚地／中立",
+      "drive": "让\"回信号\"和船上每个人都能活着回锚地。",
+      "lever": "他欠过一次\"没等的人\"，只要有人愿意听那段往事，他就会松口。",
+      "mask": "只讲规程与数字，不谈感情。",
+      "tell": "犹豫时会用手指敲燃料表三下。",
+      "threshold": "可以冒险、可以撒谎、可以放弃货物；不能放弃船组。",
+      "secret": "AY 220 的\"冰箱战争\"里，他曾为白隼运过一次不该运的制冷剂，导致汀洲一次停产。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 1,
+        "note": "尊重其判断 +1，拿船组当耗材 −2。"
+      },
+      "knows": [
+        "C-03",
+        "C-07"
+      ],
+      "if_dead_or_betrayed": "船组选出新船务官（玩家可角逐），\"回信号\"的所有权与债务按工会章程重新分配；他藏在枕下的旧岸航行日志会被下一名船长找到，旧岸线不锁死，但延迟 +1 衡日。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:446"
+    },
+    {
+      "id": "npc-02",
+      "name": "岑岭",
+      "role": "锚地船坞工会技师班长",
+      "faction": "工会",
+      "drive": "把一艘被判\"报废\"的船修回能飞。",
+      "lever": "任何\"诚实的结构问题\"都会让她放下手头活。",
+      "mask": "粗声粗气，先骂后修。",
+      "tell": "撒谎前会先擦手，即使手是干净的。",
+      "threshold": "会偷工减料替人省料、会伪造船况报告；不会在承力结构上作假。",
+      "secret": "她手上有一份\"回信号\"隐藏裂纹的未报告记录。",
+      "attitude": {
+        "affinity": 2,
+        "awe": 0,
+        "note": "承认她手艺 +1，催她赶工 −1。"
+      },
+      "knows": [
+        "C-05",
+        "C-09"
+      ],
+      "if_dead_or_betrayed": "船况隐患暴露，主线转移前必须多花 1 衡日维修；工会改派一名更官僚的技师，改装 DF +2。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:458"
+    },
+    {
+      "id": "npc-03",
+      "name": "邰明远",
+      "role": "砾海矿业联合区域代表",
+      "faction": "矿业联合",
+      "drive": "让联合在任何一次全系统危机里都是\"最后还开着门的那一家\"。",
+      "lever": "他真心相信\"流动性=文明\"，只要论证需要\"保持航路\"，他就会让步。",
+      "mask": "和气生财的生意人。",
+      "tell": "报价时会不自觉地把价目表折出一道印。",
+      "threshold": "可以抬价、可以扣货、可以散布谣言；不会直接杀人，但会\"按规程\"让别人走不了。",
+      "secret": "盲区货仓里藏着本应销毁的、关于迟信样本的黑价悬赏副本。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "带来生意 +1，公开损害联合 −2。"
+      },
+      "knows": [
+        "C-06",
+        "C-10"
+      ],
+      "if_dead_or_betrayed": "联合进入敌对，锚地拒绝加注，所有航程 Δv 成本上升一档（见 5.1）；他的价目表落入玩家手中，反可作证据。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:470"
+    },
+    {
+      "id": "npc-04",
+      "name": "沙棠",
+      "role": "\"半格\"酒吧老板",
+      "faction": "中立",
+      "drive": "把每个走进来的人都当作\"还没决定的人\"，给他们一杯酒和一个选择。",
+      "lever": "她的义眼需要定期从主砧换零件，付不起就会坏。",
+      "mask": "什么都不记得，什么都听得见。",
+      "tell": "说到\"白隼\"这个词时会停半秒——她曾是那里的工人。",
+      "threshold": "会卖情报、会替人圆谎；不会把未成年船员的信息卖出去。",
+      "secret": "她是白隼罢工事件的逃兵，身上有联合的旧伤。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "在她这里消费 +1，逼问她过去 −2。"
+      },
+      "knows": [
+        "C-08",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "锚地失去中立情报点，玩家只能靠人脉判定获取传闻，DF +2；她的旧伤证据被联合回收，白隼线少一条人证。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:482"
+    },
+    {
+      "id": "npc-05",
+      "name": "石敢当",
+      "role": "打捞人，盐冢向导",
+      "faction": "打捞人自治邦",
+      "drive": "捞回\"远岸号\"里属于第一批移民的那份航行日志。",
+      "lever": "任何关于\"我们从哪来\"的问题。",
+      "mask": "只谈价钱与倾角，不谈理想。",
+      "tell": "讲到残骸里的尸体时，会先摘下手套。",
+      "threshold": "会盗卖黑匣、会带错路多收钱；不会抛下在倾角轨道上遇险的同伴。",
+      "secret": "他其实已经进过远岸号，但没敢读那份日志。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 1,
+        "note": "替他分摊一次打捞风险 +2，骗他倾角数据 −3。"
+      },
+      "knows": [
+        "C-12",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "盐冢对玩家封锁，旧岸线只剩主砧黑炉一条昂贵路径；他的打捞船与一名继承者仍在，可作延迟 NPC 延续线索。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:494"
+    },
+    {
+      "id": "npc-06",
+      "name": "韩砚秋",
+      "role": "共同事务局协调专员",
+      "faction": "共同事务局",
+      "drive": "在自己退休前，让事务局至少公正地处理过一次真正的危机。",
+      "lever": "一段被事务局自己压下的旧案。",
+      "mask": "程序正义的化身。",
+      "tell": "被逼到墙角时会反复翻动同一页文件。",
+      "threshold": "会拖延、会选择性上报；不会伪造死亡名单。",
+      "secret": "她手上有那份 AY 239 被压下的迟信评估报告的残页。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "通过正规渠道办事 +1，公然违法 −2。"
+      },
+      "knows": [
+        "C-01",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "残页随她一起消失或被销毁，真相线转由检疫署内部异议者（NPC 12）承担，DF +2 且延迟 +1 衡日。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:508"
+    },
+    {
+      "id": "npc-07",
+      "name": "沈知微",
+      "role": "冷滩港配给署主管",
+      "faction": "共同事务局",
+      "drive": "让汀洲的呼吸塔在她任内不因管理失误而停摆。",
+      "lever": "任何能让她把\"余量\"算得更准的数据。",
+      "mask": "六亲不认的账房。",
+      "tell": "算错时会咬笔帽。",
+      "threshold": "会优先配给、会隐瞒余量；不会在明知会死人的情况下削减空气回收。",
+      "secret": "汀洲呼吸塔的实际余量比她上报的更少——她压着这个数字已经四个月。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "提供真实数据 +1，公开逼她 −2。"
+      },
+      "knows": [
+        "C-02",
+        "C-13"
+      ],
+      "if_dead_or_betrayed": "真实余量曝光，冷滩港进入配给恐慌，物价 +1 层，主线中\"救汀洲\"的紧迫度上升；她的副手可接续。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:520"
+    },
+    {
+      "id": "npc-08",
+      "name": "陆沉舟",
+      "role": "汀洲穹顶检修工，基层意见领袖",
+      "faction": "中立",
+      "drive": "让\"决定去救谁\"这件事不再由楼上的人关起门来定。",
+      "lever": "他女儿在等汀胺。",
+      "mask": "天不怕地不怕的刺头。",
+      "tell": "真正害怕时会不停数手指。",
+      "threshold": "会煽动、会堵门、会罢工；不会拿别人的呼吸当筹码。",
+      "secret": "他已经查到穹顶缝的渗漏走向，知道一旦出事最先淹的是穷人区。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "让基层参与决策 +1，绕过他们 −2。"
+      },
+      "knows": [
+        "C-04",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "冷滩港基层把玩家当作\"楼上的人\"，所有在汀洲的交涉 DF +2；他的女儿成为一条延迟 NPC 支线。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:532"
+    },
+    {
+      "id": "npc-09",
+      "name": "宁执中",
+      "role": "检疫署区域督察",
+      "faction": "检疫署",
+      "drive": "让\"任何可能的东西\"都被挡在内环之外，哪怕代价是不近人情。",
+      "lever": "他见过一次放行导致的死亡名单，那份名单上有他妹妹的名字。",
+      "mask": "冷静、公正、无可指摘。",
+      "tell": "说出\"放行\"这个词时，喉结会动一下。",
+      "threshold": "会锁闭、会删档、会撒谎；不会亲手杀人，但会让别人\"无法抵达\"。",
+      "secret": "他签署了哑铃的静默令，但并非出于恶意，而是基于一份他自己也不完全相信的评估。",
+      "attitude": {
+        "affinity": -1,
+        "awe": 0,
+        "note": "遵守检疫规程 +1，当众揭穿封锁 +低至 −3。"
+      },
+      "knows": [
+        "C-01",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "检疫署全面敌对，钉环与哑铃通道关闭；但他的死亡会激发一名更冷硬的继任者（NPC 10 接管），危机升级。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:546"
+    },
+    {
+      "id": "npc-10",
+      "name": "邵霜",
+      "role": "检疫署技术分析官",
+      "faction": "检疫署／异议者",
+      "drive": "把那次\"放行导致的死亡\"的真相真正查清，而不是继续执行基于恐惧的规程。",
+      "lever": "她相信\"数据不会说谎\"，用数据说话就能打动她。",
+      "mask": "沉默的技术员。",
+      "tell": "紧张时会把手边的东西按大小排好。",
+      "threshold": "会泄露档案、会伪造权限、会帮人潜入；不会伪造实验室结论。",
+      "secret": "她已经复算了迟信的原始数据，认为样本\"未必有害，但确实未知\"——这正是被压下的结论。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "用证据说话 +2，威胁她 −3。"
+      },
+      "knows": [
+        "C-01",
+        "C-17"
+      ],
+      "if_dead_or_betrayed": "迟信原始数据丢失，玩家只能靠哑铃现存的、被损坏的记录反推，DF +3；她被署内除名的消息会成为熄灯会的宣传素材。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:558"
+    },
+    {
+      "id": "npc-11",
+      "name": "卫长庚",
+      "role": "哑铃隔离站现任站长（生死未卜）",
+      "faction": "检疫署",
+      "drive": "在样本库失效前，让\"库里到底是什么\"被外面的人知道。",
+      "lever": "任何愿意认真读他旧规程电文的人。",
+      "mask": "在正式电文里永远是\"一切正常\"的官僚。",
+      "tell": "真话只出现在旧规程、私用信道、且句尾没有标点的时候。",
+      "threshold": "会隐瞒、会伪造例行报告；不会抛下站内还活着的人。",
+      "secret": "他是唯一还在用三年前废弃旧规程的人，也是\"迟到的信\"的发出者。",
+      "attitude": {
+        "affinity": 1,
+        "note": "隔着延迟，初始 +1；认真回应他的私信道 +2，把它当噪音 −2。"
+      },
+      "knows": [
+        "C-17",
+        "C-18",
+        "C-19"
+      ],
+      "if_dead_or_betrayed": "他的死亡以一段迟到的电文抵达，玩家在收到时他早已不在；站内幸存者数量因此固化在某一档，并影响终局\"救出几人\"的账。故事继续，且更痛。",
+      "delayed": true,
+      "source": "docs/scenario/S4-静海-硬科幻.md:572"
+    },
+    {
+      "id": "npc-12",
+      "name": "岑寂",
+      "role": "灯火串七号中继值守员",
+      "faction": "灯火守（后被熄灯会影响的摇摆者）",
+      "drive": "让每一句被托付的话都真的被送到，哪怕因此耽误别的。",
+      "lever": "一句真诚的\"谢谢\"。",
+      "mask": "标准化的自动应答口吻。",
+      "tell": "当她在犹豫要不要替熄灯会关断信道时，转发里会多一个空格。",
+      "threshold": "会延误、会优先投递私信；不会主动销毁任何人的消息。",
+      "secret": "她已经被熄灯会说服了一半——她见过太多\"迟到的坏消息\"。",
+      "attitude": {
+        "affinity": 1,
+        "note": "隔着延迟，初始 +1；谢她 +1，把她当中继用 −1。"
+      },
+      "knows": [
+        "C-03",
+        "C-20"
+      ],
+      "if_dead_or_betrayed": "七号中继失守，熄灯会控制该节点，全系统延迟 +1 时段；但她留下的缓存舱仍保存着所有未被投递的消息，成为后期夺回线。",
+      "delayed": true,
+      "source": "docs/scenario/S4-静海-硬科幻.md:585"
+    },
+    {
+      "id": "npc-13",
+      "name": "蒋叠山",
+      "role": "白隼挥发分公司外环经理",
+      "faction": "白隼公司",
+      "drive": "在公司的账和自己工人的命之间，找到一个能让自己睡得着的数。",
+      "lever": "他工人里有一个孩子，和玩家某个角色可能同名。",
+      "mask": "只有成本与产能的公司人。",
+      "tell": "当他在系统压力下替工人说话时，会先说一句\"这只是工程口径\"。",
+      "threshold": "会瞒报产能、会拖延、会按公司口径说话；不会签署明知会饿死人的配给令。",
+      "secret": "白隼的制冷剂库存只够撑到下一个窗口，他把这个数字压了两周没上报。",
+      "attitude": {
+        "affinity": 0,
+        "note": "隔着延迟，初始 0；把他当人 +1，只当供应链 −1。"
+      },
+      "knows": [
+        "C-08",
+        "C-21"
+      ],
+      "if_dead_or_betrayed": "白隼陷入罢工或崩溃，公司改派一名只为产能负责的人，外环人道危机概率大增；他的最后一份\"工程口径\"电文会成为终局道德债务。",
+      "delayed": true,
+      "source": "docs/scenario/S4-静海-硬科幻.md:598"
+    },
+    {
+      "id": "npc-14",
+      "name": "温勿离",
+      "role": "长夜林一号哨站观测员",
+      "faction": "灯火守／独立",
+      "drive": "在自己还能记得旧岸的声音时，确认那段 AY 214 的窄带信号是不是真的。",
+      "lever": "任何愿意认真讨论\"一段信号算不算证据\"的人。",
+      "mask": "纯技术性的观测报告。",
+      "tell": "提到母星时会用\"那儿\"而不是\"旧岸\"。",
+      "threshold": "会夸大证据的可能、会长时间沉默；不会伪造一段不存在的信号。",
+      "secret": "他手里有那段窄带信号的完整记录，也几乎确定它\"像人做的，但无法证明\"。",
+      "attitude": {
+        "affinity": 1,
+        "note": "隔着延迟，初始 +1；认真对待他的问题 +2，当他胡思乱想 −2。"
+      },
+      "knows": [
+        "C-16",
+        "C-22"
+      ],
+      "if_dead_or_betrayed": "他停止发信。母星悬念永久中断，熄灯会声望 +1；但他留下的时间胶囊仍可在亲临长夜林时开启。",
+      "delayed": true,
+      "source": "docs/scenario/S4-静海-硬科幻.md:611"
+    },
+    {
+      "id": "npc-15",
+      "name": "「回声」",
+      "role": "一段自称来自哑铃、查无实据的旧规程信号（身份存疑）",
+      "faction": "不明",
+      "drive": "未知。可能是一台自动重播的中继，可能是某个幸存者的伪装，也可能是外部势力伪造。",
+      "lever": "无法确认。玩家若坚持交叉验证，它要么沉默，要么露出破绽。",
+      "mask": "卫长庚的口吻。",
+      "tell": "它从不回答需要\"现场信息\"的问题（比如\"现在舱内温度多少\"）。",
+      "threshold": "未知。",
+      "secret": "它是本册的\"不可靠信源\"装置，导引者可按账本决定其真实身份（自动重播 / 幸存者 / 伪造）。",
+      "attitude": {
+        "note": "不适用。"
+      },
+      "knows": [
+        "C-17",
+        "C-19"
+      ],
+      "if_dead_or_betrayed": "若玩家证明它是伪造或重播，则失去\"哑铃仍有幸存者\"的乐观假设，但也避免被误导；证伪过程本身给出一条关于中继缓存机制的硬线索（C-20）。",
+      "delayed": true,
+      "source": "docs/scenario/S4-静海-硬科幻.md:624"
+    },
+    {
+      "id": "npc-16",
+      "name": "何燎",
+      "role": "熄灯会传道人",
+      "faction": "熄灯会",
+      "drive": "让静海别再因为一句\"我们会来\"而多死一个人。",
+      "lever": "他自己曾在延迟中失去家人，那份经历是他论证的地基。",
+      "mask": "温和的劝慰者。",
+      "tell": "说到\"等\"这个字时，声音会低下去。",
+      "threshold": "会关断信道、会散布恐惧、会瘫痪通信；不会杀害手无寸铁的人。",
+      "secret": "他并不想永久熄灯，他想要的是\"让所有人同意只维持最低通信\"——但他手下的年轻人比他更激进。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "认真听完他的论证 +1，当众羞辱 −2。"
+      },
+      "knows": [
+        "C-03",
+        "C-23"
+      ],
+      "if_dead_or_betrayed": "熄灯会由激进派接管，直接进入\"九衡日静默\"实操，终局难度上升；他的遗稿反而证明熄灯会有过一次\"可以谈\"的时刻。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:639"
+    },
+    {
+      "id": "npc-17",
+      "name": "齐幼安",
+      "role": "双生礁走私头目",
+      "faction": "双生礁自治体",
+      "drive": "让双生礁永远是\"没人管得了的地方\"。",
+      "lever": "她的补给也来自内环，她其实很怕被彻底孤立。",
+      "mask": "什么都能谈。",
+      "tell": "报价前会先把戒指转一圈。",
+      "threshold": "会卖假货、会出卖客户、会设局；不会碰儿科配给——那是礁群唯一底线。",
+      "secret": "迟信样本的黑价悬赏，一半是应她的客户要求挂的。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "带来她能转手的货 +1，砍价太狠 −1。"
+      },
+      "knows": [
+        "C-06",
+        "C-24"
+      ],
+      "if_dead_or_betrayed": "双生礁对玩家关闭，走私路线与非法改装消失；她的账本落入检疫署之手，会引发一次针对礁群的清剿。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:651"
+    },
+    {
+      "id": "npc-18",
+      "name": "沈蕤",
+      "role": "白隼工人代表（罢工发起人）",
+      "faction": "白隼工人／中立",
+      "drive": "让白隼的人第一次自己决定要不要继续为公司挖冰。",
+      "lever": "她想给工人争取的，其实是\"被当作人在延迟里等待\"，而不是数据。",
+      "mask": "强硬的领头人。",
+      "tell": "说到\"孩子\"时语气会软下来。",
+      "threshold": "会罢工、会扣货、会煽动；不会把工人置于是非之外的死地。",
+      "secret": "她知道制冷剂撑不到下一个窗口，罢工有一半是为了逼公司暴露这个数字。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 1,
+        "note": "把工人当人 +1，只谈产能 −2。"
+      },
+      "knows": [
+        "C-08",
+        "C-21"
+      ],
+      "if_dead_or_betrayed": "白隼罢工失控或瓦解，外环人道危机概率大增；她的死亡会在终局成为无法回避的道德账。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:663"
+    },
+    {
+      "id": "npc-19",
+      "name": "池砚",
+      "role": "主砧公差室首席技工",
+      "faction": "主砧（中立）",
+      "drive": "造出静海第一台\"不靠内环也能自持\"的闭环样机。",
+      "lever": "任何关于\"自持闭环\"的工程讨论。",
+      "mask": "只谈公差。",
+      "tell": "遇到真正罕见的技术问题时，会先把护目镜推上额头。",
+      "threshold": "会拒绝订单、会偷师；不会在承压舱体上省料。",
+      "secret": "他已在私下改良迟信的一种代谢路径，认为它\"可能用于闭环\"——这个判断比检疫署的评估乐观得多。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "带来真问题 +2，逼他站队 −1。"
+      },
+      "knows": [
+        "C-09",
+        "C-25"
+      ],
+      "if_dead_or_betrayed": "闭环改良的可能被中断，终局\"利用迟信重建生态\"的路线变窄；他的资料分散存于主砧与云脊台两处，可分别追回。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:675"
+    },
+    {
+      "id": "npc-20",
+      "name": "罗敷",
+      "role": "\"回信号\"通信官（玩家可扮演或为 NPC）",
+      "faction": "锚地／中立",
+      "drive": "让每一句她转发的消息都不被\"想当然地理解\"。",
+      "lever": "一句\"你做得对\"。",
+      "mask": "只报信道的技术状态。",
+      "tell": "兴奋时会敲击耳机三次。",
+      "threshold": "会延迟投递、会按优先级排序；不会篡改任何消息的内容。",
+      "secret": "她私下保存了一份\"从未被投递\"的消息列表，其中有几条改变过命运。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 0,
+        "note": "认真读消息内容 +1，只看时戳 −1。"
+      },
+      "knows": [
+        "C-20",
+        "C-26"
+      ],
+      "if_dead_or_betrayed": "通信能力骤降，全船延迟 +1 时段；她的笔记本是关键证据，但需要信延判定才能解读。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:687"
+    },
+    {
+      "id": "npc-21",
+      "name": "席砚生",
+      "role": "检疫署退役站长，哑铃前技术员",
+      "faction": "退役／中立（关键证人）",
+      "drive": "在死之前，让\"迟信到底是什么\"有一个诚实的说法。",
+      "lever": "他自己签过一份他后悔的转运封条。",
+      "mask": "装糊涂的老人。",
+      "tell": "被问到哑铃时会先摸自己的手腕——那里有一道旧冻伤。",
+      "threshold": "会装傻、会拒绝；一旦决定开口就不会再改口。",
+      "secret": "他是把\"迟信可能有益\"评估送上高层的人，也是被要求重写它的人。",
+      "attitude": {
+        "affinity": 0,
+        "awe": 0,
+        "note": "耐心 +1，逼迫 −2。"
+      },
+      "knows": [
+        "C-01",
+        "C-17"
+      ],
+      "if_dead_or_betrayed": "最重要的独立人证消失，真相只能靠实物与延迟电文凑，DF +2 且更依赖运气；他的旧笔记藏在小站地板下，可被找到。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:699"
+    },
+    {
+      "id": "npc-22",
+      "name": "阿聿",
+      "role": "盐冢冷棺区\"守棺人\"",
+      "faction": "打捞人／中立（伦理对照）",
+      "drive": "让在倾角轨道上死去的人，至少在名字上回到汀洲。",
+      "lever": "任何愿意念出一个名字的人。",
+      "mask": "冷漠的守墓人。",
+      "tell": "念名字前会先清一次嗓子，哪怕喉咙是好的。",
+      "threshold": "会拒绝交出名录以保护隐私；不会把冷棺当货物。",
+      "secret": "其中一具冷棺里，是当年\"冰箱战争\"中他没能等到的那个人的家属。",
+      "attitude": {
+        "affinity": 1,
+        "awe": 1,
+        "note": "念名字 +2，想搬走冷棺变卖 −3。"
+      },
+      "knows": [
+        "C-12",
+        "C-27"
+      ],
+      "if_dead_or_betrayed": "盐冢的伦理底线被踩，打捞人全体敌对；但他的名录副本一旦留存，可在终局\"把名字带回去\"的路线中使用。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:711"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "汀洲·冷滩港",
+      "atmosphere": "大盆地里扣着一层灰蓝色的穹顶，穹顶下永远有一层薄薄的人造云。街灯按衡日循环亮灭，让人造出\"白天\"；空气里有循环塔特有的、洗得干净却略带铁锈的味道。",
+      "unlock": "开局可用（多数角色的故乡）。",
+      "key_places": [
+        "总务厅，共同事务局驻地，可查档案也可被官僚拖住",
+        "配给署，水与药的分配中心，是钱也是权",
+        "呼吸塔三号，闭环的心脏，可互动读取当前系统的剩余余量",
+        "旧岸纪念馆，陈列远岸号遗物，藏有一份未被公开的航行日志",
+        "穹顶缝，一处长期渗漏的检修口，通向外部荒原"
+      ],
+      "encounters": "1–3 级纠缠或标准，预算上限 40%–70%；典型为配给纠纷中的人形对手（暴动者、稽查队）与官僚论战；环境遭遇多为穹顶减压演习时的区域封断。",
+      "resources": "系统级档案、汀胺药源、补给与据点、声望入口。",
+      "if_botched": "若引发穹顶减压事故或纵火，配给署改为军管，物价 +1 层，且共同事务局对所有玩家声望 −1；修复需完成 Q-02《把呼吸还回去》。",
+      "purpose": "它把\"人口中心\"具体化，让政治与配给成为可玩内容，而不是背景数字。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:210"
+    },
+    {
+      "id": "loc-02",
+      "name": "汀洲·钉环",
+      "atmosphere": "一座旋转的环形站，离心力给外圈人造重力；内圈则是真正的零重力，缆索与货箱在灯下慢慢翻滚。站内有股消毒水和金属屑的味道，检疫署的白色徽记每隔十米出现一次。",
+      "unlock": "开局可用；检疫封闭区需 `flag.dingring_clearance=true` 或检疫署声望 +1。",
+      "key_places": [
+        "停泊环，驿船在此整备，\"回信号\"就停在七号泊位",
+        "检疫封闭舱，来自外环的人与货在此隔离观察",
+        "调度席，全系统的班次与窗口登记处",
+        "黑市夹层，绕过检疫的灰色通道",
+        "通信中继内机，钉环直连灯火串的本地中继"
+      ],
+      "encounters": "2–4 级标准；典型为检疫执法队、走私者、以及因延迟而误解指令的安保自动机。",
+      "resources": "舰船整备、合法通行、窗口情报、走私通道、灯火串入口权限。",
+      "if_botched": "若在封闭舱引发减压或带出未检货物，钉环全面封锁，所有对外通信延迟 +2 时段，且检疫署声望 −1。",
+      "purpose": "它是\"授权与封锁\"的现场，让检疫署从抽象机构变成必须每天面对的窗口。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:220"
+    },
+    {
+      "id": "loc-03",
+      "name": "汀洲·云脊台",
+      "atmosphere": "建在高地上的一排望远镜与天线，稀薄空气让星光没有抖动。这里的人说话很慢，因为他们习惯了对几十光时之外的人说话。控制室的墙上贴着几张手写的\"发信时戳\"对照表。",
+      "unlock": "开局可达；深空档案室需信延熟练或云脊台声望 +1。",
+      "key_places": [
+        "母星监听阵，唯一持续监听旧岸方向的地方",
+        "狭窄带档案室，存放 AY 214 那段存疑信号",
+        "窗口计算室，本世界最好的轨道学导师所在",
+        "气象穹，监测恒星耀斑与辐射暴",
+        "离线仓，物理信件与磁带的保管处，抗中继故障"
+      ],
+      "encounters": "1–5 级，以调查与交涉为主；战斗多为窃取窗口数据的走私者与自动化防御炮座。",
+      "resources": "轨道学与信延训练、历史证据、耀斑预警、抗故障的\"实物信件\"渠道。",
+      "if_botched": "若损毁监听阵或档案室，全系统失去唯一的深空监视与旧岸悬念线索，后续耀斑事件无预警。",
+      "purpose": "它证明\"最可靠的信不一定是电波\"，也是玩家学会延迟思维的地方。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:230"
+    },
+    {
+      "id": "loc-04",
+      "name": "砾海·锚地",
+      "atmosphere": "一片会发光的小行星带。碎石反射衡星的光，像浮在黑暗里的盐粒。锚地是嵌进一颗大石的小型船坞，干船坞的灯整夜不灭，焊缝的蓝光在真空里没有声音。这里的空气比汀洲更糙，更硬，更像工地的味道。",
+      "unlock": "开局可用（本册默认起点）。",
+      "key_places": [
+        "干船坞，\"回信号\"的整备地，也是船坞工会的地盘",
+        "配平房，计算质量与 Δv 的地方，可在此做航路计算",
+        "矿石交易所，物价与经济系统的核心",
+        "矿工酒吧「半格」，情报与人脉的集散地",
+        "盲区货仓，不登记、不检疫的灰色仓库"
+      ],
+      "encounters": "1–8 级标准至严酷；典型为矿业联合执法、私自改装的武装矿船、以及环境遭遇（微流星群、失控采矿机）。",
+      "resources": "燃料与水、维修、装备改造、货代业务、据点选择。",
+      "if_botched": "若与矿业联合彻底翻脸，锚地拒绝为你们加注燃料，所有航程 Δv 成本上升一档（见第 5 节），走私通道成为唯一补给。",
+      "purpose": "它是本册的开局舞台：既有资源，也有人情与算计，让第一次抉择有分量。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:240"
+    },
+    {
+      "id": "loc-05",
+      "name": "哑铃",
+      "atmosphere": "一座哑铃形的双体站——一端是居住舱，一端是样本库，中间一根细长的冷藏桁架。它本该灯火通明，现在只有样本库那一端还亮着，像一只闭了一只眼的脸。通信是死的，只有应急信标在以极慢的节律闪。",
+      "unlock": "需一次转移航程（见第 5 节）；进入样本库需 `flag.dumbbell_access=true` 或破拆。",
+      "key_places": [
+        "居住舱，可能仍有幸存者，也可能只剩他们留下的记录",
+        "冷藏桁架，样本库的生命线，制冷系统的故障点",
+        "旧中继房，那段求救电文的来源，一台没人维护的老式中继",
+        "检疫档案室，页面上写着\"例行\"，背后写着别的",
+        "逃生艇坞，一艘或被启动、或被遗弃的救生艇"
+      ],
+      "encounters": "3–8 级；以环境威胁与自动化系统为主（减压、辐射泄漏、失控的检疫无人机、制冷失效），人形对手多为幸存者或后来的访客。",
+      "resources": "迟信样本、检疫真相、旧规程密钥、进入终局的证据。",
+      "if_botched": "若制冷系统彻底失效，样本库失活，迟信样本被毁，主线转入\"是否还有别的样本\"的备用线索链（Q-05 分支），且站内幸存者若未撤离将全部死亡。",
+      "purpose": "它是主线的心脏：一个把\"信息不完全\"压缩到极致的封闭现场。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:250"
+    },
+    {
+      "id": "loc-06",
+      "name": "主砧",
+      "atmosphere": "一座架在两条轨道的工业平台，冶炼炉的热浪让远侧散热板常年泛红。这里的人不谈政治，只谈公差和交期。它是静海唯一能独立于矿业联合造出关键部件的地方，也因此格外被忌惮。",
+      "unlock": "需一次转移航程；进入炉区需结构熟练或主砧声望 +1。",
+      "key_places": [
+        "一号炉，能重铸结构件",
+        "公差室，工艺与改造的导师所在",
+        "散热背，热管理是本世界最真实的威胁之一",
+        "黑炉，不问来路的地下制造",
+        "工会礼堂，可在此论战拉拢第三方"
+      ],
+      "encounters": "3–9 级；典型为工业事故类环境威胁、失窃图纸引发的雇佣冲突。",
+      "resources": "稀有部件、符纹（构建引擎）来源、散热与结构改装、第三方同盟。",
+      "if_botched": "若引发炉区事故，主砧产能减半，全系统维修与改造价格 +1 层，且第三方同盟态度转冷。",
+      "purpose": "它提供\"技术中立地带\"，让玩家能靠工艺而非武力改变局势。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:260"
+    },
+    {
+      "id": "loc-07",
+      "name": "盐冢",
+      "atmosphere": "一条倾斜了十八度的墓地轨道，几十艘旧船残骸以极慢的相对速度互相漂移，像一群睡着的大鲸。真空保存了它们，也保存了船上的东西与尸体。打捞人的灯在残骸间挪动，像萤火。",
+      "unlock": "需一次转移航程 + 打捞人向导，或自行计算会合窗口（轨道学）。",
+      "key_places": [
+        "远岸号主壳，最初殖民船的残骸，藏有旧岸的最后数据",
+        "打捞人议场，自治邦的议事地",
+        "冷棺区，漂着未及处理的遇难者，触碰是伦理选择",
+        "黑匣带，多起事故的黑匣记录",
+        "倾角之门，轨道力学最恶劣的会合点"
+      ],
+      "encounters": "3–10 级；典型为打捞人派系冲突、残骸解体的结构威胁、以及被残骸引来的走私者。",
+      "resources": "旧岸数据、稀有打捞物、打捞人同盟、历史黑匣证据。",
+      "if_botched": "若惊动冷棺区或炸毁残骸，打捞人声望 −2，盐冢对玩家封锁，旧岸线线索只剩一条昂贵的备用路径。",
+      "purpose": "它把\"过去\"变成可打捞的实物，并提供一条与主线并行、关于\"我们从哪来\"的线索。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:270"
+    },
+    {
+      "id": "loc-08",
+      "name": "渊星·白隼",
+      "atmosphere": "冰巨星在船窗外是一颗安静到近乎死寂的蓝灰色球，光环细得像铅笔线。白隼卫星表面是脏冰与裂缝，挥发分厂的烟羽在真空里笔直上升，又立刻散成看不见的雾。这里的重力来自一半旋转、一半卫星本身，走路总有点飘。",
+      "unlock": "需一次转移航程；进入公司封闭区需白隼声望 +1 或伪造工牌（欺骗）。",
+      "key_places": [
+        "一号井，采出水与氦-3",
+        "制冷中枢，与汀洲的\"冰箱战争\"余波仍在",
+        "公司账房，一份被篡改的运费账",
+        "工人居住环，一群被航道困住的人",
+        "应急弃站坞，一条随时可能被启动的撤退路线"
+      ],
+      "encounters": "5–12 级；典型为公司安保、罢工与镇压、以及外环特有的辐射与低温环境威胁。",
+      "resources": "挥发分（燃料原料）、大额运费合约、孤悬殖民地的政治线索。",
+      "if_botched": "若煽动罢工成功却无补给，白隼陷入人道危机，全系统燃料价格 +1 层；若无视，白隼死伤成为终局的道德债务（写入账本）。",
+      "purpose": "它把\"外环的孤立\"具体化，让\"要不要去救白隼\"成为一个真实的两难。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:280"
+    },
+    {
+      "id": "loc-09",
+      "name": "双生礁",
+      "atmosphere": "渊星的特洛伊群，两处相隔六十度的自治聚落，藏在冰块与走私船之间。这里的规矩只有一条：不问来路，不问去处，只问你现在有什么。灯是省着用的，雷达是关着的。",
+      "unlock": "需一次转移航程 + 人脉 DF 12 或既有走私关系；敌对时不可进入。",
+      "key_places": [
+        "礁市，可用任何东西换任何东西",
+        "改装坞，把民用船改成武装船的地方",
+        "悬赏墙，贴着一张关于迟信的黑价悬赏",
+        "无证医院，为不想进检疫署的人看病",
+        "特洛伊钟，一个简易的本地时间基准，也是派系暗号"
+      ],
+      "encounters": "4–10 级；典型为走私武装、赏金猎人、无主仲裁冲突。",
+      "resources": "非法改装、黑市情报、绕过检疫的航线、被高价悬赏的目标信息。",
+      "if_botched": "若出卖礁群的信誉或引来检疫署，双生礁封锁，走私路线消失，且玩家被列入礁群黑名单。",
+      "purpose": "它提供一个没有道德裁判的空间，让玩家的策略选择脱离官方框架。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:290"
+    },
+    {
+      "id": "loc-10",
+      "name": "灯火串",
+      "atmosphere": "一串散在轨道上的中继站，每座都只有一间舱室那么大，靠太阳能板和钚电池活着。它们无人值守，只在有信号经过时短暂醒来。守站的人是流动的，一种半宗教的技术群体，他们相信\"只要还有人在说话，人类就还没散\"。",
+      "unlock": "需信延熟练或灯火守引介；被熄灯会控制的中继站则需夺回。",
+      "key_places": [
+        "一号中继，最老的一座，延迟与丢失率的基准",
+        "七号中继，近期频繁掉线，熄灯会活动点",
+        "十二号中继，外环门户，掩星黑屏最频繁",
+        "缓存舱，存储未被投递的消息，等于一座\"消息的墓园\"",
+        "供能臂，任何一个中继站的太阳能板都可能被人为拆走"
+      ],
+      "encounters": "2–9 级；典型为熄灯会信徒、被改为陷阱的中继、以及低重力舱内近战。",
+      "resources": "通信控制权、被缓存的历史消息、掩饰行踪的能力、熄灯终局的关键。",
+      "if_botched": "若摧毁关键中继，全系统延迟永久 +2 时段，且部分殖民地彼此彻底失联（写入 `clock`）；修复需从主砧重造部件。",
+      "purpose": "它是本册\"延迟通信\"特则的物理载体，让抽象规则变成可攻防的地点。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:300"
+    },
+    {
+      "id": "loc-11",
+      "name": "长夜林",
+      "atmosphere": "外缘的彗星群，太阳只是一颗稍亮的星。这里最不缺的是黑暗和辐射，最缺的是回声。一号哨站是静海人类待过的最远的地方，也是一封最慢的回信会经过的最后一站。",
+      "unlock": "需数年航程（本册中通常以延迟通信而非亲临的方式接触）；亲临需 `flag.longnight_expedition=true` 与一名志愿者领航。",
+      "key_places": [
+        "一号哨站，观测母星方向",
+        "迟信矿点，样本最初被采出的彗核",
+        "单向电台，只能发不能收的老设备",
+        "时间胶囊，哨站人员留下的私人记录",
+        "外缘空区，再往外就没人为你计算任何东西了"
+      ],
+      "encounters": "8–12 级；以延迟通信、状态漂移与心理压力为主；亲临时遭遇极低温、辐射与长周期孤独。",
+      "resources": "母星悬念的最终（可能无解的）答案、迟信的原始环境数据、最极端的长延迟对白。",
+      "if_botched": "若哨站失联或人员崩溃，母星线索永久中断，熄灯会借此宣传\"再远的结果也只是一片沉默\"，其声望 +1。",
+      "purpose": "它提供\"最远的距离\"，让\"回信\"这个词有最重的分量。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:310"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-a",
+      "name": "回信",
+      "type": "公开真相并组织救援",
+      "requirements": "flag.public_broadcast + 至少三势力 rep ≥ +2 + evidence.truth_count ≥ 3。",
+      "result": "静海各殖民地第一次在同一时刻听见同一句话；真相被公开，检疫署被要求复核，熄灯会分裂，灯火串被重建。",
+      "cost": "真相让一部分人永远无法原谅另一部分人；检疫署与矿业联合的公信力崩塌，短期出现权力真空；你亲手救下的人里，会有人因为你的另一个选择而失去亲人。",
+      "epilogue": "共识下形成的\"静海议事规则\"由参与势力共同书写；若玩家保留了邵霜与何燎，制度更温和；若只剩强硬派人手，则新秩序很快变旧。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:2490"
+    },
+    {
+      "id": "ending-b",
+      "name": "熄灯",
+      "type": "关闭中继，永久隔离",
+      "requirements": "控制灯火串过半中继 + `flag.blackout` 归零（或玩家主动执行《熄灯协议》全闭）。",
+      "result": "各殖民地彼此不再通信，静海退回一串互不知情的壳；不再有\"迟到的坏消息\"，也不再有\"我们派船去救你\"。",
+      "cost": "任何一处殖民地出事，都将在很久以后才被知道，或永远不被知道；长途航行失去通信支持，变成真正的单程；熄灯会达成目的，但其内部也会因\"下一步做什么\"而分裂。",
+      "epilogue": "若玩家保留了至少一座中继作为\"唯一的门\"，结局留有一线；若彻底熄灯，则本战役的世界永久转为\"沉默的静海\"。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:2496"
+    },
+    {
+      "id": "ending-c",
+      "name": "静默航行",
+      "type": "少数人带证据远航",
+      "requirements": "flag.silent_run + flag.sample_secured + 一艘可用的船。",
+      "result": "一小群人带着迟信样本与全部真相，驶向长夜林或更远的地方，去寻找一个能理解它的地方；留下的多数人各自关门自保。",
+      "cost": "这是\"把答案带走、把问题留下\"的结局；留下的人不会知道你们是否成功，你们也不会知道他们是否活着。航行本身可能耗时数年乃至十几个衡年。",
+      "epilogue": "若玩家在旅程中仍保持与静海的一条单向通信，结局多一层\"远方的回声\"；若彻底静默，则这是一个开放到遥远的收束。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:2502"
+    },
+    {
+      "id": "ending-d",
+      "name": "火种",
+      "type": "牺牲一处保全多处",
+      "requirements": "flag.sacrifice_choice，且有一次成功的多目标 Δv 分派计算。",
+      "result": "玩家用精确的计算，把有限的 Δv 分给尽可能多的人，代价是明确放弃至少一处殖民地（写入 party.lost_colonies）。",
+      "cost": "这是\"算对了但依然有人死\"的结局；被放弃的人不会理解算术，只会记得你们没有来。系统得以延续，但你们的名字在后来的殖民地史里会同时被感激与被诅咒。",
+      "epilogue": "被放弃的那一处是否还有幸存者、是否发来最后一条消息，决定了结局是\"冷酷但必要\"还是\"冷酷且残忍\"。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:2508"
+    },
+    {
+      "id": "ending-e",
+      "name": "又一次静默",
+      "type": "未能选择",
+      "result": "若队伍拒绝所有方案、窗口全部错过、或 `clock.window_missed ≥ 1` 且未补救，则哑铃再次静默，汀洲呼吸塔告急，熄灯会先手。",
+      "note": "等级、账本事实与等级保留。下一幕从\"锚地的第二次整备\"开始，韦守拙说：\"这是你们第二次来。上一次留下的东西，这次别再浪费了。\"这是失败推进，不是惩罚。",
+      "source": "docs/scenario/S4-静海-硬科幻.md:2514"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S4-静海-硬科幻.md:1680",
+    "declared_flag_count": 33,
+    "actual_flag_count": 33,
+    "flag": [
+      {
+        "id": "flag.chapter",
+        "type": "int",
+        "initial": 0,
+        "write": "每完成一个航段 +1",
+        "readers": "全部任务状态机",
+        "effect": "当前幕次（跨册通用，见 `S0` §7.2）",
+        "universal": true,
+        "source": "docs/scenario/S4-静海-硬科幻.md:1686"
+      },
+      {
+        "id": "flag.anchor_ready",
+        "type": "bool",
+        "initial": false,
+        "write": "锚地整备完成",
+        "readers": "Q-00",
+        "effect": "开启主线",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1687"
+      },
+      {
+        "id": "flag.chose_dumbbell",
+        "type": "bool",
+        "initial": false,
+        "write": "选择第一航段去哑铃",
+        "readers": "Q-00/Q-01",
+        "effect": "决定主线起点",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1688"
+      },
+      {
+        "id": "flag.chose_tingzhou",
+        "type": "bool",
+        "initial": false,
+        "write": "选择第一航段去汀洲",
+        "readers": "Q-02",
+        "effect": "先救药，哑铃延后",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1689"
+      },
+      {
+        "id": "flag.dumbbell_arrived",
+        "type": "bool",
+        "initial": false,
+        "write": "完成汀洲→哑铃转移",
+        "readers": "Q-00",
+        "effect": "进入核实阶段",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1690"
+      },
+      {
+        "id": "flag.dumbbell_access",
+        "type": "bool",
+        "initial": false,
+        "write": "破拆或取得样本库权限",
+        "readers": "Q-01",
+        "effect": "进入样本库",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1691"
+      },
+      {
+        "id": "flag.cold_safe",
+        "type": "bool",
+        "initial": false,
+        "write": "修复哑铃制冷",
+        "readers": "Q-00/Q-05",
+        "effect": "保住迟信样本",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1692"
+      },
+      {
+        "id": "flag.survivors_saved",
+        "type": "bool",
+        "initial": false,
+        "write": "撤离站内幸存者",
+        "readers": "终局",
+        "effect": "幸存人数影响结局质量",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1693"
+      },
+      {
+        "id": "flag.lingering_signal",
+        "type": "bool",
+        "initial": false,
+        "write": "收到旧规程\"迟到的信\"",
+        "readers": "Q-00",
+        "effect": "真相第一块拼图",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1694"
+      },
+      {
+        "id": "flag.truth_assessment",
+        "type": "bool",
+        "initial": false,
+        "write": "取得评估原版",
+        "readers": "Q-03",
+        "effect": "truth_count +1",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1695"
+      },
+      {
+        "id": "flag.truth_quarantine",
+        "type": "bool",
+        "initial": false,
+        "write": "证实封锁是有意为之",
+        "readers": "Q-03",
+        "effect": "truth_count +1",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1696"
+      },
+      {
+        "id": "flag.truth_lamplighter",
+        "type": "bool",
+        "initial": false,
+        "write": "掌握熄灯会真实手段",
+        "readers": "Q-04",
+        "effect": "truth_count +1",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1697"
+      },
+      {
+        "id": "flag.sha_shuang_dead",
+        "type": "bool",
+        "initial": false,
+        "write": "邵霜死亡",
+        "readers": "Q-03",
+        "effect": "真相线 DF +2",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1698"
+      },
+      {
+        "id": "flag.xi_notes_found",
+        "type": "bool",
+        "initial": false,
+        "write": "找到席砚生旧笔记",
+        "readers": "Q-03",
+        "effect": "备用真相路径",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1699"
+      },
+      {
+        "id": "flag.forged_assessment",
+        "type": "bool",
+        "initial": false,
+        "write": "接受官方评估版本",
+        "readers": "终局",
+        "effect": "终局真相判定 DF +2",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1700"
+      },
+      {
+        "id": "flag.dumbbell_cold",
+        "type": "int",
+        "initial": 12,
+        "write": "每次舱内行动 −1",
+        "readers": "Q-01",
+        "effect": "归零则样本失活",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1701"
+      },
+      {
+        "id": "flag.breath_tower_alert",
+        "type": "bool",
+        "initial": false,
+        "write": "得知呼吸塔余量真相",
+        "readers": "Q-02",
+        "effect": "开启补给线",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1702"
+      },
+      {
+        "id": "flag.breath_tower_saved",
+        "type": "bool",
+        "initial": false,
+        "write": "完成呼吸塔补给",
+        "readers": "终局",
+        "effect": "汀洲存活",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1703"
+      },
+      {
+        "id": "flag.tng_amine_shipped",
+        "type": "bool",
+        "initial": false,
+        "write": "汀胺送达汀洲",
+        "readers": "Q-02",
+        "effect": "汀洲平民生存率",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1704"
+      },
+      {
+        "id": "flag.bai_sun_crisis",
+        "type": "bool",
+        "initial": false,
+        "write": "白隼进入人道危机",
+        "readers": "终局",
+        "effect": "道德债务",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1705"
+      },
+      {
+        "id": "flag.bai_sun_strike",
+        "type": "bool",
+        "initial": false,
+        "write": "白隼工人罢工",
+        "readers": "Q-00/Q-02",
+        "effect": "外环供给中断",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1706"
+      },
+      {
+        "id": "flag.jiang_note",
+        "type": "bool",
+        "initial": false,
+        "write": "蒋叠山发来\"工程口径\"私信",
+        "readers": "终局",
+        "effect": "白隼信息",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1707"
+      },
+      {
+        "id": "flag.relay_6_controlled",
+        "type": "bool",
+        "initial": false,
+        "write": "控制七号中继",
+        "readers": "Q-04",
+        "effect": "熄灯会渗透入口",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1708"
+      },
+      {
+        "id": "flag.relay_7_controlled",
+        "type": "bool",
+        "initial": false,
+        "write": "控制七号（另一编号）中继",
+        "readers": "Q-04",
+        "effect": "同上，二选一",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1709"
+      },
+      {
+        "id": "flag.relay_seized",
+        "type": "int",
+        "initial": 0,
+        "write": "每控制一座中继 +1",
+        "readers": "Q-00/Q-04",
+        "effect": "4 时熄灯会可先手",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1710"
+      },
+      {
+        "id": "flag.cache_raided",
+        "type": "bool",
+        "initial": false,
+        "write": "打捞缓存舱",
+        "readers": "Q-03/Q-04",
+        "effect": "获得被扣消息",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1711"
+      },
+      {
+        "id": "flag.echo_debunked",
+        "type": "bool",
+        "initial": false,
+        "write": "证明「回声」为伪造/重播",
+        "readers": "Q-03",
+        "effect": "避免被误导，得线索",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1712"
+      },
+      {
+        "id": "flag.silent_run",
+        "type": "bool",
+        "initial": false,
+        "write": "执行静默航行",
+        "readers": "Q-00",
+        "effect": "进入\"静默航行\"结局",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1713"
+      },
+      {
+        "id": "flag.sample_secured",
+        "type": "bool",
+        "initial": false,
+        "write": "取得可转移的迟信样本",
+        "readers": "终局",
+        "effect": "利用迟信路线",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1714"
+      },
+      {
+        "id": "flag.public_broadcast",
+        "type": "bool",
+        "initial": false,
+        "write": "完成全系统广播",
+        "readers": "Q-00",
+        "effect": "进入\"回信\"结局",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1715"
+      },
+      {
+        "id": "flag.sacrifice_choice",
+        "type": "bool",
+        "initial": false,
+        "write": "主动放弃一处殖民地",
+        "readers": "Q-00",
+        "effect": "进入\"火种\"结局",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1716"
+      },
+      {
+        "id": "flag.ho_liao_talked",
+        "type": "bool",
+        "initial": false,
+        "write": "与何燎达成某种共识",
+        "readers": "Q-04",
+        "effect": "熄灯会可谈",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1717"
+      },
+      {
+        "id": "flag.blackout",
+        "type": "int",
+        "initial": 0,
+        "write": "静默母站启动倒计时，每章 −1",
+        "readers": "Q-04",
+        "effect": "归零则九衡日静默",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1718"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.共同事务局",
+        "type": "int",
+        "initial": 0,
+        "write": "任务/公开行为",
+        "readers": "通行/档案",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1725"
+      },
+      {
+        "id": "rep.矿业联合",
+        "type": "int",
+        "initial": 0,
+        "write": "交易/对抗",
+        "readers": "燃料/护航",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1726"
+      },
+      {
+        "id": "rep.白隼公司",
+        "type": "int",
+        "initial": 0,
+        "write": "外环选择",
+        "readers": "挥发分/补给",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1727"
+      },
+      {
+        "id": "rep.锚地工会",
+        "type": "int",
+        "initial": 0,
+        "write": "维修/手艺",
+        "readers": "改装/维修",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1728"
+      },
+      {
+        "id": "rep.检疫署",
+        "type": "int",
+        "initial": 0,
+        "write": "检疫选择",
+        "readers": "通行/权限",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1729"
+      },
+      {
+        "id": "rep.熄灯会",
+        "type": "int",
+        "initial": 0,
+        "write": "通信选择",
+        "readers": "信道/掩藏",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1730"
+      },
+      {
+        "id": "rep.打捞人",
+        "type": "int",
+        "initial": 0,
+        "write": "盐冢选择",
+        "readers": "残骸/数据",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1731"
+      },
+      {
+        "id": "rep.灯火守",
+        "type": "int",
+        "initial": 0,
+        "write": "中继选择",
+        "readers": "信道优先",
+        "effect": "−3～+3",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1732"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.blackout_deadline",
+        "type": "int",
+        "initial": 10,
+        "write": "熄灯会启动前的衡日数",
+        "readers": "Q-04",
+        "effect": "主时间窗",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1719"
+      },
+      {
+        "id": "clock.window_missed",
+        "type": "int",
+        "initial": 0,
+        "write": "每错过一个关键窗口 +1",
+        "readers": "Q-00",
+        "effect": "1 时主任务 expired",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1720"
+      },
+      {
+        "id": "clock.dumbbell_cold",
+        "type": "int",
+        "initial": 12,
+        "write": "见上（同 flag.dumbbell_cold）",
+        "readers": "Q-01",
+        "effect": "样本库倒计时",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1721"
+      },
+      {
+        "id": "clock.breath_tower",
+        "type": "int",
+        "initial": 20,
+        "write": "呼吸塔余量（衡日），每推进一衡日 −1",
+        "readers": "Q-02",
+        "effect": "归零则配给恐慌",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1722"
+      },
+      {
+        "id": "clock.star_flare",
+        "type": "int",
+        "initial": null,
+        "write": "耀斑预警倒计时（衡日）",
+        "readers": "全局",
+        "effect": "归零则触发耀斑事件",
+        "source": "docs/scenario/S4-静海-硬科幻.md:1723"
+      }
+    ],
+    "evidence": [
+      {
+        "id": "evidence.truth_count",
+        "type": "int",
+        "initial": 0,
+        "write": "每确认一项真相 +1",
+        "readers": "Q-00",
+        "effect": "3 时进入中段"
+      }
+    ],
+    "party": [
+      {
+        "id": "party.dv_current",
+        "type": "int",
+        "initial": 58,
+        "write": "每次机动扣减",
+        "readers": "全程",
+        "effect": "燃料账"
+      },
+      {
+        "id": "party.lost_colonies",
+        "type": "list",
+        "initial": [],
+        "write": "每失联一处殖民地为记",
+        "readers": "终局",
+        "effect": "结局质量"
+      }
+    ]
+  },
+  "ledger_template": {
+    "source": "docs/scenario/S4-静海-硬科幻.md:2568",
+    "meta": {
+      "world": "still-sea",
+      "engine": "build",
+      "campaign": "静海·迟到的回信",
+      "session": 1,
+      "party_level": 1,
+      "tone_pack": "冷硬",
+      "safety_boundaries": []
+    },
+    "clock": {
+      "heng_day": 0,
+      "watch": 0,
+      "window_dumbbell_open": 0,
+      "window_dumbbell_next": 120,
+      "window_tingzhou_open": 0,
+      "window_tingzhou_next": 130,
+      "dumbbell_cold": 12,
+      "breath_tower": 20,
+      "blackout_deadline": 10,
+      "star_flare": null,
+      "active_pressure": "哑铃静默第二封未至；两个窗口同时打开"
+    },
+    "orbits": [
+      {
+        "body": "汀洲",
+        "a_au": 0.31,
+        "phase_deg": 0,
+        "period_days": 80.1
+      },
+      {
+        "body": "哑铃",
+        "a_au": 0.55,
+        "phase_deg": 148,
+        "period_days": 189
+      },
+      {
+        "body": "砾海",
+        "a_au": 1.05,
+        "phase_deg": 61,
+        "period_days": 499
+      },
+      {
+        "body": "主砧",
+        "a_au": 1.5,
+        "phase_deg": 210,
+        "period_days": 733
+      },
+      {
+        "body": "渊星",
+        "a_au": 2.1,
+        "phase_deg": 300,
+        "period_days": 1411
+      }
+    ],
+    "vessel": {
+      "name": "回信号",
+      "dv_max": 58,
+      "dv_current": 58,
+      "dry_mass_t": 108,
+      "payload_t": 72,
+      "ve_kms": 80,
+      "route": "锚地→哑铃",
+      "margin_pct": 20,
+      "heat": 0
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "vitality": 20,
+        "focus": 8,
+        "strain": 0,
+        "resolve": 3,
+        "momentum": 0,
+        "radiation_mSv": 0,
+        "drive": "我一定要……",
+        "conditions": [],
+        "open_loops": []
+      }
+    ],
+    "npcs": [
+      {
+        "name": "卫长庚",
+        "drive": "在样本库失效前让外面知道库里是什么",
+        "lever": "愿意认真读他旧规程电文的人",
+        "mask": "一切正常的官僚口吻",
+        "tell": "真话只出现在旧规程、且句尾没有标点",
+        "threshold": "不抛下站内还活着的人",
+        "affinity": 1,
+        "awe": 0,
+        "location": "哑铃",
+        "status": "alive-unknown",
+        "delayed": true,
+        "last_contact_watch": 0,
+        "drift_pending": true,
+        "knows": [
+          "C-17",
+          "C-18",
+          "C-19"
+        ]
+      }
+    ],
+    "factions": {
+      "共同事务局": 0,
+      "矿业联合": 0,
+      "白隼公司": 0,
+      "锚地工会": 0,
+      "检疫署": 0,
+      "熄灯会": 0,
+      "打捞人": 0,
+      "灯火守": 0
+    },
+    "threads": [
+      {
+        "id": "Q-00",
+        "name": "静海·迟到的回信",
+        "state": "dormant",
+        "progress": 0,
+        "paths_resolved": [],
+        "paths_remaining": [
+          "前往哑铃",
+          "查证静默",
+          "决定全系统通信"
+        ],
+        "payoff": "四种终局选择"
+      }
+    ],
+    "locations": [
+      {
+        "name": "哑铃",
+        "state": "未探明",
+        "site_elements": [
+          "样本库冷端",
+          "旧中继房",
+          "居住舱"
+        ],
+        "changed": false,
+        "notes": []
+      }
+    ],
+    "flags": {
+      "anchor_ready": false,
+      "chose_dumbbell": false,
+      "chose_tingzhou": false,
+      "dumbbell_arrived": false,
+      "lingering_signal": false,
+      "truth_assessment": false,
+      "truth_quarantine": false,
+      "truth_lamplighter": false,
+      "cold_safe": false,
+      "survivors_saved": false,
+      "public_broadcast": false,
+      "silent_run": false,
+      "sacrifice_choice": false,
+      "ho_liao_talked": false,
+      "window_missed": 0,
+      "truth_count": 0,
+      "relay_seized": 0,
+      "lost_colonies": []
+    },
+    "debts": [],
+    "facts": [],
+    "hooks": [
+      "哑铃的第二封例行电文迟到了",
+      "一份旧规程的求救比官方通报早六小时",
+      "汀洲呼吸塔的余量被她压着没上报"
+    ]
+  }
+}

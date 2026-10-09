@@ -1,0 +1,2488 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S3-潮金港-都市夺宝.md:1",
+  "meta": {
+    "world": "潮金港",
+    "engine": "tactics",
+    "engine_note": "S0 §八：战术/构建引擎皆可",
+    "campaign": "满汐日",
+    "tone_pack": "湿冷 / 市井江湖 / 群像博弈"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "赊来的铲子",
+      "level_range": "1–3",
+      "summary": "玩家入局，认识八家字号，拿到第一条线索",
+      "nodes": [
+        "T0",
+        "cmp-01",
+        "cmp-02",
+        "cmp-03"
+      ],
+      "tasks": [
+        "T0"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3236"
+    },
+    {
+      "id": "act-2",
+      "name": "公开的竞速",
+      "level_range": "4–7",
+      "summary": "各势力开始推进，玩家选边或开散客轨，第一次换边压力",
+      "nodes": [
+        "cmp-04",
+        "cmp-05",
+        "cmp-06",
+        "cmp-07",
+        "cmp-08",
+        "cmp-09",
+        "cmp-10",
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7"
+      ],
+      "tasks": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3251"
+    },
+    {
+      "id": "act-3",
+      "name": "满汐日",
+      "level_range": "8–12",
+      "summary": "深退、沉闸、第六舱、六结局",
+      "nodes": [
+        "cmp-11",
+        "cmp-12",
+        "cmp-13",
+        "cmp-14",
+        "cmp-15",
+        "cmp-16",
+        "cmp-17",
+        "cmp-18",
+        "T8",
+        "T9"
+      ],
+      "tasks": [
+        "T8",
+        "T9"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3269"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "map-01",
+      "name": "三号码头·老码头",
+      "next": [
+        "map-02",
+        "map-06",
+        "map-08",
+        "map-11"
+      ],
+      "marks": [
+        "开局"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2640"
+    },
+    {
+      "id": "map-02",
+      "name": "鱼栏巷",
+      "unlock": "flag.t0_board",
+      "next": [
+        "map-03"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2642"
+    },
+    {
+      "id": "map-03",
+      "name": "落市",
+      "unlock": "水钱≥2",
+      "next": [
+        "map-04",
+        "map-05"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2642"
+    },
+    {
+      "id": "map-04",
+      "name": "盐仓区",
+      "unlock": "flag.c11_found",
+      "next": [],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2642"
+    },
+    {
+      "id": "map-05",
+      "name": "税关楼·公会厅",
+      "unlock": "flag.c15_known",
+      "next": [],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2644"
+    },
+    {
+      "id": "map-06",
+      "name": "船坞·高吊区",
+      "unlock": "flag.keys≥1",
+      "next": [
+        "map-07"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2646"
+    },
+    {
+      "id": "map-07",
+      "name": "蚝壳滩",
+      "unlock": "flag.c09_kept",
+      "next": [],
+      "marks": [
+        "退潮"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2646"
+    },
+    {
+      "id": "map-08",
+      "name": "灯屿",
+      "unlock": "rep.lamp≥0",
+      "next": [
+        "map-09"
+      ],
+      "marks": [
+        "退潮可徒步"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2648"
+    },
+    {
+      "id": "map-09",
+      "name": "桩林区",
+      "unlock": "flag.lamp_told",
+      "next": [
+        "map-10"
+      ],
+      "marks": [
+        "满汐日深处"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2648"
+    },
+    {
+      "id": "map-10",
+      "name": "弃船湾·拆船场",
+      "unlock": "flag.c12_schedule",
+      "next": [],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2650"
+    },
+    {
+      "id": "map-11",
+      "name": "沉闸·旧闸室",
+      "unlock": "满汐日 且 flag.location_known",
+      "next": [],
+      "marks": [
+        "终局"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2652"
+    },
+    {
+      "id": "cmp-01",
+      "name": "三号码头·老码头（T0 教学）",
+      "next": [
+        "cmp-02"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3199"
+    },
+    {
+      "id": "cmp-02",
+      "name": "鱼栏巷",
+      "unlock": "水钱≥2",
+      "next": [
+        "cmp-03"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3202"
+    },
+    {
+      "id": "cmp-03",
+      "name": "落市",
+      "next": [
+        "cmp-04",
+        "cmp-05",
+        "cmp-06"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3202"
+    },
+    {
+      "id": "cmp-04",
+      "name": "盐仓区 T1",
+      "unlock": "搜集三条线索之一，进入竞速",
+      "marks": [
+        "打公会 −2"
+      ],
+      "next": [
+        "cmp-07"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3206"
+    },
+    {
+      "id": "cmp-05",
+      "name": "蚝壳滩 T2",
+      "unlock": "搜集三条线索之一，进入竞速",
+      "marks": [
+        "结盟/内斗 −2"
+      ],
+      "next": [
+        "cmp-07"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3206"
+    },
+    {
+      "id": "cmp-06",
+      "name": "税关楼 T5",
+      "unlock": "搜集三条线索之一，进入竞速",
+      "marks": [
+        "借水巡的刀"
+      ],
+      "next": [
+        "cmp-08"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3206"
+    },
+    {
+      "id": "cmp-07",
+      "name": "船坞·高吊区",
+      "next": [
+        "cmp-08",
+        "cmp-09"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3211"
+    },
+    {
+      "id": "cmp-08",
+      "name": "灯屿 T7",
+      "marks": [
+        "曾说真话"
+      ],
+      "next": [
+        "cmp-10"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3211"
+    },
+    {
+      "id": "cmp-09",
+      "name": "桩林区 T4",
+      "marks": [
+        "打夜汐会 −2 / 岑晚倒戈 −3"
+      ],
+      "next": [
+        "cmp-10"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3214"
+    },
+    {
+      "id": "cmp-10",
+      "name": "弃船湾 T8 前置",
+      "unlock": "满汐日",
+      "next": [
+        "cmp-11"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3214"
+    },
+    {
+      "id": "cmp-11",
+      "name": "沉闸·旧闸室（T8 终局）",
+      "unlock": "keys ≥ 2 且 满汐日",
+      "next": [
+        "cmp-12",
+        "cmp-13",
+        "cmp-14",
+        "cmp-15",
+        "cmp-16",
+        "cmp-17"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3222"
+    },
+    {
+      "id": "cmp-12",
+      "name": "A 开舱",
+      "marks": [
+        "带上活着的人"
+      ],
+      "next": [
+        "cmp-18"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+    },
+    {
+      "id": "cmp-13",
+      "name": "B 潮汐",
+      "marks": [
+        "仪式完成"
+      ],
+      "next": [
+        "cmp-18"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+    },
+    {
+      "id": "cmp-14",
+      "name": "C 独吞",
+      "marks": [
+        "带金离城"
+      ],
+      "next": [
+        "cmp-18"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+    },
+    {
+      "id": "cmp-15",
+      "name": "D 封死",
+      "marks": [
+        "与灯屿合力"
+      ],
+      "next": [
+        "cmp-18"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+    },
+    {
+      "id": "cmp-16",
+      "name": "E 旁观",
+      "marks": [
+        "对手先达7"
+      ],
+      "next": [
+        "cmp-18"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+    },
+    {
+      "id": "cmp-17",
+      "name": "F 交付",
+      "marks": [
+        "交给某势力"
+      ],
+      "next": [
+        "cmp-18"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3226"
+    },
+    {
+      "id": "cmp-18",
+      "name": "T9 七天之后（收束）",
+      "next": [],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3231"
+    },
+    {
+      "id": "T0",
+      "type": "task",
+      "name": "赊来的铲子",
+      "note": "教学节点",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_clean",
+        "succeeded_dirty",
+        "failed",
+        "expired"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "战役开始，且 队伍等级 >= 1"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受卢铁牛的赊账（或自购工具）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.t0_board == true 且 flag.lu_paid == true"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.t0_board == true 且 flag.lu_paid == false（欠着水钱离场）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "玩家在晨汐窗口内一件东西都没捞到"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "窗口结束（clock.tide_window == 0）"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2449"
+    },
+    {
+      "id": "T1",
+      "type": "task",
+      "name": "盐仓区的假测潮记录",
+      "note": "打击港务公会",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_clean",
+        "succeeded_dirty",
+        "failed"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.t0_done == true 且 声望(公会) >= -1"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接下温秉文透露的风声"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_clean",
+          "condition": "flag.c08_public == true 且 flag.wen_bribed == false"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_dirty",
+          "condition": "flag.c08_public == true 且 flag.wen_bribed == true"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.c08_public == false 且 flag.wen_dead == true"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2461"
+    },
+    {
+      "id": "T2",
+      "type": "task",
+      "name": "合股簿的两条路",
+      "note": "打击蚝壳帮 / 结盟柯九斤",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_ally",
+        "succeeded_split",
+        "failed",
+        "expired"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "玩家在蚝壳帮声望 >= 0"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受柯九斤或阮阿蟹任一方委托（不可同时）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_ally",
+          "condition": "flag.c09_kept == true 且 flag.ke_jl_alive == true（交还柯九斤）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_split",
+          "condition": "flag.c09_given_r == true（交给阮阿蟹，触发内斗）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "flag.c09_kept == false 且 flag.c09_given_r == false"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "蚝帮轨格 >= 5 而未完成"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2472"
+    },
+    {
+      "id": "T3",
+      "type": "task",
+      "name": "挤兑",
+      "note": "打击白盐商栈",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_bank",
+        "succeeded_phony",
+        "failed"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.c11_found == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家接受桑玉衡的暗示，或自行发起"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_bank",
+          "condition": "水钱(落市) >= 2 且 一次社交判定通过"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_phony",
+          "condition": "flag.phony_drafts == true（伪造汇票成功）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "商栈在当幕完成现金流补足（clock.house_cash 归零）"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2484"
+    },
+    {
+      "id": "T4",
+      "type": "task",
+      "name": "浮台上的仪式",
+      "note": "对抗夜汐会",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_stop",
+        "succeeded_defect",
+        "failed",
+        "expired"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.c12_schedule == true 且 当前为满汐日"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家在夜汐期间抵达桩林区"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_stop",
+          "condition": "摧毁浮台或打断仪式（需要一次技术判定 DF 16）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_defect",
+          "condition": "flag.cen_late_allied == true（说服岑晚倒戈）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "仪式完成（clock.ritual == 0）"
+        },
+        {
+          "from": "active",
+          "to": "expired",
+          "condition": "满汐日结束（下一张潮汛表才重开）"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2495"
+    },
+    {
+      "id": "T5",
+      "type": "task",
+      "name": "借水巡的刀",
+      "note": "借调澜税巡",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_legal",
+        "succeeded_forged",
+        "failed"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "声望(澜税巡) >= 1 或 flag.g11_hetrade == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家向伍长川或霍大钧提出"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_legal",
+          "condition": "合法调用拘留权（声望 +1，一次扣押）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_forged",
+          "condition": "flag.forged_writ == true（伪造巡正令，暴露即通缉）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "伍长川识破伪造文书（water_watch 声望 -3）"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2507"
+    },
+    {
+      "id": "T6",
+      "type": "task",
+      "name": "三把闸钥",
+      "note": "搜集终局条件",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_full",
+        "succeeded_partial",
+        "failed"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.c15_known == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家开始搜集"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_full",
+          "condition": "flag.keys >= 3"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_partial",
+          "condition": "flag.keys == 2 且 clock.tide_window 未归零"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "三把闸钥中有两把落入对手之手（flag.rival_keys >= 2）"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2518"
+    },
+    {
+      "id": "T7",
+      "type": "task",
+      "name": "灯塔的价码",
+      "note": "与灯屿守交易",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "succeeded_truth",
+        "succeeded_coerce",
+        "failed"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "玩家登岛，或 flag.c13_found == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家与曾守拙长谈"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_truth",
+          "condition": "flag.lamp_told == true（曾守拙主动交出灯语本与旧图）"
+        },
+        {
+          "from": "active",
+          "to": "succeeded_coerce",
+          "condition": "flag.lamp_threat == true（威胁熄灯；会引发全城停摆）"
+        },
+        {
+          "from": "active",
+          "to": "failed",
+          "condition": "曾守拙死亡，或曾守愚被收买导致封印反降"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2529"
+    },
+    {
+      "id": "T8",
+      "type": "task",
+      "name": "沉闸",
+      "note": "终局节点",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "ending_open",
+        "ending_tide",
+        "ending_own",
+        "ending_give",
+        "ending_sealed",
+        "ending_none"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "flag.keys >= 2 且 满汐日 且 flag.location_known == true"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家下潜"
+        },
+        {
+          "from": "active",
+          "to": "ending_open",
+          "condition": "flag.chest_opened == true 且 flag.zhao_brought_up == true"
+        },
+        {
+          "from": "active",
+          "to": "ending_tide",
+          "condition": "flag.ritual_completed == true（潮母孵化）"
+        },
+        {
+          "from": "active",
+          "to": "ending_own",
+          "condition": "flag.tidegold_out == true 且 flag.sold_to == none（独吞）"
+        },
+        {
+          "from": "active",
+          "to": "ending_give",
+          "condition": "flag.tidegold_out == true 且 flag.sold_to != none（交给某势力：债券／商栈／北舷）"
+        },
+        {
+          "from": "active",
+          "to": "ending_sealed",
+          "condition": "flag.seal_reinforced == true（与灯屿守合力封死）"
+        },
+        {
+          "from": "active",
+          "to": "ending_none",
+          "condition": "竞速由对手先达第 7 格"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2540"
+    },
+    {
+      "id": "T9",
+      "type": "task",
+      "name": "七天之后",
+      "note": "收束",
+      "states": [
+        "dormant",
+        "offered",
+        "active",
+        "settled",
+        "scattered",
+        "burned"
+      ],
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "offered",
+          "condition": "任一终局达成"
+        },
+        {
+          "from": "offered",
+          "to": "active",
+          "condition": "玩家选择处理后续（水钱清算、离城、接管字号）"
+        },
+        {
+          "from": "active",
+          "to": "settled",
+          "condition": "flag.water_debt_settled == true"
+        },
+        {
+          "from": "active",
+          "to": "scattered",
+          "condition": "玩家分散离城（各自结局，分别结算）"
+        },
+        {
+          "from": "active",
+          "to": "burned",
+          "condition": "flag.city_harmed == true（把事件扩大成灾）"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:2554"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "长庚号报关单登记六舱，没有第七舱",
+      "carrier": "证据：报关单原件（船板上的刻痕）",
+      "npcs": [
+        "卢铁牛",
+        "柯九斤"
+      ],
+      "flags": [
+        "flag.t0_board"
+      ],
+      "tasks": [
+        "T1"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:452"
+    },
+    {
+      "id": "C-02",
+      "name": "长庚号沉没地点有三个互相矛盾的版本",
+      "carrier": "证据：三份打捞文书",
+      "npcs": [
+        "岑晚",
+        "温秉文"
+      ],
+      "flags": [
+        "flag.location_known"
+      ],
+      "tasks": [
+        "T8"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:453"
+    },
+    {
+      "id": "C-03",
+      "name": "岑阿九当年从未公开的口供",
+      "carrier": "证据：封存的旧证词",
+      "npcs": [
+        "岑晚"
+      ],
+      "flags": [
+        "flag.cen_late_allied"
+      ],
+      "tasks": [
+        "T4"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:454"
+    },
+    {
+      "id": "C-04",
+      "name": "岑阿九住处租金的汇款来自白盐商栈",
+      "carrier": "证据：租金汇单",
+      "npcs": [
+        "阮阿蟹"
+      ],
+      "flags": [
+        "flag.c09_given_r"
+      ],
+      "tasks": [
+        "T2"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:455"
+    },
+    {
+      "id": "C-05",
+      "name": "潮汐债的担保物清单里，担保物就是汐金",
+      "carrier": "证据：担保物清单",
+      "npcs": [
+        "柯九斤"
+      ],
+      "flags": [
+        "flag.c11_found"
+      ],
+      "tasks": [
+        "T3"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:456"
+    },
+    {
+      "id": "C-06",
+      "name": "O61 债券的债权人是内地银团，已被商栈收购七成",
+      "carrier": "证据：债券转让记录",
+      "npcs": [
+        "温秉文"
+      ],
+      "flags": [
+        "flag.wen_bribed"
+      ],
+      "tasks": [
+        "T1"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:457"
+    },
+    {
+      "id": "C-07",
+      "name": "贺承宗\"坏账处置\"的原件存在",
+      "carrier": "证据：坏账处置原件",
+      "npcs": [
+        "贺承宗"
+      ],
+      "flags": [
+        "flag.water_debt_settled"
+      ],
+      "tasks": [
+        "T3"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:458"
+    },
+    {
+      "id": "C-08",
+      "name": "O95 年的测潮记录是伪造的，公会隐瞒了潮差",
+      "carrier": "证据：测潮记录原件",
+      "npcs": [
+        "贺承宗"
+      ],
+      "flags": [
+        "flag.c08_public"
+      ],
+      "tasks": [
+        "T1"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:459"
+    },
+    {
+      "id": "C-09",
+      "name": "蚝壳帮合股簿记着兄弟们的股与债",
+      "carrier": "证据：合股簿",
+      "npcs": [
+        "柯九斤",
+        "阮阿蟹"
+      ],
+      "flags": [
+        "flag.c09_kept"
+      ],
+      "tasks": [
+        "T2"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:460"
+    },
+    {
+      "id": "C-10",
+      "name": "阮阿蟹与白盐商栈有私下交易",
+      "carrier": "NPC：阮阿蟹的口供",
+      "npcs": [
+        "阮阿蟹"
+      ],
+      "flags": [
+        "flag.c09_given_r"
+      ],
+      "tasks": [
+        "T2"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:461"
+    },
+    {
+      "id": "C-11",
+      "name": "白盐商栈现金流有缺口，挤兑可行",
+      "carrier": "证据：商栈账目",
+      "npcs": [
+        "温秉文"
+      ],
+      "flags": [
+        "flag.phony_drafts"
+      ],
+      "tasks": [
+        "T3"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:462"
+    },
+    {
+      "id": "C-12",
+      "name": "夜汐会的仪式时刻表（浮台、满汐日、夜汐）",
+      "carrier": "证据：仪式时刻表",
+      "npcs": [
+        "岑晚"
+      ],
+      "flags": [
+        "flag.c12_schedule"
+      ],
+      "tasks": [
+        "T4"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:463"
+    },
+    {
+      "id": "C-13",
+      "name": "桩林区的汐巢位置与性质已确定",
+      "carrier": "场景：桩林区汐巢",
+      "npcs": [
+        "柯九斤"
+      ],
+      "flags": [
+        "flag.ritual_completed"
+      ],
+      "tasks": [
+        "T4"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:464"
+    },
+    {
+      "id": "C-14",
+      "name": "三十年潮沟偏移图可推算沉船漂移",
+      "carrier": "证据：潮沟偏移图",
+      "npcs": [
+        "卢铁牛"
+      ],
+      "flags": [
+        "flag.location_known"
+      ],
+      "tasks": [
+        "T8"
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:465"
+    },
+    {
+      "id": "C-15",
+      "name": "沉闸三把闸钥的下落已查明",
+      "carrier": "证据／NPC：持钥人",
+      "npcs": [
+        "温秉文",
+        "岑晚"
+      ],
+      "flags": [
+        "flag.keys"
+      ],
+      "tasks": [
+        "T6",
+        "T8"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "夺取持钥人",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "旧海图的标注",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "温秉文的交易对象",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由沉闸的机械结构推出",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:479"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:466"
+    },
+    {
+      "id": "C-16",
+      "name": "第七舱里装的是与潮母有关的东西",
+      "carrier": "场景：沉闸第七舱",
+      "npcs": [
+        "岑晚"
+      ],
+      "flags": [
+        "flag.chest_opened"
+      ],
+      "tasks": [
+        "T8"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "沉船残骸开舱",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "曾守拙的灯语本",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "岑晚的讲述／岑阿九的口供",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由登记六舱与实际七舱推出",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:476"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:467"
+    },
+    {
+      "id": "C-17",
+      "name": "潮母存在，位置与状态可确认",
+      "carrier": "场景：潮母巢穴",
+      "npcs": [
+        "岑晚"
+      ],
+      "flags": [
+        "flag.tidegold_out"
+      ],
+      "tasks": [
+        "T8"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "桩林区汐巢实探",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "夜汐会仪式表",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "一枚金砂的缓慢增重",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由汐巢的营造方式反推",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:477"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:468"
+    },
+    {
+      "id": "C-18",
+      "name": "岑阿九还活着，被关在沉闸",
+      "carrier": "场景：沉闸内室",
+      "npcs": [
+        "岑晚"
+      ],
+      "flags": [
+        "flag.ritual_completed"
+      ],
+      "tasks": [
+        "T8"
+      ],
+      "paths": [
+        {
+          "path": "A（物理）",
+          "detail": "沉闸内室实探",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+        },
+        {
+          "path": "B（文档）",
+          "detail": "盐仓区租金汇款单",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+        },
+        {
+          "path": "C（人证）",
+          "detail": "卜守秤的称量记录",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+        },
+        {
+          "path": "D（推理）",
+          "detail": "由灯屿旧图上的注记与汇款持续性推出",
+          "source": "docs/scenario/S3-潮金港-都市夺宝.md:478"
+        }
+      ],
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:469"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "贺承宗",
+      "alias": "会首",
+      "role": "港务公会会首",
+      "faction": "归属（可雇佣）",
+      "drive": "在明年债期之前把这笔账做平，且绝不能让人知道 O61 年那笔债是他前任签的、他签了字。",
+      "secret": "他知道长庚号没有沉在海底（C-02）。他一直派人守着沉闸，但从未派人下去。",
+      "attitude": {
+        "affinity": 0,
+        "note": "公开立功 +1；替他销毁不利文书 +2；公开不利文书 −3。"
+      },
+      "knows": [
+        "C-02",
+        "C-05",
+        "C-07",
+        "C-08"
+      ],
+      "if_dead_or_betrayed": "公会由温秉文接手，但温秉文会立刻把坏账原件卖给最高出价者（触发\"全城债权公开\"事件：所有势力 −1 格，市民水钱对玩家 +3）。沉闸的第一把闸钥流入落市。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:487"
+    },
+    {
+      "id": "npc-02",
+      "name": "温秉文",
+      "alias": "账房",
+      "role": "公会账房先生",
+      "faction": "归属（可被收买）",
+      "drive": "他想离开潮金港。他需要一笔不大不小的钱和一个不被追查的身份。",
+      "secret": "他私下抄了一份账本副本，藏在甲字七号仓的地板下（C-05、C-07）。",
+      "attitude": {
+        "affinity": 1,
+        "note": "给他一条离城的路 +1；威胁他 −2（且他会先一步转移账本）。"
+      },
+      "knows": [
+        "C-05",
+        "C-06",
+        "C-07",
+        "C-09"
+      ],
+      "if_dead_or_betrayed": "账本副本由其徒弟交给水巡，公会 −2 格；玩家获得 C-05 与 C-07 的备用路径（抄本在落市流通）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:495"
+    },
+    {
+      "id": "npc-03",
+      "name": "甘雨亭",
+      "alias": "书吏",
+      "role": "税关楼查验书吏",
+      "faction": "中立（可贿赂）",
+      "drive": "还清父亲的水钱，保住这份差事。",
+      "secret": "他的印鉴拓样卖出去过三次。",
+      "attitude": {
+        "affinity": 1,
+        "note": "替他还父亲的水钱 +2；被水巡发现他与玩家来往 −3。"
+      },
+      "knows": [
+        "C-01",
+        "C-08",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "印鉴拓样落到霍大钧手里，此后伪造文书的 DF +4；但玩家可改走\"偷空白文书\"路径（落市字湾区）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:503"
+    },
+    {
+      "id": "npc-04",
+      "name": "柯九斤",
+      "alias": "帮主",
+      "role": "蚝壳帮帮主",
+      "faction": "归属（可结盟）",
+      "drive": "给四百个兄弟一人一份养老钱。他真的这么想。",
+      "secret": "他见过岑阿九。O66 年是他把阿九从水里拖上来的（C-03、C-18）。",
+      "attitude": {
+        "affinity": 1,
+        "note": "一起喝过酒 +1；替帮里兄弟出头 +2；伤他兄弟 −3。"
+      },
+      "knows": [
+        "C-03",
+        "C-09",
+        "C-15",
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "阮阿蟹上位，蚝帮 +1 格但后续遭遇强度 +1 档；柯九斤知道的线索改由阿箩掌握（阿箩会把它卖给拾滩人）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:513"
+    },
+    {
+      "id": "npc-05",
+      "name": "阮阿蟹",
+      "alias": "二当家",
+      "role": "蚝壳帮二当家",
+      "faction": "归属（暗中通敌）",
+      "drive": "上位。为此他已经和白盐商栈谈了三个月（C-10）。",
+      "secret": "他打算拿到金子之后把柯九斤送走，并且已经安排了人。",
+      "attitude": {
+        "affinity": 0,
+        "note": "提供扳倒柯九斤的证据 +2；揭发他与商栈的交易 −3（且他会先下手）。"
+      },
+      "knows": [
+        "C-09",
+        "C-10",
+        "C-11",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "蚝帮 −2 格（内斗），但阿箩接任二当家且对玩家 +2；商栈失去内应（商栈 −1 格）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:521"
+    },
+    {
+      "id": "npc-06",
+      "name": "阿箩",
+      "alias": "拳手小头目",
+      "role": "蚝壳帮三号人物",
+      "faction": "归属（摇摆）",
+      "drive": "她只想让这条巷子里的孩子有活干。她不忠于帮派，忠于巷子。",
+      "secret": "她偷偷把帮里的救济粮分给了拾滩人的孩子。",
+      "attitude": {
+        "affinity": 1,
+        "note": "帮孩子 +2；当着她的面伤孩子 −3（永久敌对）。"
+      },
+      "knows": [
+        "C-03",
+        "C-09"
+      ],
+      "if_dead_or_betrayed": "巷子里的年轻人自发组成\"蚝仔队\"（杂兵级增援，可由水钱召唤）；蚝帮 −1 格。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:529"
+    },
+    {
+      "id": "npc-07",
+      "name": "桑敬亭",
+      "alias": "掌柜",
+      "role": "白盐商栈掌柜",
+      "faction": "归属（永远愿谈价）",
+      "drive": "以抵押物身份吞下潮金港未来三十年的收租权（C-06）。",
+      "secret": "商栈的现金流撑不过一次挤兑（C-11）。他所有的从容都是演的。",
+      "attitude": {
+        "affinity": 0,
+        "note": "给他独占的兑现权 +2；制造挤兑 −3（且他会悬赏玩家）。"
+      },
+      "knows": [
+        "C-05",
+        "C-06",
+        "C-11",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "桑玉衡接手，商栈策略转为公开收购（全城汐金价格 ×3，拾滩人 +2 格）；商栈 −1 格。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:539"
+    },
+    {
+      "id": "npc-08",
+      "name": "桑玉衡",
+      "alias": "侄女兼账房",
+      "role": "商栈账房",
+      "faction": "归属（可被劝离）",
+      "drive": "她想把叔父的账本重做一遍，让这座城少死几个人。",
+      "secret": "她在偷偷挪账，把商栈的钱拿去补盐工的工钱。",
+      "attitude": {
+        "affinity": 1,
+        "note": "帮盐工 +2；拿盐工当筹码 −3。"
+      },
+      "knows": [
+        "C-05",
+        "C-06",
+        "C-11"
+      ],
+      "if_dead_or_betrayed": "桑敬亭失去唯一的良心约束，此后每幕商栈额外 +1 格（不再犹豫）；盐工暴动提前爆发（白田盐场成为敌对区）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:547"
+    },
+    {
+      "id": "npc-09",
+      "name": "岑晚",
+      "alias": "汐姑",
+      "role": "夜汐会潮使",
+      "faction": "敌对（可倒戈）",
+      "drive": "孵化潮母，让\"该回去的东西回去\"。她相信这是归位，不是毁灭。",
+      "secret": "她是岑阿九的女儿。她加入夜汐会，最初是为了找父亲（C-17、C-18）。",
+      "attitude": {
+        "affinity": -1,
+        "note": "提到她父亲 −2（立刻）；带来父亲的物件 +3（唯一能让她倒戈的路径）。"
+      },
+      "knows": [
+        "C-12",
+        "C-13",
+        "C-16",
+        "C-17",
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "夜汐会 −3 格，但潮母失去控制者——此后每次潮汐异象强度 +1 档且不可预测；章潮生接管并转为全面暴力路线。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:557"
+    },
+    {
+      "id": "npc-10",
+      "name": "墨",
+      "alias": "哑仆",
+      "role": "夜汐会护卫",
+      "faction": "敌对",
+      "drive": "守着岑晚。仅此而已。",
+      "secret": "他是 O68 年那两名失踪拾滩人中的一个。他没死，他被\"换\"过了。",
+      "attitude": {
+        "affinity": -2,
+        "note": "几乎不可交涉（对利益与道义免疫，仅对\"情感\"论证有反应，且 DF +4）。"
+      },
+      "knows": [
+        "C-13",
+        "C-17"
+      ],
+      "if_dead_or_betrayed": "岑晚失去护卫（其个人遭遇强度 −1 档），但会立刻启动\"提前仪式\"（夜汐会 +1 格）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:565"
+    },
+    {
+      "id": "npc-11",
+      "name": "章潮生",
+      "alias": "坛主",
+      "role": "夜汐会坛主",
+      "faction": "敌对",
+      "drive": "他想要被记住。他不在乎潮母，他在乎自己在历史里的位置。",
+      "secret": "他不知道第七舱里是什么。他一直在猜。",
+      "attitude": {
+        "affinity": -2,
+        "note": "奉承他 +1（极易）；拆穿他不知道真相 −3。"
+      },
+      "knows": [
+        "C-12",
+        "C-13"
+      ],
+      "if_dead_or_betrayed": "夜汐会分裂为两派（−2 格），其中温和派可被玩家吸收为一支可用的增援（精锐×2，一次性）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:573"
+    },
+    {
+      "id": "npc-12",
+      "name": "伍长川",
+      "alias": "巡正",
+      "role": "澜税巡巡正",
+      "faction": "中立（可借调）",
+      "drive": "一份漂亮的结案报告与随之而来的升迁。",
+      "secret": "他知道自己的副手受贿，但他需要一个能在关键时刻顶罪的人。",
+      "attitude": {
+        "affinity": 0,
+        "note": "给他一个能写进报告的功劳 +2；让他当众难堪 −3。"
+      },
+      "knows": [
+        "C-02",
+        "C-10",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "霍大钧接任，水巡全面腐败化（此后可用钱直接买\"扣押权\"，但每次使用 +1 层【负担】给全队）；水巡 −1 格。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:583"
+    },
+    {
+      "id": "npc-13",
+      "name": "霍大钧",
+      "alias": "副巡",
+      "role": "澜税巡副巡",
+      "faction": "中立（受贿者）",
+      "drive": "钱，以及不被伍长川推出去顶罪。",
+      "secret": "他收了商栈的钱，也收了蚝帮的钱。两份都留了字据在他自己手里。",
+      "attitude": {
+        "affinity": 0,
+        "note": "给钱 +1（每次 +1，最多 +2）；掌握他的字据 +3（可完全驱使）；公开字据 −3。"
+      },
+      "knows": [
+        "C-10",
+        "C-11",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "字据被其遗孀交给落市秤仙（玩家可花钱买回，价格 贵重×3）；水巡 −1 格。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:591"
+    },
+    {
+      "id": "npc-14",
+      "name": "邵红药",
+      "alias": "女捕",
+      "role": "澜税巡捕役",
+      "faction": "中立（可被说服）",
+      "drive": "弄清楚 O79 年那次事故到底是怎么被压下来的。",
+      "secret": "她在私下复查 O66 与 O79 两桩旧案，并且已经查到盐仓区。",
+      "attitude": {
+        "affinity": 1,
+        "note": "给她 O79 的线索 +2；利用她的身份做违法的事 −3。"
+      },
+      "knows": [
+        "C-02",
+        "C-08",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "她的卷宗被水巡归档封存（玩家需潜入税关楼地下才能拿到），但她的搭档会暗中把副本交给玩家。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:599"
+    },
+    {
+      "id": "npc-15",
+      "name": "曾守拙",
+      "alias": "守灯人",
+      "role": "灯屿守",
+      "faction": "归属（会说真话）",
+      "drive": "不让第七舱被打开。他父亲参与了 O66 年的善后，临死前把这件事交给了他。",
+      "secret": "他手里有第三把闸钥（C-15）。他打算永远不给任何人。",
+      "attitude": {
+        "affinity": 2,
+        "note": "承诺不挖 +2；威胁弄熄灯塔 −3（且他会先广播警告全城）。"
+      },
+      "knows": [
+        "C-13",
+        "C-14",
+        "C-15",
+        "C-16",
+        "C-17"
+      ],
+      "if_dead_or_betrayed": "曾小满接手并把闸钥交给玩家（若玩家声望 ≥ 0），但灯塔无人维护（7 日后熄灭，全城航运停摆，所有势力 −2 格）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:609"
+    },
+    {
+      "id": "npc-16",
+      "name": "曾小满",
+      "alias": "守灯人之女",
+      "role": "灯屿守",
+      "faction": "归属（可结盟）",
+      "drive": "她想让别人也看见她看见过的东西。她见过潮母。",
+      "secret": "她的潮汐生物图里有一张画的是\"人形的、戴着工牌的\"东西——那是她想象中的岑阿九（C-18）。",
+      "attitude": {
+        "affinity": 2,
+        "note": "认真看她的画 +2；把她的画当废纸 −3。"
+      },
+      "knows": [
+        "C-13",
+        "C-14",
+        "C-17",
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "她的画被曾守愚拿走卖给夜汐会（夜汐会 +1 格）；曾守拙从此拒绝与玩家交谈。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:617"
+    },
+    {
+      "id": "npc-17",
+      "name": "曾守愚",
+      "alias": "守灯人之弟",
+      "role": "灯屿守（叛出者）",
+      "faction": "摇摆（可被收买）",
+      "drive": "把灯塔卖掉，离开这座岛。",
+      "secret": "他已经把灯语本抄了一份卖给夜汐会，正在等第二笔钱。",
+      "attitude": {
+        "affinity": -1,
+        "note": "出价 +1（可被任何一方买走）；揭穿他 −2（且他会连夜逃走）。"
+      },
+      "knows": [
+        "C-12",
+        "C-14",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "抄本流向落市（可被玩家买回，价格 贵重×2）；夜汐会失去灯语（−1 格）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:625"
+    },
+    {
+      "id": "npc-18",
+      "name": "老蚬婆",
+      "alias": "何蚬",
+      "role": "拾滩人头目",
+      "faction": "归属（可雇佣）",
+      "drive": "攒够钱，让蚬仔这一代不必拾滩。",
+      "secret": "她手里有一本\"路引\"——三十年的落滩路线手抄本，其中有一条标着\"不去\"的路（C-02、C-14）。",
+      "attitude": {
+        "affinity": 0,
+        "note": "给孩子办事 +2；动她的孩子 −3（且全城拾滩人敌对）。"
+      },
+      "knows": [
+        "C-02",
+        "C-13",
+        "C-14",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "蚬仔继承路引但不会用（拾滩人 −2 格），路引可被玩家以 3 点水钱或武力取得；拾滩人网络解散，落滩所有路线 DF +4。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:635"
+    },
+    {
+      "id": "npc-19",
+      "name": "蚬仔",
+      "alias": "少年",
+      "role": "拾滩人",
+      "faction": "归属",
+      "drive": "他想上学。他不好意思说。",
+      "secret": "他自己在蚝壳滩挖到过一枚汐金，藏在拆船场的一只旧靴子里。",
+      "attitude": {
+        "affinity": 1,
+        "note": "给他买书 +2；骗他 −3（且老蚬婆 −2）。"
+      },
+      "knows": [
+        "C-02",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "老蚬婆把所有水钱换成对玩家的敌意（拾滩人 +2 格仇恨推进，且她会向夜汐会通风报信）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:643"
+    },
+    {
+      "id": "npc-20",
+      "name": "屠怀舟",
+      "alias": "领队",
+      "role": "北舷打捞行领队",
+      "faction": "中立（可雇佣）",
+      "drive": "拿下打捞权，为北舷在这条航线上锁三十年优先权。",
+      "secret": "他的打捞许可里有一条附加条款：若沉船被认定为\"历史沉船\"，许可作废。他一直在掩盖船上有近代货物的事实。",
+      "attitude": {
+        "affinity": 0,
+        "note": "提供本地引水 +1；揭穿许可条款 −3（且他会狗急跳墙）。"
+      },
+      "knows": [
+        "C-01",
+        "C-02",
+        "C-15",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "蓝慕接任并转为与本地势力全面合作（北舷 −1 格但此后可被玩家挂靠，且带来潜水设备）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:653"
+    },
+    {
+      "id": "npc-21",
+      "name": "蓝慕",
+      "alias": "潜水长",
+      "role": "北舷潜水长",
+      "faction": "中立（可交友）",
+      "drive": "她想看看长庚号到底是什么样的一艘船。纯粹的职业好奇。",
+      "secret": "她已经私自下过一次水，并且带回了一块不属于长庚号的金属片（C-16）。",
+      "attitude": {
+        "affinity": 1,
+        "note": "陪她下水 +2；把她当外人 −2。"
+      },
+      "knows": [
+        "C-02",
+        "C-13",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "北舷失去唯一有深海经验的人（北舷 −3 格，泊期提前）；她的潜水日志留在船上，玩家可拿（C-16 的备用路径）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:661"
+    },
+    {
+      "id": "npc-22",
+      "name": "费隆",
+      "alias": "舵工",
+      "role": "北舷舵工",
+      "faction": "中立（可被收买）",
+      "drive": "赌债。他在内地欠了一笔不小的钱。",
+      "secret": "他把船上的报关清单卖了一份给落市（C-01）。",
+      "attitude": {
+        "affinity": 0,
+        "note": "替他还债 +2；拿赌债威胁他 −2（且他会反咬）。"
+      },
+      "knows": [
+        "C-01",
+        "C-02"
+      ],
+      "if_dead_or_betrayed": "清单副本由落市秤仙拍卖（起价 贵重×2）；北舷 −1 格。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:669"
+    },
+    {
+      "id": "npc-23",
+      "name": "岑阿九",
+      "alias": "老舵工",
+      "role": "长庚号唯一生还者",
+      "faction": "无（隐藏）",
+      "drive": "守着第七舱，不让它被打开。他守了三十年。",
+      "secret": "他不是完全的人了。他三十年前被水带回来的时候，带回了一样东西——他能听懂潮水。",
+      "attitude": {
+        "affinity": 0,
+        "note": "（首次相遇时无法判定，因为玩家不知道他是谁）。认出他 +1；带来岑晚 +3；动手伤他 −3。"
+      },
+      "knows": [
+        "C-03",
+        "C-16",
+        "C-17",
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "第七舱失去唯一的封印者。潮母当夜开始自主孵化（触发\"孵化\"结局的前置条件），且所有势力 +1 格（因为闸室不再抗拒任何人进入）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:679"
+    },
+    {
+      "id": "npc-24",
+      "name": "陈三娘",
+      "alias": "面摊老板娘",
+      "role": "鱼栏巷面摊",
+      "faction": "中立（情报源）",
+      "drive": "把儿子送出潮金港。她差一点点钱。",
+      "secret": "她的丈夫在 O93 年的拆船场事故里没了，赔款被公会扣了一半。",
+      "attitude": {
+        "affinity": 1,
+        "note": "（会加蛋）。替她要回赔款 +2；在巷子里惹事 −2。"
+      },
+      "knows": [
+        "C-03",
+        "C-04",
+        "C-09",
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "鱼栏巷全面闭嘴（全城人脉与调查判定 DF +3，持续三幕）；她的儿子会带着她的账本去找夜汐会。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:687"
+    },
+    {
+      "id": "npc-25",
+      "name": "卜守秤",
+      "alias": "秤仙",
+      "role": "落市牙人",
+      "faction": "中立（只做称量）",
+      "drive": "他不买卖，他\"称量\"——他称得出你有多少水钱，也做水钱的转让生意。",
+      "secret": "他手里有一份 O91 年以来全城汐金收货清单的完整副本（C-06）。",
+      "attitude": {
+        "affinity": 0,
+        "note": "在他这里成交 +1；在他这里动手 −3（永久关闭负二层）。"
+      },
+      "knows": [
+        "C-01",
+        "C-05",
+        "C-06",
+        "C-09",
+        "C-15"
+      ],
+      "if_dead_or_betrayed": "负二层关闭，全城文书与情报获取 DF +5；他的水钱账会被挂在负一层公开拍卖（任何人可买走玩家的水钱）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:695"
+    },
+    {
+      "id": "npc-26",
+      "name": "卢铁牛",
+      "alias": "船坞匠",
+      "role": "船坞匠人",
+      "faction": "中立",
+      "drive": "修好船。别的他不管。",
+      "secret": "那块船板是他父亲从 O66 年的现场带回来的，他父亲因此被公会除名。",
+      "attitude": {
+        "affinity": 1,
+        "note": "帮他修船 +1；问他父亲的事 +2（他会讲）；动那块板 −3。"
+      },
+      "knows": [
+        "C-01",
+        "C-02",
+        "C-14"
+      ],
+      "if_dead_or_betrayed": "船坞关闭（蚝壳帮与北舷各 −1 格，且本册\"修船／借船\"路线永久关闭）；船板被蚝帮拿走并在落市拍卖。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:703"
+    },
+    {
+      "id": "npc-27",
+      "name": "黄不问",
+      "alias": "赤脚郎中",
+      "role": "落市药贩",
+      "faction": "中立",
+      "drive": "治好一个他从 O68 年就治不好的人——他没有说是谁。",
+      "secret": "他一直在给墨送药。他知道墨是什么。",
+      "attitude": {
+        "affinity": 1,
+        "note": "付钱 +1；带伤者来不付钱 −2；问\"那个人是谁\" +2（他会把你引向 C-18）。"
+      },
+      "knows": [
+        "C-13",
+        "C-17",
+        "C-18"
+      ],
+      "if_dead_or_betrayed": "全城医疗判定 DF +4（他是唯一愿意不问来源的大夫）；墨失去药物来源，健康状况恶化（可被利用）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:711"
+    },
+    {
+      "id": "npc-28",
+      "name": "瞎子阿潮",
+      "alias": "说书人",
+      "role": "落市说书人",
+      "faction": "中立",
+      "drive": "他要把一个版本讲对。他讲了三十年。",
+      "secret": "他的\"不一样\"不是记错了——他每次都在试。他在等有人指出哪一版是对的（C-03）。",
+      "attitude": {
+        "affinity": 1,
+        "note": "认真听 +1；指出矛盾 +2；嘲笑他 −3。"
+      },
+      "knows": [
+        "C-02",
+        "C-03",
+        "C-16"
+      ],
+      "if_dead_or_betrayed": "他攒了三十年的十七个版本被落市的人当废纸卖掉（C-03 的唯一非暴力路径消失）；玩家只能靠岑阿九本人获得口供。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:719"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "三号码头·老码头",
+      "atmosphere": "缆绳的焦油味、永远在修的路面、凌晨四点的吆喝。三号码头是老港唯一还在跑散货的泊位，起重机是 O30 年代的旧货，转起来像在咳嗽。",
+      "key_places": [
+        "**吊机控制室**：一台老式手动吊机，操作它需要操舵或技术判定（DF 12）；从控制室的窗户能看到整个蚝壳滩的潮沟走向。",
+        "**潮汛告示墙**：每天更换的潮汛表，全城最权威的一份；上面有用铅笔圈过的时辰（各字号的人圈过的地方互相重叠）。",
+        "**装卸工棚**：蚝壳帮的实际办公地点，墙上钉着排班表与欠条。",
+        "**三号冷库**：常年出租给\"不在工商登记上\"的公司，门口永远有一辆等着卸货的卡车。",
+        "**栈桥底下的水窟**：涨潮时淹没，退潮时露出一个通往旧排水道的铁栅（锁着，巧手 DF 14）。"
+      ],
+      "encounters": "遭遇预算 6–10（1–3 级）。典型组合：蚝壳帮装卸工（杂兵×3）+ 帮派拳手（标准）+ 码头野狗群（杂兵×2）。",
+      "resources": "港口调度单（线索）、工棚里的欠条（水钱）、栈桥底的旧排水道路线。",
+      "if_botched": "若在此公开动手伤人，蚝壳帮全城停摆一天（所有需人力的搬运涨价 50%），玩家在蚝壳帮声望 −2，且当日所有拾滩路线被封锁（落滩遭遇 DF +2，因为没人愿意带路）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:183"
+    },
+    {
+      "id": "loc-02",
+      "name": "鱼栏巷",
+      "atmosphere": "六层老住宅楼，晾在外面的衣服三天不干，楼下的面摊从凌晨开到深夜。这里的房租是全城最便宜的，也正因如此，这里藏得住人。",
+      "key_places": [
+        "**陈三娘面摊**：全城消息最灵通的一张桌子。三娘不加蛋 = 你在这儿没有水钱。",
+        "**7 号楼 402**：岑阿九的住处，三十年未退租，租金由一个\"从不露面的人\"每季度从外地汇来。屋里有他留下的生活痕迹与一本潮汐手札。",
+        "**巷尾的土地庙**：供的不是神，是一块从海底捞上来的黑色石头；夜汐会在这里放传单。",
+        "**晒网场**：白天晾网，夜里是拾滩人分赃的地方（分赃前会先\"称水钱\"）。"
+      ],
+      "encounters": "遭遇预算 4–8。典型组合：醉酒船工（杂兵×2）+ 街区大嫂们的集体围攻（情绪型，非战斗，需用交涉化解）。",
+      "resources": "岑阿九手札（关键线索）、岑阿九的汇款存根（指向白盐商栈）、街坊的水钱。",
+      "if_botched": "若在巷里引来水巡并发生交火，居民会集体闭嘴（此后在鱼栏巷的一切人脉与调查判定 DF +4，持续两幕），且陈三娘会在面里下药（一次）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:197"
+    },
+    {
+      "id": "loc-03",
+      "name": "落市",
+      "atmosphere": "旧船闸改造的下沉市场，四层向下延伸。越往下，柜台越窄，灯光越红，问价的人越少。负二层卖档案，负三层没人承认它存在。",
+      "unlock": "需一名引荐人（陈三娘、秤仙、或任一势力声望 ≥ +1），或当场付出 2 点水钱。",
+      "key_places": [
+        "**负一层 · 杂货与药**：黄不问的摊子，什么药都有，包括不该有的。",
+        "**负二层 · 字湾区**：假证与真档案混着卖；**秤仙的桌子**在这里，桌上永远摆着一杆十六两老秤。",
+        "**负三层 · 无名层**：一个用旧排水闸改造的黑厅，夜汐会在此集会；只有持\"汐引\"（夜汐会的信物）或敲三长两短的暗号才能进。",
+        "**闸底暗道**：一条通往旧排水系统的暗道，可直达桩林区（退潮时才通）。"
+      ],
+      "encounters": "遭遇预算 8–14。典型组合：牙人的保镖（标准×2）+ 扒手群（杂兵×4，掠夺型）+ 夜汐会暗桩（精锐，仅当玩家持汐金时出现）。",
+      "resources": "任何情报（明码标价）、伪造文书、汐金收货清单副本、**水钱转让服务**（秤仙的独门生意）。",
+      "if_botched": "若在落市动刀，秤仙会永久关闭负二层（所有文书与情报获取 DF +5），并把玩家的债务挂牌出售（见第 5 节水钱转让）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:210"
+    },
+    {
+      "id": "loc-04",
+      "name": "盐仓区",
+      "atmosphere": "一排排青砖仓房，空气里永远是咸的。仓与仓之间的巷道窄得只能过一辆板车，板车经过时所有人都要贴墙站。",
+      "unlock": "港务公会声望 ≥ −1，或持一份伪造的查验文书（欺骗 DF 14）。",
+      "key_places": [
+        "**甲字七号仓**：账房温秉文的办公处，柜子里是三十年来的潮汐债存根。",
+        "**乙字三仓**：空仓，但地面有新拖过的痕迹；夜里有人从这里搬东西出去。",
+        "**盐仓塔**：一座八角形的瞭望塔，能俯瞰整片盐仓区与半个蚝壳滩。",
+        "**仓区泵房**：控制盐仓区排水的老泵房，其管路图与旧闸室相连。"
+      ],
+      "encounters": "遭遇预算 10–16。典型组合：公会守卫（标准×3）+ 账房护院（精锐）+ 巡逻水巡（标准×2）。",
+      "resources": "潮汐债存根（核心线索：汐金是抵押物）、贺承宗的测潮隐瞒记录（弱点）、港务公会内部排班表。",
+      "if_botched": "若被抓现行且未能在 24 小时内摆平，玩家被列入\"不予接待\"名单（港务公会声望 −3，盐仓区与税关楼永久关闭），同时温秉文会把账本转移（后续线索引向更难的路径）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:223"
+    },
+    {
+      "id": "loc-05",
+      "name": "船坞·高吊区",
+      "atmosphere": "龙门吊像一排骨头架在天上，下面永远是敲打声与电焊的蓝光。这是全城唯一能修千吨级船的地方，因此也是所有人都要来求人的地方。",
+      "key_places": [
+        "**卢铁牛的工棚**：挂着那块写有\"长庚\"二字的船板。铁牛不卖它，也不解释。",
+        "**干船坞**：正在检修的一艘散货船；坞底排干后可以走下去（技术或运动 DF 10）。",
+        "**北舷打捞行的临时泊位**：一艘黑色打捞船，泊期三十日，船上的人是外地人。",
+        "**废料堆场**：堆着三十年的船板、螺旋桨、缆绳；拾滩人常在这里过夜。"
+      ],
+      "encounters": "遭遇预算 8–14。典型组合：船坞匠（标准×2）+ 看场子的蚝帮拳手（标准×2）+ 打捞行护卫（精锐）。",
+      "resources": "长庚号船板（开局钩子）、船坞排期表（可推断谁在什么时候要船）、潜水设备（租借）。",
+      "if_botched": "若烧掉或破坏船坞，蚝壳帮与北舷同时敌视（各 −2），且本册中\"修船/借船\"路线永久关闭（只能走陆路与落滩路线）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:236"
+    },
+    {
+      "id": "loc-06",
+      "name": "白田盐场",
+      "atmosphere": "一格一格的水田，白得刺眼。风一吹，盐尘扑在脸上，半天之后嘴唇会裂。这里是全城最不适合打架的地方——因为会毁掉一整季的收成。",
+      "key_places": [
+        "**一号结晶池**：池底有十几枚被盐壳包住的旧金砂（拾荒者没认出来）。",
+        "**商栈账房**：桑敬亭的办公室，墙上挂着一张\"盐引\"分布图。",
+        "**盐工棚屋**：工人住的地方，条件极差；这里是白盐商栈最大的弱点——工人的怨气可以买。",
+        "**卤水池**：深不见底，抽干后可下到一个通向海侧的旧取水口。"
+      ],
+      "encounters": "遭遇预算 6–12。典型组合：盐场监工（标准）+ 盐工暴动（情绪型集体检定）+ 卤水池里的卤虫群（杂兵×4）。",
+      "resources": "旧金砂（汐金样本）、商栈的现金流情报（弱点）、盐工的支持（水钱）。",
+      "if_botched": "若污染或破坏结晶池，白盐商栈当季损失惨重（声望 −3），且全城盐价上涨（此后所有\"以盐为抵押\"的交易成本翻倍）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:249"
+    },
+    {
+      "id": "loc-07",
+      "name": "蚝壳滩（落滩 · 退潮可达）",
+      "atmosphere": "退潮后露出的三公里泥滩，表面是一层碎蚝壳，踩上去咯吱响。地上有一道道会改道的潮沟，一年偏移三米。空气里是死蚝与海泥的味道。",
+      "unlock": "**退潮窗口**（晨汐或夜汐）。涨潮时本区不可进入。",
+      "key_places": [
+        "**碎壳带**：最容易拾到东西的一段；第一枚汐金样本就在这里。",
+        "**潮沟迷宫**：会移动的浅沟，跌幅最深及腰；走错会掉进深沟（运动 DF 12）。",
+        "**老蚝架**：O1 年的木桩残段，桩上刻着最早的人名；退大潮时架子全露。",
+        "**沉牛**：半埋在泥里的一头牛大小的黑色物体——其实是一段被泥沙包住的船舷。",
+        "**泥下渔村**（满汐日深退才完全露出）：O12 沉入泥下的旧渔村，还有一口会冒淡水的井。"
+      ],
+      "encounters": "遭遇预算 10–18。典型组合：拾滩人竞争者（杂兵×4）+ 泥下的蚝壳潜行者（标准×2）+ 潮沟涨水（场地要素，DF 14 撤离）。",
+      "resources": "汐金样本、老蚝架上的刻名（指向曾家与岑家）、落滩路引、泥下渔村的淡水井（一个安全的临时营地）。",
+      "if_botched": "若在此处开枪或大规模破坏，泥层塌陷（该段潮沟永久改道，此后进入桩林区的路径 DF +3），且拾滩人会把玩家的路线卖给最高出价者（对手竞速 +1 格）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:262"
+    },
+    {
+      "id": "loc-08",
+      "name": "桩林区（落滩 · 深处需满汐日）",
+      "atmosphere": "几百根旧码头桩基从泥里戳出来，高低不齐，像一片没有树叶的林子。涨潮时它们只剩顶端，退潮时露到腰，满汐日深退时露出到胸口——那时人可以踩着桩顶走一段。",
+      "unlock": "退潮可达（浅区）；**深区需满汐日深退**。",
+      "key_places": [
+        "**桩顶走道**：熟练者可在桩顶跳跃前进（杂技 DF 14）；掉下去是两米深的淤泥（束缚）。",
+        "**第九号桩**：桩上刻着一个\"晚\"字（岑晚刻的，她小时候来过）。",
+        "**桩间的汐巢**：桩与桩之间挂着的胶状囊袋，里面的东西会动。**这是潮母的卵衣在陆上的部分。**",
+        "**夜汐会的浮台**：一个用浮桶搭的临时祭台，满汐日夜里会点灯。"
+      ],
+      "encounters": "遭遇预算 14–22。典型组合：夜汐会潮卫（精锐×2）+ 汐巢孵化体（杂兵×4）+ 潮汐异象\"回涨\"（场地要素）。",
+      "resources": "汐巢样本（真相线索）、夜汐会的仪式时刻表（弱点）、通往沉闸的水下路标（需水下作业判定）。",
+      "if_botched": "若摧毁汐巢，潮母提前被惊动（潮汐异象遭遇强度提升一档，且此后每次退潮窗口缩短半个时段——全城竞速被迫加速）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:276"
+    },
+    {
+      "id": "loc-09",
+      "name": "灯屿（退潮可徒步 / 涨潮需船）",
+      "atmosphere": "离岸八百米的一座礁岛，上面有一座 O44 年的石塔。塔里住着三个人和一条狗。塔顶的灯每半刻闪一次，全城的船都看它。",
+      "unlock": "退潮时可从桩林区徒步涉水抵达（运动 DF 12）；涨潮需船（操舵或水钱）。**进入塔内需灯屿守声望 ≥ 0。**",
+      "key_places": [
+        "**塔顶灯室**：曾守拙的岗位，灯的节奏是一种编码（曾家灯语本）。",
+        "**塔基的记录室**：三十年潮沟偏移图、异象记录、旧海图，全部手绘。",
+        "**曾小满的房间**：墙上贴满了她自己画的潮汐生物图；她见过潮母。",
+        "**礁下的水洞**：退潮时露出，洞里有淡水，也有被潮水推上来的东西。"
+      ],
+      "encounters": "遭遇预算 6–12（塔内一般不战斗，除非夜汐会来袭）。典型组合：夜汐会登岛队（精锐×2 + 杂兵×4）+ 礁蟹群（杂兵×3）。",
+      "resources": "潮沟偏移图（推算沉船位置）、异象记录、灯屿守的支持（本册最可靠的\"不挖\"路线）、**灯语**（可用来全城广播假消息）。",
+      "if_botched": "若灯塔被熄灭或损坏，全城航运当日停摆（所有势力竞速 −1 格，但玩家在所有势力声望各 −1），且当夜潮汐异象遭遇强度 +1 档。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:289"
+    },
+    {
+      "id": "loc-10",
+      "name": "弃船湾·拆船场",
+      "atmosphere": "一排被拖上滩的死船，被一层层剥掉钢板、管线、家具。工人们住在船体里。这里什么都有，也什么都没有。",
+      "key_places": [
+        "**半剖货轮\"北丰号\"**：剖开的船舱里能看清货轮结构，是理解长庚号构造的最佳教材。",
+        "**板料堆**：三十年的船板堆成山；写有\"长庚\"二字的船板就是从这里出来的。",
+        "**船工住舱**：拾滩人与流浪船工的住处；蚬仔在这里。",
+        "**拆船坑**：一个二十米深的大坑，坑底积水，退潮时会与海连通。"
+      ],
+      "encounters": "遭遇预算 8–14。典型组合：拆船工（杂兵×5）+ 场主保镖（标准×2）+ 船体里的寄居者（精锐，隐伏）。",
+      "resources": "长庚号的构造知识、廉价潜水与打捞设备、拾滩人的人力（水钱）、废弃钢板的临时掩体。",
+      "if_botched": "若在拆船坑引发大火或坍塌，拾滩人死伤（老蚬婆敌对，声望 −3，落滩所有路线断供），且拆船坑变成一个不可通行的障碍区。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:302"
+    },
+    {
+      "id": "loc-11",
+      "name": "税关楼·公会厅",
+      "atmosphere": "全城唯一一栋有大理石地面的建筑。走廊很长，脚步声会回响。每一份文件都有编号、有签字人、有三联单。",
+      "unlock": "港务公会声望 ≥ +1，或持伪造文书（欺骗 DF 16），或有水巡陪同。",
+      "key_places": [
+        "**报潮房**：潮信人在此编潮汛表；墙上挂着三十年的测潮记录（O95 那一份是假的）。",
+        "**会首室**：贺承宗的办公室，抽屉里锁着\"坏账处置\"的原件。",
+        "**查验大厅**：水巡的联合办公处，伪造文书在这里最容易露馅（察觉 DF 18）。",
+        "**地下封存柜**：O19 年的第一批金砂模具与 O61 年债券的担保物清单。"
+      ],
+      "encounters": "遭遇预算 14–24。典型组合：公会护卫（标准×4）+ 水巡小队（精锐×2）+ 会首贴身保镖（精锐，护主）。",
+      "resources": "坏账处置原件（贺承宗的把柄）、潮汛表原稿（可篡改，让所有对手的排期错一格）、担保物清单（汐金真相的第二层）。",
+      "if_botched": "若在此被捕，玩家会被关进水巡拘留所（一次\"越狱\"支线，成功则全城声望 −1，失败则战役进入\"从牢里开始抢\"的困难分支），且贺承宗会立刻销毁坏账原件。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:315"
+    },
+    {
+      "id": "loc-12",
+      "name": "沉闸·旧闸室（终局区域）",
+      "atmosphere": "O27 年建成的五孔排水闸，半个世纪前就废弃了。它的闸门永远关着，闸室里是黑的、是冷的、是有回声的。**水从五个孔里进出的声音，像有人在很深的地方呼吸。**",
+      "unlock": "**满汐日 + 深退 + 闸钥**（闸钥有三把，分别在三个势力手里；或用技术 DF 20 强行开启，需 3 个时段）。",
+      "key_places": [
+        "**闸室控制廊**：五台手轮，控制五个闸孔；转动手轮会改变闸室的水位。",
+        "**闸底淤泥层**：退到最深时露出的闸底，埋着被泥沙吸住的东西。",
+        "**长庚号船体**：它没有沉在海底——它**横在旧闸室的下游腔里**，被三十年的泥沙半埋。船首朝内，像是在往城里开。",
+        "**第七舱**：不在任何报关单上的底舱。舱门从里面被焊死过。",
+        "**舵舱**：岑阿九待了三十年的地方。里面有床、有灯、有一本写了三十年的册子。"
+      ],
+      "encounters": "遭遇预算 24–40（终局）。典型组合：各方势力的先头队（精锐×2）+ 潮母眷属（精锐×2）+ 潮汐异象\"回涨\"（场地要素，每回合推进）+ 岑阿九（首领级，非必战）。",
+      "resources": "**第七舱的内容**（本册真相）、岑阿九的三十年册子、汐金本体。",
+      "if_botched": "若在闸室内破坏控制轮而未撤离，闸室回涨（全体承受 3d10 钝击 + 束缚，且汐金被冲散——**触发\"谁都没拿到\"结局**）。",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:328"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-a",
+      "name": "A · 开舱（带上水面）",
+      "type": "ending_open",
+      "requirements": "`chest_opened` 且 `zhao_brought_up`",
+      "result": "第七舱的人被带上岸；潮母失去\"归位\"的目标；全城潮位微微一变",
+      "cost": "带上来的人已经不是三十年前的人；灯屿守认为你毁了三十年的封印",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3288"
+    },
+    {
+      "id": "ending-b",
+      "name": "B · 潮汐（归位）",
+      "type": "ending_tide",
+      "requirements": "`ritual_completed`",
+      "result": "潮母孵化。澜口湾的潮差、地貌、人类位置被重新安排",
+      "cost": "部分城区永久淹没；夜汐会的预言\"实现\"了，但方式与他们想的不同",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3289"
+    },
+    {
+      "id": "ending-c",
+      "name": "C · 独吞（兑现）",
+      "type": "ending_own",
+      "requirements": "`tidegold_out` 且 `sold_to == none`",
+      "result": "玩家带走汐金，兑现了潮汐债或据为己有；商栈／公会出局",
+      "cost": "玩家必有一位角色获得永久【执念】特质；这座城会记得他们的名字——以不好的方式",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3290"
+    },
+    {
+      "id": "ending-d",
+      "name": "D · 封死（与灯屿合力）",
+      "type": "ending_sealed",
+      "requirements": "`seal_reinforced`",
+      "result": "三把闸钥沉入最深的水沟；沉闸被永久封死；潮母无法再被唤起",
+      "cost": "玩家放弃了那笔钱；曾守拙此后不再点\"警戒灯\"，因为不再需要",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3291"
+    },
+    {
+      "id": "ending-e",
+      "name": "E · 旁观（对手先达 7）",
+      "type": "ending_none",
+      "requirements": "竞速由对手先完成",
+      "result": "城按胜者的方式改变（默认：商栈接管收租权）",
+      "cost": "玩家的水钱被清空；他们成了\"曾经来过的人\"",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3292"
+    },
+    {
+      "id": "ending-f",
+      "name": "F · 交付（交给某势力）",
+      "type": "ending_give",
+      "requirements": "`tidegold_out` 且 `sold_to != none`（债券／商栈／北舷）",
+      "result": "玩家把汐金交给指定一方；该方按其真实目标改造这座城（商栈吞收租权／公会清账／北舷拿走三十年航线优先权）",
+      "cost": "玩家拿到兑现的酬劳与一个新身份，但从此被另一家在名单上记着；被交付方内部也因这笔财富开始新一轮倾轧",
+      "source": "docs/scenario/S3-潮金港-都市夺宝.md:3293"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S3-潮金港-都市夺宝.md:2593",
+    "declared_flag_count": 33,
+    "actual_flag_count": 33,
+    "flag": [
+      {
+        "id": "flag.chapter",
+        "type": "int",
+        "initial": 0,
+        "write": "每推进一幕 +1",
+        "readers": "全部状态机",
+        "effect": "决定遭遇强度与对手推进（**跨册通用**，见 `S0` §7.2）",
+        "universal": true,
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2597"
+      },
+      {
+        "id": "flag.t0_board",
+        "type": "bool",
+        "initial": false,
+        "write": "拾到长庚号船板",
+        "readers": "T1 状态机",
+        "effect": "开启主线",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2598"
+      },
+      {
+        "id": "flag.t0_done",
+        "type": "bool",
+        "initial": false,
+        "write": "T0 结算",
+        "readers": "T1 状态机",
+        "effect": "教学节点完成",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2599"
+      },
+      {
+        "id": "flag.lu_paid",
+        "type": "bool",
+        "initial": false,
+        "write": "偿还卢铁牛的赊账",
+        "readers": "T0 状态机、水钱账",
+        "effect": "影响船坞可用性",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2600"
+      },
+      {
+        "id": "flag.keys",
+        "type": "int",
+        "initial": 0,
+        "write": "每取得一把闸钥 +1",
+        "readers": "T6/T8",
+        "effect": "沉闸开启条件",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2601"
+      },
+      {
+        "id": "flag.rival_keys",
+        "type": "int",
+        "initial": 0,
+        "write": "对手先取得闸钥",
+        "readers": "T6/T8",
+        "effect": "失败倒计时",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2602"
+      },
+      {
+        "id": "flag.location_known",
+        "type": "bool",
+        "initial": false,
+        "write": "取得潮沟偏移图 + 旧海图",
+        "readers": "T8",
+        "effect": "定位沉闸",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2603"
+      },
+      {
+        "id": "flag.c08_public",
+        "type": "bool",
+        "initial": false,
+        "write": "公开 O95 假测潮记录",
+        "readers": "T1、公会弱点",
+        "effect": "公会 −1 格，全势力 −1",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2604"
+      },
+      {
+        "id": "flag.wen_bribed",
+        "type": "bool",
+        "initial": false,
+        "write": "贿赂温秉文",
+        "readers": "T1",
+        "effect": "判定干净／脏",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2605"
+      },
+      {
+        "id": "flag.wen_dead",
+        "type": "bool",
+        "initial": false,
+        "write": "温秉文被杀",
+        "readers": "T1、线索主表",
+        "effect": "关闭主途径，触发敌对者",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2606"
+      },
+      {
+        "id": "flag.c09_kept",
+        "type": "bool",
+        "initial": false,
+        "write": "保留合股簿并交还柯九斤",
+        "readers": "T2",
+        "effect": "结盟线",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2607"
+      },
+      {
+        "id": "flag.c09_given_r",
+        "type": "bool",
+        "initial": false,
+        "write": "合股簿交给阮阿蟹",
+        "readers": "T2",
+        "effect": "内斗线",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2608"
+      },
+      {
+        "id": "flag.ke_jl_alive",
+        "type": "bool",
+        "initial": true,
+        "write": "柯九斤被杀时置 false",
+        "readers": "T2/T9",
+        "effect": "蚝帮后续走向",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2609"
+      },
+      {
+        "id": "flag.c11_found",
+        "type": "bool",
+        "initial": false,
+        "write": "查商栈现金流缺口",
+        "readers": "T3",
+        "effect": "开启挤兑",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2610"
+      },
+      {
+        "id": "flag.phony_drafts",
+        "type": "bool",
+        "initial": false,
+        "write": "伪造汇票成功",
+        "readers": "T3",
+        "effect": "挤兑的脏手段入口",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2611"
+      },
+      {
+        "id": "flag.c12_schedule",
+        "type": "bool",
+        "initial": false,
+        "write": "取得夜汐会仪式时刻表",
+        "readers": "T4",
+        "effect": "夜汐会弱点",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2612"
+      },
+      {
+        "id": "flag.cen_late_allied",
+        "type": "bool",
+        "initial": false,
+        "write": "岑晚倒戈",
+        "readers": "T4",
+        "effect": "夜汐会 −3 格",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2613"
+      },
+      {
+        "id": "flag.c15_known",
+        "type": "bool",
+        "initial": false,
+        "write": "查到三把闸钥下落",
+        "readers": "T6",
+        "effect": "开启 T6",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2614"
+      },
+      {
+        "id": "flag.forged_writ",
+        "type": "bool",
+        "initial": false,
+        "write": "伪造巡正令",
+        "readers": "T5",
+        "effect": "通缉风险",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2615"
+      },
+      {
+        "id": "flag.g11_hetrade",
+        "type": "bool",
+        "initial": false,
+        "write": "掌握霍大钧受贿证据",
+        "readers": "T5",
+        "effect": "水巡 −2 格",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2616"
+      },
+      {
+        "id": "flag.lamp_told",
+        "type": "bool",
+        "initial": false,
+        "write": "曾守拙交底",
+        "readers": "T7",
+        "effect": "取得灯语本与旧图",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2617"
+      },
+      {
+        "id": "flag.lamp_threat",
+        "type": "bool",
+        "initial": false,
+        "write": "威胁熄灯",
+        "readers": "T7、全城",
+        "effect": "全势力 −1，玩家声望 −1",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2618"
+      },
+      {
+        "id": "flag.lamp_out",
+        "type": "bool",
+        "initial": false,
+        "write": "灯塔被弄熄",
+        "readers": "航运",
+        "effect": "全城停摆一日",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2619"
+      },
+      {
+        "id": "flag.chest_opened",
+        "type": "bool",
+        "initial": false,
+        "write": "第六舱开启",
+        "readers": "T8 结局",
+        "effect": "A/C 结局",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2620"
+      },
+      {
+        "id": "flag.zhao_brought_up",
+        "type": "bool",
+        "initial": false,
+        "write": "把第 7 舱的人带上水面",
+        "readers": "T8",
+        "effect": "影响 A 结局质量",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2621"
+      },
+      {
+        "id": "flag.ritual_completed",
+        "type": "bool",
+        "initial": false,
+        "write": "潮母孵化仪式完成",
+        "readers": "T8",
+        "effect": "B 结局",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2622"
+      },
+      {
+        "id": "flag.tidegold_out",
+        "type": "bool",
+        "initial": false,
+        "write": "汐金离开落滩",
+        "readers": "T8",
+        "effect": "独吞判定",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2623"
+      },
+      {
+        "id": "flag.sold_to",
+        "type": "enum",
+        "initial": "none",
+        "write": "汐金兑现对象",
+        "readers": "T8",
+        "effect": "债券／商栈／北舷／none",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2624"
+      },
+      {
+        "id": "flag.seal_reinforced",
+        "type": "bool",
+        "initial": false,
+        "write": "与灯屿守封死沉闸",
+        "readers": "T8",
+        "effect": "D 结局",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2625"
+      },
+      {
+        "id": "flag.water_debt_settled",
+        "type": "bool",
+        "initial": false,
+        "write": "结清主要水钱",
+        "readers": "T9",
+        "effect": "收束质量",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2626"
+      },
+      {
+        "id": "flag.city_harmed",
+        "type": "bool",
+        "initial": false,
+        "write": "造成全城性灾害",
+        "readers": "T9",
+        "effect": "烧城结局",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2627"
+      },
+      {
+        "id": "flag.faction_hooked",
+        "type": "enum",
+        "initial": "none",
+        "write": "玩家选择挂靠",
+        "readers": "潮信轨",
+        "effect": "决定共享轨格对象",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2634"
+      },
+      {
+        "id": "flag.defect_count",
+        "type": "int",
+        "initial": 0,
+        "write": "每次换边 +1",
+        "readers": "全城信任",
+        "effect": "≥2 后水钱效率减半",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2635"
+      },
+      {
+        "id": "water_debt",
+        "type": "int",
+        "initial": 0,
+        "write": "人情交换",
+        "readers": "全城办事效率",
+        "effect": "见第 5.2 节",
+        "note": "文档原始变量无 flag./rep./clock. 前缀（S3 §10.3 表内原样），违反 S0 §7.2 命名总则；数据如实保留",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2626"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.guild / rep.oyster / rep.salt / rep.night / rep.watch / rep.lamp / rep.beach / rep.northrail",
+        "type": "int −3~+3",
+        "initial": 0,
+        "write": "公开行为、任务结算",
+        "readers": "通行证、物价、轨格买卖",
+        "effect": "见各势力态度轴",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2628"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.tide_window",
+        "type": "int",
+        "initial": 2,
+        "write": "每次退潮 −1，涨潮重置",
+        "readers": "落滩行动",
+        "effect": "落滩可用时长",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2629"
+      },
+      {
+        "id": "clock.ritual",
+        "type": "int",
+        "initial": 3,
+        "write": "满汐日每时段 −1",
+        "readers": "T4",
+        "effect": "仪式完成倒计时",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2630"
+      },
+      {
+        "id": "clock.pass",
+        "type": "int",
+        "initial": 30,
+        "write": "每幕 −1",
+        "readers": "北舷出局判定",
+        "effect": "北舷 5 格门槛",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2631"
+      },
+      {
+        "id": "clock.house_cash",
+        "type": "int",
+        "initial": 4,
+        "write": "商栈每幕修正",
+        "readers": "T3",
+        "effect": "挤兑窗口",
+        "source": "docs/scenario/S3-潮金港-都市夺宝.md:2632"
+      }
+    ]
+  },
+  "ledger_template": {
+    "world": "潮金港",
+    "module": "S3",
+    "act": 2,
+    "clock": {
+      "tide_window": 1,
+      "ritual": 3,
+      "pass": 22,
+      "house_cash": 3
+    },
+    "tracks": {
+      "guild": 3,
+      "oyster": 2,
+      "salt": 4,
+      "night": 5,
+      "watch": 2,
+      "lamp_seal": 3,
+      "beach": 1,
+      "northrail": 3,
+      "party": 2
+    },
+    "flags": {
+      "t0_board": true,
+      "t0_done": true,
+      "keys": 2,
+      "rival_keys": 1,
+      "location_known": true,
+      "c16_known": true,
+      "c18_known": true,
+      "cen_late_allied": false,
+      "lamp_told": true,
+      "faction_hooked": "oyster",
+      "defect_count": 1
+    },
+    "water_debt": {
+      "面摊陈三娘": 1,
+      "卢铁牛": -1,
+      "岑阿九": 2
+    },
+    "rep": {
+      "guild": 0,
+      "oyster": 2,
+      "salt": -1,
+      "night": -2,
+      "watch": 0,
+      "lamp": 1,
+      "beach": 1,
+      "northrail": 0
+    },
+    "npcs": [
+      {
+        "name": "曾守拙",
+        "alive": true,
+        "attitude": 2,
+        "told_truth": true
+      },
+      {
+        "name": "柯九斤",
+        "alive": true,
+        "attitude": 1
+      },
+      {
+        "name": "岑晚",
+        "alive": true,
+        "attitude": -2,
+        "defected": false
+      },
+      {
+        "name": "岑阿九",
+        "found": true,
+        "alive": true
+      },
+      {
+        "name": "温秉文",
+        "alive": true,
+        "bribed": false
+      }
+    ],
+    "scene": "满汐日 · 深退",
+    "tension": 9,
+    "threads": [
+      {
+        "id": "C-16",
+        "name": "第七舱的内容"
+      },
+      {
+        "id": "C-18",
+        "name": "阿九还活着"
+      }
+    ],
+    "meta": {
+      "world": "潮金港",
+      "engine": "tactics"
+    },
+    "party": [],
+    "facts": [],
+    "hooks": [],
+    "source": "docs/scenario/S3-潮金港-都市夺宝.md:3301"
+  }
+}

@@ -84,8 +84,9 @@ data/
 > `world` 族的**实体项**已随 M1.2a（`docs/scenario/05` 阈界都市）落数据收紧为
 > `additionalProperties: false`；M1.2b（`docs/scenario/06` 余烬纪元）沿用该字段集，
 > 只补了三个可选字段（`ability.ap_note`、`faction.note`、`history.note`）。
-> `random_tables` / `scenario` 两族的实体项当前仍为
-> `additionalProperties: true` 基线，待 M1.2–M1.4 落数据时在各自 PR 内逐项收紧。
+> `scenario` 族的实体项已随 M1.4a（`docs/scenario/S1–S6` 落数据）收紧为
+> `additionalProperties: false`（字段表见 4.4）；`random_tables` 族当前仍为
+> `additionalProperties: true` 基线，待落数据时在各自 PR 内收紧。
 
 ### 4.1 system 族
 
@@ -693,14 +694,52 @@ data/
 
 ### 4.4 scenario 族
 
-**`scenario.campaign`**（剧本 / 战役；**世界账本 ledger 模板**亦在此族）
+**`scenario.campaign`**（剧本 / 战役；源自 `docs/scenario/S1–S6`；**世界账本 ledger 模板**亦在此族）
 
-- `meta`：`{world, engine, session?, party_level?, party_size?, tone_pack?}`，
-  `engine` 枚举 `tactics | build`；`party_level` 为 1–12。
-- `acts[]`、`nodes[]`、`threads[]`、`npcs[]`、`locations[]`、`endings[]`：
-  每项至少 `{id, name, source}`。
-- `factions`、`flags`、`evidence`：剧本册补充结构。
-- `ledger_template`：世界账本骨架（见下），顶层带 `source`。
+> **收紧裁定（M1.4a）**：本族实体项已随 S1–S6 六册数据落地收紧为
+> `additionalProperties: false`；各册实况差异以**可选字段**承载（缺即省略），不再开放扩展。
+> 文件名 = 账本 `meta.world` 值转小写下划线（如 `ashen-crown` → `ashen_crown.json`）。
+
+顶层（`scenario.schema.json`）：
+
+- `meta`：复用 `ledger_meta`；实际使用 `{world, engine, campaign, party_level?, party_size?,
+  tone_pack?, engine_note?}`。`engine` 枚举 `tactics | build`；S0 §八记「两者皆可」的册
+  （S3）以 `engine: "tactics"` + `engine_note` 表达。
+- `acts[]`：幕 / 阶段，`{id, name, source, level_range?, summary?, nodes?[], scenes?[],
+  tasks?[]}`；`scenes` 用于以「幕内场景序列表」组织的册（如 S6 的 `1-1…5-5`），
+  `nodes` 引用节点图节点 id。
+- `nodes[]`：`anyOf` 两类：
+  - **节点图节点**：`{id, name, source, act?, next?[], unlock?, marks?[], note?}`；
+    `id` 优先沿用文档编号（如 `N00`），文档无编号的框图用稳定 slug；
+    `next` 可指向节点、任务或 `endings[].id`。
+  - **任务状态机**（`type: "task"`）：`{id, name, type: "task", transitions[], states?[],
+    rewards?, act?, time_window?, note?, source}`；`transitions[]` 为
+    `{from, to, condition}`（逐条对应文档转移条件）。
+- `threads[]`＝**线索主表**（C-xx）：`{id, name(一句线索), carrier(载体), npcs[](关联 NPC 名),
+  flags[](关联 `flag.*`), tasks[](关联 `Q-xx`/`T-xx`), note?(关联列剩余文字，如「解放结局」),
+  paths?[], source}`；`paths[]`＝三线索途径 `{path, detail, source?}`。
+- `npcs[]`（T4）：`{id, name, source, alias?, role?, faction?, drive?, lever?, mask?, tell?,
+  threshold?, secret?, attitude?{affinity?, awe?, note?}, knows?[], knows_unresolved?[],
+  if_dead_or_betrayed?, delayed?, note?}`。
+  - `knows` 只填**可解析到本册 `threads`** 的 `C-xx`；文档引用了但主表查不到的编号
+    如实记入 `knows_unresolved`（文档缺陷的机器可读记录，不得静默丢弃）。
+  - `delayed: true` 为 S4 特有（延迟通信 NPC，对应其 §4.10 D 组 ◆ 标记）。
+- `locations[]`（T5）：`{id, name, source, atmosphere?, unlock?, key_places?[], encounters?,
+  resources?, if_botched?, purpose?}`。
+- `endings[]`：`{id, name, source, type?, requirements?, result?, cost?, epilogue?,
+  variants?[], note?}`。
+- `flags`：flag 变量表聚合，`{source, declared_flag_count?, actual_flag_count?, flag[],
+  rep[], clock[], evidence?[], party?[]}`；每行为 `{id, type, initial, write?, readers?,
+  effect?, universal?, note?, source?}`。
+  - `declared_flag_count`＝文档声明的本册 `flag.*` 总数；`actual_flag_count`＝表内实际
+    `flag.*` 行数；两者不符时**都如实记录**并在 PR 说明。
+  - `universal: true` 标注 S0 §7.2 的跨册通用变量（`flag.chapter` 等）。
+  - S4 的 flag 表另含 `evidence.*` / `party.*` 计数行，归入同一聚合的两个可选数组。
+  - 文档中个别无前缀变量（S3 `water_debt`）如实保留并以 `note` 标注其违反 S0 §7.2。
+- `ledger_template`：世界账本骨架（`common.schema.json#/$defs/ledger`），顶层带 `source`；
+  各册独有节允许保留（骨架允许 `additionalProperties`）。
+
+**`factions` / `evidence`（顶层）**：剧本册补充结构，M1.4a 六册未用到，保留键位备用。
 
 **世界账本 ledger**（canonical 键，兼容 `docs/system/04-导引者操作系统.md`）：
 

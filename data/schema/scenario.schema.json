@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "scenario 族（scenario.campaign）",
-  "description": "剧本 / 战役基线；含世界账本模板，实体项 additionalProperties:true。",
+  "description": "剧本 / 战役；M1.4a（S1–S6）落数据后实体项收紧为 additionalProperties:false。含世界账本模板。散文不入 JSON，实体以 source 指回 docs/。",
   "type": "object",
   "required": ["schema_version", "kind", "source", "meta", "acts", "threads", "ledger_template"],
   "properties": {
@@ -9,16 +9,231 @@
     "kind": {"const": "scenario.campaign"},
     "source": {"$ref": "common.schema.json#/$defs/source"},
     "meta": {"$ref": "common.schema.json#/$defs/ledger_meta"},
-    "acts": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
-    "nodes": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
-    "threads": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
-    "npcs": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
-    "locations": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
-    "endings": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
+    "acts": {"type": "array", "items": {"$ref": "#/$defs/act"}},
+    "nodes": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {"$ref": "#/$defs/node_map"},
+          {"$ref": "#/$defs/node_task"}
+        ]
+      }
+    },
+    "threads": {"type": "array", "items": {"$ref": "#/$defs/thread"}},
+    "npcs": {"type": "array", "items": {"$ref": "#/$defs/npc"}},
+    "locations": {"type": "array", "items": {"$ref": "#/$defs/location"}},
+    "endings": {"type": "array", "items": {"$ref": "#/$defs/ending"}},
     "evidence": {"type": "array", "items": {"$ref": "common.schema.json#/$defs/entity_base"}},
     "factions": {"type": "object"},
-    "flags": {"type": "object"},
+    "flags": {"$ref": "#/$defs/flags_table"},
     "ledger_template": {"$ref": "common.schema.json#/$defs/ledger"}
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "$defs": {
+    "clue_path": {
+      "title": "三线索途径（一条独立获取途径）",
+      "type": "object",
+      "required": ["path", "detail"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "detail": {"type": "string", "minLength": 1},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "thread": {
+      "title": "线索主表条目（C-xx）",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "carrier": {"type": "string"},
+        "npcs": {"type": "array", "items": {"type": "string"}},
+        "flags": {"type": "array", "items": {"type": "string"}},
+        "tasks": {"type": "array", "items": {"type": "string"}},
+        "note": {"type": "string"},
+        "paths": {"type": "array", "items": {"$ref": "#/$defs/clue_path"}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "attitude": {
+      "title": "NPC 态度轴（好感 / 敬畏）",
+      "type": "object",
+      "properties": {
+        "affinity": {"type": "integer"},
+        "awe": {"type": "integer"},
+        "note": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "npc": {
+      "title": "具名 NPC（T4）",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "alias": {"type": "string"},
+        "role": {"type": "string"},
+        "faction": {"type": "string"},
+        "drive": {"type": "string"},
+        "lever": {"type": "string"},
+        "mask": {"type": "string"},
+        "tell": {"type": "string"},
+        "threshold": {"type": "string"},
+        "secret": {"type": "string"},
+        "attitude": {"$ref": "#/$defs/attitude"},
+        "knows": {"type": "array", "items": {"type": "string"}},
+        "knows_unresolved": {"type": "array", "items": {"type": "string"}},
+        "if_dead_or_betrayed": {"type": "string"},
+        "delayed": {"type": "boolean"},
+        "note": {"type": "string"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "location": {
+      "title": "区域（T5，第 3 节）",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "atmosphere": {"type": "string"},
+        "unlock": {"type": "string"},
+        "key_places": {"type": "array", "items": {"type": "string"}},
+        "encounters": {"type": "string"},
+        "resources": {"type": "string"},
+        "if_botched": {"type": "string"},
+        "purpose": {"type": "string"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "node_map": {
+      "title": "战役节点图节点",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "act": {"type": "string"},
+        "next": {"type": "array", "items": {"type": "string"}},
+        "unlock": {"type": "string"},
+        "marks": {"type": "array", "items": {"type": "string"}},
+        "note": {"type": "string"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "node_task": {
+      "title": "任务状态机（Q-xx / T-xx）",
+      "type": "object",
+      "required": ["id", "name", "type", "transitions", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "type": {"const": "task"},
+        "transitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "condition"],
+            "properties": {
+              "from": {"type": "string", "minLength": 1},
+              "to": {"type": "string", "minLength": 1},
+              "condition": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          }
+        },
+        "states": {"type": "array", "items": {"type": "string"}},
+        "rewards": {"type": "string"},
+        "act": {"type": "string"},
+        "next": {"type": "array", "items": {"type": "string"}},
+        "marks": {"type": "array", "items": {"type": "string"}},
+        "time_window": {"type": "string"},
+        "note": {"type": "string"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "act": {
+      "title": "幕 / 阶段",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "level_range": {"type": "string"},
+        "summary": {"type": "string"},
+        "nodes": {"type": "array", "items": {"type": "string"}},
+        "scenes": {"type": "array", "items": {"type": "string"}},
+        "tasks": {"type": "array", "items": {"type": "string"}},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "ending": {
+      "title": "结局",
+      "type": "object",
+      "required": ["id", "name", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "type": {"type": "string"},
+        "requirements": {"type": "string"},
+        "result": {"type": "string"},
+        "cost": {"type": "string"},
+        "epilogue": {"type": "string"},
+        "variants": {"type": "array", "items": {"type": "string"}},
+        "note": {"type": "string"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "flag_row": {
+      "title": "flag 变量表行",
+      "type": "object",
+      "required": ["id", "type", "initial"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "type": {"type": "string", "minLength": 1},
+        "initial": {
+          "anyOf": [
+            {"type": "integer"},
+            {"type": "boolean"},
+            {"type": "string"},
+            {"type": "array"},
+            {"type": "null"}
+          ]
+        },
+        "write": {"type": "string"},
+        "readers": {"type": "string"},
+        "effect": {"type": "string"},
+        "universal": {"type": "boolean"},
+        "note": {"type": "string"},
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "flags_table": {
+      "title": "flag 变量表聚合（flag. / rep. / clock. 三类 + 册特有节）",
+      "type": "object",
+      "required": ["source", "flag"],
+      "properties": {
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "declared_flag_count": {"type": "integer", "minimum": 0},
+        "actual_flag_count": {"type": "integer", "minimum": 0},
+        "flag": {"type": "array", "items": {"$ref": "#/$defs/flag_row"}},
+        "rep": {"type": "array", "items": {"$ref": "#/$defs/flag_row"}},
+        "clock": {"type": "array", "items": {"$ref": "#/$defs/flag_row"}},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/flag_row"}},
+        "party": {"type": "array", "items": {"$ref": "#/$defs/flag_row"}}
+      },
+      "additionalProperties": false
+    }
+  }
 }
