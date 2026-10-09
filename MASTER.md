@@ -40,9 +40,9 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
 - **分支保护**：ruleset「master」为 `active`——须经 PR + **四道 required checks** + 禁 force push / 禁删除。
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门 / 回归门 / 内容防火墙门 / **提交邮箱门**。
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
-- **数据层**：`python3 tests/validate_data.py` → **63 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**`（system + scenario）+ schema/registry）。
-- **回归**：`bash tests/run_all.sh` → 4 个脚本（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout`）。
-- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 系统规则 a–e ✅** · **M1.2 世界模组 a–c ✅** · **M1.3 随机表 a–b ✅** · M1.4 剧本 **a ← 进行中（#52）** / b 待 · M2 骨架 ✅ → **a 数值 ← 进行中（#53）** · M3 骨架 ✅ → **a 会话接线 ← 进行中（#54）** · M4–M6 待。
+- **数据层**：`python3 tests/validate_data.py` → **69 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（六册）+ schema/registry）。
+- **回归**：`bash tests/run_all.sh` → **6 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core`）。
+- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · M1.4 **a ✅（PR #58）/ b 已开（#61）** · M2 **a ✅（PR #57）/ b 已开（#59）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I6 已开单（见 §4 注）** · M4–M6 待。
 
 ---
 
@@ -100,12 +100,17 @@ bash tests/content_firewall.sh
 | 　M1.1 | 系统规则数据（`data/system/`） | ✅ a 内核 / b 战术 / c 构建 / d 互动 / e 导引者 |
 | 　M1.2 | 世界模组数据（`data/worlds/`） | a 阈界都市 ✅ / b 余烬纪元 ✅ / c 熵网 ✅ |
 | 　M1.3 | 随机表（`data/random_tables/`：system 08 + S7 70 张；各模组表已在 `data/worlds/*`） | a 通用生成器（docs/system/08）✅ / b S7 70 张（docs/scenario/S7）✅ |
-| 　M1.4 | 剧本（`data/scenarios/`：09/S8 + S1–S6 结构件 + 账本模板） | **a S1–S6 结构件（#52）← 进行中** / b 09/S8 战役 待（前置 docs 修订 #45 ✅） |
-| **M2** | 规则核心（离线可玩） | 骨架 ✅（`prism_core.py`）；**a 判定 / 结果 / 代价 / 资源（#53）← 进行中** / b 战斗 / 派生 / 成长 待 |
-| **M3** | 会话与存档 + 后端 API | 骨架 ✅（`notdnd_web.py`）；**a 规则快照接线（#54）← 进行中** / b 写接口 / API 待 |
+| 　M1.4 | 剧本（`data/scenarios/`：09/S8 + S1–S6 结构件 + 账本模板） | a S1–S6 结构件 ✅（PR #58）/ **b 09/S8 战役（#61）已开** |
+| **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ **b 战斗 / 派生 / 成长（#59）已开** |
+| **M3** | 会话与存档 + 后端 API | a 规则快照接线 ✅（PR #56）/ b 写接口 / API 待 |
 | **M4** | 前端 UI（`static/`） | 待 |
 | **M5** | AI 导引者（可选模块，import 失败不影响离线） | 待 |
 | **M6** | 测试与文档收口（README + HANDOVER + run_all 全量） | 待 |
+
+> **ATLAS（自动地图）切片**：`ATLAS-DESIGN.md` §8 的六条 Issue **I1–I6** 与 M2–M4 交叉
+> （内核 → 词表编译 → 地点/战术生成 → {会话接线 / 规则投影 / 账本 place id}）；
+> 依赖顺序 **I1 → I2 → I3 → {I4 / I5 / I6}**。**硬约束**：I2 **独占** `data/schema/registry.json`
+> + `data/FORMAT.md`（期间不并行其它改这两个文件的数据切片）；I5 须等 **#59**；I6 须等 **#61**。
 
 ---
 
@@ -123,8 +128,12 @@ bash tests/content_firewall.sh
 - **DNDWeb 脱敏迁移**（2026-10-09）：M2/M3 的**工程骨架**已由主管派的迁移 Agent 完成并合并
   （`prism_core.py` / `notdnd_web.py`，PR #49 / #48）；实现 Agent 直接在其上继续即可，
   **无需** DNDWeb 访问权（流程见 §3）。`DNDWEB-ASSETS.md` §1/§2 状态已改 ✅、§3 已改 🟡（结构）。
-- **阶段收口**（2026-10-09）：**M1.3 随机表 a–b 完成**；M1.4 前置 `docs/` 修订（#45：线索主表 C-xx + flag 归一）合并；
-  下一批并行切片 **M1.4a（#52）/ M2a（#53）/ M3a（#54）** 已开。
+- **阶段收口**（2026-10-09）：**M1.3 随机表 / M1.4a 剧本结构件 / M2a 规则数值 / M3a 会话接线 已完成**；
+  在办与待办切片：**#59（M2b）/ #60（docs 修订 S1·S5）/ #61（M1.4b）**。
+- **自动地图（ATLAS）**（2026-10-09 拍板）：跨 M2–M4 的**方向性设计**，方案入库 `ATLAS-DESIGN.md`
+  （见 §7 文档地图）；拆六条切片 **I1–I6**（依赖见 §4 注）。**影响面**：新增 `atlas.py` /
+  `atlas_compile.py` / `atlas_gen.py` 与 `data/atlas/lexicon.json`（新 kind）；I4 给会话加快照块 `atlas`；
+  I5 接 `prism_core.py`；I6 把剧本账本地点钉到 `place_id`。**不改**既有 `docs/` 规则。
 - **全面检查**：每 1–2 阶段一次（§6），并持续挖掘 DNDWeb 资产（§DNDWeb-ASSETS）。
 
 ---
@@ -149,6 +158,7 @@ bash tests/content_firewall.sh
 | `AGENTS.md` | 所有 Agent | 角色 / 三条铁律 / Issue 循环 / 四行审查 / 合并约定 / 目录边界 |
 | **`MASTER.md`** | **主管 Agent** | **本文件**：接手 + 状态 + 路线 + 检查清单 |
 | `DNDWEB-ASSETS.md` | 主管 / 实现 | DNDWeb 可复用资产与挖掘状态 + 剥离红线 |
+| **`ATLAS-DESIGN.md`** | 主管 / 实现 | 自动地图（ATLAS）设计方案：帧 / 词表 / 编译 / 生成 / 六条拆单依据 |
 | `README.md` | 使用者 | 怎么跑、定位、**「别暴露到公网」警告** |
 | `data/FORMAT.md` | 数据贡献者 | 数据格式 / canonical 键 / schema 子集 |
 | `HANDOVER.md` | 改造者 | 架构交接（M6 落地） |
