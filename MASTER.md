@@ -40,9 +40,9 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
 - **分支保护**：ruleset「master」为 `active`——须经 PR + **四道 required checks** + 禁 force push / 禁删除。
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门 / 回归门 / 内容防火墙门 / **提交邮箱门**。
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
-- **数据层**：`python3 tests/validate_data.py` → **78 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ schema/registry）。
-- **回归**：`bash tests/run_all.sh` → **7 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel`）。
-- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 a–b ✅（PR #58 / #74）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1 ✅（PR #75）· I2（#64）可开工** · M4–M6 待。
+- **数据层**：`python3 tests/validate_data.py` → **79 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ `data/atlas/lexicon.json` + schema/registry）。
+- **回归**：`bash tests/run_all.sh` → **11 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel` / `test_atlas_compile` / `test_atlas_gen` / `test_atlas_ledger_pins` / `test_prism_guide`）。
+- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 ✅（PR #58 / #74 / #77 数据↔docs 对齐）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I3 ✅（PR #75 / #79 / #81）· I5 ✅（PR #93）· I6 ✅（PR #80）· 后续修复 ✅（PR #91）· I4（#66）待** · **M5 导引者 G0 ✅（PR #83）· G1 ✅（PR #92）** · M4 / M2d / M6 待。
 
 ---
 
@@ -106,14 +106,20 @@ bash tests/content_firewall.sh
 | **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ b 战斗 / 派生 / 成长 ✅（PR #70）/ c 构建引擎 ✅（PR #76）；M2d（符纹 / 插槽 / 构建点 / 互转）待 |
 | **M3** | 会话与存档 + 后端 API | a 规则快照接线 ✅（PR #56）/ b 写接口 / API 待 |
 | **M4** | 前端 UI（`static/`） | 待 |
-| **M5** | AI 导引者（可选模块，import 失败不影响离线）。方案见 `GUIDE-DESIGN.md` | 待 |
+| **M5** | AI 导引者（可选模块，import 失败不影响离线）。方案见 `GUIDE-DESIGN.md` | **进行中**：G0 ✅（PR #83）/ G1 ✅（PR #92）；G2–G7 已开单（#85–#90） |
 | **M6** | 测试与文档收口（README + HANDOVER + run_all 全量） | 待 |
 
 > **ATLAS（自动地图）切片**：`ATLAS-DESIGN.md` §8 的六条 Issue **I1–I6** 与 M2–M4 交叉
 > （内核 → 词表编译 → 地点/战术生成 → {会话接线 / 规则投影 / 账本 place id}）；
-> 依赖顺序 **I1 → I2 → I3 → {I4 / I5 / I6}**。**进度**：I1 ✅（PR #75），I2（#64）**可开工**。
-> **硬约束**：I2 **独占** `data/schema/registry.json` + `data/FORMAT.md`（期间不并行其它改这两个文件的数据切片）；
-> I5 须等 **#59**（✅ 已合并）；I6 须等 **#61**（✅ 已合并）。
+> 依赖顺序 **I1 → I2 → I3 → {I4 / I5 / I6}**。**进度**：I1–I3 ✅（PR #75 / #79 / #81）、
+> I5 ✅（PR #93）、I6 ✅（PR #80）、I2 后续修复 ✅（PR #91）；**只剩 I4（#66）**。
+> **硬约束（历史）**：I2 独占 `data/schema/registry.json` + `data/FORMAT.md` 的时段随 #79 合并结束；
+> I5 的前置 #59、I6 的前置 #61 均已合并。
+>
+> **导引者（GUIDE）切片**：`GUIDE-DESIGN.md` PR Plan 的八条 **G0–G7**（管道 G1–G4 → 绑定 / 实相 / 对白 G5–G7）。
+> 依赖链 **G0 → G1 → G2 → {G3 / G4 / G5} → G6 → G7**；**同文件串行**：G3↔G4↔G5 与 G6↔G7 都占 `prism_guide.py`；
+> G2 / G5 不与改 `notdnd_web.py` 的 PR 并行（#66 尚无 PR），G4 不与改 `prism_core.py` 的 PR 并行（#67 已合并）。
+> **进度**：G0 ✅（PR #83）· G1 ✅（PR #92）；**G2–G7 待办（#85–#90）**。
 
 ---
 
@@ -131,12 +137,18 @@ bash tests/content_firewall.sh
 - **DNDWeb 脱敏迁移**（2026-10-09）：M2/M3 的**工程骨架**已由主管派的迁移 Agent 完成并合并
   （`prism_core.py` / `notdnd_web.py`，PR #49 / #48）；实现 Agent 直接在其上继续即可，
   **无需** DNDWeb 访问权（流程见 §3）。`DNDWEB-ASSETS.md` §1/§2 状态已改 ✅、§3 已改 🟡（结构）。
-- **阶段收口**（2026-10-09）：**M1.4 剧本 / M2（a–c）规则核心 / M3a 会话接线 / ATLAS I1 已完成**
-  （PR #58 / #74 / #57 / #70 / #76 / #56 / #75）；在办与待办：**ATLAS I2–I6（#64–#68）**。
+- **阶段收口**（2026-10-09）：**M1.4 剧本 / M2（a–c）/ M3a / ATLAS I1–I3·I5·I6 / 导引者 G0–G1 已完成**
+  （PR #58 / #74 / #77 / #57 / #70 / #76 / #56 / #75 / #79 / #81 / #93 / #80 / #91 / #83 / #92）；
+  在办与待办：**ATLAS I4（#66）**、**导引者 G2–G7（#85–#90）**、M2d。
 - **自动地图（ATLAS）**（2026-10-09 拍板）：跨 M2–M4 的**方向性设计**，方案入库 `ATLAS-DESIGN.md`
   （见 §7 文档地图）；拆六条切片 **I1–I6**（依赖见 §4 注）。**影响面**：新增 `atlas.py` /
   `atlas_compile.py` / `atlas_gen.py` 与 `data/atlas/lexicon.json`（新 kind）；I4 给会话加快照块 `atlas`；
   I5 接 `prism_core.py`；I6 把剧本账本地点钉到 `place_id`。**不改**既有 `docs/` 规则。
+- **导引者（GUIDE）**（2026-10-09 人定稿）：M5 的方向性设计，方案入库 `GUIDE-DESIGN.md`（PR #83）。
+  **三件用途**：把地点卡走成可印证的街道图（实相，每「存档 × 地点」只生成一次并落盘）、演已有人物
+  （场外痕迹 / 对白 / 秘密门）、同世界同剧本**每局不同**（`guide.salt`；战役节点骨架不换）。
+  拆八条 **G0–G7**（依赖见 §4 注）；新增 `prism_guide.py`（可选模块，import 失败不影响离线）；
+  **不改** `prism_core.py`（G5–G7）与 `docs/`；实相**不写坐标**——地图仍归 ATLAS。
 - **全面检查**：每 1–2 阶段一次（§6），并持续挖掘 DNDWeb 资产（§DNDWeb-ASSETS）。
 
 ---
