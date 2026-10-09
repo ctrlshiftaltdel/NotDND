@@ -1,0 +1,706 @@
+{
+  "schema_version": 1,
+  "kind": "scenario.campaign",
+  "source": "docs/scenario/S8-起步战役集.md:865",
+  "meta": {
+    "world": "broken_line",
+    "engine": "tactics",
+    "campaign": "命令纸比你们干净",
+    "party_level": 1,
+    "party_size": 4,
+    "tone_pack": "tragic_hero"
+  },
+  "acts": [
+    {
+      "id": "act-1",
+      "name": "第一幕 · 晨",
+      "level_range": "1",
+      "summary": "目标：让玩家体验一次「命令基于旧地图」的经典落差，并学会用配给四轨思考问题。幕末应当发生：玩家守住或失去第七支撑点的一部分，并拿到第一份证实「命令过时」的证据。",
+      "scenes": [
+        "1.1 H-7 第七支撑点：修工事／挖一号机枪位下的 1192 年旧弹药箱／向班长要真图（技艺或洞察 DF 12；失败＝弹药轨 −1，但看懂墙上「别上 114」的炭字）",
+        "1.2 碎镜滩（穿越）：夜间潜行／白天快速通过／走铁丝网缺口（潜行或生存 DF 14，夜间 −2 DF 但照明劣势 −1 骰；暴露＝渭军渗透兵前来接触，可以谈）",
+        "1.3 磨石岗西坡：按令做「侦察性接触」，投入不少于八人（观察或射击 DF 13；发现阵地比图上多一个连——地图滞后 48 小时的第一课）",
+        "1.4 遭遇：渭军巡逻——迎击／压制后撤／呼叫炮火（战斗 DF 12—14；呼叫失败＝发现哑塔无应答，牵出老卓与截获电文）",
+        "1.5 回撤·清点：按配给四轨结算弹药/口粮/药品/燃料（无判定，乔万石核对；减员表要求给出一名有名字的补兵）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:884"
+    },
+    {
+      "id": "act-2",
+      "name": "第二幕 · 雨",
+      "level_range": "1",
+      "summary": "目标：让玩家第一次面对「服从命令」与「做正确的事」的正面冲突，并接触命令链状态机。幕末应当发生：玩家要么完成一次注定要死人的任务，要么选择抗命并承担一条具体的代价。",
+      "scenes": [
+        "2.1 米线·第九公里：自己拉车／找司机郑四／向通达行殷其雷借车（技艺或说服 DF 13；失败＝补给晚到一场景）",
+        "2.2 三营营部（温书迟）：请求修正任务／当面上报真图／沉默接下（论战或气场 DF 14；上报失败＝命令照发，参谋派与前线派矛盾暴露）",
+        "2.3 磨石岗西坡（执行）：按令强攻／改为侦察后撤／只派八人做演示（战斗 DF 12—15；强攻＝掷弹兵与渭军班长加入；后撤＝郗鹤年记录一次抗命）",
+        "2.4 白棚（蔺禾 / 傅明夷）：送伤员／交换俘虏祁五／查白旗会记录簿（交涉或洞察 DF 13；失败＝药品轨 −1，但记录簿有被涂掉的电文）",
+        "2.5 抗命判定（可选）：走命令链状态机的「抗命」分支（气场或论战 DF 15；成功＝任务转向但纪律 −2；失败＝督战序列介入）"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:929"
+    },
+    {
+      "id": "act-3",
+      "name": "第三幕 · 夜",
+      "level_range": "1",
+      "summary": "目标：让玩家在炮火与通信中断中，为自己掌握的东西选一个归属，并接受「战争不以胜利收场」。幕末应当发生：玩家做出一个不可逆的选择，前线因此移动一次，世界账本记下他们是否抗命、以及谁活了下来。",
+      "scenes": [
+        "3.1 哑塔（老卓）：抢修通信／取他私藏的电池／用截获电文反向定位（技艺或通信 DF 15；失败＝命令链强制走「延迟」分支）",
+        "3.2 磨石岗顶：按令夺取／炸断敌观察点后撤／把高地中立化（战斗或工兵 DF 15；失败＝渭军野炮组校射到位，全员负伤风险）",
+        "3.3 抉择：把真相交给谁——交战区／交白旗会公开／交渭渡河民 / 通达行（论战或说服 DF 15；无论选谁，都有一个人为此承担代价）",
+        "3.4 收束：谁活下来——结算减员与换防（无判定；这是本册「减员是常态」的落地，补兵永远是陌生人）"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:969"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "N11",
+      "name": "H-7 第七支撑点",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:896"
+    },
+    {
+      "id": "N12",
+      "name": "碎镜滩（穿越）",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:897"
+    },
+    {
+      "id": "N13",
+      "name": "磨石岗西坡",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:898"
+    },
+    {
+      "id": "N14",
+      "name": "遭遇：渭军巡逻",
+      "act": "act-1",
+      "next": [
+        "N15"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:899"
+    },
+    {
+      "id": "N15",
+      "name": "回撤·清点",
+      "act": "act-1",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:900"
+    },
+    {
+      "id": "N21",
+      "name": "米线·第九公里",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:941"
+    },
+    {
+      "id": "N22",
+      "name": "三营营部（温书迟）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:942"
+    },
+    {
+      "id": "N23",
+      "name": "磨石岗西坡（执行）",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:943"
+    },
+    {
+      "id": "N24",
+      "name": "白棚／抗命判定",
+      "act": "act-2",
+      "next": [
+        "N25"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:944"
+    },
+    {
+      "id": "N25",
+      "name": "第二幕结账",
+      "act": "act-2",
+      "next": [
+        "N31"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:932"
+    },
+    {
+      "id": "N31",
+      "name": "哑塔（老卓）",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:981"
+    },
+    {
+      "id": "N32",
+      "name": "磨石岗顶",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:982"
+    },
+    {
+      "id": "N33",
+      "name": "抉择：把真相交给谁",
+      "act": "act-3",
+      "next": [
+        "N34"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:983"
+    },
+    {
+      "id": "N34",
+      "name": "收束：谁活下来",
+      "act": "act-3",
+      "next": [
+        "ending-obey",
+        "ending-defy",
+        "ending-forward"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:984"
+    },
+    {
+      "id": "Q-00",
+      "name": "命令纸比你们干净",
+      "type": "task",
+      "transitions": [
+        {
+          "from": "dormant",
+          "to": "active",
+          "condition": "flag.map_outdated == true（证实命令基于旧图）"
+        },
+        {
+          "from": "active",
+          "to": "line3",
+          "condition": "flag.action_line3 == true（得知晨线行动被删的第三条）"
+        },
+        {
+          "from": "line3",
+          "to": "final",
+          "condition": "clock.thaw <= 1（换防/冬天倒计时归零前必须收束）"
+        },
+        {
+          "from": "final",
+          "to": "obey",
+          "condition": "服从到底：按令把战线推上去（收束 1）"
+        },
+        {
+          "from": "final",
+          "to": "defy",
+          "condition": "抗命救人：放弃推进，把八个人活着带回来（收束 2）"
+        },
+        {
+          "from": "final",
+          "to": "forward",
+          "condition": "把真相递出去：交给白旗会或河民（收束 3）"
+        }
+      ],
+      "states": [
+        "dormant",
+        "active",
+        "line3",
+        "final",
+        "obey",
+        "defy",
+        "forward"
+      ],
+      "act": "act-1",
+      "source": "docs/scenario/S8-起步战役集.md:884"
+    }
+  ],
+  "threads": [
+    {
+      "id": "C-01",
+      "name": "这道命令基于一份过期的地图",
+      "carrier": "命令附图",
+      "npcs": [
+        "苏勉",
+        "韩熠"
+      ],
+      "flags": [
+        "flag.map_outdated"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "调查",
+          "detail": "测绘员苏勉手里的真图与命令附图不一致（洞察 DF 13）",
+          "source": "docs/scenario/S8-起步战役集.md:910"
+        },
+        {
+          "path": "社交",
+          "detail": "友邻柏岩或费岭一句「我们上个月就发现那边多了人」（说服 DF 13）",
+          "source": "docs/scenario/S8-起步战役集.md:911"
+        },
+        {
+          "path": "环境",
+          "detail": "磨石岗西坡多出的工事与 1186 年旧掩体的位置对不上（观察 DF 14）",
+          "source": "docs/scenario/S8-起步战役集.md:912"
+        }
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:909"
+    },
+    {
+      "id": "C-02",
+      "name": "晨线行动被删掉的第三条",
+      "carrier": "战区作战方案原件／白旗会记录簿／俘虏口供",
+      "npcs": [
+        "温书迟",
+        "傅明夷",
+        "祁五"
+      ],
+      "flags": [
+        "flag.action_line3",
+        "flag.q1_known"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "paths": [
+        {
+          "path": "分析",
+          "detail": "战区作战方案原件（分析 DF 15）",
+          "source": "docs/scenario/S8-起步战役集.md:954"
+        },
+        {
+          "path": "洞察",
+          "detail": "白旗会记录簿里被涂掉的一段（洞察 DF 14）",
+          "source": "docs/scenario/S8-起步战役集.md:954"
+        },
+        {
+          "path": "共感",
+          "detail": "渭军俘虏祁五口供里反复提到的一个代号（共感 DF 13）",
+          "source": "docs/scenario/S8-起步战役集.md:954"
+        }
+      ],
+      "note": "文档在 S8:954 一行内给出三条路径，path 行号同源。",
+      "source": "docs/scenario/S8-起步战役集.md:954"
+    },
+    {
+      "id": "C-03",
+      "name": "哑塔那边三天前截获了一段渭军电文，军方没上报",
+      "carrier": "截获电文",
+      "npcs": [
+        "老卓"
+      ],
+      "flags": [
+        "flag.q1_known"
+      ],
+      "tasks": [
+        "Q-00"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:879"
+    }
+  ],
+  "npcs": [
+    {
+      "id": "npc-01",
+      "name": "韩熠",
+      "alias": "灰鸢",
+      "role": "三营第七勤务分队队长，上士",
+      "drive": "把分队带过这个季度",
+      "attitude": {
+        "affinity": 1
+      },
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:904"
+    },
+    {
+      "id": "npc-02",
+      "name": "秦九思",
+      "role": "补兵，列兵",
+      "drive": "证明自己不是累赘",
+      "attitude": {
+        "affinity": 0,
+        "note": "第二幕可接任班长"
+      },
+      "source": "docs/scenario/S8-起步战役集.md:905"
+    },
+    {
+      "id": "npc-03",
+      "name": "柳冬",
+      "role": "分队老兵，下士",
+      "drive": "活着换防",
+      "note": "第三幕起成为减员表的主要对象",
+      "source": "docs/scenario/S8-起步战役集.md:906"
+    },
+    {
+      "id": "npc-04",
+      "name": "桑白",
+      "role": "分队战地医护，列兵",
+      "drive": "让伤员撑到白棚",
+      "attitude": {
+        "affinity": 1
+      },
+      "source": "docs/scenario/S8-起步战役集.md:907"
+    },
+    {
+      "id": "npc-05",
+      "name": "苏勉",
+      "role": "测绘员",
+      "drive": "把真图送到该看的人手里",
+      "knows": [
+        "C-01"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:910"
+    },
+    {
+      "id": "npc-06",
+      "name": "祁五",
+      "role": "渭军俘虏",
+      "drive": "活着回家",
+      "note": "口供里反复提到一个代号",
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:944"
+    },
+    {
+      "id": "npc-07",
+      "name": "温书迟",
+      "role": "战区作战参谋，中尉 · 命令的实际撰写者",
+      "drive": "让「晨线行动」在纸上成立",
+      "attitude": {
+        "affinity": 0
+      },
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:949"
+    },
+    {
+      "id": "npc-08",
+      "name": "骆敬",
+      "alias": "钉子",
+      "role": "战区前线督导，上校",
+      "drive": "按计划推进",
+      "attitude": {
+        "affinity": -1
+      },
+      "source": "docs/scenario/S8-起步战役集.md:950"
+    },
+    {
+      "id": "npc-09",
+      "name": "郗鹤年",
+      "role": "督战序列军法官",
+      "drive": "记录一切违规",
+      "attitude": {
+        "affinity": -1
+      },
+      "source": "docs/scenario/S8-起步战役集.md:951"
+    },
+    {
+      "id": "npc-10",
+      "name": "傅明夷",
+      "role": "白旗会分类官",
+      "drive": "把每一具尸体对上一个名字",
+      "attitude": {
+        "affinity": 1
+      },
+      "knows": [
+        "C-02"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:952"
+    },
+    {
+      "id": "npc-11",
+      "name": "窦长山",
+      "alias": "钢笔",
+      "role": "第七战区参谋长，少将 · 参谋派",
+      "drive": "让晨线行动在谈判开始前成立",
+      "attitude": {
+        "affinity": -1
+      },
+      "source": "docs/scenario/S8-起步战役集.md:988"
+    },
+    {
+      "id": "npc-12",
+      "name": "乔万石",
+      "role": "辎重序列配给官，准尉",
+      "drive": "把账做平，把东西送上去",
+      "attitude": {
+        "affinity": 0
+      },
+      "source": "docs/scenario/S8-起步战役集.md:989"
+    },
+    {
+      "id": "npc-13",
+      "name": "柳阿婆",
+      "role": "渭渡摆渡人",
+      "drive": "让河民不被任何一方消灭",
+      "attitude": {
+        "affinity": 1
+      },
+      "source": "docs/scenario/S8-起步战役集.md:990"
+    },
+    {
+      "id": "npc-14",
+      "name": "老卓",
+      "role": "哑塔值机员",
+      "drive": "让塔再响一次",
+      "attitude": {
+        "affinity": 1,
+        "note": "私藏了一组新电池"
+      },
+      "knows": [
+        "C-03"
+      ],
+      "source": "docs/scenario/S8-起步战役集.md:991"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc-01",
+      "name": "H-7 第七支撑点",
+      "atmosphere": "战壕壁上的霜被头盔灯照出一层灰；一号机枪位下埋着 1192 年旧弹药箱",
+      "source": "docs/scenario/S8-起步战役集.md:896"
+    },
+    {
+      "id": "loc-02",
+      "name": "碎镜滩",
+      "atmosphere": "前方四百米，有金属在反光——可能只是一块被炮翻过来的铁皮",
+      "source": "docs/scenario/S8-起步战役集.md:897"
+    },
+    {
+      "id": "loc-03",
+      "name": "磨石岗",
+      "atmosphere": "阵地比图上多一个连——地图滞后 48 小时",
+      "source": "docs/scenario/S8-起步战役集.md:898"
+    },
+    {
+      "id": "loc-04",
+      "name": "三号土路·第九公里",
+      "atmosphere": "雨下了四天，三号土路变成黄色的浆，辎重队的骡车陷在这里",
+      "source": "docs/scenario/S8-起步战役集.md:941"
+    },
+    {
+      "id": "loc-05",
+      "name": "白棚",
+      "atmosphere": "战地医院与白旗会记录簿所在",
+      "source": "docs/scenario/S8-起步战役集.md:944"
+    },
+    {
+      "id": "loc-06",
+      "name": "哑塔",
+      "atmosphere": "三天前截获的渭军电文与此塔有关；值机时只有电流声",
+      "source": "docs/scenario/S8-起步战役集.md:981"
+    }
+  ],
+  "endings": [
+    {
+      "id": "ending-obey",
+      "name": "服从到底",
+      "type": "服从",
+      "requirements": "玩家按令把战线推上去",
+      "result": "代价是分队残废、伤亡惨重。→ 接 S6 正式战役的「晨线」路线：玩家获得嘉奖与一枚编号勋章",
+      "source": "docs/scenario/S8-起步战役集.md:994"
+    },
+    {
+      "id": "ending-defy",
+      "name": "抗命救人",
+      "type": "抗命",
+      "requirements": "玩家放弃推进，把八个人活着带回来",
+      "result": "接「前线派」路线：纪律受损但保住编制，进入长期线",
+      "source": "docs/scenario/S8-起步战役集.md:995"
+    },
+    {
+      "id": "ending-forward",
+      "name": "把真相递出去",
+      "type": "揭幕",
+      "requirements": "玩家把「被删掉的第三条」交给白旗会或河民",
+      "result": "接「揭幕」路线：谈判桌因此改写，代价是有人替他们背锅",
+      "source": "docs/scenario/S8-起步战役集.md:996"
+    }
+  ],
+  "flags": {
+    "source": "docs/scenario/S8-起步战役集.md:865",
+    "declared_flag_count": 5,
+    "actual_flag_count": 5,
+    "flag": [
+      {
+        "id": "flag.map_outdated",
+        "type": "bool",
+        "initial": false,
+        "write": "第一幕幕末：证实命令基于旧图",
+        "readers": "Q-00/C-01",
+        "effect": "开启主线",
+        "source": "docs/scenario/S8-起步战役集.md:917"
+      },
+      {
+        "id": "flag.action_line3",
+        "type": "bool",
+        "initial": false,
+        "write": "第二幕幕末：得知晨线行动被删的第三条",
+        "readers": "Q-00/C-02",
+        "effect": "真相可递出",
+        "source": "docs/scenario/S8-起步战役集.md:958"
+      },
+      {
+        "id": "flag.defied",
+        "type": "bool",
+        "initial": false,
+        "write": "是否抗命",
+        "readers": "Q-00/act-3",
+        "effect": "影响命令链与结局",
+        "source": "docs/scenario/S8-起步战役集.md:959"
+      },
+      {
+        "id": "flag.q1_known",
+        "type": "bool",
+        "initial": false,
+        "write": "第一线索交接完成",
+        "readers": "C-02/C-03",
+        "effect": "截获电文与被删的第三条并线",
+        "source": "docs/scenario/S8-起步战役集.md:964"
+      },
+      {
+        "id": "flag.losses",
+        "type": "int",
+        "initial": 1,
+        "write": "每幕结算减员",
+        "readers": "act-1/act-2/act-3",
+        "effect": "本幕减员（1~2）；补兵永远是陌生人",
+        "source": "docs/scenario/S8-起步战役集.md:924"
+      }
+    ],
+    "rep": [
+      {
+        "id": "rep.command",
+        "type": "int",
+        "initial": 0,
+        "write": "上报真图 / 抗命等行为",
+        "readers": "act-2/act-3",
+        "effect": "战区司令部态度（−1~1）",
+        "source": "docs/scenario/S8-起步战役集.md:961"
+      },
+      {
+        "id": "rep.logistics",
+        "type": "int",
+        "initial": 0,
+        "write": "补给协作行为",
+        "readers": "act-2/act-3",
+        "effect": "辎重序列态度（0~1）",
+        "source": "docs/scenario/S8-起步战役集.md:962"
+      }
+    ],
+    "clock": [
+      {
+        "id": "clock.thaw",
+        "type": "int",
+        "initial": 2,
+        "write": "每幕 −1",
+        "readers": "Q-00/act-3",
+        "effect": "换防/冬天倒计时（归零前须收束）",
+        "source": "docs/scenario/S8-起步战役集.md:963"
+      }
+    ]
+  },
+  "ledger_template": {
+    "meta": {
+      "world": "broken_line",
+      "engine": "tactics",
+      "campaign": "命令纸比你们干净",
+      "session": 1,
+      "party_level": 1,
+      "party_size": 4,
+      "tone_pack": "tragic_hero",
+      "safety_boundaries": [
+        "战争创伤、伤亡、抗命；需明确边界"
+      ]
+    },
+    "clock": {
+      "day": 1,
+      "watch": "晨",
+      "thaw": 2,
+      "active_pressure": "命令基于昨天下午三点的地图"
+    },
+    "party": [
+      {
+        "name": "角色名",
+        "career": "职途",
+        "drive": "我一定要……"
+      }
+    ],
+    "npcs": [
+      {
+        "name": "韩熠",
+        "role": "三营第七勤务分队队长，上士（代号「灰鸢」）",
+        "drive": "把分队带过这个季度",
+        "affinity": 1,
+        "location": "H-7 第七支撑点",
+        "status": "on_duty",
+        "knows": [
+          "C-01"
+        ]
+      }
+    ],
+    "threads": [
+      {
+        "id": "C-01",
+        "name": "这道命令基于一份过期的地图",
+        "state": "open"
+      }
+    ],
+    "facts": [],
+    "hooks": [
+      "服从的：编号命令——明晨六点，向磨石岗西侧斜坡做一次「侦察性接触」，投入不少于八人，不得携带重武器",
+      "想搞清真相的：哑塔三天前截获了一段渭军电文，军方没上报",
+      "被卷入的：弹药只够打二十分钟，补给队却卡在第九公里——前沿的弟兄在等你们的火力"
+    ],
+    "flags": {
+      "map_outdated": false,
+      "action_line3": false,
+      "defied": false,
+      "q1_known": false,
+      "losses": 0,
+      "rep_command": 0,
+      "rep_logistics": 0
+    },
+    "supply": {
+      "ammo": 5,
+      "ration": 5,
+      "med": 4,
+      "fuel": 4,
+      "note": "补给分四条轨：弹药、口粮、药品、燃料"
+    },
+    "morale": {
+      "morale": 5,
+      "discipline": 6,
+      "note": "士气与纪律（0~10）"
+    },
+    "source": "docs/scenario/S8-起步战役集.md:922"
+  }
+}
