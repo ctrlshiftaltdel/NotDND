@@ -89,8 +89,8 @@
 | A1 | 状态层提供**唯一提交入口**：`state.Handle.commit(*, base_seq, idempotency_key, type, actor, …, changes=(), world_time=None, source=…) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`；同 `idempotency_key` 重复提交返回**首次结果**、不重放副作用。房间层把 `room_id` 映射为状态层 `campaign_id`（M-11：`room_id == sid == campaign_id`）。原名 `commit(room_id, proposal, idem_key) -> {rev, seq, events[]}`，**已按 STATE §12.1 统一**（`idem_key`→`idempotency_key`、`rev`→`seq`/`base_seq`、返回 `CommitResult`）。 | STATE-DESIGN §12.1 / §7 | ✅ 已对齐 |
 | A2 | 状态层按**序号范围读事件**：可读 `seq > since` 的区间，事件封套带 `visibility`（STATE §5.1）；**受众过滤以 `visibility` 为输入**、由房间层完成（STATE §12.4：`visibility` 是过滤输入、不是权限模型）。`seq` 在战役内**单调递增、无空洞**（STATE §5.1）。 | STATE-DESIGN §12.4 / §5.1 / §16 M7-4 | ✅ 已对齐 |
 | A3 | 房间块作为状态层快照里的**不透明块** `blocks.room`（`STATE-DESIGN.md` §6.1 / §11：与 `rules`/`atlas`/`guide`/`chron` 同级），随检查点原子写；`state.py` 原样存取、不解析（STATE S4）。旧档惰性迁移。 | STATE-DESIGN §6.1 / §11 / §10 | ✅ 已对齐 |
-| A4 | CHRON 在识别到互相影响时开**事件窗口** `Window`（`CHRON-DESIGN.md` §5.4 / §5.5）；窗口内相关角色按 CHRON **稳定排序**结算，窗口外成员照常异步；窗口开关本身是事件（`window.opened` / `window.closed`）。**入口名**（是否对外暴露 `window_open(...)`）以 CHRON 实现切片为准。 | CHRON-DESIGN §5.4 / §5.5 | ⚠️ 入口名未决 |
-| A5 | 「房间无人在线时是否推进世界」以 `CHRON-DESIGN.md` §3.4 为唯一口径：**默认不推进**（`offline_advance = False`）；开关与速率由房间设置给、实现落 M10。**MPI 原起草默认「活动时推进」与 CHRON 不同，已按 CHRON 对齐**（此项为产品默认，需人拍板确认）。`room.settings.offline_advance` 取名字面待 M10 拆单按 CHRON §3.4 定。 | CHRON-DESIGN §3.4 | ⚠️ 默认已对齐、需拍板 |
+| A4 | CHRON 在识别到互相影响时开**事件窗口** `Window`（`CHRON-DESIGN.md` §5.4 / §5.5）；窗口内相关角色按 CHRON **稳定排序**结算，窗口外成员照常异步；窗口开关本身是事件（`window.opened` / `window.closed`）。**入口名**（是否对外暴露 `window_open(...)`）以 CHRON 实现切片为准。 | CHRON-DESIGN §5.4 / §5.5 | ✅ 已拍板（2026-10-10）：入口名以 CHRON 实现切片为准 |
+| A5 | 「房间无人在线时是否推进世界」以 `CHRON-DESIGN.md` §3.4 为唯一口径：**默认不推进**（`offline_advance = False`）；开关与速率由房间设置给、实现落 M10。**MPI 原起草默认「活动时推进」与 CHRON 不同，已按 CHRON 对齐**（产品默认已拍板，2026-10-10）。`room.settings.offline_advance` 取名字面待 M10 拆单按 CHRON §3.4 定。 | CHRON-DESIGN §3.4 | ✅ 已拍板（2026-10-10）：默认不推进 |
 | A6 | 事件日志缺席时（M7 未落地）读事件可**降级**为「快照 + 可能错过一段」标记；**M7 已定稿**，正式路径为 STATE §12.4「snapshot + 事件尾部」。 | STATE-DESIGN §12.4 | ✅ 已对齐（降级仅过渡） |
 
 ---
@@ -239,7 +239,7 @@ member_sessions: dict[tuple[str, str], dict]   # (room_id, member_id) -> 运行�
 
 | 备选 | 为什么不选（本阶段） |
 |---|---|
-| **WebSocket** | 需要 RFC6455 客户端/服务端实现，标准库没有：要么引入运行时依赖（**铁律 2 未放行**，D3 待治理 PR），要么自己写握手+帧+掩码+分片+心跳+背压——复杂度远超「低频文本广播」的收益。双向性对我们是伪需求（提交用 POST 更利于幂等键、错误码与审计）。**保留为后续可替换项**：见 §5.4，wire 格式（事件封套 + `seq`）与传输解耦，将来若是引入成熟的 WS 库，服务端推流换成 WS 而**不动事件合同**。 |
+| **WebSocket** | 需要 RFC6455 客户端/服务端实现，标准库没有：引入运行时依赖**在铁律 2 下已不受限**（`AGENTS.md` 铁律 2 已改名「技术选型效率优先」，**不设依赖上限**），但自己写握手+帧+掩码+分片+心跳+背压的复杂度远超「低频文本广播」的收益——**本阶段不选是复杂度权衡，不是依赖政策所限**。双向性对我们是伪需求（提交用 POST 更利于幂等键、错误码与审计）。**保留为后续可替换项**：见 §5.4，wire 格式（事件封套 + `seq`）与传输解耦，将来若是引入成熟的 WS 库，服务端推流换成 WS 而**不动事件合同**。 |
 | **短轮询**（`GET /api/room/events?since=seq` 定时拉） | 延迟高、请求数随人数×频率放大、突发事件（战斗）不实时。**但保留为降级路径**：反代/企业代理可能缓冲 `text/event-stream`，此时前端自动退回轮询（同一「按 `seq > since` 读事件 + `visibility` 过滤」语义，见 §5.5）。 |
 | **长轮询**（挂起直到有事件） | 每次事件一次建连；线程模型下（`ThreadingHTTPServer`）连接占用与 `Streams` 等价但代码更绕，且没有 `since` 补发的天然语义。不如直接 SSE。 |
 | **全员回合制 / 轮询全员确认** | 与 M-4（冲突时才局部同步）相悖，把日常探索也拖成回合，体验退化（GDD §7.3）。 |
@@ -426,7 +426,7 @@ wire 帧（text/event-stream）：
 3. **无账号的令牌模型**：局域网内拿到令牌 = 该成员；共享设备上令牌落在 `localStorage`。缓解：房主可踢出/重发。**这是 D1「暂不做账号」的已知代价**，需在 README/UI 明示。
 4. **SSE 经反代可能被缓冲**：企业代理常缓存 `text/event-stream`，会导致「看着连上了但收不到」。缓解：心跳 + 短轮询降级（§5.5）；**待拍板**：首发是否直接接受降级路径可用即可。
 5. **线程模型**：`ThreadingHTTPServer` 下每成员至少一条常驻流；6 人 + 多标签页 ≈ 十几条线程 + AI 调用的长请求，量级可接受，但**不是**可无限扩的架构。将来上公网（M13）需换部署形态，本单不改。
-6. **依赖假设**：§2.3 的 A1–A6 **已于 2026-10-10 对齐** `STATE-DESIGN.md` / `CHRON-DESIGN.md`；仍未决的仅为 A4（窗口入口名）与 A5（`offline_advance` 取名字面 + 默认值待拍板），见 §2.3 表「状态」列。
+6. **依赖假设**：§2.3 的 A1–A6 **已于 2026-10-10 对齐** `STATE-DESIGN.md` / `CHRON-DESIGN.md`；A4（窗口入口名）与 A5（`offline_advance` 默认值）**已于 2026-10-10 拍板**——A4 以 CHRON 实现切片为准、A5 确认**默认不推进**；仅 `room.settings.offline_advance` 的**取名字面**留 M10 拆单按 CHRON §3.4 定。见 §2.3 表「状态」列。
 7. **ATLAS 每角色 locus**：数据上「允许」但**未实现**；多人位置若仍按队伍级，会出现「同队两人分处两地却共享一个 locus」的语义错位。**待拍板**：M10 首发是否要求 ATLAS 先扩到每角色。
 8. **新增依赖**：**无**。本单沿用标准库（现状）；如引入任何运行时依赖，按 `AGENTS.md` 铁律 2 在本 PR 说明理由、权衡与替代方案，lockfile 随同一 PR。
 
