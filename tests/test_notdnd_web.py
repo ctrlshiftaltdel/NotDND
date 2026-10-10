@@ -761,7 +761,7 @@ def check_api_atlas_exits_and_move():
         assert isinstance(view["exits"], list) and view["exits"]
         for entry in view["exits"]:
             assert set(entry) >= {"via", "name", "place_id", "band"}, entry
-            assert entry["hours"] == notdnd_web.BAND_MINUTES.get(entry["band"], 0)
+            assert entry["minutes"] == notdnd_web.BAND_MINUTES.get(entry["band"], 0)
 
         # 移动：优先挑一条带行程档的出口（跨区），否则退到第一条
         target = next((e for e in view["exits"] if e["band"]), view["exits"][0])
@@ -770,7 +770,7 @@ def check_api_atlas_exits_and_move():
         assert status == 200, "移动应 200，实际 %s / %s" % (status, moved)
         assert moved["status"] == "ok"
         assert moved["band"] == target["band"], "行程档应来自连接的 band"
-        assert moved["hours"] == notdnd_web.BAND_MINUTES.get(target["band"], 0), \
+        assert moved["minutes"] == notdnd_web.BAND_MINUTES.get(target["band"], 0), \
             "名义分钟数必须与 §2.3（1 时段 = 360 分钟）/ travel.json 一致"
         assert moved["here"]["place_id"] == target["place_id"]
 
