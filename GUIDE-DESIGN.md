@@ -421,7 +421,6 @@ flowchart TD
 | 剧本文件与世界文件不一定成对 | `yunji.json` 的 `meta.world` 为 `yunji`，`meta.engine` 为 `tactics`，`meta.campaign` 为「九钥与元柜」。没有同 key 的世界文件。 |
 | 密钥文件 | `.gitignore` 已忽略 `.env`。`.env.example` 仍是 `NOTDND_HOST`、`NOTDND_PORT` 和三行 `NOTDND_AI_*`。 |
 | 前端 | 还没有 `static/`。 |
-| 参考项目只复用工程形状 | `DNDWEB-ASSETS.md` §4。不搬对方的人设、提示词或语料。 |
 
 ### 3.2 为什么现在要改草案
 
@@ -1087,7 +1086,6 @@ TTS 不进现金表。限时免费会结束；风格卡应命中缓存。
 - `AGENTS.md`：三条铁律、Issue 循环、同一文件不并行、`docs/` 单独成 PR。
 - `MASTER.md` §4 与 §7：M5 未开始；文档地图里已有 `GUIDE-DESIGN.md` 一行。G0 改这一行，不另插一行。
 - `ATLAS-DESIGN.md` §1、§3：编译不调用模型；导引者只读地点卡。`atlas.guide_card`。
-- `DNDWEB-ASSETS.md` §4：可选模块的工程形状。不搬内容。
 - `docs/system/04-conductor-os.md`：守则二、守则四、第 8 节。本文引用它，不改它。
 - `data/schema/scenario.schema.json` 的 `location` 与 `npc`。`data/schema/world.schema.json` 的 `region`。
 - `data/scenarios/yunji.json`：白壁 `loc-02`、灰市 `loc-05`、霍砚 `npc-01`、温苔 `npc-02`。专名以文件为准。
