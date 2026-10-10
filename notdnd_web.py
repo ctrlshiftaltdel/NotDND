@@ -24,6 +24,11 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     叙事走 HTTP/1.1 分块的事件流（上游失败只发 `fallback`，不再动 HTTP 状态）；
     POST /api/guide/speak 把上一回合存下的一拍读成 pcm16 流（24 kHz / mono /
     s16le，HTTP/1.1 分块、无 Content-Length；只接受 `last_beats` 里的全文）
+  · 导引者行为与对白（G7 接线）：焦点离开某地点（或 `rules.scene.id` 变化）时，
+    在实相之后、叙事之前为该处在场的至多 4 名具名 NPC 记一条场外痕迹
+    （非流式 / 思考关，失败不留痕、不兜底）；玩家的整段叙事进 L3 与切拍之前
+    先过秘密门（未放行的秘密换成「……」，不第二次叫模型）；`narration` 事件
+    至多带一条服务端揭开的 `trace`；对白拍按 `npc.id` 分配白桦 / 茉莉
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -1015,6 +1020,11 @@ class Handler(BaseHTTPRequestHandler):
         `location_id` 非空时：写入 `focus_location_id` 并落盘（焦点是显式的，
         不从玩家散文里猜），然后在状态行之后、叙事之前调用一次
         `ensure_realization`（G5 是空实现，不会为实相再开一次 SSE 分支）。
+
+        G7：焦点**离开**某地点（或 `rules.scene.id` 变化）时，在实相之后、叙事
+        之前记一轮场外痕迹；玩家可见的整段叙事在进 L3 与切拍之前过秘密门；
+        该回合的 `narration` 事件至多带一条服务端揭开的 `trace`。三件事都只动
+        `prism_guide`，失败一律吞掉，绝不把整回合改成兜底句或第二行 HTTP 状态。
         """
         text = str(body.get("text") or "")
         if len(text) > GUIDE_TEXT_LIMIT:
@@ -1057,13 +1067,25 @@ class Handler(BaseHTTPRequestHandler):
                                                        GUIDE_SETTLE_DEFAULT)
                 return self._err(phrase, code)
 
+        # 变动之前先把焦点与检查点各留一份：G7 的场外痕迹与「痕迹揭开」看的是
+        # **离开的地点**（§2.2），不是写完之后的那个新焦点。
+        previous_focus = str(session.guide.get("focus_location_id") or "")
         # L2 只在 scene.id 变化时重写（并清空 L3）；焦点变化要立刻落盘——
         # 这一回合即使叙事失败，G6 的下一回合也要看得到队伍走到了哪里。
         with session.lock:
+            scene_before = str(session.guide.get("l2_scene_id") or "")
             prism_guide.ensure_l2(session.guide, session.rules)
             if location_id:
                 session.guide["focus_location_id"] = location_id
                 session.save()
+        current_focus = str(session.guide.get("focus_location_id") or "")
+        scene_now = str((session.rules.get("scene") or {}).get("id") or "")
+        # 两条触发线（§2.2）：焦点换了一处（只有**离开**的那一处才算），或
+        # `rules` 的 `scene.id` 换了（原检查点仍有效，测试可直接改快照触发）。
+        # 同一回合两件事都发生，也只记一轮——焦点优先。
+        focus_changed = (bool(location_id) and bool(previous_focus)
+                         and location_id != previous_focus)
+        scene_changed = bool(scene_now) and scene_now != scene_before
 
         try:
             self._begin_stream()
@@ -1080,6 +1102,15 @@ class Handler(BaseHTTPRequestHandler):
                 # 异常——真正的时间盒与降级都归 G6 自己管。
                 try:
                     prism_guide.ensure_realization(session, location_id)
+                except Exception:      # noqa: BLE001
+                    pass
+            # 场外痕迹（G7 / §5.8）：离开的那一处（或 scene.id 变化时的当前焦点）
+            # 在场 NPC 各记一条。失败**不**把整回合改成兜底句，所以这里吞掉异常。
+            record_at = (previous_focus if focus_changed
+                         else (current_focus if scene_changed else ""))
+            if record_at:
+                try:
+                    prism_guide.record_traces(session, record_at)
                 except Exception:      # noqa: BLE001
                     pass
             completion = None
@@ -1111,19 +1142,28 @@ class Handler(BaseHTTPRequestHandler):
                 # 头已写出：失败只能用 fallback，拿不到第二行 HTTP 状态。
                 self._sse("fallback", {"text": _guide_fallback_text(result)})
             else:
-                # 切拍在审查之后（§5.9）：节拍从**玩家将要看到的**整段里切，
-                # 与 L3 同一份字；`last_beats` 只留这一回合的拍（§1114：
-                # 「speak 只接受上一回合存下的拍」），下一回合整批换掉。
+                # 秘密门（G7 / §5.8）：玩家将要看到的整段在进 L3 与切拍之前过一遍；
+                # L3 与朗读都用**涂掉之后**的字（不第二次叫模型）。痕迹的揭开也在
+                # 这一次锁内完成，`revealed` 随同一次 `save()` 落盘。
                 with session.lock:
-                    beats = _guide_beats(reviewed, session.guide)
+                    redacted = prism_guide.redact_narration(
+                        reviewed, session.guide, player_text=text,
+                        rules=session.rules)
+                    beats = _guide_beats(redacted, session.guide)
                     session.guide["transcript"].append(
-                        {"role": "assistant", "content": reviewed})
+                        {"role": "assistant", "content": redacted})
                     session.guide["last_beats"] = beats
+                    trace = (prism_guide.reveal_next_trace(session.guide,
+                                                           record_at)
+                             if record_at else "")
                     stats = session.guide.get("stats")
                     if isinstance(stats, dict):
                         stats["calls"] = int(stats.get("calls") or 0) + 1
-                    session.save()      # L3 要跟着落盘，重启后才接得上
-                self._sse("narration", {"text": reviewed, "beats": beats})
+                    session.save()      # L3 与 revealed 要跟着落盘
+                payload = {"text": redacted, "beats": beats}
+                if trace:
+                    payload["trace"] = trace
+                self._sse("narration", payload)
                 self._sse("usage", completion.get("usage") or {})
             self._sse("done", {"status": "ok"})
             self._sse_close()
