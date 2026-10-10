@@ -1,7 +1,7 @@
 # NotDND
 
 一个**完全原创、可商用**的 AI 跑团网页应用。规则系统为「**棱镜 PRISM**」
-（MIT，PRISM Authors），AI 担任**导引者**（Conductor），纯文本交互，无图片资源；
+（MIT，PRISM Authors），AI 担任**导引者**（Conductor），**纯文本运行 + 视觉占位框架**；
 面向单机 / 局域网「多人轮流共用一台设备」的桌边场景。
 
 > ⚠️ **仅限本机 / 局域网使用。** 后端默认无账号系统、可监听 `0.0.0.0`，
@@ -9,7 +9,7 @@
 
 ## 怎么跑
 
-前置：Python 3（标准库即可，无第三方运行时依赖）。
+前置：Python 3（当前纯标准库，无需安装第三方包；依赖策略见 [`AGENTS.md`](AGENTS.md) 铁律 2）。
 
 ```bash
 python3 notdnd_web.py          # 默认监听 0.0.0.0:8600
@@ -34,10 +34,10 @@ python3 notdnd_web.py          # 默认监听 0.0.0.0:8600
 
 ## 结构取舍
 
-- **Python 3 标准库后端 + 原生 HTML/CSS/JS 前端**：零第三方运行时依赖、
-  无框架、无构建步骤。跑团应用的寿命以年计，少一层依赖就少一类腐化；
-  拉下来 `python3 notdnd_web.py` 就能跑。任何要引入运行时依赖的改动
-  **单独开 PR** 说明理由（见 [`AGENTS.md`](AGENTS.md) 铁律 2）。
+- **Python 3 标准库后端 + 原生 HTML/CSS/JS 前端**：当前零第三方依赖、
+  无框架、无构建步骤，拉下来 `python3 notdnd_web.py` 就能跑。依赖策略为
+  「**技术选型效率优先**」——不设上限；引入依赖的 PR 说明理由、权衡与替代
+  （见 [`AGENTS.md`](AGENTS.md) 铁律 2 与 [`GDD-BASELINE.md`](GDD-BASELINE.md) §2 D3）。
 - **数据层：`docs/` → `data/`**：[`docs/`](docs/) 是「棱镜 PRISM」的原创规则与剧本源文档
   （**可修订**，走独立 Issue / PR）；[`data/`](data/) 存放由它整理出的 JSON，
   **「加文件即加内容」**：目录布局为 `data/system/`（跨世界规则）、
@@ -49,7 +49,7 @@ python3 notdnd_web.py          # 默认监听 0.0.0.0:8600
 
 ## 测试
 
-零第三方**运行时**依赖（测试期仅允许 `websocket-client`）：
+当前零第三方运行时依赖；测试期依赖从简（现在只有 `websocket-client`）：
 
 ```bash
 bash tests/run_all.sh            # 全量回归：收集 tests/test_*.py 串行跑（12 个脚本）
@@ -69,7 +69,7 @@ CI 设四道门（`.github/workflows/ci.yml`）：语法门（`py_compile`）、
   **请勿暴露到公网。**
 - **AI 导引者是可选的**：不配置 `.env` / 环境变量时离线游玩完全可用；
   `prism_guide.py` import 失败时网页层照常工作，导引路由返回固定兜底。
-- 纯文本交互，无图片资源；前端骨架（M4）已落地，正式 UI 仍在迭代。
+- 纯文本运行为主，当前无图片资产（视觉占位框架为路线目标，见 [`GDD-BASELINE.md`](GDD-BASELINE.md) §2 D2）；前端骨架（M4）已落地，正式 UI 仍在迭代。
 
 ## 许可
 

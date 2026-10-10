@@ -6,7 +6,7 @@
 > 以及**前人踩过哪些坑**。每条都给出处（文件 / PR），可逐条核对。
 >
 > 阅读顺序建议：本文件 §1 → 你要改的模块对应的 `.py` 文件头注释 → 相关设计文档
-> （`GUIDE-DESIGN.md` / `ATLAS-DESIGN.md` / `data/FORMAT.md`）。
+> （`GDD-BASELINE.md` / `GUIDE-DESIGN.md` / `ATLAS-DESIGN.md` / `data/FORMAT.md`）。
 
 ---
 
@@ -61,8 +61,10 @@
   行；**散文不进 JSON**，长篇叙事留在 `docs/`（`data/FORMAT.md` 开头说明与
   §5–§6）。
 
-**为什么校验器零依赖**：仓库铁律 2 是「零第三方运行时依赖」（`AGENTS.md` §2）。
-校验器若引 `jsonschema`，每台开发机、每次 CI 都要装包，与铁律冲突；所以
+**为什么校验器零依赖**：当时仓库铁律 2 是「零第三方运行时依赖」（`AGENTS.md` §2）——
+**历史决策**：2026-10-10 起铁律 2 改为「技术选型效率优先」（D3，见
+`GDD-BASELINE.md` §2）；校验器维持现状，作为当前实现描述继续成立。
+校验器若引 `jsonschema`，每台开发机、每次 CI 都要装包，与当时的铁律冲突；所以
 `tests/validate_data.py` 自实现了一个**有穷的 JSON Schema 关键字子集**（16 个
 校验关键字 + 4 个注解，`data/FORMAT.md` §7）。schema 里出现未支持关键字直接
 报错——**写 schema 前先查第 7 节**，`minItems` / `maxItems` 等不在子集里。
@@ -162,15 +164,15 @@
 ## 5. 测试与协作
 
 - **一键回归**：`bash tests/run_all.sh`——收集 `tests/test_*.py` 共 12 个脚本
-  串行执行，退出码即判据（`tests/run_all.sh`）。写作约定（零依赖、随机端口 +
+  串行执行，退出码即判据（`tests/run_all.sh`）。写作约定（随机端口 +
   临时目录 + 收摊、概率断言守则、浏览器测试优雅跳过）见 [`tests/README.md`](tests/README.md)；
   无头浏览器 / WebSocket 共用助手在 `tests/_cdp.py`。
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门（`py_compile`）→ 回归门
   （`run_all.sh`）→ 内容防火墙门 → 提交邮箱门（作者邮箱一律 GitHub noreply，
   铁律 3）。只读权限、不引用 secrets、不用第三方 marketplace action。
-- **协作契约**（[`AGENTS.md`](AGENTS.md)）：三条铁律（内容边界 / 零第三方运行时
-  依赖 / 密钥与隐私永不入库）、一个 Issue 一件事、一个意图 = 一个分支 = 一个
-  PR、四行审查格式、**实现 Agent 不合并**。主管的接手与路线图在
+- **协作契约**（[`AGENTS.md`](AGENTS.md)）：三条铁律（内容边界 /
+  技术选型效率优先 / 密钥与隐私永不入库）、一个 Issue 一件事、一个意图 = 一个
+  分支 = 一个 PR、四行审查格式、**实现 Agent 不合并**。主管的接手与路线图在
   [`MASTER.md`](MASTER.md)。
 - **交回前 rebase**：分支落后时先按 `AGENTS.md` §7 更新，CI 以 rebase 后为准
   （`MASTER.md` §3）。
