@@ -18,7 +18,8 @@ G1 覆盖：
 G2 覆盖：
 
 - 传输层是一个可替换入口（假传输），构建路径离线；
-- `assemble_chat_stream` / `read_usage`（流式与非流式回包）；
+- `assemble_chat_stream` / `read_usage`（流式 SSE 与非流式**整段 JSON** 两种回包
+  得到等价结果；空 / 畸形 / 非对象不抛）；
 - `settle`：注水 → 结算 → 写回 → save，异常原样抛；
 - `verdict_line` 取句顺序与「判定：成功」；
 - `review_narration` 的骰子审查与裁决替换；`fallback_text` 保留裁决；
@@ -57,7 +58,8 @@ G6 覆盖（实相）：
 - `ensure_realization`：第一次坏 JSON → 第二次合法图，只存第二次；两次只有要点 →
   `source: fallback` 要点链；离线直接要点链；同一地点第二次不请求；新鲜 `pending`
   不请求也不写 fallback；过期 `pending` 可再占一次；两次重叠只有一次上游；提交后
-  重写 L2（salt + 听泉馆）并清空 L3。
+  重写 L2（salt + 听泉馆）并清空 L3；两次尝试**共用** `REALIZATION_TIMEOUT_S`
+  （第二次只用剩余预算，第一次吃满就不再发第二次）。
 """
 
 import base64
@@ -559,6 +561,54 @@ def test_assemble_chat_stream():
     assert pg.read_usage({}) == {"prompt_tokens": 0, "cached_tokens": 0,
                                  "completion_tokens": 0, "reasoning_tokens": 0}
     ok("assemble_chat_stream：delta / message / usage / 坏块 / [DONE]")
+
+
+def test_assemble_chat_stream_whole_json():
+    """非流式**整段 JSON**（`choices[0].message`）与等价的 SSE 字节结果相同。
+
+    真实供应商对 `stream: false` 的请求回一整个 JSON 对象，**不是** `data:` 行；
+    只认 SSE 的老实现让正文恒为空（G6 实相 / G4 工具在真 API 上静默失效）。
+    """
+    payload = {"id": "c-1", "object": "chat.completion",
+               "choices": [{"index": 0, "finish_reason": "stop",
+                            "message": {"role": "assistant", "content": "你好",
+                                        "reasoning_content": "想一下",
+                                        "tool_calls": [{"id": "t9"}]}}],
+               "usage": {"prompt_tokens": 10, "completion_tokens": 2,
+                         "prompt_tokens_details": {"cached_tokens": 4},
+                         "completion_tokens_details": {"reasoning_tokens": 1}}}
+    blob = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    whole = pg.assemble_chat_stream(blob)
+    assert whole["content"] == "你好"
+    assert whole["reasoning"] == "想一下"
+    assert whole["tool_calls"] == [{"id": "t9"}]
+    assert whole["usage"] == {"prompt_tokens": 10, "cached_tokens": 4,
+                              "completion_tokens": 2, "reasoning_tokens": 1}
+    # 同一份对象的 SSE 编码（一条 `data:` 行 + `[DONE]`）得到**相同**结果。
+    sse = pg.assemble_chat_stream(b"data: " + blob + b"\n\ndata: [DONE]\n\n")
+    assert sse == whole
+    # 没带思考 / 音频的回包仍是三键（`reasoning` / `audio` 不凭空出现）。
+    plain = pg.assemble_chat_stream(json.dumps(
+        {"choices": [{"message": {"role": "assistant", "content": "停"}}]},
+        ensure_ascii=False).encode("utf-8"))
+    assert plain == {"content": "停", "tool_calls": [], "usage": {}}
+    ok("assemble_chat_stream：整段 JSON 与等价 SSE 得到同一结果")
+
+
+def test_assemble_chat_stream_whole_json_tolerates_garbage():
+    """空正文 / 畸形 JSON / 非对象 / 错误体都不抛，按「没有正文」处理。"""
+    for raw in (b"", b"   \n", b"{not json", b'{"choices":',
+                b"not json at all", b"[]", b"null",
+                b'{"error":{"message":"boom"}}'):
+        got = pg.assemble_chat_stream(raw)
+        assert got == {"content": "", "tool_calls": [], "usage": {}}, raw
+    # 带 BOM 的整段 JSON 仍认（有些网关会加）。
+    got = pg.assemble_chat_stream(
+        "\ufeff".encode("utf-8") + json.dumps(
+            {"choices": [{"message": {"content": "停"}}]},
+            ensure_ascii=False).encode("utf-8"))
+    assert got["content"] == "停"
+    ok("assemble_chat_stream：空 / 畸形 / 非对象 / 错误体不抛，BOM 仍认")
 
 
 # ── G2：结算与叙事审查 ──────────────────────────────────────────────────
@@ -1688,6 +1738,52 @@ def test_realization_retry_only_second_saved():
     ok("实相重试：第一次坏 JSON → 第二次合法图；只存第二次，形状正确")
 
 
+def test_realization_second_attempt_gets_remaining_budget():
+    """第二次尝试的 `timeout` 是**剩余预算**（≤ 总预算），不是又一份 40 秒。"""
+    canon = _canon("loc-02")
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append(timeout)
+        return {"content": "这不是 JSON", "tool_calls": [], "usage": {}}
+
+    web = _RealizationWeb()
+    pg.ensure_realization(web, "loc-02",
+                          env={"BASE_URL": "https://api.example.com/v1",
+                               "MODEL": "mm", "API_KEY": "kk"},
+                          transmit=fake)
+    assert len(calls) == 2, calls
+    assert calls[0] == pg.REALIZATION_TIMEOUT_S
+    assert 0 < calls[1] <= pg.REALIZATION_TIMEOUT_S
+    ok("实相重试：第二次只用剩余预算（两次共用 40 秒，不翻倍）")
+
+
+def test_realization_budget_exhausted_no_second_request():
+    """第一次就吃满时间盒 → 不再发第二次，直接要点链 fallback。"""
+    canon = _canon("loc-02")
+    calls = []
+    saved = pg.REALIZATION_TIMEOUT_S
+    pg.REALIZATION_TIMEOUT_S = 0.05
+
+    def slow(url, payload, headers, *, timeout):
+        calls.append(timeout)
+        time.sleep(0.08)             # 超过总预算
+        return {"content": "这不是 JSON", "tool_calls": [], "usage": {}}
+
+    try:
+        web = _RealizationWeb()
+        pg.ensure_realization(web, "loc-02",
+                              env={"BASE_URL": "https://api.example.com/v1",
+                                   "MODEL": "mm", "API_KEY": "kk"},
+                              transmit=slow)
+    finally:
+        pg.REALIZATION_TIMEOUT_S = saved
+    assert len(calls) == 1, calls
+    assert calls[0] == 0.05
+    assert web.guide["realizations"]["loc-02"]["source"] == "fallback"
+    ok("实相预算：第一次吃满后不再发第二次（总预算不翻倍）")
+
+
 def test_realization_double_failure_falls_back():
     """连续两次只有要点 → 要点链 `source: fallback`，没有第三次请求。"""
     canon = _canon("loc-02")
@@ -1870,6 +1966,8 @@ def main():
     test_transport_injectable_and_build_offline()
     test_transport_error_hides_upstream_body()
     test_assemble_chat_stream()
+    test_assemble_chat_stream_whole_json()
+    test_assemble_chat_stream_whole_json_tolerates_garbage()
     test_settle_uses_snapshot_roundtrip()
     test_verdict_line_order()
     test_review_narration()
@@ -1901,6 +1999,8 @@ def main():
     test_validate_realization_market_street_kind()
     test_realization_request_body_contract()
     test_realization_retry_only_second_saved()
+    test_realization_second_attempt_gets_remaining_budget()
+    test_realization_budget_exhausted_no_second_request()
     test_realization_double_failure_falls_back()
     test_realization_offline_falls_back()
     test_realization_pending_and_dedup()

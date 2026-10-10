@@ -21,7 +21,8 @@ G2（回合）：
 - `settle`：加锁 → `from_snapshot` → `perform_action`（不传 `unit_id`）→ 写回
   → `save()` → 解锁（§5.2）。不 import `notdnd_web`；
 - 传输层 `TRANSMIT`：所有上游调用只走这一个入口，测试可换成**假传输**；
-  真实实现是标准库 HTTP POST + SSE 组装（§5.3 / §5.10）；
+  真实实现是标准库 HTTP POST + 组装（§5.3 / §5.10）——**流式回包是 SSE `data:`
+  行，非流式回包是整段 JSON**（`choices[0].message`），两种都要认；
 - L0–L4 叙事消息数组（§5.4）与 L4 的本回合块；
 - 骰子审查与 `【裁决】` 替换：记法 / 合计 / 带标签数字对不上就丢叙事（§5.2）。
 
@@ -73,10 +74,12 @@ G6（实相）：
 
 - `ensure_realization`（§5.2 / §5.7）：锁内写 `pending` 并 `save`（`claim` +
   `claimed_at`）；新鲜 `pending`（120 秒内）直接返回，不重画，也不写要点退回；
-  锁外才读上游，硬失败再请求一次，两次都失败或超时就由服务端造要点链，
-  `source` 为 `fallback`；只有自己仍是 `claim` 的主人才用图或退回替换 `pending`，
-  删掉 `claim` / `claimed_at`，此时才重写 L2（salt 与实相摘要在这时才进 L2）并
-  清空 L3。焦点仍是显式 `location_id`，实相只落 `guide.realizations`；
+  锁外才读上游，硬失败再请求一次，**两次共用** `REALIZATION_TIMEOUT_S`（§5.11）：
+  第一次用满这 40 秒，第二次只剩剩余预算，第一次就吃满时不再发第二次；两次都失败
+  或超时就由服务端造要点链，`source` 为 `fallback`；只有自己仍是 `claim` 的主人才
+  用图或退回替换 `pending`，删掉 `claim` / `claimed_at`，此时才重写 L2（salt 与
+  实相摘要在这时才进 L2）并清空 L3。焦点仍是显式 `location_id`，实相只落
+  `guide.realizations`；
 - `validate_realization`：**纯函数**（§2.1）。硬失败只来自整张图（`失败：`），
   多一个近名、多一条指向已丢节点的边只丢弃（`丢弃：`），不是整张图失败；
 - 实相请求体：思考开、`stream` 为 false、4096、无工具、自己的 messages；
@@ -1431,11 +1434,14 @@ def parse_realization_json(got):
     return payload if isinstance(payload, dict) else None
 
 
-def call_realization(canon, salt="", reasons=None, env=None, transmit=None):
+def call_realization(canon, salt="", reasons=None, env=None, transmit=None,
+                     timeout=None):
     """经传输入口发一次实相请求（§5.7 / §5.10）。离线 / 失败返回 None。
 
     与叙事、TTS 走**同一条**可替换入口 `TRANSMIT`。实相失败**不**把整回合改成
-    兜底句；调用方据此造要点链。
+    兜底句；调用方据此造要点链。`timeout` 是这一次尝试的秒数，缺省
+    `REALIZATION_TIMEOUT_S`——重试时由 `generate_realization` 传入剩余预算，
+    让两次尝试**共用**同一个时间盒（§5.11）。
     """
     env = env if env is not None else load_env()
     url = chat_url(env.get("BASE_URL"))
@@ -1445,19 +1451,29 @@ def call_realization(canon, salt="", reasons=None, env=None, transmit=None):
         return None
     body = build_realization_body(canon, salt, reasons=reasons, model=model,
                                   env=env)
-    return _send_once(url, body, key, REALIZATION_TIMEOUT_S, transmit)
+    budget = REALIZATION_TIMEOUT_S if timeout is None else float(timeout)
+    return _send_once(url, body, key, budget, transmit)
 
 
 def generate_realization(canon, salt="", env=None, transmit=None):
     """硬失败再请求一次；全失败返回 None（调用方造要点链）。**永不抛**。
 
     只发生丢弃、而且丢完之后还有非要点节点 → 直接采用这张图，**不再**重试。
+
+    两次尝试**共用** `REALIZATION_TIMEOUT_S`（§5.11「两次共用这 40 秒」）：
+    第一次用满这 40 秒，第二次的 `timeout` 是**剩余预算**；第一次就把预算吃满
+    （超时）时不再发第二次，直接返回 `None`（调用方造要点链）。
     """
     reasons = None
-    for _attempt in (1, 2):
+    deadline = time.monotonic() + REALIZATION_TIMEOUT_S
+    for attempt in (1, 2):
+        budget = (REALIZATION_TIMEOUT_S if attempt == 1
+                  else deadline - time.monotonic())
+        if budget <= 0:
+            return None
         try:
             got = call_realization(canon, salt, reasons=reasons, env=env,
-                                   transmit=transmit)
+                                   transmit=transmit, timeout=budget)
         except Exception:  # noqa: BLE001 — 上游失败走要点链，不回显原文
             got = None
         if got is None:
@@ -1636,11 +1652,70 @@ def _b64_pcm(data):
         return b""
 
 
+def _chat_piece(obj):
+    """从一条已解析的响应对象里取 `(delta, message, usage)`。
+
+    流式回包把增量放在 `choices[0].delta`，非流式整段 JSON 放在
+    `choices[0].message`；`usage` 在顶层，缺或不是字典就是 `None`（不猜别名）。
+    """
+    if not isinstance(obj, dict):
+        return {}, {}, None
+    choices = obj.get("choices") or []
+    first = choices[0] if choices and isinstance(choices[0], dict) else {}
+    delta = first.get("delta") if isinstance(first.get("delta"), dict) else {}
+    message = (first.get("message")
+               if isinstance(first.get("message"), dict) else {})
+    usage = obj.get("usage")
+    return delta, message, usage if isinstance(usage, dict) else None
+
+
+def _absorb(obj, content_parts, reasoning_parts, tool_calls, audio):
+    """把一条响应对象并进累积器；返回这条对象带的用量字典（缺则 `None`）。
+
+    只读**已解析**的对象，不碰字节：SSE 行与整段 JSON 共用这一段，
+    两条路径得到的结构化结果因此逐字节等价。
+    """
+    delta, message, usage = _chat_piece(obj)
+    for piece_holder in (delta, message):
+        piece = piece_holder.get("content")
+        if isinstance(piece, str):
+            content_parts.append(piece)
+        think = piece_holder.get("reasoning_content")
+        if isinstance(think, str):
+            reasoning_parts.append(think)
+        calls = piece_holder.get("tool_calls")
+        if isinstance(calls, list):
+            tool_calls.extend(calls)
+        sound = piece_holder.get("audio")
+        if isinstance(sound, dict):
+            audio.extend(_b64_pcm(sound.get("data")))
+    return usage
+
+
+def _whole_json(text):
+    """非流式整段 JSON 回包（§5.10）：去掉首尾空白与 BOM 后确实是 `{…}` 才认。
+
+    真实供应商对 `stream: false` 的请求**不**回 SSE `data:` 行，而是回一整个
+    JSON 对象（`choices[0].message`）。畸形 / 不是对象一律返回 `None`，
+    交给调用方按「没有正文」处理——**不抛**。
+    """
+    stripped = text.lstrip("\ufeff \t\r\n")
+    if not stripped.startswith("{"):
+        return None
+    try:
+        obj = json.loads(stripped)
+    except ValueError:
+        return None
+    return obj if isinstance(obj, dict) else None
+
+
 def assemble_chat_stream(raw):
     """把 Chat Completions 的响应体组装成 `{content, tool_calls, usage[, audio][, reasoning]}`。
 
-    流式（`delta`）与非流式（`message`）回包都认：只读 `data:` 行，
-    `[DONE]` 结束，畸形块跳过不抛（一次坏块不该把整回合变成兜底）。
+    **两种回包都认**（§5.10）：流式是 SSE——只读 `data:` 行，`[DONE]` 结束，
+    畸形块跳过不抛；非流式是**整段 JSON**——`choices[0].message` 形状
+    （`content` / `tool_calls` / `usage` / `reasoning_content`）。同一份内容
+    无论走哪种编码，组装结果都相同。
 
     `audio` 是 TTS（§5.9）的 PCM，**只在这条流真的带过音频块时才出现**，
     值是 `bytes`；`reasoning` 是思考态回包里的 `reasoning_content`（§5.5），
@@ -1659,39 +1734,29 @@ def assemble_chat_stream(raw):
     tool_calls: list = []
     usage: dict = {}
     audio = bytearray()
-    for line in (raw or b"").decode("utf-8", "replace").splitlines():
-        line = line.strip()
-        if not line.startswith("data:"):
-            continue
-        chunk = line[5:].strip()
-        if not chunk or chunk == "[DONE]":
-            continue
-        try:
-            obj = json.loads(chunk)
-        except ValueError:
-            continue
-        if not isinstance(obj, dict):
-            continue
-        choices = obj.get("choices") or []
-        first = choices[0] if choices and isinstance(choices[0], dict) else {}
-        delta = first.get("delta") if isinstance(first.get("delta"), dict) else {}
-        message = (first.get("message")
-                   if isinstance(first.get("message"), dict) else {})
-        for piece_holder in (delta, message):
-            piece = piece_holder.get("content")
-            if isinstance(piece, str):
-                content_parts.append(piece)
-            think = piece_holder.get("reasoning_content")
-            if isinstance(think, str):
-                reasoning_parts.append(think)
-            calls = piece_holder.get("tool_calls")
-            if isinstance(calls, list):
-                tool_calls.extend(calls)
-            sound = piece_holder.get("audio")
-            if isinstance(sound, dict):
-                audio.extend(_b64_pcm(sound.get("data")))
-        if isinstance(obj.get("usage"), dict):
-            usage = read_usage(obj["usage"])
+    text = (raw or b"").decode("utf-8", "replace")
+    whole = _whole_json(text)
+    if whole is not None:
+        got_usage = _absorb(whole, content_parts, reasoning_parts,
+                            tool_calls, audio)
+        if got_usage is not None:
+            usage = read_usage(got_usage)
+    else:
+        for line in text.splitlines():
+            line = line.strip()
+            if not line.startswith("data:"):
+                continue
+            chunk = line[5:].strip()
+            if not chunk or chunk == "[DONE]":
+                continue
+            try:
+                obj = json.loads(chunk)
+            except ValueError:
+                continue
+            got_usage = _absorb(obj, content_parts, reasoning_parts,
+                                tool_calls, audio)
+            if got_usage is not None:
+                usage = read_usage(got_usage)
     out = {"content": "".join(content_parts), "tool_calls": tool_calls,
            "usage": usage}
     if audio:
