@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环、pcm16 语音代理、战役绑定
-与实相（G1 / G2 / G3 / G4 / G5 / G6）。
+"""AI 导引者 · 标准库客户端、前缀、叙事回合、工具环、pcm16 语音代理、战役绑定、
+实相与行为对白（G1 / G2 / G3 / G4 / G5 / G6 / G7）。
 
 设计依据：GUIDE-DESIGN.md（§2.1 走进地点的定义与实相 / §2.2 角色行为与对白 /
 §4.3 已拍板 / §5.1 模块边界 / §5.2 回合怎么走 / §5.3 环境 / §5.4 缓存导向的提示词 /
@@ -87,11 +87,34 @@ G6（实相）：
 - 种类印证词写在 Python 元组里，**不**写进 `data/atlas/lexicon.json`（那是 ATLAS
   的数据）；实相不带坐标，不改 ATLAS，不改 `data/` 与 `docs/`。
 
+G7（行为与对白）：
+
+- `bind` 顺带按账本模板填 `guide.npc_home`（模板 `location` 字符串**包含**地点
+  `name` 才算家；多个地点名都能嵌进去时取得最长的那个，§2.2）；
+- `record_traces`：焦点离开某地点时，为该处在场的至多 4 名具名 NPC 各记一条
+  场外节拍（思考关、0.7、512、非流式，一次请求覆盖 ≤4 人）；`npc_flags` 为
+  `dead` / `betrayed` 时**不叫模型**，痕迹直接用 `if_dead_or_betrayed` 原文，
+  也不做秘密涂掉；每条句子过 `check_speech(..., secret_allowed=False)`；
+  失败 / 离线则这一轮没有痕迹，绝不走兜底句；
+- `check_speech`：窄门，只查该 NPC 的 `secret`（全文或连续 8 码位），**不**因
+  另一名 NPC 的名字失败，不判断面具 / 欲望，不调用模型；
+- `redact_secrets` / `redact_narration`：玩家可见的整段叙事在写入 L3 与
+  `last_beats` 之前涂掉未放行的秘密（命中换「……」，先替换较长的命中，**不**
+  第二次叫模型）；`secret_allowed` 为真当且仅当玩家原文含该 NPC 的 `lever`
+  整段（≥4 码位），或 `guide.known_clues` 与该 NPC 的 `knows` 相交；
+- `npc_voice`：FNV-1a 32 位，低位为 1 则茉莉、否则白桦；按 `npc.id` 分配，
+  写进 `guide.voices`（同一存档不重算）。`beats_of` 从 `guide` 取在场名字表，
+  给对白拍写上 `speaker` 与音色，并把说过话的 NPC 写进 `guide.npc_at`；
+- 路人 id `^inc-[0-9a-f]{8}$`：由 salt、地点 id、节点 id 与 manner 做 SHA-256，
+  取前 8 位十六进制；manner 里出现 `C-` 加两位数字、或任一 NPC 秘密的连续 8 字
+  就丢掉这个路人。路人**不能**写入 `known_clues`。不改 `data/`。
+
 密钥只放请求头 `api-key`，不进 URL、不进 JSON、不进状态字典、不进日志；
 异常字符串不携带上游响应体（§5.1 / §8）。
 """
 
 import base64
+import hashlib
 import json
 import os
 import pathlib
@@ -225,6 +248,31 @@ BIND_ALREADY_BOUND = "已经绑定"
 
 # 实相占位的时间盒（§5.2）：活着的那次调用（含一次重试）不能被当成进程已死。
 REALIZATION_CLAIM_S = 120
+
+# ── §2.2 / §5.8 / §5.9 行为与对白（G7）─────────────────────────────────
+
+# 场外节拍：一轮最多 4 条（按 `npc_id` 字典序取前 4）；一次请求覆盖这至多 4 人。
+TRACE_LIMIT = 4
+# 思考关、温度 0.7、512、非流式（§2.2）。
+TRACE_TEMPERATURE = 0.7
+TRACE_MAX_TOKENS = 512
+# §5.11「场外节拍 …… 最多 10 秒，失败则没有痕迹」。
+TRACE_TIMEOUT_S = 10.0
+
+# 秘密的连续窗口（§2.2「连续 8 个码位」）。与实相同值，单列常量便于对白复用。
+SECRET_WINDOW = 8
+
+# `lever` 至少 4 个码位才当杠杆（§2.2）。
+LEVER_MIN = 4
+
+# `npc_flags` 里算「终局标志」的两个取值（§2.2）：不叫模型，痕迹用典范原文。
+NPC_FLAG_FINAL = ("dead", "betrayed")
+
+# 路人的 id 后缀长度（§2.2）：`inc-` + 8 位十六进制。
+INCIDENTAL_SUFFIX_LEN = 8
+
+# manner 里出现 `C-` 加两位数字 → 这个路人丢掉（§2.2）。
+_INCIDENTAL_CUE_RE = re.compile(r"C-[0-9]{2}")
 
 # ── §5.3 环境 ───────────────────────────────────────────────────────────
 
@@ -490,16 +538,44 @@ def key_place_heads(location):
     return heads
 
 
-def _mask_for(npc, ledger_by_name):
-    """`mask`：npc 对象上有就用对象上的；没有才用账本模板里**同名**的那一条。
+def npc_field(npc, ledger_by_name, key):
+    """`mask` / `lever` / `tell`：npc 对象上有就用对象上的；没有才用账本模板里
+    **同名**的那一条（§2.2）。
 
-    模板里的短 drive 不进这里，也不当「与典范矛盾」的对照句（§2.2）。
+    拿不到（对象与模板都没有）返回空串。模板里的短 drive **不**走这个入口，
+    也不当「与典范矛盾」的对照句。
     """
-    mask = (npc or {}).get("mask")
-    if isinstance(mask, str) and mask.strip():
-        return mask
+    value = (npc or {}).get(key)
+    if isinstance(value, str) and value.strip():
+        return value
     other = ledger_by_name.get(str((npc or {}).get("name") or "")) or {}
-    return str(other.get("mask") or "")
+    return str(other.get(key) or "")
+
+
+def _mask_for(npc, ledger_by_name):
+    """`mask`（§2.2）：对象优先，其次账本模板同名条目。"""
+    return npc_field(npc, ledger_by_name, "mask")
+
+
+def _scenario_parts(guide):
+    """已绑定剧本的常用切片（§2.2 / §5.12）：`npcs` / 同名账本 / `locations`。
+
+    没绑定或读不到 → None。只读点名的那一份，**不**扫描目录、不按中文名搜索。
+    """
+    guide = guide if isinstance(guide, dict) else {}
+    data = load_scenario(str(guide.get("scenario_id") or ""))
+    if data is None:
+        return None
+    npcs = [item for item in (data.get("npcs") or [])
+            if isinstance(item, dict)]
+    ledger = {}
+    for entry in (data.get("ledger_template") or {}).get("npcs") or []:
+        if isinstance(entry, dict):
+            ledger[str(entry.get("name") or "")] = entry
+    locations = [item for item in (data.get("locations") or [])
+                 if isinstance(item, dict)]
+    return {"data": data, "npcs": npcs, "ledger": ledger,
+            "locations": locations}
 
 
 def build_l1(scenario_id, world_key=""):
@@ -675,6 +751,40 @@ def guide_from(raw):
 # ── §6 显式绑定与焦点（G5）────────────────────────────────────────────────
 
 
+def npc_home_for(scenario_id):
+    """绑定之时按账本模板填 `npc_home`（§2.2）。**纯函数**（读盘，不访问网络）。
+
+    模板条目的 `location` 字符串**包含**某个地点 `name` 才算家；多个地点名都能
+    嵌进去时取得**最长**的那个（霍砚的「二阶白壁行」含「白壁」→ `loc-02`；
+    温苔的「五阶灰市」含「灰市」→ `loc-05`）。没有模板条目的 NPC 不入表。
+    """
+    data = load_scenario(scenario_id)
+    if data is None:
+        return {}
+    locations = [item for item in (data.get("locations") or [])
+                 if isinstance(item, dict)]
+    ledger = {}
+    for entry in (data.get("ledger_template") or {}).get("npcs") or []:
+        if isinstance(entry, dict):
+            ledger[str(entry.get("name") or "")] = entry
+    home = {}
+    for npc in data.get("npcs") or []:
+        if not isinstance(npc, dict):
+            continue
+        entry = ledger.get(str(npc.get("name") or ""))
+        if not entry:
+            continue
+        where = str(entry.get("location") or "")
+        best_id, best_name = "", ""
+        for location in locations:
+            name = str(location.get("name") or "")
+            if name and name in where and len(name) > len(best_name):
+                best_id, best_name = str(location.get("id") or ""), name
+        if best_id:
+            home[str(npc.get("id") or "")] = best_id
+    return home
+
+
 def bind(web_session, world_key, scenario_id):
     """记录**显式**的 `world_key` / `scenario_id`（§6）。失败抛 `ValueError`。
 
@@ -687,7 +797,8 @@ def bind(web_session, world_key, scenario_id):
     · 已绑定**同一对** id：幂等返回，不重掷 salt、不重画实相；
     · 已绑定**别的** id：`已经绑定`（换一场要开新存档）。
 
-    同时把 `l1_key` 置成 `scenario_id`（§7：绑定后 L1 的键就是它）。
+    同时把 `l1_key` 置成 `scenario_id`（§7：绑定后 L1 的键就是它），并按账本模板
+    填 `guide.npc_home`（G7 / §2.2：模板 `location` 含地点 `name` 才算家）。
     没绑定的会话照旧不读剧本目录，L1 仍是那句常量。
     """
     world_key = str(world_key or "").strip()
@@ -712,6 +823,9 @@ def bind(web_session, world_key, scenario_id):
         web_session.guide["world_key"] = world_key
         web_session.guide["scenario_id"] = scenario_id
         web_session.guide["l1_key"] = scenario_id
+        if not isinstance(web_session.guide.get("npc_home"), dict):
+            web_session.guide["npc_home"] = {}
+        web_session.guide["npc_home"].update(npc_home_for(scenario_id))
         web_session.save()
     return {"world_key": world_key, "scenario_id": scenario_id}
 
@@ -1113,11 +1227,44 @@ def _realization_links(realization, node, node_ids):
     return out
 
 
-def validate_realization(realization, canon):
+def incidental_id(salt, location_id, node_id, manner, taken=()):
+    """路人 id（§2.2）：`salt` + 地点 id + 所在节点 id + `manner` 的 SHA-256，
+    取前 8 位十六进制，前缀 `inc-`。碰撞就改用摘要的接下来 8 位，前缀不变。
+
+    形状恒为 `^inc-[0-9a-f]{8}$`，**不可能**等于 `npc-01`。**纯函数**。
+    """
+    base = "|".join([str(salt or ""), str(location_id or ""),
+                     str(node_id or ""), str(manner or "")])
+    digest = hashlib.sha256(base.encode("utf-8")).hexdigest()
+    taken = set(taken or ())
+    width = INCIDENTAL_SUFFIX_LEN
+    for start in range(0, len(digest) - width + 1, width):
+        candidate = INCIDENTAL_PREFIX + digest[start:start + width]
+        if candidate not in taken:
+            return candidate
+    return INCIDENTAL_PREFIX + digest[:width]
+
+
+def _incidental_dropped(manner, canon):
+    """路人的秘密门（§2.2）：`manner` 里出现 `C-` 加两位数字，或任一 NPC 秘密的
+    连续 8 字 → 丢掉这个路人。返回是否丢弃。
+    """
+    text = str(manner or "")
+    if _INCIDENTAL_CUE_RE.search(text):
+        return True
+    for secret in (canon.get("npc_secrets") or {}).values():
+        if _contains_secret(text, str(secret or "")):
+            return True
+    return False
+
+
+def validate_realization(realization, canon, salt=""):
     """把模型输出收成可落盘的实相，或判死整张图（§2.1）。**纯函数**。
 
     返回 `(可落盘的实相或 None, 原因列表)`：`失败：` 开头时第一个元素必须是 None；
     `丢弃：` 开头时该节点已从返回的实相里去掉。列表为空且实相非 None 才可以 save。
+
+    `salt` 只用于给路人编 `inc-` id（§2.2）；缺省空串时 id 仍确定且合形状。
     """
     canon = canon if isinstance(canon, dict) else {}
     if not isinstance(realization, dict):
@@ -1209,6 +1356,7 @@ def validate_realization(realization, canon):
         })
 
     people_out = []
+    taken_ids = set()
     for person in realization.get("people") or []:
         if len(people_out) >= REALIZATION_PEOPLE_LIMIT:
             break
@@ -1217,9 +1365,13 @@ def validate_realization(realization, canon):
         at = str(person.get("node") or "")
         if at not in node_ids:
             continue
-        people_out.append({"id": INCIDENTAL_PREFIX + secrets.token_hex(4),
-                           "at": at,
-                           "manner": str(person.get("manner") or ""),
+        manner = str(person.get("manner") or "")
+        if _incidental_dropped(manner, canon):
+            # 路人不能被当成线索承载者：manner 沾了线索专名或秘密就丢掉（§2.2）。
+            continue
+        person_id = incidental_id(salt, location_id, at, manner, taken_ids)
+        taken_ids.add(person_id)
+        people_out.append({"id": person_id, "at": at, "manner": manner,
                            "secret": ""})
 
     stored = {
@@ -1483,7 +1635,7 @@ def generate_realization(canon, salt="", env=None, transmit=None):
             reasons = [REALIZE_FAIL_JSON]
             continue
         try:
-            stored, why = validate_realization(payload, canon)
+            stored, why = validate_realization(payload, canon, salt=salt)
         except Exception:  # noqa: BLE001 — 脏形状按硬失败处理，不冒泡
             stored, why = None, [REALIZE_FAIL_JSON]
         if stored is not None:
@@ -1563,6 +1715,364 @@ def ensure_realization(web_session, location_id, env=None, transmit=None):
             getattr(web_session, "rules", None), web_session.guide)
         web_session.guide["transcript"] = []
         web_session.save()
+
+
+# ── §2.2 / §5.8 / §5.9 行为与对白（G7）─────────────────────────────────
+#
+# 声线、秘密门、场外痕迹、路人。产品路径只把这些函数挂在已有回合流程上
+# （`bind` 填 `npc_home`；网页层每回合调 `beats_of`，这里顺手写 `voices` /
+# `npc_at`）。秘密涂掉与场外请求的**调用点**在 `notdnd_web.py`，本切片不改它
+# （见 PR 风险节）。
+
+
+def npc_voice(npc_id):
+    """按 `npc.id` 的稳定函数分配音色（§2.2）：FNV-1a 32 位，低位为 1 则茉莉，
+    否则白桦。不读名字、不读代词、不读性别。
+
+    空 id 不由本函数处理：调用方用白桦。对照（**不是**性别表）：`npc-01` → 白桦，
+    `npc-02` → 茉莉；换一个 id 就换结果。**纯函数**。
+    """
+    text = str(npc_id or "")
+    if not text:
+        return VOICE_NARRATOR
+    value = 2166136261
+    for byte in text.encode("utf-8"):
+        value ^= byte
+        value = (value * 16777619) & 0xFFFFFFFF
+    return VOICE_ALT if (value & 1) else VOICE_NARRATOR
+
+
+def voice_for(guide, speaker_id):
+    """说话人的音色（§5.9）：已记录就用记录的；没有就按 `npc_voice` 分配并写进
+    `guide.voices`（同一存档不重算）。空 id 用白桦。**就地改 guide**。
+    """
+    speaker_id = str(speaker_id or "")
+    if not speaker_id:
+        return VOICE_NARRATOR
+    guide = guide if isinstance(guide, dict) else {}
+    voices = guide.get("voices")
+    if not isinstance(voices, dict):
+        voices = {}
+        guide["voices"] = voices
+    stored = voices.get(speaker_id)
+    if stored in VOICES:
+        return stored
+    voice = npc_voice(speaker_id)
+    voices[speaker_id] = voice
+    return voice
+
+
+def check_speech(line, speaker, *, secret_allowed):
+    """一句对白的窄门（§2.2）。通过返回 None，否则返回 `写了秘密`。
+
+    只看该 NPC 的 `secret`：`secret_allowed` 为假且 `line` 含全文、或其中连续
+    8 个码位即命中。**不**判断面具像不像，**不**判断欲望是否被反着说，
+    **不**因为出现了另一名 NPC 的 `name` 而失败，**不**调用模型。
+    """
+    if secret_allowed:
+        return None
+    secret = str((speaker or {}).get("secret") or "")
+    if not secret:
+        return None
+    return DROP_SECRET if _contains_secret(str(line or ""), secret) else None
+
+
+def secret_allowed_for(guide, npc, ledger_by_name, player_text=""):
+    """该 NPC 的秘密是否**放行**（§2.2）。满足其一即为真：
+
+    1. 本回合玩家原文里出现该 NPC 的 `lever` 整段，且 lever ≥ 4 个码位；
+    2. `guide.known_clues` 与该 NPC 的 `knows` 有交集。
+    """
+    lever = npc_field(npc, ledger_by_name, "lever")
+    if len(lever) >= LEVER_MIN and lever in str(player_text or ""):
+        return True
+    knows = {str(item) for item in (npc or {}).get("knows") or []}
+    known = {str(item) for item in (guide or {}).get("known_clues") or []}
+    return bool(knows & known)
+
+
+def _secret_hits(secret):
+    """一条秘密的全部命中片段：全文 + 每个连续 8 码位。"""
+    secret = str(secret or "")
+    if not secret:
+        return []
+    hits = [secret]
+    for index in range(0, len(secret) - SECRET_WINDOW + 1):
+        hits.append(secret[index:index + SECRET_WINDOW])
+    return hits
+
+
+def redact_secrets(text, secrets):
+    """把未放行的秘密涂成「……」（§2.2 / §5.8）。**纯函数**，不调用模型。
+
+    `secrets` 是 `(全文, allowed)` 列表。`allowed` 为假时，把全文以及其中每个
+    连续 8 码位换成「……」，**先替换较长的命中**；`allowed` 为真的一条不替换。
+    """
+    text = str(text or "")
+    hits = []
+    for secret, allowed in secrets or []:
+        if allowed:
+            continue
+        hits.extend(_secret_hits(secret))
+    for hit in sorted(set(hits), key=len, reverse=True):
+        if hit:
+            text = text.replace(hit, "……")
+    return text
+
+
+def bound_secrets(guide, player_text="", rules=None):
+    """每个已绑定 NPC 的 `(秘密全文, 是否放行)`（§2.2）。**纯函数**（读盘，不联网）。
+
+    秘密用**文件全文**，不用 L1 的 120 字截断。`rules` 目前不参与判定，保留它只是
+    让调用点不必知道判定细节。
+    """
+    parts = _scenario_parts(guide)
+    if not parts:
+        return []
+    out = []
+    for npc in parts["npcs"]:
+        secret = str(npc.get("secret") or "")
+        if not secret:
+            continue
+        allowed = secret_allowed_for(guide, npc, parts["ledger"], player_text)
+        out.append((secret, allowed))
+    return out
+
+
+def redact_narration(text, guide, player_text="", rules=None):
+    """玩家可见的整段叙事在进 L3 / `last_beats` 之前过一遍秘密门（§5.8）。
+
+    对每一个已绑定 NPC 跑一次：放行的秘密保留，未放行的涂成「……」。没有冒号和
+    引号的旁白也过这道门，所以整句旁白里的秘密片段不会进 L3。**不**第二次叫模型。
+    """
+    return redact_secrets(text, bound_secrets(guide, player_text, rules))
+
+
+def _npc_locus(guide, npc_id):
+    """NPC 当前所在地点：`npc_at` 优先，其次 `npc_home`（§2.2）。"""
+    npc_id = str(npc_id or "")
+    at = (guide or {}).get("npc_at")
+    if isinstance(at, dict) and npc_id in at:
+        return str(at.get(npc_id) or "")
+    home = (guide or {}).get("npc_home")
+    if isinstance(home, dict):
+        return str(home.get(npc_id) or "")
+    return ""
+
+
+def npcs_at(guide, location_id):
+    """在 `location_id` 的具名 NPC id 列表，按 `npc_id` 字典序（§2.2）。"""
+    guide = guide if isinstance(guide, dict) else {}
+    location_id = str(location_id or "")
+    ids = set()
+    for key in ("npc_at", "npc_home"):
+        mapping = guide.get(key)
+        if isinstance(mapping, dict):
+            ids.update(str(item) for item in mapping)
+    return sorted(npc_id for npc_id in ids
+                  if npc_id and _npc_locus(guide, npc_id) == location_id)
+
+
+def scene_speakers(guide):
+    """在场 `name → NPC id` 表（§5.9）：只有在焦点地点的具名 NPC 才入表。
+
+    未绑定 / 无焦点 → 空表（`beats_of` 因此退回「无显式说话人」，音色白桦）。
+    """
+    guide = guide if isinstance(guide, dict) else {}
+    parts = _scenario_parts(guide)
+    focus = str(guide.get("focus_location_id") or "")
+    if not parts or not focus:
+        return {}
+    out = {}
+    for npc in parts["npcs"]:
+        npc_id = str(npc.get("id") or "")
+        name = str(npc.get("name") or "")
+        if npc_id and name and _npc_locus(guide, npc_id) == focus:
+            out[name] = npc_id
+    return out
+
+
+def trace_brief(npc, ledger_by_name):
+    """一位 NPC 的场外节拍简介（§5.8）：id / 名字 / drive / mask / lever / tell。
+
+    **不含 secret 全文**——服务器用全文做检查，模型只被告知「不得说出秘密」。
+    """
+    return {
+        "id": str((npc or {}).get("id") or ""),
+        "name": str((npc or {}).get("name") or ""),
+        "drive": str((npc or {}).get("drive") or ""),
+        "mask": npc_field(npc, ledger_by_name, "mask"),
+        "lever": npc_field(npc, ledger_by_name, "lever"),
+        "tell": npc_field(npc, ledger_by_name, "tell"),
+    }
+
+
+# 场外请求的输出合同（§5.8）。合同句子只在 user 消息里，不写进 L0。
+TRACE_CONTRACT = (
+    "为下面每一位人物各写一句「场外痕迹」：玩家离开之后，顺着他们的欲望，他们做了"
+    "一件只有事后才看得见的事。不要写他们说了什么，只写留下的痕迹。\n"
+    "不得说出任何秘密。不要输出【裁决】【叙事】【钩子】。\n"
+    '只输出一个 JSON 对象，键是 id，值是一句话：{"npc-01": "…"}。'
+)
+
+
+def trace_user(briefs):
+    """场外请求的 user 消息（§5.8）：只含 id / 名字 / drive / mask / lever / tell。"""
+    lines = ["【在场人物】"]
+    for brief in briefs or []:
+        lines.append("｜".join([
+            brief["id"] + " " + brief["name"],
+            "欲望：" + brief["drive"],
+            "面具：" + brief["mask"],
+            "杠杆：" + brief["lever"],
+            "小动作：" + brief["tell"],
+        ]))
+    lines.append(TRACE_CONTRACT)
+    return "\n".join(lines)
+
+
+def build_trace_body(briefs, model=None, env=None):
+    """场外请求体（§2.2 / §5.8）：思考关、温度 0.7、512、非流式、**无工具**。
+
+    一次请求覆盖这一轮的至多 4 人。密钥不入体（调用方只放进请求头 `api-key`）。
+    """
+    env = env if env is not None else load_env()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    return {
+        "model": str(resolved),
+        "messages": [
+            {"role": "system", "content": L0},
+            {"role": "user", "content": trace_user(briefs)},
+        ],
+        "thinking": {"type": "disabled"},
+        "temperature": TRACE_TEMPERATURE,
+        "max_completion_tokens": TRACE_MAX_TOKENS,
+        "stream": False,
+    }
+
+
+def parse_trace_lines(payload):
+    """把场外回包收成 `{npc_id: 句子}`（§5.8）。畸形 / 非对象 → 空字典，**不抛**。"""
+    if not isinstance(payload, dict):
+        return {}
+    raw = payload.get("lines", payload)
+    out = {}
+    if isinstance(raw, list):
+        for item in raw:
+            if isinstance(item, dict) and str(item.get("id") or ""):
+                out[str(item.get("id"))] = str(item.get("line") or "")
+    elif isinstance(raw, dict):
+        for npc_id, line in raw.items():
+            out[str(npc_id)] = str(line or "")
+    return out
+
+
+def call_traces(briefs, model=None, env=None, transmit=None):
+    """经传输入口发一次场外请求（§5.8）。离线 / 失败返回空字典。
+
+    与叙事、TTS、实相走**同一条**可替换入口 `TRANSMIT`。
+    """
+    env = env if env is not None else load_env()
+    url = chat_url(env.get("BASE_URL"))
+    key = (env.get("API_KEY") or "").strip()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    if not url or not key or not str(resolved or "").strip():
+        return {}
+    body = build_trace_body(briefs, model=resolved, env=env)
+    got = _send_once(url, body, key, TRACE_TIMEOUT_S, transmit)
+    return parse_trace_lines(parse_realization_json(got))
+
+
+def record_traces(web_session, left_location_id, env=None, transmit=None):
+    """焦点离开 `left_location_id` 时，为该处在场的至多 4 名具名 NPC 各记一条
+    场外节拍（§2.2 / §5.8）。返回实际写入的条数。
+
+    - `npc_flags` 为 `dead` / `betrayed` 的 NPC **不叫模型**，痕迹直接用
+      `if_dead_or_betrayed` 原文，也不做秘密涂掉；
+    - 其余 NPC 合并成**一次**非流式请求；每条句子过
+      `check_speech(..., secret_allowed=False)`，命中「写了秘密」的这条不存；
+    - 失败、超时、离线 → 这一轮没有痕迹，叙事照常，**不**走兜底句、**不**重试；
+    - 一轮最多 4 条，按 `npc_id` 字典序取前 4。
+    """
+    guide = getattr(web_session, "guide", None)
+    if not isinstance(guide, dict):
+        return 0
+    left = str(left_location_id or "")
+    if not left:
+        return 0
+    parts = _scenario_parts(guide)
+    if not parts:
+        return 0
+    by_id = {str(npc.get("id") or ""): npc for npc in parts["npcs"]
+             if npc.get("id")}
+    ids = [npc_id for npc_id in npcs_at(guide, left) if npc_id in by_id]
+    ids = ids[:TRACE_LIMIT]
+    if not ids:
+        return 0
+
+    flags = guide.get("npc_flags")
+    flags = flags if isinstance(flags, dict) else {}
+    records = []
+    briefs = []
+    for npc_id in ids:
+        npc = by_id[npc_id]
+        if str(flags.get(npc_id) or "") in NPC_FLAG_FINAL:
+            text = str(npc.get("if_dead_or_betrayed") or "")
+            if text:
+                records.append((npc_id, text))
+            continue
+        briefs.append(trace_brief(npc, parts["ledger"]))
+
+    if briefs:
+        env = env if env is not None else load_env()
+        lines = call_traces(briefs, env=env, transmit=transmit)
+        for brief in briefs:
+            npc_id = brief["id"]
+            line = str(lines.get(npc_id) or "")
+            if not line:
+                continue
+            rejected = check_speech(line, by_id[npc_id], secret_allowed=False)
+            if rejected is not None:
+                stats = guide.get("stats")
+                if isinstance(stats, dict):
+                    stats["speech_rejected"] = int(
+                        stats.get("speech_rejected") or 0) + 1
+                continue
+            records.append((npc_id, line))
+
+    if not records:
+        return 0
+    with web_session.lock:
+        traces = web_session.guide.get("traces")
+        if not isinstance(traces, list):
+            traces = []
+            web_session.guide["traces"] = traces
+        for npc_id, text in records:
+            traces.append({"at": left, "id": npc_id, "text": text,
+                           "revealed": False})
+        web_session.save()
+    return len(records)
+
+
+def reveal_next_trace(guide, location_id):
+    """揭开 `at` 等于 `location_id` 的至多一条未揭开痕迹（§2.2）。
+
+    返回那句痕迹（并把它标成已揭开）；没有则返回空串。**就地改 guide**。
+    设计文档把揭开时机写在「到达新地点后的下一次叙事」；本切片只提供这个纯状态
+    操作，回合里的调用点归 `notdnd_web.py`（见 PR 风险节）。
+    """
+    guide = guide if isinstance(guide, dict) else {}
+    location_id = str(location_id or "")
+    traces = guide.get("traces")
+    if not location_id or not isinstance(traces, list):
+        return ""
+    for entry in traces:
+        if not isinstance(entry, dict) or entry.get("revealed"):
+            continue
+        if str(entry.get("at") or "") == location_id:
+            entry["revealed"] = True
+            return str(entry.get("text") or "")
+    return ""
 
 
 # ── §10 可观测性 ────────────────────────────────────────────────────────
@@ -1894,11 +2404,14 @@ def split_beats(text, *, speakers=None, voices=None, limit=MAX_BEATS):
 def beats_of(narration, guide=None):
     """从玩家可见的整段叙事里切出这一回合的节拍（§5.9）。
 
-    `guide` 只用来取 `voices`（G3 里恒为空）与 `npc_at` / 剧本名字表
-    （G5 起才有）。**裁决那一行不朗读**：`【裁决】` 是服务端按掷骰重写的
-    机械句，这里只切「正文 + 钩子」——与 §5.8 对「玩家将要看到的整段
-    （正文和钩子）」的划法一致。
+    `guide` 用来取 `voices`、`npc_at` / `npc_home` 与剧本名字表。G7 起：在场名字
+    命中焦点地点时，对白拍写上 `speaker` 与音色（`guide.voices` 没有就按
+    `npc_voice` 分配并写入），并把说过话的具名 NPC 写进 `guide.npc_at`。
+    `【裁决】` 那一行不朗读：它是服务端按掷骰重写的机械句，这里只切「正文 + 钩子」
+    ——与 §5.8 对「玩家将要看到的整段（正文和钩子）」的划法一致。
+    **就地改 guide**（`voices` / `npc_at`）。
     """
+    guide = guide if isinstance(guide, dict) else {}
     parts = sections(narration)
     body = parts["narration"].strip()
     hook = parts["hook"].strip()
@@ -1906,8 +2419,27 @@ def beats_of(narration, guide=None):
     if not spoken:
         # 模型没照三段格式写（`sections` 把整段当正文）时的兜底路径。
         spoken = str(narration or "").strip()
-    voices = (guide or {}).get("voices") if isinstance(guide, dict) else None
-    return split_beats(spoken, voices=voices)
+    speakers = scene_speakers(guide)
+    if speakers:
+        # 只为真的出现在正文里的说话人分配音色（不在场的不写）。
+        for match in _BEAT_DIALOGUE_RE.finditer(spoken):
+            npc_id = speakers.get(match.group(1))
+            if npc_id:
+                voice_for(guide, npc_id)
+    voices = guide.get("voices")
+    voices = voices if isinstance(voices, dict) else {}
+    beats = split_beats(spoken, speakers=speakers, voices=voices)
+    focus = str(guide.get("focus_location_id") or "")
+    if focus and speakers:
+        npc_at = guide.get("npc_at")
+        if not isinstance(npc_at, dict):
+            npc_at = {}
+            guide["npc_at"] = npc_at
+        for beat in beats:
+            npc_id = str(beat.get("speaker") or "")
+            if npc_id and not npc_id.startswith(INCIDENTAL_PREFIX):
+                npc_at[npc_id] = focus
+    return beats
 
 
 # ── TTS 请求体与调用（§5.9）──────────────────────────────────────────────

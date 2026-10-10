@@ -60,6 +60,22 @@ G6 覆盖（实相）：
   不请求也不写 fallback；过期 `pending` 可再占一次；两次重叠只有一次上游；提交后
   重写 L2（salt + 听泉馆）并清空 L3；两次尝试**共用** `REALIZATION_TIMEOUT_S`
   （第二次只用剩余预算，第一次吃满就不再发第二次）。
+
+G7 覆盖（行为与对白）：
+
+- `npc_voice`：FNV-1a，`npc-01` 白桦 / `npc-02` 茉莉；同一存档 `guide.voices` 稳定；
+- `check_speech`：只查自己的 `secret`（全文或连续 8 码位）；点出另一名典范 NPC
+  的名字不算失败；不判断面具 / 欲望；
+- `redact_narration` / `redact_secrets`：整段旁白里的秘密换成「……」，秘密用文件
+  全文；`lever` 在玩家原文里、或 `known_clues ∩ knows` 时放行；**不**调用传输；
+- `bind` 填 `npc_home`（模板 `location` 含地点 `name` 才算家）；`npcs_at` /
+  `scene_speakers` 只认在场 NPC；
+- `record_traces`：`betrayed` 用 `if_dead_or_betrayed` 原文且不叫模型；其余一次
+  非流式请求、思考关、0.7、512、无工具；句子命中秘密就丢掉；离线 / 失败不留痕迹；
+- `beats_of`：对白拍写 `speaker` 与按 `npc.id` 分配的声线，并把说过话的 NPC 写进
+  `npc_at`；音色取自那一拍；
+- 路人 id `^inc-[0-9a-f]{8}$`、确定、不等于 `npc-01`；manner 沾 `C-` 线索或秘密
+  的路人丢掉；`reveal_next_trace` 每次至多揭开一条。
 """
 
 import base64
@@ -1935,6 +1951,306 @@ def test_realization_commit_rewrites_l2():
 
 
 
+# ── G7：行为与对白（声线 / 秘密门 / 场外痕迹 / 路人）─────────────────────
+
+
+_G7_ENV = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+           "API_KEY": "kk"}
+
+
+def _bound_guide(scenario="yunji", world="yunji", focus="loc-02"):
+    """一份已绑定 `yunji` 的 web_session 替身（`bind` 顺带填了 `npc_home`）。"""
+    web = _BindWeb()
+    pg.bind(web, world, scenario)
+    web.guide["focus_location_id"] = focus
+    return web
+
+
+def _npc(scenario_id, npc_id):
+    for item in (pg.load_scenario(scenario_id) or {}).get("npcs") or []:
+        if isinstance(item, dict) and str(item.get("id") or "") == npc_id:
+            return item
+    raise AssertionError("找不到 %s 里的 %s" % (scenario_id, npc_id))
+
+
+def test_g7_npc_voice_stable():
+    """`npc_voice`：FNV-1a，`npc-01` 白桦 / `npc-02` 茉莉；同一存档声线稳定。"""
+    assert pg.npc_voice("npc-01") == pg.VOICE_NARRATOR == "白桦"
+    assert pg.npc_voice("npc-02") == pg.VOICE_ALT == "茉莉"
+    # 空 id 由调用方用白桦（函数本身也不炸）。
+    assert pg.npc_voice("") == pg.VOICE_NARRATOR
+    # 对照不是性别表：整本剧本的 npc id 两种音色都有。
+    voices = {pg.npc_voice("npc-%02d" % i) for i in range(1, 20)}
+    assert voices == {"白桦", "茉莉"}, voices
+    # 同一存档两次调用：第二次从 guide.voices 读回，值不变。
+    guide = pg.empty_guide()
+    assert pg.voice_for(guide, "npc-01") == "白桦"
+    assert guide["voices"]["npc-01"] == "白桦"
+    assert pg.voice_for(guide, "npc-01") == "白桦"
+    assert guide["voices"]["npc-01"] == "白桦"
+    assert "npc-01" not in guide["voices"] or guide["voices"]["npc-01"] == "白桦"
+    ok("npc_voice：npc-01 白桦 / npc-02 茉莉；同一存档声线稳定")
+
+
+def test_g7_check_speech_only_secrets():
+    """`check_speech`：只查自己的秘密；点别人的名字 / 复述欲望都不算失败。"""
+    huo = _npc("yunji", "npc-01")
+    wen = _npc("yunji", "npc-02")
+    # 温苔说出「霍砚」——另一名典范 NPC 的名字，原句留下。
+    assert pg.check_speech("霍砚把钥匙收进袖子。", wen,
+                           secret_allowed=False) is None
+    assert pg.check_speech("霍砚说他是守钥人计霜的儿子。", wen,
+                           secret_allowed=False) is None
+    # 说出**自己的**秘密：全文或连续 8 码位都命中「写了秘密」。
+    assert pg.check_speech(huo["secret"], huo,
+                           secret_allowed=False) == pg.DROP_SECRET
+    assert pg.check_speech("我是守钥人计霜的儿子。", huo,
+                           secret_allowed=False) == pg.DROP_SECRET
+    # 放行时不失败。
+    assert pg.check_speech(huo["secret"], huo, secret_allowed=True) is None
+    # 不判断面具像不像、欲望是否被反着说。
+    assert pg.check_speech(wen["drive"], wen, secret_allowed=False) is None
+    assert pg.check_speech("", huo, secret_allowed=False) is None
+    ok("check_speech：只查自己的秘密，点别人的名字不算失败")
+
+
+def test_g7_redact_narration_no_second_request():
+    """叙事正文里的秘密换成「……」，L3 干净；**不**第二次调用传输。"""
+    web = _bound_guide()
+    guide = web.guide
+    huo = _npc("yunji", "npc-01")
+    secret = huo["secret"]
+    window = secret[:pg.SECRET_WINDOW]
+    assert window == "他是守钥人计霜的"
+    raw = ("【裁决】判定：成功\n\n"
+           "【叙事】霍砚低声说他是守钥人计霜的儿子。\n\n"
+           "【钩子】泉声还在响。")
+    # 玩家原文没有 lever，也没有 known_clues → 秘密不放行。
+    saved = pg.TRANSMIT
+
+    def boom(*_args, **_kwargs):
+        raise AssertionError("redact 不得调用传输")
+
+    pg.TRANSMIT = boom
+    try:
+        redacted = pg.redact_narration(raw, guide, player_text="我走进白壁")
+        # 玩家原文含 lever 整段 → 放行，原句保留。
+        lever = pg.npc_field(huo, pg._scenario_parts(guide)["ledger"], "lever")
+        assert lever == "他是计霜的儿子"
+        kept = pg.redact_narration(raw, guide,
+                                   player_text="我说：他是计霜的儿子")
+    finally:
+        pg.TRANSMIT = saved
+
+    assert "他是守钥人计霜的儿子" not in redacted
+    assert window not in redacted
+    assert "……" in redacted
+    assert secret not in redacted
+    assert "他是守钥人计霜的儿子" in kept, "放行的秘密要原样留下"
+    # 模拟网页层把涂掉之后的整段写进 L3：既没有 8 码位，也没有全文。
+    guide["transcript"].append({"role": "assistant", "content": redacted})
+    joined = "".join(entry["content"] for entry in guide["transcript"])
+    assert window not in joined and secret not in joined
+
+    # `known_clues` 与 `knows` 相交同样放行。
+    web2 = _bound_guide()
+    web2.guide["known_clues"] = ["C-01"]      # 霍砚 knows C-01 / C-04 / C-09
+    assert "他是守钥人计霜的儿子" in pg.redact_narration(raw, web2.guide)
+    ok("redact_narration：秘密换成「……」；lever / known_clues 放行；不叫传输")
+
+
+def test_g7_npc_home_and_scene_speakers():
+    """`bind` 填 `npc_home`；`npcs_at` / `scene_speakers` 只认在场 NPC。"""
+    web = _bound_guide()
+    home = web.guide["npc_home"]
+    assert home.get("npc-01") == "loc-02", home   # 「二阶白壁行」含「白壁」
+    assert home.get("npc-02") == "loc-05", home   # 「五阶灰市」含「灰市」
+    # 没有模板条目的 NPC（或模板 location 不含任何地点名）不入表。
+    assert "npc-16" not in home
+    assert pg.npcs_at(web.guide, "loc-02") == ["npc-01"]
+    assert pg.npcs_at(web.guide, "loc-05") == ["npc-02"]
+    web.guide["focus_location_id"] = "loc-02"
+    assert pg.scene_speakers(web.guide) == {"霍砚": "npc-01"}
+    web.guide["focus_location_id"] = "loc-05"
+    assert pg.scene_speakers(web.guide) == {"温苔": "npc-02"}
+    # 未绑定 / 无焦点 → 空表。
+    assert pg.scene_speakers(pg.empty_guide()) == {}
+    assert pg.scene_speakers({"scenario_id": "yunji",
+                              "focus_location_id": ""}) == {}
+    ok("npc_home / scene_speakers：按模板 location 认家，只认在场")
+
+
+def test_g7_traces_betrayed_uses_canonical_text():
+    """`betrayed` 时痕迹等于 `if_dead_or_betrayed` 原文，且**没有**场外模型请求。"""
+    web = _bound_guide()
+    huo = _npc("yunji", "npc-01")
+    web.guide["npc_flags"] = {"npc-01": "betrayed"}
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append(payload)
+        return {"content": "{}", "tool_calls": [], "usage": {}}
+
+    count = pg.record_traces(web, "loc-02", env=_G7_ENV, transmit=fake)
+    assert count == 1, count
+    assert calls == [], "终局标志的 NPC 不得叫模型"
+    trace = web.guide["traces"][-1]
+    assert trace["text"] == huo["if_dead_or_betrayed"]
+    assert trace["id"] == "npc-01" and trace["at"] == "loc-02"
+    assert trace["revealed"] is False
+    ok("record_traces：betrayed 用 if_dead_or_betrayed 原文，不叫模型")
+
+
+def test_g7_traces_request_shape_and_secret_gate():
+    """场外请求：一次非流式、思考关、0.7、512、无工具；命中秘密的句子丢掉。"""
+    web = _bound_guide()
+    huo = _npc("yunji", "npc-01")
+    calls = []
+
+    def fake(url, payload, headers, *, timeout):
+        calls.append({"url": url, "payload": payload, "headers": headers,
+                      "timeout": timeout})
+        return {"content": json.dumps({"npc-01": "他把一枚旧钥匙放进茶柜。"},
+                                      ensure_ascii=False),
+                "tool_calls": [], "usage": {}}
+
+    count = pg.record_traces(web, "loc-02", env=_G7_ENV, transmit=fake)
+    assert count == 1 and len(calls) == 1, (count, len(calls))
+    body = calls[0]["payload"]
+    assert body["thinking"] == {"type": "disabled"}
+    assert body["stream"] is False and "tools" not in body
+    assert body["temperature"] == pg.TRACE_TEMPERATURE == 0.7
+    assert body["max_completion_tokens"] == pg.TRACE_MAX_TOKENS == 512
+    assert calls[0]["timeout"] == pg.TRACE_TIMEOUT_S
+    assert calls[0]["headers"] == {pg.KEY_HEADER: "kk"}
+    user = body["messages"][1]["content"]
+    assert body["messages"][0] == {"role": "system", "content": pg.L0}
+    assert "不得说出任何秘密" in user
+    # 秘密全文**不进** user 消息（模型只被告知「不得说出秘密」）。
+    assert huo["secret"] not in user
+    assert pg.load_scenario("yunji")["npcs"][0]["secret"] not in user
+
+    # 模型把秘密说漏 → 这条痕迹不存，且统计 speech_rejected +1。
+    web2 = _bound_guide()
+
+    def leak(url, payload, headers, *, timeout):
+        return {"content": json.dumps({"npc-01": huo["secret"]},
+                                      ensure_ascii=False),
+                "tool_calls": [], "usage": {}}
+
+    assert pg.record_traces(web2, "loc-02", env=_G7_ENV,
+                            transmit=leak) == 0
+    assert web2.guide["traces"] == []
+    assert web2.guide["stats"]["speech_rejected"] == 1
+    ok("record_traces：请求形状正确；说漏秘密的痕迹不存")
+
+
+def test_g7_traces_offline_and_empty():
+    """离线 / 不在场 / 失败：这一轮没有痕迹，也不走兜底句。"""
+    web = _bound_guide()
+    calls = []
+    count = pg.record_traces(
+        web, "loc-02",
+        env={"BASE_URL": "", "MODEL": "mm", "API_KEY": "kk"},
+        transmit=lambda *a, **k: calls.append(1) or {})
+    assert count == 0 and calls == [] and web.guide["traces"] == []
+    # 没人在场的地点：直接 0，连请求都没有。
+    assert pg.record_traces(web, "loc-11", env=_G7_ENV,
+                            transmit=lambda *a, **k: calls.append(1) or {}) == 0
+    assert calls == []
+    # 未绑定 → 0。
+    assert pg.record_traces(_BindWeb(), "loc-02", env=_G7_ENV,
+                            transmit=lambda *a, **k: calls.append(1) or {}) == 0
+    ok("record_traces：离线 / 不在场 / 未绑定都不留痕迹")
+
+
+def test_g7_beats_of_assigns_voice():
+    """`beats_of`：对白拍写 `speaker` 与按 `npc.id` 分配的声线；写 `npc_at`。
+
+    音色取自那一拍（`speak` 只用拍上存的音色，忽略客户端字段）。
+    """
+    web = _bound_guide(focus="loc-02")
+    guide = web.guide
+    reviewed = ("【裁决】判定：成功\n\n"
+                "【叙事】风从巷口灌进来。霍砚：「别出声。」\n\n"
+                "【钩子】泉声还在响。")
+    beats = pg.beats_of(reviewed, guide)
+    dialogue = [beat for beat in beats if beat["speaker"]]
+    assert len(dialogue) == 1, beats
+    assert dialogue[0]["speaker"] == "npc-01"
+    assert dialogue[0]["voice"] == pg.npc_voice("npc-01") == "白桦"
+    assert guide["voices"]["npc-01"] == "白桦"
+    assert guide["npc_at"]["npc-01"] == "loc-02"
+    # 说过话之后，同一存档再切一次音色不变（从 guide.voices 读回）。
+    assert pg.beats_of(reviewed, guide)[1]["voice"] == "白桦"
+    assert guide["voices"]["npc-01"] == "白桦"
+
+    # 温苔：npc-02 → 茉莉。旁白仍是白桦。
+    web2 = _bound_guide(focus="loc-05")
+    beats2 = pg.beats_of("【叙事】温苔：「灯还亮着。」", web2.guide)
+    assert beats2[0]["speaker"] == "npc-02"
+    assert beats2[0]["voice"] == "茉莉"
+    # TTS 用**拍上**的音色（不是客户端字段）。
+    assert pg.build_tts_body(beats2[0]["text"],
+                             voice=beats2[0]["voice"])["voice"] == "茉莉"
+    # 不在场的名字不切出说话人（空 guide / 未绑定仍是白桦）。
+    assert pg.beats_of("【叙事】温苔：「灯还亮着。」",
+                       pg.empty_guide())[0]["speaker"] == ""
+    ok("beats_of：对白拍按 npc.id 分配声线并写 npc_at，音色取自那一拍")
+
+
+def test_g7_incidental_id_shape_and_drop():
+    """路人 id `^inc-[0-9a-f]{8}$`、确定、不等于 `npc-01`；沾线索 / 秘密的丢掉。"""
+    salt = "0123456789abcdef0123456789abcdef"
+    pid = pg.incidental_id(salt, "loc-02", "loc-02/wash-lane", "倚着墙吃饼")
+    assert re.fullmatch(r"^inc-[0-9a-f]{8}$", pid), pid
+    assert pid != "npc-01"
+    assert pg.incidental_id(salt, "loc-02", "loc-02/wash-lane",
+                            "倚着墙吃饼") == pid, "同输入必须同 id"
+    other = pg.incidental_id(salt, "loc-02", "loc-02/wash-lane", "数铜钱")
+    assert other != pid and re.fullmatch(r"^inc-[0-9a-f]{8}$", other)
+
+    canon = _canon("loc-02")
+    good = _payload("loc-02", "白壁", _wall_key_nodes() + [_wall_street()],
+                    people=[{"node": "loc-02/wash-lane", "manner": "倚着墙吃饼"}])
+    stored, _why = pg.validate_realization(good, canon, salt=salt)
+    assert stored is not None
+    assert len(stored["people"]) == 1
+    assert re.fullmatch(r"^inc-[0-9a-f]{8}$", stored["people"][0]["id"])
+    assert stored["people"][0]["secret"] == ""
+    assert stored["people"][0]["id"] != "npc-01"
+
+    # manner 里出现 `C-` 加两位数字 → 这个路人丢掉。
+    cue = _payload("loc-02", "白壁", _wall_key_nodes() + [_wall_street()],
+                   people=[{"node": "loc-02/wash-lane",
+                            "manner": "他四处打听 C-01 的下落"}])
+    dropped, _ = pg.validate_realization(cue, canon, salt=salt)
+    assert dropped is not None and dropped["people"] == []
+    # manner 含任一 NPC 秘密的连续 8 字 → 丢掉。
+    secret_manner = _payload(
+        "loc-02", "白壁", _wall_key_nodes() + [_wall_street()],
+        people=[{"node": "loc-02/wash-lane",
+                 "manner": canon["npc_secrets"]["npc-01"][:pg.SECRET_WINDOW]}])
+    dropped2, _ = pg.validate_realization(secret_manner, canon, salt=salt)
+    assert dropped2 is not None and dropped2["people"] == []
+    ok("incidental id：^inc-[0-9a-f]{8}$ / 确定；沾线索或秘密的路人丢掉")
+
+
+def test_g7_reveal_next_trace():
+    """`reveal_next_trace`：每次至多揭开一条 `at` 等于该地点的未揭开痕迹。"""
+    guide = pg.empty_guide()
+    guide["traces"] = [
+        {"at": "loc-02", "id": "npc-01", "text": "第一句", "revealed": False},
+        {"at": "loc-02", "id": "npc-16", "text": "第二句", "revealed": False},
+    ]
+    assert pg.reveal_next_trace(guide, "loc-05") == ""
+    assert pg.reveal_next_trace(guide, "loc-02") == "第一句"
+    assert pg.reveal_next_trace(guide, "loc-02") == "第二句"
+    assert pg.reveal_next_trace(guide, "loc-02") == ""
+    assert pg.reveal_next_trace(pg.empty_guide(), "loc-02") == ""
+    ok("reveal_next_trace：每次至多揭开一条，同地点按顺序")
+
+
 def test_env_example():
     text = (ROOT / ".env.example").read_text(encoding="utf-8")
     assert "NOTDND_HOST" in text and "NOTDND_PORT" in text
@@ -2006,6 +2322,16 @@ def main():
     test_realization_pending_and_dedup()
     test_realization_overlap_single_upstream()
     test_realization_commit_rewrites_l2()
+    test_g7_npc_voice_stable()
+    test_g7_check_speech_only_secrets()
+    test_g7_redact_narration_no_second_request()
+    test_g7_npc_home_and_scene_speakers()
+    test_g7_traces_betrayed_uses_canonical_text()
+    test_g7_traces_request_shape_and_secret_gate()
+    test_g7_traces_offline_and_empty()
+    test_g7_beats_of_assigns_voice()
+    test_g7_incidental_id_shape_and_drop()
+    test_g7_reveal_next_trace()
     test_module_offline_no_socket()
     test_env_example()
     print()
