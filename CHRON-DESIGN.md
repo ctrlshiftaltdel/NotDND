@@ -7,8 +7,8 @@
 > 仓库实况（`master @ fa5366c`，2026-10-10）。
 > 读者：Master Agent。审过之后按文末「实现切片建议」拆成 Issue，再指派 Execution Agent。
 > 预定落点：仓库根 `CHRON-DESIGN.md`（新建）。
-> **依赖（未定稿）**：持久化契约跟随 `STATE-DESIGN.md`（Issue #136，**尚未实现**）。
-> 第 8 节对存储接口**先标假设**；待 `STATE-DESIGN.md` 审过再对齐定稿（基线 §7.3）。
+> **依赖（已对齐，2026-10-10）**：持久化契约跟随 `STATE-DESIGN.md`（#136，§6 / §9 / §11 / §12）；
+> 排程钩子与 `ACTION-DESIGN.md`（#137）§8.2 已写清两层映射（§4.3）。第 8 节的存储接口假设已按 STATE 定稿逐条核对。
 
 本文不是规则正文，不替代 `docs/`。规则真相仍在 `prism_core.py`；空间归 ATLAS；
 **世界事实的唯一提交出口是权威状态层（`state.py`）**——CHRON 只安排什么时候发生，
@@ -205,6 +205,19 @@ watch = watch_of(tod)                # 由 WATCH_SPANS 的边界判定（不是�
 `watch_of(tod)` 必须按 `WATCH_SPANS` 的**实际边界**判定（05:00 / 09:00 / 17:00 / 21:00），
 **不能用 `tod % 360` 之类整除**——因为四段不等长。
 
+**事件封套的 `world_time`（形状由 CHRON 定义，唯一写法）**：`STATE-DESIGN.md` §5.1 把 `world_time`
+定为**不透明字段**、状态层只搬运不改写（§12.3）；其**规范形状由本文钉死**，CHRON **在提交时传入**：
+
+```json
+{ "world_minute": 17310, "day": 12, "tod": 30 }
+```
+
+- `world_minute`：**权威值**（§3.1 的整数分钟，≥ 0）。
+- `day` / `tod`：**派生只读**（§3.1 的公式现算），仅为人类可读与审计便利；**任何判断只认 `world_minute`**。
+- 创世 / 尚未接入 CHRON 时 `world_time` 允许 `null`（`STATE-DESIGN.md` §5.1 / S8）。
+- 该对象是**提交入参**（`state.Handle.commit(..., world_time=…)`），不是 CHRON 的存档块字段；CHRON 存档块只存
+  `world_minute`（§8.1）。
+
 ### 3.2 单调性、唯一来源、客户端不可信
 
 - 世界时间**只增不减**；任何「回拨」都是 bug（压缩是「向前推」，不是「回退」）。
@@ -251,7 +264,7 @@ Action {
   depends_on:    [action_id]# 依赖：这些行动完成前不得开始
   blocks:        [action_id]# 反向索引（由 depends_on 生成，冗余便于查询）
   interrupt_conditions: []  # 中断条件（见 5.4）
-  idem_key:      str        # 幂等键（见 9）
+  idempotency_key: str      # 幂等键（见 8.3；提交时传给状态层的 idempotency_key）
   events:        [event_id] # 该行动产出的可追溯事件（GDD §6.4 每次转换都产事件）
 }
 ```
@@ -294,27 +307,45 @@ GDD §6.4 的八个状态：
   **不需要** `scheduled`/`blocked`/`interrupted`；M9 在同一份契约上补齐异步路径——
   两次实现**不改状态词表**，只增加可达转换。
 
-### 4.3 与 M8 排程钩子的对接
+### 4.3 与 M8 排程钩子的对接（**两层**：管线钩子 ↔ 调度器入口）
 
-基线 §5 与 §7.2 要求 `ACTION-DESIGN.md` **预留排程钩子**，M9 不需改动契约即可接入。CHRON 需要的输入：
+基线 §5 与 §7.2 要求 `ACTION-DESIGN.md` **预留排程钩子**，M9 不需改动契约即可接入。
+**已与 `ACTION-DESIGN.md` §8.2 对齐，写清为两层**（不是一层，签名不合并）：
+
+- **L1 · 管线钩子（`ScheduleHook`，`ACTION-DESIGN.md` §8.2 定义）**：结算管线在状态层提交**之前**调用的鸭子类型对象；管线不 import `chron`。CHRON 用**适配器**实现它。
+- **L2 · 调度器公开入口（本文定义，`chron.py`）**：由游戏循环 / 网页层 / M10 驱动，**不由结算管线直接调用**。
+
+**CHRON 需要的输入（L1 经提案透传）**：
 
 ```
-# M8 侧写（提案里带的字段）
+# M8 侧写（提案里带的字段，ACTION-DESIGN §4.2 / §8.2）
 "time_cost": {"value": int, "unit": "minute"}     # GDD §8.4
-"schedule_hint": {                                 # 可选
+"schedule_hint": {                                 # 可选；ACTION-DESIGN §4.2 新增
     "can_defer": bool,        # 是否允许异步（长行动）
     "depends_on": [action_id],
     "priority": int
 }
 ```
 
+**L2 公开入口（M9 实现的签名；`chron.py`）**：
+
 ```
-# CHRON 侧给（M9 实现的公开入口；签名先钉住）
 schedule(action) -> action_id          # 建任务，安排 start/due
 advance_to(world_minute) -> [event]    # 推进到某分钟，返回途中触发的到期事件
 next_barrier(from_minute) -> int|None  # 下一个屏障分钟（第 6 节）
 cancel(action_id, at_minute) -> event
 ```
+
+**L1 ↔ L2 映射（M9 的适配器按此实现，不改 `ACTION-DESIGN.md` 的契约）**：
+
+| L1（`ScheduleHook`，ACTION §8.2） | L2（本文 §4.3） | 映射规则 |
+|---|---|---|
+| `enqueue(proposal, draft, *, base_seq)` | `schedule(action) -> action_id` | 适配器用 `proposal` + `draft` 构造 `Action`（`time_cost` 折成整数分钟，`schedule_hint` 透传），调 `schedule`；返回 `mode="async"`、`task_id=action_id`、`start_at=Action.start_minute`、`expected_end_at=Action.due_minute` |
+| `enqueue(...)`（`can_defer == False`） | —（不进队列） | 返回 `mode="sync"`，**不**调 `schedule` |
+| `cancel(task_id)` | `cancel(action_id, at_minute) -> event` | `task_id` 即 `action_id` |
+| —（L1 不暴露） | `advance_to` / `next_barrier` | 由游戏循环 / 网页层 / M10 驱动，**不挂 `ScheduleHook`** |
+
+**字段名对齐（两文档一致）**：`time_cost = {"value","unit"}`、`schedule_hint.can_defer` / `depends_on` / `priority`、`barrier`（ACTION §8.2 返回 ↔ 本文 §6.2 屏障）、`resume_token`（ACTION 保留；CHRON 当前不消费，中断重排见 §4.4）。**`base_seq` 为提交入参**（`STATE-DESIGN.md` §12.1），不在本映射内。
 
 **关键约定**：`can_defer = False` 的行动走 M8 的**同步结算**（不进调度队列）；
 `can_defer = True` 或带 `interrupt_conditions` 的行动才进 CHRON。默认 `can_defer = False`，
@@ -490,39 +521,43 @@ advance_to(target_minute):
 
 ---
 
-## 8. 持久化与恢复（**跟随 `STATE-DESIGN.md`，先标假设**）
+## 8. 持久化与恢复（**已按 `STATE-DESIGN.md` 对齐，2026-10-10**）
 
-> ⚠️ **本节为草案**。`STATE-DESIGN.md`（Issue #136）尚未定稿，本节的存储接口部分**是假设**，
-> 待其审过后对齐（基线 §7.3）。CHRON 的**语义**不依赖具体存储实现，只有**接线**依赖。
+> ✅ **本节已对齐** `STATE-DESIGN.md`（#136）§6 / §9 / §11 / §12：`chron` 块是状态层快照里的
+> **不透明块**（`blocks.chron`，STATE §6.1 / §11），存储接口按 STATE §12.1 定稿核对；`seq` / 重放 / `.bak`
+> 口径均以 STATE 为准（逐条见下）。CHRON 的**语义**不依赖具体存储实现，只有**接线**依赖。
 
-### 8.1 `chron` 存档块（草案）
+### 8.1 `chron` 存档块（已对齐）
 
-与 `scene` / `atlas` / `guide` **平级**，加进会话快照（形状见 ATLAS-DESIGN §3.4、`notdnd_web.py`
-`_SESSION_DEFAULTS` 的「新增字段须给默认值 + 惰性迁移」约定）：
+`chron` 是**状态层快照里的一块不透明块**：落在 `snapshot.json` 的 `blocks.chron`（`STATE-DESIGN.md`
+§6.1 / §11），与 `rules` / `atlas` / `guide` **同为 `blocks` 内层块**，**state.py 原样存取、不解析**（STATE S4 / S8）。
+CHRON 仍按 `notdnd_web.py` `_SESSION_DEFAULTS` 的「新增字段须给默认值 + 惰性迁移」约定惰性补默认（STATE §10.1）。
 
 ```
 chron: {
   version: 1,
-  world_minute: int,          # 权威世界时间
-  seq: int,                   # 已提交事件序号（跟状态层对齐）
+  world_minute: int,          # 权威世界时间（§3.1）
+  seq: int,                   # = snapshot 顶层 seq（STATE §6.1，状态层已折入的最大事件序号）；恢复以状态层为准
   actions: { action_id: Action },   # 见 4.1（终态行动可裁剪，见 8.4）
   windows: [ Window ],
-  idem: { idem_key: committed_seq },  # 已提交的幂等键（防重放）
+  idempotency: { idempotency_key: committed_seq },  # 已提交的幂等键（同名口径见 STATE §7；防重放）
   # due_heap 不落盘：加载时由 actions 重建（5.1）
 }
 ```
 
-**假设**（待 `STATE-DESIGN.md` 确认）：
-- 存在「**追加事件（带幂等键）+ 原子提交**」的接口；
-- 存在「**按序号范围读事件**」的接口（供重放）；
-- 存在**快照**与**版本 / CAS**（GDD §19.3）。
+**接口（已对齐 `STATE-DESIGN.md` §12.1 的具体形态，不再「假设」）**：
+- **提交**：`state.Handle.commit(*, base_seq, idempotency_key, …, world_time=…) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`（STATE §12.1 / §8.1）。
+- **重放**：`state.Handle.replay(upto_seq=None)`（STATE §12.1）按 `seq` 折入事件（STATE §6.2 / §9），CHRON 从中取 `blocks.chron` 重建队列（STATE §12.3）。
+- **按序号范围读事件**：事件日志可读 `seq > since` 的区间（STATE §12.4「snapshot + 事件尾部」；只读增量接口见 STATE §16 M7-4 的 `GET /api/events?since=<seq>`）。
+- **版本 / 校验**：快照带 `schema_version` / `checksum`（STATE §6.1）；读到**更高**版本**拒载**（STATE S6）。
 
-### 8.2 重启恢复时序
+### 8.2 重启恢复时序（已对齐 STATE §9）
 
 ```
-1. 载入会话快照 → 取 chron 块（缺 → 老档惰性补默认：world_minute 从 scene 推或 0）
-2. 校验 world_minute ≤ 最后一条已提交事件的世界时间（否则拒绝载入并备份）
-3. 从快照 seq 重放事件到日志头 → 重建 actions / windows / idem
+1. state.open / 载入快照 → 取 blocks.chron（缺 → 惰性补默认 world_minute = 0；STATE §5.1 允许 world_time = null）
+   快照校验按 STATE §9：snapshot.json 校验不过 → 退 snapshot.json.bak → 都失败退创世并记 state_corrupt
+2. 校验 world_minute ≤ 最后一条已提交事件的 world_time.world_minute（否则拒载并备份；§3.2 单调性）
+3. 用 Handle.replay() 按 seq > snapshot.seq 折入事件（STATE §6.2 / §9）→ 重建 actions / windows / idempotency
 4. 由 actions 重建 due_heap（按 5.2 排序键）
 5. 从 world_minute 继续 advance_to()
 ```
@@ -530,17 +565,17 @@ chron: {
 ### 8.3 幂等到期事件（GDD §6.9 / §24.1）
 
 - 每张行动卡与每个到期事件有**唯一 ID**。
-- 触发一个到期点时生成事件，幂等键：
-  `idem_key = f"{action_id}:{due_minute}:{kind}"`（确定性，重放得同键）。
-- 收到已存在的 `idem_key` → **no-op**，不重复扣费 / 发奖 / 伤害（GDD §6.9、§24.1）。
-- `idem` 表随快照落盘；长期可由事件日志重建并裁剪。
+- 触发一个到期点时生成事件，幂等键（**即提交时传给状态层的 `idempotency_key`**，`STATE-DESIGN.md` §7 / §12.1）：
+  `idempotency_key = f"{action_id}:{due_minute}:{kind}"`（确定性，重放得同键）。
+- 收到已存在的 `idempotency_key` → **no-op**，不重复扣费 / 发奖 / 伤害（GDD §6.9、§24.1）。
+- `idempotency` 表随 `blocks.chron` 落盘；长期可由事件日志重建并裁剪。
 
 ### 8.4 迁移与兼容（基线 §6 第 6 条、GDD §19.4）
 
-- 加字段一律**只补不覆盖**（沿用 `_SESSION_DEFAULTS` 的惰性迁移）。
-- `version` 递增时提供迁移函数；不可逆迁移**先备份**。
-- 裁剪规则：终态（`completed`/`failed`/`cancelled`）行动超过 N 天后折叠为事件引用，
-  编号方案待 `STATE-DESIGN.md` 定（§19.1 的 `Saves / Snapshots` 语义）。
+- 加字段一律**只补不覆盖**（沿用 `_SESSION_DEFAULTS` 的惰性迁移，STATE §10.1）。
+- `version` 递增时提供迁移函数；不可逆迁移**先备份**（口径同 STATE §4.1 / §6.3 / §10.2：检查点用 `snapshot.json.bak`，迁移用 `snapshot.json.pre-v0.bak`）。
+- 裁剪规则：终态（`completed`/`failed`/`cancelled`）行动超过 N 天后折叠为事件引用；
+  事件日志的归档编号见 STATE §4.1（`events.<n>.ndjson` + `archived_upto`；归档不删事实）。
 
 ---
 
@@ -556,7 +591,7 @@ GDD §24.2 的关键案例：**长行动并行、任务取消、到期事件排�
 | 到期事件排序 | 同一 `due_minute` 的多卡按 `(-priority, created_seq, action_id)` 稳定排序，两次运行结果**全等** |
 | 压缩屏障 | 6.5 的五条（停在屏障前、不删因果、到期总停…） |
 | 重启恢复 | 8.2 时序；重启后 `world_minute` 与 `due_heap` 与重启前**全等** |
-| 幂等 | 同 `idem_key` 投递两次，副作用只发生一次 |
+| 幂等 | 同 `idempotency_key` 投递两次，副作用只发生一次 |
 | 唯一时钟 | 客户端上传的时间**不影响** `world_minute` |
 | 离线底线 | 无 AI 配置时，`advance_to` / `schedule` 照常可用（基线 §6 第 3 条） |
 | 迁移 | 老档（无 `chron` 块）载入 → 补默认 → 再存 → 新档可读 |
@@ -574,10 +609,9 @@ GDD §24.2 的关键案例：**长行动并行、任务取消、到期事件排�
    `minor_minutes`，是本文的**建议**；它要改 `docs/` + `data/`（2.6 节），属独立 PR。
    **需人拍板**：是否接受「时段 = 一天四段」为唯一含义。CHRON 内部用分钟常数，
    这一拍板**不阻塞** C1–C4。
-2. **`STATE-DESIGN.md` 未定稿**（Issue #136）。第 8 节是假设；若状态层最终不给「按序号读事件」，
-   恢复时序（8.2）要改。**C5 必须等 `STATE-DESIGN.md` 审过**。
-3. **`ACTION-DESIGN.md` 未定稿**（Issue #137）。排程钩子（4.3）的字段名以它为准；
-   本文先给签名，若冲突以 `ACTION-DESIGN.md` 为准。
+2. **`STATE-DESIGN.md` 已定稿**（#136，2026-10-10）。第 8 节已按其 §6 / §9 / §12 逐条对齐；
+   状态层提供 `replay()` 与按序号读事件（STATE §12.1 / §12.4），恢复时序（8.2）无需改。**C5 前提已满足。**
+3. **`ACTION-DESIGN.md` 已定稿**（#137，2026-10-10）。排程钩子（4.3）已与 `ACTION-DESIGN.md` §8.2 写清**两层映射**，字段名（`time_cost` / `schedule_hint` / `can_defer` / `barrier` / `resume_token`）一致。
 4. **战斗与世界时间的映射常数未定**（2.4 的「节拍」）。CHRON **不硬编码**，由规则包给
    「一轮 = N 秒」。若规则包拿不出值，CHRON 需要一个兜底常数——**需人拍板**。
 5. **压缩的「无关模拟」边界模糊**（§6.6 的表述是原则不是算法）。6.2 的判据是机读清单，
@@ -616,8 +650,8 @@ GDD §24.2 的关键案例：**长行动并行、任务取消、到期事件排�
    世界冲突 / 未决决策 / blocked-interrupted / 到期）。压缩可少跑无关步骤，**不删因果事件**。
 9. **世界时间只在提交事件时前进**，不做后台滴答；默认 `offline_advance = False`。
 10. **每个到期事件带确定性幂等键** `action_id:due_minute:kind`；重放 no-op。
-11. **`chron` 块与 `scene`/`atlas`/`guide` 平级**，加 `_SESSION_DEFAULTS` + 惰性迁移；
-    存储接口**跟随 `STATE-DESIGN.md`**（未定稿，第 8 节标假设）。
+11. **`chron` 块是状态层快照 `blocks` 内的不透明块**（`STATE-DESIGN.md` §6.1 / §11，与 `rules`/`atlas`/`guide` 同级），
+    加 `_SESSION_DEFAULTS` + 惰性迁移；存储接口**已按 `STATE-DESIGN.md` §12.1 对齐定稿**（第 8 节）。
 12. **新模块 `chron.py`；不 import 业务模块；不落库；无新依赖、无密钥、无环境变量。**
 
 ---
@@ -625,7 +659,7 @@ GDD §24.2 的关键案例：**长行动并行、任务取消、到期事件排�
 ## 实现切片建议
 
 > 六条，一条一个意图。**C1–C4 同占 `chron.py`，彼此串行**（同一文件不并行，`AGENTS.md` §4）。
-> **C5 依赖 `STATE-DESIGN.md`（#136）定稿**，**C6 依赖 `ACTION-DESIGN.md`（#137）定稿 + C1–C4 合并**。
+> **C5 依赖 `STATE-DESIGN.md`（#136）**，**C6 依赖 `ACTION-DESIGN.md`（#137）**——**两份均已定稿（2026-10-10）**，C5 / C6 的前提已满足（仍受「C1–C4 已合并」「同一文件不并行」约束）。
 > 各单均可改路径只含 `chron.py`（+ 对应 `tests/`），禁改路径一律：
 > `docs/**`、`data/**`、`prism_core.py`、`prism_guide.py`、`atlas*.py`、`notdnd_web.py`、`static/**`。
 > 每条都必须真跑 `bash tests/run_all.sh` 与 `bash tests/content_firewall.sh`。
@@ -680,20 +714,20 @@ GDD §24.2 的关键案例：**长行动并行、任务取消、到期事件排�
 ### C5 · 持久化与恢复接线
 
 - **标签：** `难度：高`，`能力：编程`，`能力：数据`，`能力：测试`
-- **依赖：** **`STATE-DESIGN.md`（#136）审过后开**；C1–C4 已合并。
+- **依赖：** `STATE-DESIGN.md`（#136）**已定稿**；C1–C4 已合并。
 - **文件：** `chron.py`，`notdnd_web.py`（仅加 `chron` 块的 `_SESSION_DEFAULTS` 默认值工厂），
   `tests/test_chron.py`，`tests/test_notdnd_web.py`
 - **说明：** 第 8 节：`chron` 存档块、加载 / 重放 / 重建 `due_heap`、幂等键表落盘与裁剪、
-  惰性迁移。存储接口**按 `STATE-DESIGN.md` 的结论**实现；若不提供「按序号读事件」，
-  停下报告、不自行发明接口。
+  惰性迁移。存储接口**按 `STATE-DESIGN.md` 的结论**实现（`Handle.commit` / `Handle.replay` / 按序号读事件）；
+  若状态层实际不提供，停下报告、不自行发明接口。
 - **验收：** 8.2 时序；重启后 `world_minute` 与到期顺序与重启前全等；
-  同 `idem_key` 重投副作用只发生一次；老档（无 `chron`）载入补默认再存可读；
+  同 `idempotency_key` 重投副作用只发生一次；老档（无 `chron`）载入补默认再存可读；
   `bash tests/run_all.sh` 通过。
 
 ### C6 · 接 M8 排程钩子与网页层
 
 - **标签：** `难度：中`，`能力：编程`，`能力：测试`
-- **依赖：** **`ACTION-DESIGN.md`（#137）审过后开**；C4 已合并（C5 可选、但建议先）。
+- **依赖：** `ACTION-DESIGN.md`（#137）**已定稿**；C4 已合并（C5 可选、但建议先）。
 - **文件：** `notdnd_web.py`，`prism_guide.py`（仅接钩子，不改判定），`tests/test_notdnd_web.py`
 - **说明：** 4.3 的 `schedule / advance_to / next_barrier / cancel` 接到 M8 的行动管线；
   `can_defer = False` 的行动**保持 M8 同步结算不变**；只有 `can_defer = True` 或带

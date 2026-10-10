@@ -4,13 +4,16 @@
 > 读者：Master Agent（审阅 / 拆单）、Execution Agent（领单）。
 > 依据：`GDD.html`（v1.1）§8 全文、§6.4 / §6.5、§9、§19、§20、§24；`GDD-BASELINE.md` §4.2 / §4.3 / §5（M8）/ §7.2。
 > 对应 Issue：**#137（M8-a）**。可改路径仅本文件；不碰任何代码。
+> **接口对齐（2026-10-10）**：状态层接口口径已按 `STATE-DESIGN.md`（#136）§12 定稿对齐
+> （提交签名、幂等键名 `idempotency_key`、乐观并发序号 `base_seq`、读事件、`world_time`）；
+> 排程钩子与 `CHRON-DESIGN.md`（#138）§4.3 已写清层数与映射（§8.2）。见 §2.2。
 > 本文不是规则正文，不替代 `docs/`。它把 GDD 的「自由行动与解析管线」翻译成可拆实现单的接口与数据契约。
 
 ---
 
 ## 0. Master Agent 怎么用这份方案
 
-1. 审第 2 节的**假设登记**（`STATE-DESIGN.md` 未定稿，M8 先按 GDD §8.4 起草）。有不同意的，先改本文再拆单。
+1. 审第 2 节的**假设登记**（已按 `STATE-DESIGN.md` §12 定稿对齐，2026-10-10）。有不同意的，先改本文再拆单。
 2. 审第 8 节的**排程钩子**——它是 M8 与 M9 的唯一接触面，M9 接入不得改本契约；有异议现在就改。
 3. 第 13 节的切片已按仓库模板写好（目标 / 验收 / 可改 / 禁改 / 依赖）。可以照抄开单，也可以合并或推迟，但**不要把提案契约与写接口揉进同一条**。
 4. 开单时打上每条写明的难度标签与能力标签。
@@ -71,17 +74,17 @@
 | P4 | 降级：叙事模型不可用时，规则与调度照常，网页显示模板化文字 | §4.2 / GDD §20.4 |
 | P5 | M8 不接 CHRON，但须预留排程钩子；M9 复用 M8 契约 | §5 |
 
-### 2.2 假设登记（`STATE-DESIGN.md` 未定稿）
+### 2.2 假设登记（已对齐 `STATE-DESIGN.md` §12，2026-10-10）
 
-Issue #137 的依赖写明：接口口径引用 `STATE-DESIGN.md` 的结论；若未定，先按 GDD §8.4 起草并**标注假设**。截至本文成稿，`STATE-DESIGN.md`（M7-a）尚未合并，故对状态层接口作以下最小假设。**待 M7-a 定稿后一行对齐即可，不影响本文其余结论**：
+Issue #137 起草时 `STATE-DESIGN.md`（M7-a）尚未合并，曾按 GDD §8.4 作最小假设。**现已按 `STATE-DESIGN.md`（#136）§12 定稿对齐**：提交签名、幂等键名（`idempotency_key`）、乐观并发序号（`base_seq`）、读事件与 `world_time` 口径一律以 STATE 为准（下表各条注明原始假设名）。四份设计单交叉引用一致后，**M9 接入不再需要改本契约**。
 
-| 编号 | 假设 | 依据 / 处置 |
+| 编号 | 假设（对齐后） | 依据 / 处置 |
 |---|---|---|
-| A1 | 状态层提供**提交接口**：接受一批「状态变更 + 事件」，原子落库并返回事件 ID 列表。本设计抽象为 `state.commit(deltas, meta) -> {"event_ids": [...], "version": n}`。 | GDD §19.2 / §19.3；§4.2「唯一提交」 |
-| A2 | 状态层有**版本号**（乐观并发）：提交携带读取时的 `base_version`，不匹配则拒绝（409）。 | GDD §19.3 |
-| A3 | 状态层提供**幂等键**查询：同一键重复提交返回首次结果，不产生新副作用。 | GDD §19.3 / §24.1 |
-| A4 | 事件封套字段以 GDD §19.5 为准（事件 ID、战役 ID、世界时间、序列号、类型、主体、目标、原因、可见范围、状态变更、规则版本、随机判定引用、提交状态）。 | §4.3 第 1 条 |
-| A5 | M7-a 若最终不选「提交接口 + 版本号」形态（例如改事件溯源回放），则本文第 10 节与第 9.3 节的提交步骤做**接口适配**，提案 / 结果 Schema 与排程钩子**不变**。 | 降低耦合 |
+| A1 | 状态层提供**唯一提交接口**，原子落库并返回提交结果。签名以 `STATE-DESIGN.md` §12.1 为准：`Handle.commit(*, base_seq, idempotency_key, type, actor, target=None, cause=None, visibility=None, changes=(), rules_version, roll_refs=(), world_time=None, source="player", revalidate=None) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`。 | GDD §19.2 / §19.3；§4.2「唯一提交」；`STATE-DESIGN.md` §12.1（2026-10-10 对齐） |
+| A2 | 状态层有**乐观并发序号**：提交携带读取状态时的 `base_seq`，不匹配则返回 `status="conflict"`（网页层翻 409）。原名 `base_version`，**已按 STATE 统一为 `base_seq`**。 | GDD §19.3；`STATE-DESIGN.md` §8.2 / §12.1（2026-10-10 对齐） |
+| A3 | 状态层提供**幂等键**：同一 `idempotency_key` 重复提交返回首次结果，不产生新副作用。 | GDD §19.3 / §24.1；`STATE-DESIGN.md` §7 / §12.1 |
+| A4 | 事件封套字段以 GDD §19.5 为准（事件 ID、战役 ID、世界时间、序列号、类型、主体、目标、原因、可见范围、状态变更、规则版本、随机判定引用、提交状态）；字段级实现以 `STATE-DESIGN.md` §5.1 为准。 | §4.3 第 1 条；`STATE-DESIGN.md` §5.1 |
+| A5 | **已对齐**：`STATE-DESIGN.md` §12.1 已定稿为「提交接口 + 乐观 `base_seq`」形态，A5 的适配预案无需启用；保留此行仅记录耦合边界——无论状态层形态如何，提案 / 结果 Schema 与排程钩子不变。 | 降低耦合；`STATE-DESIGN.md` §12.1（2026-10-10 对齐） |
 
 > 过渡策略：`state.py` 落地前，同步路径可先复用现有 `Session.rules` 快照 + `Session.save()` 作为临时提交出口（见第 10.2 节），但**必须在 PR 里写明这是过渡态**，且不新增第二套字段。
 
@@ -96,7 +99,7 @@ Issue #137 的依赖写明：接口口径引用 `STATE-DESIGN.md` 的结论；�
 | 提案与结果契约、同步结算 | `prism_core.py` | 扩展：把 `perform_action` 的结果包装成 §8.4 契约（**不重写结算**） |
 | NL → 行动提案、叙事 | `prism_guide.py` | 扩展：新增 NL→提案解析（可选模块，import 失败不影响离线） |
 | 管线编排、写接口、幂等键缓存 | `notdnd_web.py` | 扩展：`/api/action/*` 路由与编排（接口由本文定） |
-| 权威状态与事件（唯一提交出口） | `state.py`（新） | **M7-a** 定稿；本文只消费其提交接口（假设 A1–A4） |
+| 权威状态与事件（唯一提交出口） | `state.py`（新） | **M7-a 已定稿**（`STATE-DESIGN.md` §12）；本文只消费其提交接口，签名以 §12.1 为准（见 §2.2 A1） |
 | 时间与调度 | `chron.py`（新） | **M9**；本文只定钩子签名（第 8 节） |
 | 空间只读查询 | `atlas*.py` | 保持；验证阶段只读取可达性 / 出口，不写 |
 
@@ -160,6 +163,7 @@ GDD §6.4 的八个状态，M8 只实现其中四个（P1）：
   "source": "nl",
   "risk": "R2",
   "time_cost": {"value": 5, "unit": "minute"},
+  "schedule_hint": {"can_defer": false, "depends_on": [], "priority": 0},
   "interruptible": true,
   "interrupt_conditions": [],
   "expected_changes": [],
@@ -183,6 +187,7 @@ GDD §6.4 的八个状态，M8 只实现其中四个（P1）：
 | `source` | enum | 是 | `"nl"` 或 `"action"`。`"action"` = 客户端直接给 `action_id`，**无需 AI**。 |
 | `risk` | enum | 是 | `R0`–`R4`（第 6 节）。 |
 | `time_cost` | obj | 是 | `{"value": int≥0, "unit": ...}`。语义见 8.1。M8 只记录，不排程。 |
+| `schedule_hint` | obj | 否 | 排程提示（M9 消费）：`{"can_defer": bool, "depends_on": [action_id], "priority": int}`。字段名与 `CHRON-DESIGN.md` §4.3 一致；默认 `{"can_defer": false, "depends_on": [], "priority": 0}`。`can_defer=false` 走 M8 同步结算，`can_defer=true` 才进 CHRON 队列。 |
 | `interruptible` | bool | 是 | 是否可被打断。M9 消费；M8 只落契约。 |
 | `interrupt_conditions` | array | 否 | 中断条件（8.4 定义）。 |
 | `expected_changes` | array | 否 | 预期状态变更草案（供验证与叙事引用，不是事实）。 |
@@ -372,33 +377,39 @@ Issue #137 要求**五级**风险分级。GDD §8.3 给的是四行示例表（�
 - `time_cost = {"value": int ≥ 0, "unit": enum}`；`unit ∈ {round, turn, minute, hour, watch, day}`。
   - `round` / `turn` 是**规则时间**（战斗轮、场景回合），由 PRISM 定义、CHRON 映射到世界时间（GDD §6.2）。
   - `minute` / `hour` / `watch` / `day` 是**世界时间**量。
-  - ⚠️ 现有口径不一致：`docs/system/01-core.md` 写「时段 = 10 分钟」，`docs/system/03-interaction-layer.md` 的「时段（Watch）」是四分之一天，`notdnd_web.py` 的 `BAND_HOURS` 取值 1/2/4。**换算表须由 M9-a（`CHRON-DESIGN.md`）先钉死**；M9 的钉法不影响本节签名——本契约只要求 `unit` 是枚举成员，换算在 CHRON 内部。
+  - ⚠️ 历史口径不一致（`docs/system/01-core.md`「时段 = 10 分钟」vs `docs/system/03-interaction-layer.md` 的「时段（Watch）」= 四分之一天 vs `notdnd_web.py` 的 `BAND_HOURS`）。**换算表已由 M9-a（`CHRON-DESIGN.md` §2.3 / §2.4）钉死**：权威刻度 = 整数分钟，`NOMINAL_WATCH_MINUTES = 360`、`MINOR_ACTION_MINUTES = 10`；M9 的钉法不影响本节签名——本契约只要求 `unit` 是枚举成员，换算在 CHRON 内部。
+- **世界时间表示（唯一写法）**：钩子与调度层内部一律用 CHRON 的**整数分钟** `world_minute`（`CHRON-DESIGN.md` §3.1）表达世界时间；事件封套里的 `world_time` 是**不透明对象**，其形状由 CHRON 定义、**提交时传入**（`CHRON-DESIGN.md` §3.1 / `STATE-DESIGN.md` §5.1 / §12.3），状态层不改写。本节钩子返回的 `start_at` / `expected_end_at` 即这两个整数分钟。
 - **M8 语义**：同步行动的世界时间**不推进**（管线只记录 `time_cost` 作为结果字段）。需要「世界时钟前进」的效果一律等 M9。
 - **M9 语义**：钩子按 `time_cost` 计算 `start_at` / `expected_end_at`，把行动放进队列；屏障命中时暂停（GDD §6.6）。
 
-### 8.2 钩子协议签名
+### 8.2 钩子协议签名（两层：管线钩子 ↔ 调度器入口）
 
-状态层提交**之前**，管线调用排程钩子。钩子是一个**鸭子类型对象**（与现有 `prism_guide.settle` 只按 `lock` / `rules` / `save` 用鸭子类型同一风格），管线不 import `chron`：
+**先写清层数**（避免 M9 接入时两套签名打架）：本钩子与 `CHRON-DESIGN.md` §4.3 的入口是**两层**，职责不同、**不是同一层**：
+
+- **L1 · 管线钩子（`ScheduleHook`，本文定义）**：结算管线在**状态层提交之前**调用的**鸭子类型对象**（风格同 `prism_guide.settle` 只按 `lock` / `rules` / `save` 用鸭子类型）；管线**不 import `chron`**。M8 用空实现，M9 用 `chron.py` 的**适配器**实现。
+- **L2 · 调度器公开入口（`CHRON-DESIGN.md` §4.3，`chron.py`）**：`schedule / advance_to / next_barrier / cancel`，由游戏循环 / 网页层 / M10 驱动，**不由结算管线直接调用**。
+
+**L1 签名（本文唯一口径，`base_seq` 已对齐 `STATE-DESIGN.md` §12.1）**：
 
 ```python
-# 管线只认这个协议；具体实现在 chron.py（M9）或空实现（M8）
+# 管线只认这个协议；具体实现在 chron.py（M9 的适配器）或空实现（M8）
 class ScheduleHook(Protocol):
     def enqueue(self, proposal: dict, draft: dict, *,
-                base_version: int) -> dict:
+                base_seq: int) -> dict:
         """把一次已验证的行动交给时间线。
 
-        proposal: 第 4 节提案（已过验证）
+        proposal: 第 4 节提案（已过验证，含 time_cost / schedule_hint）
         draft:    第 4 段结算出的结果草案（尚未提交）
-        base_version: 状态层版本（假设 A2）
+        base_seq: 状态层乐观并发序号（假设 A2；= STATE-DESIGN.md §12.1 的 base_seq）
 
         返回（键固定，M9 只在值上做文章）：
         {
           "mode": "sync" | "async",
-          "task_id": str | None,          # async 时非空
-          "start_at": int,                # 世界时间（M8 = 当前世界时间）
-          "expected_end_at": int,         # M8 = start_at
-          "barrier": bool,                # 是否触发事件屏障（GDD §6.6）
-          "resume_token": str | None      # async 恢复用；M8 恒 None
+          "task_id": str | None,          # async 时非空（= CHRON 的 action_id）
+          "start_at": int,                # 世界分钟 world_minute（M8 = 当前世界时间，默认 0）
+          "expected_end_at": int,         # 世界分钟；M8 = start_at
+          "barrier": bool,                # 是否命中事件屏障（CHRON §6.2 B1–B8；M8 恒 False）
+          "resume_token": str | None      # async 恢复用；M8 恒 None，M9 目前也不用（中断重排见 CHRON §4.4）
         }
         """
         ...
@@ -408,14 +419,25 @@ class ScheduleHook(Protocol):
         ...
 ```
 
+**L1 ↔ L2 映射（M9 的适配器按此实现，不改本契约）**：
+
+| L1（`ScheduleHook`，本文） | L2（`chron.py`，`CHRON-DESIGN.md` §4.3） | 映射规则 |
+|---|---|---|
+| `enqueue(proposal, draft, *, base_seq)` | `schedule(action) -> action_id` | 适配器用 `proposal` + `draft` 构造 CHRON 的 `Action`（`time_cost` 折成整数分钟，`schedule_hint.priority` / `depends_on` 透传），调 `schedule`；返回 `mode="async"`、`task_id=action_id`、`start_at=Action.start_minute`、`expected_end_at=Action.due_minute`、`barrier=False` |
+| `enqueue(...)`（`schedule_hint.can_defer == False`） | —（不进队列） | 返回 `mode="sync"`；**不**调 `schedule`，保持 M8 同步结算不变（CHRON §4.3 关键约定） |
+| `cancel(task_id)` | `cancel(action_id, at_minute) -> event` | `task_id` 即 `action_id`；返回是否成功取消 |
+| —（L1 不暴露） | `advance_to(world_minute)` / `next_barrier(from_minute)` | 由游戏循环 / 网页层 / M10 驱动，**不挂在 `ScheduleHook` 上** |
+
+**字段名对齐（两文档一致）**：`time_cost = {"value", "unit"}`（提案字段；CHRON 读其中的分钟数）、`schedule_hint.can_defer` / `depends_on` / `priority`（提案字段，`CHRON-DESIGN.md` §4.3）、`barrier`（L1 返回 / CHRON §6.2 屏障）、`resume_token`（L1 预留）。**M9 接入只实现适配器，不改提案 / 结果 Schema、不改写接口路径。**
+
 ### 8.3 M8 的空实现与 M9 的接入
 
 - **M8 空实现**（`notdnd_web.py` 内的常量 / 小类，不新建 `chron.py`）：
 
 ```python
 class _SyncOnlySchedule:
-    def enqueue(self, proposal, draft, *, base_version):
-        now = int(time.time() * 1000)   # M8 无世界时钟，用服务器时间占位
+    def enqueue(self, proposal, draft, *, base_seq):
+        now = 0    # M8 无世界时钟：世界分钟取纪元 0 占位（CHRON §3.1）；M9 由 CHRON 提供
         return {"mode": "sync", "task_id": None, "start_at": now,
                 "expected_end_at": now, "barrier": False,
                 "resume_token": None}
@@ -423,7 +445,7 @@ class _SyncOnlySchedule:
         return False
 ```
 
-- **M9 接入**：`chron.py` 实现同一个协议；管线在启动时把 `chron` 的实例注入（或在 `notdnd_web` 里按「`chron` 可导入则用、否则回退 `_SyncOnlySchedule`」选择，与 `prism_guide` 的可选导入同风格）。**M9 不改本契约、不改提案 / 结果 Schema、不改写接口路径**。
+- **M9 接入**：`chron.py` 实现 **L2** 公开入口（§8.2），并提供一个**适配器**满足 **L1** 协议；管线在启动时把适配器注入（或在 `notdnd_web` 里按「`chron` 可导入则用、否则回退 `_SyncOnlySchedule`」选择，与 `prism_guide` 的可选导入同风格）。**M9 不改本契约、不改提案 / 结果 Schema、不改写接口路径**。
 - **两条里程碑无循环依赖**：M8 不等待 M9；M9 复用 M8 的契约（GDD-BASELINE §5）。
 
 ### 8.4 中断语义（GDD §8.5）预留
@@ -505,7 +527,7 @@ GDD §8.5：行动可能因敌人出现、天气变化、目标离开、材料�
 {
   "proposal": { "...": "propose 原样带回的提案" },
   "confirm_token": "cf_<32hex>",     // R2–R4 必填；R0/R1 省略
-  "base_version": 7                  // 假设 A2；旧值触发 409
+  "base_seq": 7                      // 假设 A2；= STATE-DESIGN.md §12.1 的 base_seq；旧值触发 409
 }
 ```
 
@@ -548,7 +570,7 @@ event: done       data: {"status": "ok"}
 | 权限不足 / 规则不允许 | 403 | `做不了这件事` |
 | 前置条件不满足（材料不足、位置不对） | 409 | `现在做不了` |
 | 战斗未结束 | 409 | `战斗还没结束` |
-| 状态版本冲突（`base_version` 过期） | 409 | `状态已变，请重试` |
+| 状态序号冲突（`base_seq` 过期） | 409 | `状态已变，请重试` |
 | 同一 `proposal_id` 重复提交（无新幂等键） | 409 | `该提案已提交` |
 | R2–R4 缺 `confirm_token` / 确认已失效 | 409 | `需要确认` |
 | 结果 Schema 版本不支持 | 409 | `版本不支持` |
@@ -569,7 +591,7 @@ event: done       data: {"status": "ok"}
 
 ### 10.1 `state.py` 落地后（目标态）
 
-- 提交步骤：管线把「已通过验证的结果 → 一批状态变更 + 一条事件」交给 `state.commit(deltas, meta)`（假设 A1），拿回 `event_ids` 与 `version`，写入结果的 `event_ids`、把 `committed` 置 `true`。
+- 提交步骤：管线把「已通过验证的结果 → 一批状态变更（`changes`）+ 一条事件」交给 `state.Handle.commit(*, base_seq, idempotency_key, …)`（假设 A1，签名见 `STATE-DESIGN.md` §12.1），拿回 `CommitResult`（`seq_from` / `seq_to` / `event_ids`），写入结果的 `event_ids`、把 `committed` 置 `true`。
 - 只有 `state.py` 能改世界事实（§4.2）。管线、PRISM、导引者都不直接写。
 
 ### 10.2 `state.py` 落地前（过渡态）
@@ -621,12 +643,12 @@ event: done       data: {"status": "ok"}
 
 | # | 风险 / 问题 | 处置 |
 |---|---|---|
-| AR1 | **`STATE-DESIGN.md` 未定稿**，A1–A4 可能变 | 第 2.2 节的过渡策略（10.2）；M7-a 落地后一条适配 PR；契约本身与状态层形态解耦 |
+| AR1 | **`STATE-DESIGN.md` 是否定稿**（原风险） | **已对齐（2026-10-10）**：`STATE-DESIGN.md` §12 已定稿，A1–A4 按其口径落定；第 10.2 节的过渡态仍适用于 M7-3 接线前 |
 | AR2 | **风险分级加入确认后拖慢体验** | R0/R1 无确认；R2 起「按用户设置」；默认保守但可调 |
 | AR3 | **「五级」与 GDD §8.3「四行」对不齐** | 6.2 给出映射表；歧义 / 权限作正交轴，不自造第六级 |
 | AR4 | **NL→提案的准确率** | `mode: "action"` 永远可用作兜底；澄清只问一次；提案经服务端重验，不信任回带 |
 | AR5 | **过渡态幂等层与状态层幂等重复** | 10.2 明确过渡；M7-a 落地后下沉，网页层只透传 |
-| AR6 | **`time_cost` 单位换算未定**（三处口径冲突） | 8.1 只锁枚举与签名，换算交 M9-a 先钉死；M8 不推进时钟 |
+| AR6 | **`time_cost` 单位换算未定**（三处口径冲突） | **已钉死（`CHRON-DESIGN.md` §2.3 / §2.4，2026-10-10）**；8.1 只锁枚举与签名，换算在 CHRON 内部；M8 不推进时钟 |
 | AR7 | **新写接口与旧 `turn` 并存** | 9.1 声明旧路由行为不变；两者共用契约与提交出口；前端迁移单独立单 |
 
 **开放问题**（不阻塞本设计）：
@@ -755,7 +777,7 @@ event: done       data: {"status": "ok"}
 
 - 标签：`难度：高`，`能力：编程`，`能力：逻辑`
 - 依赖的 PR：A3 已合并；**`CHRON-DESIGN.md`（M9-a）已定稿**（换算表）
-- 本条**属 M9**，此处只登记接口面：M9 实现 `chron.py` 并满足 8.2 协议，管线按「可导入则用」装入；**不改提案 / 结果 Schema、不改写接口路径**。
+- 本条**属 M9**，此处只登记接口面：M9 实现 `chron.py`（L2 入口，`CHRON-DESIGN.md` §4.3）并用**适配器**满足 §8.2 的 L1 协议，管线按「可导入则用」装入；**不改提案 / 结果 Schema、不改写接口路径**。
 
 **验收标准**
 

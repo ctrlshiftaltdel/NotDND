@@ -21,6 +21,8 @@
    但**不要把「内核」和「存档接线」揉进同一条**——前者是纯库、后者要动 `notdnd_web.py`。
 4. `M8-a`（`ACTION-DESIGN.md`）引用本文§12 的提交接口；`M9-a`（`CHRON-DESIGN.md`）的持久化契约跟随本文§12；
    `M10-a`（`MULTIPLAYER-DESIGN.md`）的并发口径跟随本文§8。
+   （**注意**：这三份已于 2026-10-10 按本文 §12 的提交 / 读事件 / `world_time` 口径完成接口对齐，
+   见各自文首的「接口对齐（2026-10-10）」标注。）
 5. Execution Agent **不合并**。审查用四行建议。
 
 > 未推送到远端的本文按 `AGENTS.md` 不能当作交接。它必须先送进 GitHub 才能被拆单。
@@ -151,7 +153,7 @@ GDD §19.5 点名的字段**全部覆盖**。
 | `campaign_id` | string | 是 | 战役（权威世界）id，GDD §19.5「战役 ID」 | `"yunji"` |
 | `seq` | int ≥ 1 | 是 | 战役内**单调递增、无空洞**的序列号，GDD §19.5「序列号」 | `42` |
 | `commit_id` | string | 是 | 本次原子提交的分组：`"{campaign_id}:c{n:08d}"`；同 `commit_id` 的 `seq` 连续 | `"yunji:c00000031"` |
-| `world_time` | object \| null | 是（可为 `null`） | GDD §19.5「世界时间」。**不透明**，CHRON 拥有语义（§6.2），M7 允许 `null` | `null` 或 `{"day":12,"minute":30}` |
+| `world_time` | object \| null | 是（可为 `null`） | GDD §19.5「世界时间」。**不透明**，语义与形状归 CHRON（`CHRON-DESIGN.md` §3.1；本文 §6.2 / §12.3），M7 允许 `null` | `null` 或 `{"world_minute":17310,"day":12,"tod":30}` |
 | `type` | string | 是 | GDD §19.5「类型」。`"<domain>.<verb>"`，小写，`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$` | `"core.commit"` / `"map.move"` / `"resource.spend"` |
 | `actor` | string | 是 | GDD §19.5「主体」。实体 id；系统发起用 `"world"` | `"npc-01"` |
 | `target` | string \| null | 是 | GDD §19.5「目标」 | `"loc-02"` |
@@ -490,7 +492,7 @@ class StateError(Exception): ...
 
 ### 12.3 给 M9（`CHRON-DESIGN.md`）
 
-- `world_time` 是 5.1 的**不透明**字段：M9 定义其形状（§6.2 三种时间概念）并**在提交时传入**；本层不改写。
+- `world_time` 是 5.1 的**不透明**字段：M9 定义其形状（`CHRON-DESIGN.md` §3.1；§6.2 三种时间概念）并**在提交时传入**；本层不改写。
 - M9 的排程 / 时钟态放 `blocks.chron`（不透明）；到期事件由 CHRON 转换为一次 `commit()`（`type="clock.*"`）。
 - 重启恢复：CHRON 从 `replay()` 得到的 `blocks.chron` + 事件日志重建队列；**本层不实现调度器**。
 - M9 **必须**在自己设计单里先钉死时间单位换算（`GDD-BASELINE.md` §4.3 第 4 条），本层不碰。
