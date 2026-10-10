@@ -1755,7 +1755,7 @@ def test_realization_retry_only_second_saved():
 
 
 def test_realization_second_attempt_gets_remaining_budget():
-    """第二次尝试的 `timeout` 是**剩余预算**（≤ 总预算），不是又一份 40 秒。"""
+    """第二次尝试的 `timeout` 是**剩余预算**（≤ 总预算），不是又一份 75 秒。"""
     canon = _canon("loc-02")
     calls = []
 
@@ -1771,7 +1771,7 @@ def test_realization_second_attempt_gets_remaining_budget():
     assert len(calls) == 2, calls
     assert calls[0] == pg.REALIZATION_TIMEOUT_S
     assert 0 < calls[1] <= pg.REALIZATION_TIMEOUT_S
-    ok("实相重试：第二次只用剩余预算（两次共用 40 秒，不翻倍）")
+    ok("实相重试：第二次只用剩余预算（两次共用 75 秒，不翻倍）")
 
 
 def test_realization_budget_exhausted_no_second_request():
