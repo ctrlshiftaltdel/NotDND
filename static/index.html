@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="color-scheme" content="dark light">
 <title>棱镜 · AI 导引者</title>
-<link rel="stylesheet" href="/app.css">
+<!-- 样式按「令牌 → 共用件 → 各片」的顺序加载：
+     令牌必须在最前（组件只引用令牌），片样式在共用件之后才盖得住默认值。 -->
+<link rel="stylesheet" href="/css/tokens.css">
+<link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/lobby.css">
+<link rel="stylesheet" href="/css/stream.css">
 </head>
 <body>
 
@@ -137,6 +142,15 @@
 <!-- 提示条：aria-live 让读屏软件播报，视觉上短暂浮现 -->
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-<script src="/app.js"></script>
+<!-- 脚本按「core → 各片」的顺序加载：
+     core.js 必须最先——各片在加载期就会调用 core 的 onInit 登记自己的启动函数。
+     片之间互不依赖（只依赖 core），此后各自改自己的文件。 -->
+<script src="/js/core.js"></script>
+<script src="/js/lobby.js"></script>
+<script src="/js/turn.js"></script>
+<script src="/js/atlas.js"></script>
+<script src="/js/panels.js"></script>
+<script src="/js/voice.js"></script>
+<script src="/js/ph.js"></script>
 </body>
 </html>

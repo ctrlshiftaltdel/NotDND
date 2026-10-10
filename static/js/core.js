@@ -1,12 +1,18 @@
 /* ═══════════════════════════════════════════════════════════
-   棱镜 · 前端工程骨架逻辑
+   棱镜 · 前端共享运行时（core）
    原生 JS，无构建步骤、无第三方运行时依赖。
 
-   结构约定：
+   结构约定（U0 切分后）：
      · 状态只有一份（ST / SAVES / SETTINGS），渲染不反向写状态；
      · 所有状态变化都经 applyState() 这一个入口，再分发到各 render*；
      · 视图显隐只改 .view 的 .is-on，测试据此断言；
-     · 浮层用栈管理，Esc 逐层关闭。
+     · 浮层用栈管理，Esc 逐层关闭；
+     · 各「片」的代码在自己的文件里（lobby / turn / atlas / panels /
+       voice / ph）。本文件只放**跨片共用**的东西。某一「片」若要在
+       启动时绑事件，就在自己的文件里 onInit(fn) 登记（boot 统一跑一遍），
+       这样后加的片不必回头改本文件。
+
+   加载顺序：core.js 必须**最先**——各片在加载期就会调用 onInit。
    ═══════════════════════════════════════════════════════════ */
 'use strict';
 
@@ -140,8 +146,9 @@ function placeholderState() {
   };
 }
 
-/* ═══════════════ 渲染层 ═══════════════
-   每个 render* 只读 ST / SAVES / SETTINGS，绝不写回状态。 */
+/* ═══════════════ 渲染层（跨片共用）═══════════════
+   每个 render* 只读 ST / SAVES / SETTINGS，绝不写回状态。
+   各片专属的 render 在各自的文件里（见 applyState 的调用点注释）。 */
 
 function renderTop() {
   var save = (ST && ST.save) || {};
@@ -161,54 +168,15 @@ function renderSceneCard() {
     (scene.read ? '<p class="sc-read">' + esc(scene.read) + '</p>' : '');
 }
 
-function renderStream() {
-  var box = $('#stream');
-  var log = (ST && ST.log) || [];
-  if (!log.length) {
-    box.innerHTML = '<div class="stream-empty">还没有叙事。开局后每一步都会追加在这里。</div>';
-    return;
-  }
-  box.innerHTML = log.map(function (e) {
-    var kind = e.kind === 'act' ? 'act' : (e.kind === 'note' ? 'note' : 'narrate');
-    return '<div class="msg msg-' + kind + '">' + esc(e.text || '') + '</div>';
-  }).join('');
-}
-
-function renderActZone() {
-  var acts = (ST && ST.actions) || [];
-  var exits = (ST && ST.exits) || [];
-  $('#actList').innerHTML = acts.length
-    ? acts.map(function (a, i) {
-        return '<button class="btn act-btn" data-act="' + esc(a.id) + '">' +
-          '<span class="act-key">' + (i + 1) + '</span>' +
-          '<span class="act-label">' + esc(a.label) + '</span>' +
-          (a.hint ? '<span class="act-hint">' + esc(a.hint) + '</span>' : '') +
-          '</button>';
-      }).join('')
-    : '<div class="stream-empty">本场景没有可选行动。</div>';
-  $('#exitList').innerHTML = exits.length
-    ? exits.map(function (x) {
-        return '<button class="btn act-btn" data-exit="' + esc(x.id) + '">' +
-          '<span class="act-label">' + esc(x.label) + '</span>' +
-          '</button>';
-      }).join('')
-    : '<div class="stream-empty">没有已知出口。</div>';
-
-  $$('#actList [data-act]').forEach(function (b) {
-    b.addEventListener('click', function () { pickAction(b.dataset.act); });
-  });
-  $$('#exitList [data-exit]').forEach(function (b) {
-    b.addEventListener('click', function () { pickExit(b.dataset.exit); });
-  });
-}
-
-/* 单一状态入口：状态一变就整屏重画，而不是各处零散地改 DOM。 */
+/* 单一状态入口：状态一变就整屏重画，而不是各处零散地改 DOM。
+   跨片共用件 + 各片的 render 都挂在这条链路上。 */
 function applyState(s) {
   ST = s || placeholderState();
   renderTop();
   renderSceneCard();
-  renderStream();
-  renderActZone();
+  renderStream();      // 片 U2 / U5（js/turn.js）
+  renderActions();     // 片 U2（js/turn.js）
+  renderExits();       // 片 U3（js/atlas.js）
   scrollToLatest();
 }
 
@@ -217,89 +185,6 @@ function scrollToLatest() {
   var sc = $('#playScroll');
   if (!sc) return;
   sc.scrollTop = sc.scrollHeight;
-}
-
-function pickAction(id) {
-  var a = ((ST && ST.actions) || []).find(function (x) { return x.id === id; });
-  buzz(12);
-  toast(a ? '示例骨架：你选择了「' + a.label + '」（未接后端）' : '示例骨架：已选择该行动');
-}
-
-function pickExit(id) {
-  var x = ((ST && ST.exits) || []).find(function (e) { return e.id === id; });
-  buzz(12);
-  toast(x ? '示例骨架：前往「' + x.label + '」（未接后端）' : '示例骨架：已选择该出口');
-}
-
-/* ═══════════════ 存档列表 ═══════════════ */
-
-async function loadSaves() {
-  try {
-    var d = await api('/api/saves');
-    SAVES = Array.isArray(d.saves) ? d.saves : [];
-    SAVE_DIR = d.save_dir || SAVE_DIR;
-    SAVES_TOTAL = d.total || SAVES.length;
-    SAVES_TRUNCATED = d.truncated || 0;
-  } catch (e) {
-    SAVES = [];
-    toast(e.message);
-  }
-}
-
-function renderSaveList() {
-  var count = $('#lobbyCount');
-  if (count) count.textContent = SAVES.length ? (SAVES.length + ' 个') : '';
-
-  var more = $('#lobbyTruncated');
-  if (more) {
-    more.hidden = !SAVES_TRUNCATED;
-    if (SAVES_TRUNCATED) {
-      // 列表只回最近若干条：如实告知还有多少没显示，而不是假装只有这些。
-      more.textContent = '只显示最近 ' + SAVES.length + ' 个存档，另有 ' +
-        SAVES_TRUNCATED + ' 个更早的未列出（文件仍在本机）。';
-    }
-  }
-
-  var box = $('#lobbySaves');
-  if (!SAVES.length) {
-    box.innerHTML = '<div class="save-empty">还没有存档。<br>' +
-      '<small>开一局之后，每一步都会自动写进存档目录。</small></div>';
-    return;
-  }
-  box.innerHTML = SAVES.map(function (s) {
-    var tags = '';
-    if (!s.named) tags += '<span class="tag">默认名</span>';
-    if (s.id === SID) tags += '<span class="tag tag-on">当前</span>';
-    return '<div class="save-row' + (s.id === SID ? ' is-current' : '') + '">' +
-      '<button class="save-main" data-open="' + esc(s.id) + '">' +
-        '<div class="save-name">' + esc(s.name || s.id) + tags + '</div>' +
-        '<div class="save-meta">' + esc(s.mtime_text || '—') + ' · ' +
-          (s.log_count || 0) + ' 条记录</div>' +
-      '</button>' +
-      '</div>';
-  }).join('');
-
-  $$('[data-open]', box).forEach(function (b) {
-    b.addEventListener('click', function () { enterSession(b.dataset.open); });
-  });
-}
-
-/* ═══════════════ 进入会话 ═══════════════ */
-
-async function enterSession(sid) {
-  SID = sid || '';
-  try {
-    if (SID) localStorage.setItem(SID_KEY, SID);
-  } catch (e) { /* 隐私模式 */ }
-  showView('v-play');
-  try {
-    var view = await api('/api/session');
-    applyState(view);
-  } catch (e) {
-    // 服务端没有这一局时退回占位态：骨架在没有真实会话时也要能用。
-    toast('该会话暂不可用，已进入占位画面');
-    applyState(placeholderState());
-  }
 }
 
 /* ═══════════════ 设置系统 ═══════════════
@@ -496,7 +381,13 @@ function watchDockHeight() {
   window.addEventListener('resize', syncDockHeight);
 }
 
-/* ═══════════════ 事件绑定 ═══════════════ */
+/* ═══════════════ 切片初始化登记表 ═══════════════
+   每片在自己的文件里把自己的启动函数登记进来（见各文件的 onInit 调用）。
+   core 只负责按登记顺序跑一遍，不直接认识任何一片。 */
+var SLICE_INITS = [];
+function onInit(fn) { SLICE_INITS.push(fn); }
+
+/* ═══════════════ 事件绑定（跨片共用部分）═══════════════ */
 
 function handleEscape() {
   if (!SHEET_STACK.length) return;
@@ -505,29 +396,12 @@ function handleEscape() {
   closeTopSheet();
 }
 
-function bind() {
-  /* 开始界面 */
-  $('#btnLobbySettings').addEventListener('click', function () {
-    renderSettings();
-    showView('v-settings');
-  });
-  $('#btnLobbyAbout').addEventListener('click', function () { openAux('about'); });
-
+function bindCore() {
   /* 主画面 */
   $('#btnMenu').addEventListener('click', function () { openSheet('drawer'); });
   $('#btnPlaySettings').addEventListener('click', function () {
     renderSettings();
     showView('v-settings');
-  });
-  $$('.tab').forEach(function (t) {
-    t.addEventListener('click', function () {
-      $$('.tab').forEach(function (x) {
-        var on = x === t;
-        x.classList.toggle('is-on', on);
-        x.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      toast('示例骨架：该面板尚未接通');
-    });
   });
 
   /* 抽屉 */
@@ -575,13 +449,14 @@ function bind() {
 async function boot() {
   loadSettings();
   applySettings();
-  bind();
+  bindCore();
+  SLICE_INITS.forEach(function (fn) { fn(); });   // 各片绑自己的事件
   showView('v-lobby');
   watchDockHeight();
 
   // 开始界面也要能列存档；失败时 api() 已提示，这里不阻塞后续流程。
-  await loadSaves();
-  renderSaveList();
+  await loadSaves();          // 片 U1（js/lobby.js）
+  renderSaveList();           // 片 U1（js/lobby.js）
 
   if (SID) {
     var want = SID;   // 捕获此刻的归属

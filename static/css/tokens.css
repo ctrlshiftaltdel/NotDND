@@ -1,0 +1,102 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 设计令牌（**唯一一处**令牌定义）
+   纯 CSS，无构建步骤、无外部字体、无图片资源。
+
+   约定（UI-DESIGN.md §3.1 原则 3「令牌先行」）：
+     · 组件只引用 :root 变量，任何 .css / .html 里都不写死颜色；
+     · 换主题 / 换档位只动本文件，其余文件零改动；
+     · 明色是**新增的令牌值覆盖**，用 @media (prefers-color-scheme: light)
+       覆盖同一批令牌名——**只改令牌名，不改任何选择器**。
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* 颜色（暗色优先） */
+  --bg-0: #0e1015;
+  --bg-1: #151821;
+  --bg-2: #1b1f2b;
+  --bg-3: #232838;
+  --text-1: #e7ebf3;
+  --text-2: #aeb6c6;
+  --text-3: #7c8598;
+  --accent: #6ea8fe;
+  --accent-2: #7ee0c0;
+  --danger: #f2796b;
+  --success: #74d99f;
+  --line: #2b3142;
+  --line-strong: #3d4560;
+  --on-accent: #0a1020;
+  /* 宽屏「桌面」框：主栏两侧的信箱区。收进令牌，明色下才不会留一块黑边。 */
+  --bg-frame: #090b10;
+
+  /* 字体 */
+  --font-sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-serif: Georgia, "Songti SC", "Noto Serif SC", serif;
+  --font-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  /* 字号（由 html[data-font] 覆盖，实现设置里的「字号」档位） */
+  --fs-xs: 11px;
+  --fs-sm: 12.5px;
+  --fs-ui: 14px;
+  --fs-body: 15px;
+  --fs-lg: 17.5px;
+  --fs-xl: 21px;
+
+  /* 间距 / 圆角 / 阴影 */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --r-sm: 6px;
+  --r: 10px;
+  --r-lg: 14px;
+  --r-pill: 999px;
+  --elev-1: 0 2px 8px rgba(0, 0, 0, .32);
+  --elev-2: 0 10px 28px rgba(0, 0, 0, .5);
+
+  /* 动效 */
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+
+  /* 图标 */
+  --icon-sm: 16px;
+  --icon: 20px;
+
+  /* 布局常量 */
+  /* 首屏兜底值：JS 未跑或 ResizeObserver 不可用时用它。
+     真实值由 core.js 的 syncDockHeight() 实测后回写到行内样式上，
+     因为工具条高度 = 内容 + 内边距（+ 安全区），硬编码偏小会让
+     最后一屏内容被工具条压住。 */
+  --dock-h: 56px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+
+/* ── 明色：跟随系统（UI-DESIGN.md §3.2）───────────────────────
+   只覆盖上面那批令牌名，选择器仍是 `:root`——组件文件零改动。
+   强调色**加深、降饱和**：直接反色会让 accent / success 在白底上
+   掉到 3:1 以下。 */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-0: #f7f8fb;
+    --bg-1: #ffffff;
+    --bg-2: #eef1f7;
+    --bg-3: #e3e8f2;
+    --text-1: #16181f;
+    --text-2: #4a5261;
+    --text-3: #6a7386;
+    --accent: #1f5fd0;
+    --accent-2: #0e7a63;
+    --danger: #b3261e;
+    --success: #1a6b41;
+    --line: #d8deea;
+    --line-strong: #bcc5d6;
+    --on-accent: #ffffff;
+    --bg-frame: #e6eaf3;
+  }
+}
+
+/* 字号档位：只改字号令牌，布局与 --dock-h 会跟着实测自适应 */
+html[data-font="s"] { --fs-xs: 10px; --fs-sm: 11.5px; --fs-ui: 13px; --fs-body: 13.5px; --fs-lg: 15.5px; --fs-xl: 19px; }
+html[data-font="l"] { --fs-xs: 12px; --fs-sm: 14px; --fs-ui: 15.5px; --fs-body: 17px; --fs-lg: 19.5px; --fs-xl: 23px; }

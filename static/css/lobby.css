@@ -1,0 +1,35 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 片 U1：会话列表（#v-lobby）
+   本片专属样式；令牌见 css/tokens.css，跨片共用件见 css/base.css。
+   ═══════════════════════════════════════════════════════════ */
+
+.lobby-head { flex: 0 0 auto; padding: calc(24px + var(--safe-t)) var(--sp-4) var(--sp-3); border-bottom: 1px solid var(--line); }
+.brand { font-family: var(--font-serif); font-size: var(--fs-xs); letter-spacing: .3em; text-transform: uppercase; color: var(--accent); }
+.lobby-head h1 { font-family: var(--font-serif); font-size: var(--fs-xl); margin: var(--sp-1) 0 0; }
+.lobby-sub { margin-top: var(--sp-1); color: var(--text-3); font-size: var(--fs-sm); }
+
+.lobby-scroll {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sp-2) var(--sp-3) var(--sp-4);
+}
+
+.save-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.save-row {
+  display: flex; align-items: center; gap: var(--sp-2);
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+.save-row.is-current { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
+.save-main { flex: 1 1 auto; min-width: 0; text-align: left; padding: var(--sp-3); }
+.save-name { font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600; color: var(--text-1); }
+.save-meta { font-size: var(--fs-sm); color: var(--text-3); margin-top: 2px; }
+.save-actions { flex: 0 0 auto; padding-right: var(--sp-1); }
+.save-empty, .save-more { color: var(--text-3); font-size: var(--fs-sm); text-align: center; padding: var(--sp-5) var(--sp-3); }
+.tag {
+  display: inline-block; margin-left: var(--sp-2); padding: 1px 7px;
+  font-size: var(--fs-xs); font-family: var(--font-sans); font-weight: 400;
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--text-3);
+}
+.tag-on { color: var(--accent); border-color: var(--accent); }
