@@ -38,7 +38,7 @@ python3 notdnd_web.py          # 默认监听 0.0.0.0:8600
   无框架、无构建步骤。跑团应用的寿命以年计，少一层依赖就少一类腐化；
   拉下来 `python3 notdnd_web.py` 就能跑。任何要引入运行时依赖的改动
   **单独开 PR** 说明理由（见 [`AGENTS.md`](AGENTS.md) 铁律 2）。
-- **`docs/` → `data/`**：[`docs/`](docs/) 是「棱镜 PRISM」的原创规则与剧本源文档
+- **数据层：`docs/` → `data/`**：[`docs/`](docs/) 是「棱镜 PRISM」的原创规则与剧本源文档
   （**可修订**，走独立 Issue / PR）；[`data/`](data/) 存放由它整理出的 JSON，
   **「加文件即加内容」**：目录布局为 `data/system/`（跨世界规则）、
   `data/worlds/`（世界模组）、`data/scenarios/`（剧本）、
