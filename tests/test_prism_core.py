@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""prism_core 数值落地回归测试（Issue #53 M2a + Issue #59 M2b + Issue #72 M2c）。
+"""prism_core 数值落地回归测试（Issue #53 M2a + #59 M2b + #72 M2c + #122 M2d）。
 
 M2a 覆盖：白名单拒绝、助势骰层数与取消、五档分档边界、灾难后果表、
 资源夹取与专注过用、伤害标签修正、状态叠加与【疲惫】、张力曲线触发、
@@ -14,6 +14,13 @@ M2c 覆盖：构建引擎骰池四部分组成、成功阈值与单骰成功率�
 成功数 8 档、五档结果边界与动量增益、全骰皆负与最大值爆发两个特例、
 骰阶 5 阶与期望成功数速查表、动量池（入账/花费/清零/上下限）、
 应力上限与惩罚段、崩溃事件 4 步、降低应力 4 手段。
+
+M2d 覆盖：攻击流程 5 步与闪避需求 5 档（含掩体修正上限）、命中
+结果 5 档边界、溢出购买 4 项与 D≥+2 门槛、超载连锁触发（两倍且
+盈余 ≥3）与每场景 1 次、符纹插槽（上限 3 / 5 源 / 3 源 / 结构模板）、
+构建点（每级 2 BP / 花费 12 项 / 起始 6 项 / 3 路线）、符纹库 28 枚
+六类与等级限制、安装上限（同名 / 同类 / 等级）、双引擎互转六表 +
+迁移五步 + 混用限制 3 条、d20 单骰成功率推导。
 
 ATLAS I5（Issue #67）覆盖：战术投影接线——attach_tactical_map 的
 坏帧 / 坏钉扎校验、距离档（两格图距离 = 第 3.3 节的「近」）、高地
@@ -1451,6 +1458,285 @@ def check_tactical_move_zones_abstract():
     assert pc.tactical_move_zones(restored, 12) is None
 
 
+# ════════════════════════════════════════════════════════════════════════
+# M2d（Issue #122）：构建引擎收尾（02B 第六至十一节）
+# ════════════════════════════════════════════════════════════════════════
+
+# ── 战斗中的应用（02B 第六节 / data/system/build_combat.json）─────────
+
+def check_build_attack_flow():
+    assert len(pc.BUILD_ATTACK_FLOW) == 5
+    # 闪避需求 5 档，数值逐条对照。
+    assert len(pc.BUILD_DODGE_NEEDS) == 5
+    needs = dict((row[0], row[2]) for row in pc.BUILD_DODGE_NEEDS)
+    assert needs == {"static": 2, "standard": 3, "agile": 4,
+                     "protected": 5, "armored": 6}, needs
+    assert pc.build_dodge_need("static") == 2
+    assert pc.build_dodge_need("标准敌人") == 3          # 中文名亦可
+    assert pc.build_dodge_need("armored") == 6
+    try:
+        pc.build_dodge_need("dragon")
+        raise AssertionError("未知目标类型应报错")
+    except ValueError:
+        pass
+    # 掩体/态势/位置优势：每项 +1，最多 +2；不为负。
+    assert pc.BUILD_DODGE_MODIFIER_MAX == 2
+    assert pc.build_dodge_need_adjusted("standard", modifiers=1) == 4
+    assert pc.build_dodge_need_adjusted("standard", modifiers=5) == 5
+    assert pc.build_dodge_need_adjusted("standard", modifiers=-3) == 3
+
+
+def check_build_hit_bands():
+    # 命中结果 5 档；边界逐条对照。
+    assert len(pc.BUILD_HIT_RESULTS) == 5
+    cases = ((9, "overrun", 3), (5, "overrun", 3), (4, "overrun", 3),
+             (3, "multi_hit", 2), (2, "multi_hit", 2),
+             (1, "hit", 1), (0, "hit", 1),
+             (-1, "graze", 0.5),
+             (-2, "miss", 0), (-9, "miss", 0))
+    for d, rid, hits in cases:
+        got = pc.build_hit_result(d)
+        assert got["id"] == rid and got["hits"] == hits, (d, got)
+    # 贯穿打击附加 3 层【失衡】；擦过为半次伤害。
+    assert "失衡" in pc.build_hit_result(4)["effect"]
+    assert "一半" in pc.build_hit_result(-1)["effect"]
+
+
+def check_build_attack_result_and_overflow():
+    # D = 成功数 − 闪避需求；D ≥ +2 才可购买附加效果，每 +1 次成功一项。
+    assert pc.BUILD_OVERFLOW_MIN_D == 2
+    assert len(pc.BUILD_OVERFLOW_OPTIONS) == 4
+    out = pc.build_attack_result(5, 3)                  # D = +2
+    assert out["d"] == 2 and out["result"] == "multi_hit"
+    assert out["overflow"] == 2, out
+    out = pc.build_attack_result(7, 3)                  # D = +4 → 贯穿
+    assert out["result"] == "overrun" and out["hits"] == 3
+    assert out["overflow"] == 4
+    out = pc.build_attack_result(4, 3)                  # D = +1 → 不可购买
+    assert out["overflow"] == 0 and out["result"] == "hit"
+    out = pc.build_attack_result(2, 3)                  # D = −1 → 擦过
+    assert out["result"] == "graze" and out["overflow"] == 0
+    json.dumps(pc.build_attack_result(8, 4))            # 可直接落盘
+
+
+# ── 超载连锁（02B 第七节 / data/system/build_overload_chain.json）──────
+
+def check_build_overload_chain():
+    assert pc.BUILD_OVERLOAD_CHAIN_LIMIT == 1
+    assert pc.BUILD_OVERLOAD_CHAIN_MIN_MARGIN == 3
+    assert len(pc.BUILD_OVERLOAD_CHAIN_OPTIONS) == 4
+    # 触发：成功数 ≥ 需求两倍 **且** 盈余 ≥ 3，两个条件同时满足。
+    assert pc.build_overload_chain_triggered(6, 3) is True    # 2×3=6，盈余 3
+    assert pc.build_overload_chain_triggered(5, 3) is False   # 盈余 2
+    assert pc.build_overload_chain_triggered(6, 4) is False   # 未达 2×4=8
+    assert pc.build_overload_chain_triggered(8, 4) is True    # 2×4=8，盈余 4
+    assert pc.build_overload_chain_triggered(7, 4) is False   # 未达 8
+    assert pc.build_overload_chain_triggered(4, 1) is True    # 2×1=2，盈余 3
+    assert pc.build_overload_chain_triggered(3, 1) is False   # 盈余 2
+    assert pc.build_overload_chain_triggered(0, 0) is False
+    # 每场景限一次：已用则不可再选。
+    out = pc.build_overload_chain(6, 3)
+    assert out["triggered"] and out["available"] and out["reason"] is None
+    out = pc.build_overload_chain(6, 3, used_this_scene=True)
+    assert out["triggered"] and not out["available"] and out["reason"]
+    out = pc.build_overload_chain(5, 3)
+    assert not out["triggered"] and not out["available"]
+    json.dumps(pc.build_overload_chain(6, 3))
+
+
+# ── 符纹插槽系统（02B 第八节 / data/system/build_glyph_slots.json）────
+
+def check_build_glyph_slots():
+    assert pc.BUILD_MAX_SLOTS_PER_FACULTY == 3
+    assert len(pc.BUILD_SLOT_SOURCES) == 5
+    assert len(pc.BUILD_GLYPH_SOURCES) == 3
+    assert pc.BUILD_SLOT_PURCHASE_BP == 3
+    assert pc.BUILD_SLOT_PURCHASE_MAX == 2
+    assert pc.BUILD_STARTING_GLYPHS == 2
+    assert "符纹名" in pc.BUILD_GLYPH_TEMPLATE
+    # 插槽总数：起始 1；等级 4/7/10 各 +1；购买（上限 2）。
+    assert pc.build_slot_total(1) == 1
+    assert pc.build_slot_total(3) == 1
+    assert pc.build_slot_total(4) == 2
+    assert pc.build_slot_total(6) == 2
+    assert pc.build_slot_total(7) == 3
+    assert pc.build_slot_total(10) == 4
+    assert pc.build_slot_total(10, purchased=2) == 6
+    # 插槽池可超过单能力上限（每能力仍最多 3）。
+    assert pc.build_slot_total(10, purchased=2) > pc.BUILD_MAX_SLOTS_PER_FACULTY
+    for bad in (-1, 3):
+        try:
+            pc.build_slot_total(10, purchased=bad)
+            raise AssertionError("购买的插槽个数越界应报错")
+        except ValueError:
+            pass
+
+
+# ── 构建点与成长（02B 第九节 / data/system/build_growth.json）──────────
+
+def check_build_growth_points():
+    assert pc.BUILD_BP_PER_LEVEL == 2
+    assert len(pc.BUILD_GROWTH_SPEND) == 12
+    bps = dict((key, value[0]) for key, value in pc.BUILD_GROWTH_SPEND.items())
+    assert bps == {
+        "attribute": 3, "die_rank": 4, "new_skill": 2, "specialize": 2,
+        "new_glyph": 2, "new_slot": 3, "faculty_level": 2, "new_faculty": 3,
+        "focus_cap": 1, "stress_cap": 1, "momentum_start": 2,
+        "crossover": 5}, bps
+    assert len(pc.BUILD_STARTING_RESOURCES) == 6
+    assert len(pc.BUILD_ROUTES) == 3
+    names = [route[0] for route in pc.BUILD_ROUTES]
+    assert names == ["「重炮」路线", "「织网」路线", "「共鸣」路线"], names
+    # 累计 BP：1 级 0，每级 +2。
+    assert pc.BUILD_STARTING_BP == 0
+    assert pc.build_bp_total(1) == 0
+    assert pc.build_bp_total(2) == 2
+    assert pc.build_bp_total(5) == 8
+    assert pc.build_bp_total(0) == 0
+    assert pc.build_growth_cost("die_rank") == 4
+    assert pc.build_growth_cost("crossover") == 5
+    try:
+        pc.build_growth_cost("teleport")
+        raise AssertionError("未知花费项应报错")
+    except ValueError:
+        pass
+
+
+# ── 符纹库（02B 第十节 / data/system/build_glyphs.json）────────────────
+
+def check_build_glyph_library():
+    assert len(pc.BUILD_GLYPHS) == 28
+    assert pc.BUILD_GLYPH_CATEGORIES == (
+        "增幅类", "效率类", "转化类", "触发类", "连锁类", "代价类")
+    # 编号 1–28 连续无重复；id 唯一；六类各占数量。
+    nos = [glyph["no"] for glyph in pc.BUILD_GLYPHS]
+    assert nos == list(range(1, 29)), nos
+    ids = [glyph["id"] for glyph in pc.BUILD_GLYPHS]
+    assert len(set(ids)) == 28
+    counts = {}
+    for glyph in pc.BUILD_GLYPHS:
+        counts[glyph["category"]] = counts.get(glyph["category"], 0) + 1
+        assert glyph["level"] in ("I", "II", "III")
+    assert counts == {"增幅类": 5, "效率类": 5, "转化类": 5, "触发类": 5,
+                      "连锁类": 4, "代价类": 4}, counts
+    # 逐枚抽样：名称 / 等级 / 效果 / 代价。
+    sample = pc.build_glyph("assault")
+    assert sample["name"] == "强袭符" and sample["level"] == "I"
+    assert sample["effect"] == "伤害 +3" and sample["cost"] == "AP 消耗 +1"
+    assert pc.build_glyph("命运符")["id"] == "fate"
+    assert pc.build_glyph("resonance_detonate")["level"] == "III"
+    assert len(pc.build_glyphs_by_category("连锁类")) == 4
+    try:
+        pc.build_glyphs_by_category("杂类")
+        raise AssertionError("未知分类应报错")
+    except ValueError:
+        pass
+    try:
+        pc.build_glyph("不存在")
+        raise AssertionError("未知符纹应报错")
+    except ValueError:
+        pass
+    # 等级限制：I 任意 / II ≥ 4 / III ≥ 7。
+    assert pc.BUILD_GLYPH_LEVEL_LIMITS == {"I": 1, "II": 4, "III": 7}
+    assert pc.build_glyph_level_requirement("I") == 1
+    assert pc.build_glyph_level_requirement("ii") == 4
+    assert pc.build_glyph_level_requirement("III") == 7
+
+
+def check_build_glyph_install_limit():
+    # 同名 / 同类不可叠装；等级门槛。
+    assert pc.build_can_install_glyph("assault", character_level=1)["allowed"]
+    # II 级符纹需角色等级 ≥ 4。
+    gate = pc.build_can_install_glyph("multi", character_level=3)
+    assert not gate["allowed"] and "4" in gate["reason"]
+    assert pc.build_can_install_glyph("multi", character_level=4)["allowed"]
+    # III 级符纹需角色等级 ≥ 7。
+    assert not pc.build_can_install_glyph(
+        "fate", character_level=6)["allowed"]
+    # 同名（同一 id）。
+    same = pc.build_can_install_glyph("assault", installed=["assault"])
+    assert not same["allowed"] and "同名" in same["reason"]
+    # 同类（增幅类）：强袭符(增幅) + 广域符(增幅)。
+    same = pc.build_can_install_glyph("area", installed=["assault"])
+    assert not same["allowed"] and "同类" in same["reason"]
+    # 不同类可共存：增幅类 + 效率类。
+    ok = pc.build_can_install_glyph("frugal", installed=["assault"],
+                                    character_level=1)
+    assert ok["allowed"] and ok["reason"] is None
+
+
+# ── 双引擎互转（02B 第十一节 / data/system/build_conversion.json）─────
+
+def check_build_conversion_tables():
+    assert len(pc.BUILD_ENGINE_SWITCH) == 5
+    assert len(pc.BUILD_ATTRIBUTE_CONVERSION) == 5
+    assert len(pc.BUILD_PROFICIENCY_CONVERSION) == 4
+    assert len(pc.BUILD_DIFFICULTY_CONVERSION) == 8
+    assert len(pc.BUILD_EDGE_CONVERSION) == 4
+    assert len(pc.BUILD_ENEMY_DEFENSE_CONVERSION) == 5
+    assert len(pc.BUILD_DAMAGE_CONVERSION) == 5
+    assert len(pc.BUILD_MIGRATION_STEPS) == 5
+    assert len(pc.BUILD_MIXING_LIMITS) == 3
+    # 熟练转换：+2 → +1 枚；+4 → +2 枚且整体骰阶 +1。
+    assert pc.BUILD_PROFICIENCY_CONVERSION[0][2] == "骰池 +1 枚"
+    assert pc.BUILD_PROFICIENCY_CONVERSION[2][2] == \
+        "骰池 +2 枚，且该骰池整体骰阶 +1"
+    # 助势骰 ↔ 骰池：1/2/3 枚助势 → +1/+2/+3 枚；劣势 −1 枚。
+    assert [row[1] for row in pc.BUILD_EDGE_CONVERSION] == [1, 2, 3, -1]
+    # 属性枚数 = 属性值本身（与 build_pool 的 attribute 部分一致）。
+    assert pc.build_pool(6, 0)["attribute"] == 6
+    # 换引擎建议逐条。
+    assert pc.build_engine_switch_advice(
+        "大家觉得「每次都要数一堆骰子，太慢」") == "换战术引擎"
+    try:
+        pc.build_engine_switch_advice("随便")
+        raise AssertionError("未记录的情形应报错")
+    except ValueError:
+        pass
+
+
+def check_build_df_and_guard_conversion():
+    # 难度转换：表内 DF 直接取档（bonus 0）。
+    for df, need in ((6, 1), (8, 1), (10, 2), (12, 3), (14, 4),
+                     (16, 5), (18, 6), (20, 8), (24, 10)):
+        got = pc.build_df_to_need(df)
+        assert got["need"] == need and got["bonus_die"] == 0, (df, got)
+    # 中间 DF 取较高一档 + 1 枚额外骰（02B 第十一节 difficulty_note）。
+    assert pc.BUILD_MID_DF_BONUS_DIE == 1
+    for df, need in ((9, 2), (11, 3), (13, 4), (15, 5), (19, 8), (21, 10)):
+        got = pc.build_df_to_need(df)
+        assert got["need"] == need and got["bonus_die"] == 1, (df, got)
+    for bad in (5, 25, 40):
+        try:
+            pc.build_df_to_need(bad)
+            raise AssertionError("越界 DF 应报错：%d" % bad)
+        except ValueError:
+            pass
+    # 敌人防御转换：Guard → 闪避需求。
+    for guard, dodge in ((10, 2), (11, 2), (12, 3), (13, 3), (14, 4),
+                         (15, 4), (16, 5), (17, 5), (18, 6), (30, 6)):
+        assert pc.build_guard_to_dodge(guard) == dodge, guard
+    try:
+        pc.build_guard_to_dodge(9)
+        raise AssertionError("低于表范围的 Guard 应报错")
+    except ValueError:
+        pass
+
+
+def check_build_die_rate_derived():
+    # d20（骰阶 V）按文档自身的阈值规则推导：16/20 = 80%（原来的 TODO 已定）。
+    assert pc.build_die_rate(20) == 80
+    assert pc.build_die_rate(6) == 33
+    assert pc.build_die_rate(8) == 50
+    assert pc.build_die_rate(10) == 60
+    assert pc.build_die_rate(12) == 67
+    try:
+        pc.build_die_rate(100)
+        raise AssertionError("表外骰面应报错")
+    except ValueError:
+        pass
+
+
 def main():
     checks = (
         check_roll_whitelist,
@@ -1489,6 +1775,18 @@ def main():
         check_build_die_ranks,
         check_momentum_pool,
         check_stress_system,
+        # M2d（Issue #122）
+        check_build_attack_flow,
+        check_build_hit_bands,
+        check_build_attack_result_and_overflow,
+        check_build_overload_chain,
+        check_build_glyph_slots,
+        check_build_growth_points,
+        check_build_glyph_library,
+        check_build_glyph_install_limit,
+        check_build_conversion_tables,
+        check_build_df_and_guard_conversion,
+        check_build_die_rate_derived,
         # ATLAS I5（Issue #67）
         check_tactical_projection_bands,
         check_tactical_high_ground_and_attack,

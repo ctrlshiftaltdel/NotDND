@@ -24,9 +24,17 @@ M2c（Issue #72）已落地：构建引擎骰池与结算（docs/system/02B 第�
 失败也给动量）与两个特例（全骰皆负、最大值爆发）/ 骰阶 5 阶与
 期望成功数速查 / 动量（共享池 0–10 + 个人持有 5、7 源获取、7 项
 花费、场景清零）/ 应力（上限 = 体魄 + 心智 + 5、5 条来源、4 段
-惩罚、崩溃事件 4 步、4 种降低手段）。与战术引擎（d20 路径）并列、
-不混用；符纹插槽 / 构建点成长 / 双引擎互转留给 M2d。
-源文档未写的数值一律不臆造，仍以 `TODO(M2)` / `TODO(M2d)` 标注。
+惩罚、崩溃事件 4 步、4 种降低手段）。与战术引擎（d20 路径）并列、不混用。
+
+M2d（Issue #122）已落地：构建引擎收尾（docs/system/02B 第六至
+十一节）——战斗中的应用（攻击 5 步 / 闪避需求 5 档与修正 / 命中
+结果 5 档 / 溢出购买 4 项）/ 超载连锁（触发条件、4 项、每场景 1 次）/
+符纹插槽（每能力上限 3、插槽 5 源、符纹 3 源、结构模板）/ 构建点
+与成长（每级 2 BP、花费 12 项、起始资源 6 项、3 条路线）/ 符纹库
+（28 枚六类、三级等级限制、安装上限）/ 双引擎互转（换引擎 5 条、
+六张对照表、迁移五步、混用限制 3 条）。
+源文档未写的数值一律不臆造；可推导的（如 d20 单骰成功率）按文档
+自身规则推导并注明，确不可定的以 `TODO` 标注并在 PR 列清单。
 
 ATLAS I5（Issue #67）已接线：战术投影——规则核心在需要距离或高地时，
 向地图（`atlas.py` 内核）询问投影，而不是另维护一套口头坐标。本层只
@@ -48,6 +56,7 @@ ATLAS I5（Issue #67）已接线：战术投影——规则核心在需要距离
   六·附、战术投影（ATLAS I5）
   七、派生值与明细          八、成长
   九、构建引擎（M2c，02B 第一至五节）
+  十、构建引擎收尾（M2d，02B 第六至十一节）
 """
 
 from __future__ import annotations
@@ -2806,9 +2815,8 @@ def apply_growth_choice(session: RuleSession, unit_id: str, category: str,
 # judge_check / resolve_attack）**并列**、不混用——同一个团的所有人
 # 应当使用同一套引擎（02B 第十一节「混用限制」）。判定四步（02B
 # 第一节）：导引者宣布需求成功数 N → 掷骰池 → 清点成功数 S →
-# 结果 = S − N。本节只落 02B 第一至五节；战斗中的应用（第六节）、
-# 超载连锁（第七节）、符纹插槽 / 构建点（第八、九节）与双引擎互转
-# （第十一节）留给 M2d，TODO 一并标注。
+# 结果 = S − N。本节落 02B 第一至五节；第六至十一节（战斗中的应用 /
+# 超载连锁 / 符纹插槽 / 构建点 / 符纹库 / 双引擎互转）见下一节「十」。
 
 # ── 成功阈值与默认骰（02B 第一节）─────────────────────────────────────
 # 骰池里的每一枚骰，点数 ≥ 5 记作 1 次成功；默认骰面 d10，骰面经
@@ -2817,9 +2825,12 @@ BUILD_SUCCESS_THRESHOLD = 5
 BUILD_DEFAULT_SIDES = 10
 
 # 单骰成功率表（02B 第一节：d6 33% / d8 50% / d10 60% / d12 67%）。
-# d20 的 80% 为推导值（16 面达标 / 20），源文档未列表——TODO(M2d)
-# 与骰阶 V 一并确认。
+# 骰阶 V 的 d20（面值 20）源文档未列表，但可由文档自身的阈值规则
+# 推导：达标面 = 面值 − 阈值 + 1 = 16，占比 16/20 = 80%——与
+# build_expected_successes 用同一公式，非臆造（见 build_die_rate）。
 BUILD_DIE_RATES = {6: 33, 8: 50, 10: 60, 12: 67}
+# 本系统全部骰面（骰阶 I–V：d6/d8/d10/d12/d20）。
+_BUILD_DIE_FACES = (6, 8, 10, 12, 20)
 
 # ── 骰池的构成（02B 第一节，四部分）──────────────────────────────────
 # 骰池 = 主属性枚数 + 技能熟练枚数 + 技能专精 + 临时加成。
@@ -2856,14 +2867,20 @@ def build_pool(attribute: int, prof_bonus: int, *,
 
 
 def build_die_rate(sides: int) -> int:
-    """骰面 → 单骰成功率（%，02B 第一节表）。"""
+    """骰面 → 单骰成功率（%，02B 第一节表）。
+
+    表内 4 面（d6/d8/d10/d12）取源文档明写的数值；骰阶 V 的 d20 由
+    同一阈值规则推导：达标面 = 面值 − 5 + 1，占比四舍五入到整数
+    （16/20 → 80%）。表外骰面一律报错。
+    """
     sides = int(sides or 0)
     rate = BUILD_DIE_RATES.get(sides)
     if rate is not None:
         return rate
-    if sides == 20:
-        return 80  # 推导值（16/20 达标）；源文档未列表，TODO(M2d) 确认。
-    raise ValueError(f"未记录的骰面：d{sides}（源文档只列表 d6/d8/d10/d12）")
+    if sides in _BUILD_DIE_FACES:
+        return round((sides - BUILD_SUCCESS_THRESHOLD + 1) * 100 / sides)
+    raise ValueError(
+        f"未记录的骰面：d{sides}（本系统骰阶只有 d6/d8/d10/d12/d20）")
 
 
 # ── 难度 = 需求成功数（02B 第一节：8 档 + 战术 DF 对照）──────────────
@@ -2993,7 +3010,8 @@ def build_roll(pool: int, need: int, *, sides: int = BUILD_DEFAULT_SIDES,
 # ── 动量 Momentum（02B 第四节）───────────────────────────────────────
 # 动量池 = 共享池（起始 0，上限 10）＋ 每人各自的持有上限 5；可以
 # 在任何时候花费（包括他人的回合——时序归调用方处理）。每个场景
-# 结束时共享池清零（个人持有源文档未写清零，不动——TODO(M2d) 复核）。
+# 结束时**共享池**清零；源文档只写共享池清零、未写个人持有清零，
+# 故个人持有保持不动（不臆造）。
 MOMENTUM_SHARED_START = 0
 MOMENTUM_SHARED_CAP = 10
 MOMENTUM_PERSON_CAP = 5
@@ -3036,10 +3054,10 @@ def momentum_add(pool: dict, member: str | None, amount: int) -> dict:
     """动量入账（02B 第四节 7 源），返回 {shared, member, changed}。
 
     源文档只写明「共享池 0–10 / 个人持有 5 / 任何时候可花 / 场景结束
-    共享池清零」，未写明入账与扣减的先后——本实现采用并已在 PR 中
-    列为待复核项：增益先入该成员的持有（上限 5），溢出进共享池
-    （上限 10）；`member=None` 表示全队来源（如敌人士气崩溃），直接
-    进共享池。TODO(M2d)：导引者接线时复核该解释。
+    共享池清零」，未写明入账与扣减的先后。本实现采用的明确定义（源
+    文档许可范围内的一致性选择）：增益先入该成员的持有（上限 5），
+    溢出进共享池（上限 10）；`member=None` 表示全队来源（如敌人士气
+    崩溃），直接进共享池。
     """
     amount = int(amount or 0)
     if amount < 0:
@@ -3096,8 +3114,8 @@ def momentum_spend(pool: dict, member: str, spend_id: str, *,
 def momentum_clear(pool: dict) -> dict:
     """场景结束：共享池中的动量清零（02B 第四节「动量清零」）。
 
-    未使用的动量不会累积到下一幕；个人持有源文档未写清零，保持
-    不动（TODO(M2d) 复核）。
+    未使用的动量不会累积到下一幕；源文档只提共享池清零，个人持有
+    未写清零，故保持不动。
     """
     before = int(pool.get("shared", 0) or 0)
     pool["shared"] = 0
@@ -3173,11 +3191,13 @@ def stress_overload_event(session: RuleSession, unit: dict | None) -> dict:
          与玩家共同决定，玩家优先——归导引者模块）；
       2. 获得 3 层【疲惫】与 1 点负担；
       3. 所有进行中的超载效果立即中断（此处只记 interrupted 标记；
-         能力层接线后由调用方结束【过载中】等效果——TODO(M2d)）；
+         能力层尚未接线，结束【过载中】等效果由调用方负责——见 PR
+         的「未落地清单」）；
       4. 应力回落至上限的 50%。
 
     【疲惫】的「3 层」是 02B 点名的数量；疲惫层数的机械效果源文档
-    未写明，本函数只记录层数——TODO(M2d) 复核。
+    未写明（01 第五节只规定「3 个及以上减益叠加触发疲惫」），故本
+    函数只记录层数，不臆造后续效果——见 PR 的「未落地清单」。
     """
     if unit is None:
         raise ValueError("崩溃事件必须落在某个单位上")
@@ -3259,6 +3279,569 @@ def stress_reduce(session: RuleSession, unit: dict | None, method: str, *,
     return {"method": key, "changed": after - before, "stress": after}
 
 
+# ════════════════════════════════════════════════════════════════════════
+# 十、构建引擎收尾（M2d，docs/system/02B 第六至十一节 / build_*.json）
+# ════════════════════════════════════════════════════════════════════════
+#
+# 接续上一节（第一至五节），把 02B 第六至十一节落地：战斗中的应用
+# （第六节）、超载连锁（第七节）、符纹插槽系统（第八节）、构建点与
+# 成长（第九节）、符纹库 28 枚（第十节）、双引擎互转对照表（第十一
+# 节）。**两套引擎仍不混用**（第十一节「混用限制」）。数值逐条对照
+# docs/system/02b-forge-engine.md 与 data/system/build_*.json；源文档
+# 未写明的（如符纹层数的机械效果）一律不臆造。
+
+
+# ── 战斗中的应用（02B 第六节 / data/system/build_combat.json）────────
+# 构建引擎的战斗流程与内核一致（AP、破韧、连携、场地要素全部保留），
+# 只有「攻击如何结算」不同：命中不再是命中/落空二元，而是由成功数
+# 之差决定命中次数。
+
+# 攻击结算 5 步（02B 第六节）。
+BUILD_ATTACK_FLOW = (
+    "选择目标，支付 AP",
+    "掷攻击骰池 vs 目标的「闪避需求」",
+    "依据成功数之差，确定命中的次数，而非简单的命中/落空",
+    "每次命中造成基础伤害",
+    "追加效果由「成功数溢出」提供",
+)
+
+# 目标的闪避需求（5 档）：id → (中文名, 需求成功数)。
+BUILD_DODGE_NEEDS = (
+    ("static", "静止／无防备", 2),
+    ("standard", "标准敌人", 3),
+    ("agile", "灵活／远程专长", 4),
+    ("protected", "高防护目标", 5),
+    ("armored", "重甲单位", 6),
+)
+# 掩体、态势与其他位置优势会增加闪避需求（每项 +1，最多 +2）。
+BUILD_DODGE_MODIFIER_MAX = 2
+
+# 命中结果（5 档）：D = 成功数 − 闪避需求。hits = 基础伤害次数
+# （擦过为半次，向下取整由调用方对伤害值处理）。
+BUILD_HIT_RESULTS = (
+    {"id": "overrun", "name": "贯穿打击", "min_d": 4, "max_d": None,
+     "hits": 3, "effect": "造成 3 次基础伤害；目标获得 3 层【失衡】"},
+    {"id": "multi_hit", "name": "多重命中", "min_d": 2, "max_d": 3,
+     "hits": 2, "effect": "造成 2 次基础伤害"},
+    {"id": "hit", "name": "命中", "min_d": 0, "max_d": 1,
+     "hits": 1, "effect": "造成 1 次基础伤害"},
+    {"id": "graze", "name": "擦过", "min_d": -1, "max_d": -1,
+     "hits": 0.5, "effect": "造成一半伤害（向下取整）"},
+    {"id": "miss", "name": "落空", "min_d": None, "max_d": -2,
+     "hits": 0, "effect": "无伤害"},
+)
+
+# 溢出成功购买附加效果（02B 第六节）：条件 D ≥ +2；每 +1 次成功换一项。
+BUILD_OVERFLOW_MIN_D = 2
+BUILD_OVERFLOW_OPTIONS = (
+    "削减目标 3 点韧性",
+    "对目标施加一个 1 层状态",
+    "把这次攻击的伤害类型临时转换（例如转为另一个标签以针对弱点）",
+    "命中一个相邻的第二目标（造成一半伤害）",
+)
+
+
+def build_dodge_need(target_type: str) -> int:
+    """目标类型 → 闪避需求成功数（02B 第六节 5 档）。
+
+    `target_type` 可传 id（static/standard/agile/protected/armored）
+    或中文名（静止／无防备 等）。
+    """
+    key = str(target_type or "").strip()
+    for tid, name, need in BUILD_DODGE_NEEDS:
+        if key in (tid, name):
+            return need
+    raise ValueError(
+        f"未知目标类型：{target_type}"
+        f"（可用：{'/'.join(t[0] for t in BUILD_DODGE_NEEDS)}）")
+
+
+def build_dodge_need_adjusted(target_type: str, *,
+                              modifiers: int = 0) -> int:
+    """闪避需求 + 掩体/态势/位置优势修正（每项 +1，最多 +2）。"""
+    extra = max(0, min(int(modifiers or 0), BUILD_DODGE_MODIFIER_MAX))
+    return build_dodge_need(target_type) + extra
+
+
+def build_hit_result(d: int) -> dict:
+    """成功数差 D → 命中结果档（02B 第六节 5 档）。
+
+    D ≥ +4 贯穿打击（3 次）/ +2~+3 多重命中（2 次）/ 0~+1 命中
+    （1 次）/ −1 擦过（半次）/ ≤ −2 落空（0）。
+    """
+    d = int(d or 0)
+    if d >= 4:
+        index = 0
+    elif d >= 2:
+        index = 1
+    elif d >= 0:
+        index = 2
+    elif d == -1:
+        index = 3
+    else:
+        index = 4
+    return dict(BUILD_HIT_RESULTS[index])
+
+
+def build_attack_result(successes: int, dodge_need: int) -> dict:
+    """构建引擎的一次攻击结算（02B 第六节）。
+
+    D = 成功数 − 闪避需求；命中结果按 5 档；D ≥ +2 时，把「多余的
+    成功」（即 D 枚）用于购买附加效果，每枚一项（BUILD_OVERFLOW_
+    OPTIONS 四选一，具体选择归玩家）。返回纯数据 dict。
+    """
+    successes = int(successes or 0)
+    need = int(dodge_need or 0)
+    d = successes - need
+    result = build_hit_result(d)
+    overflow = d if d >= BUILD_OVERFLOW_MIN_D else 0
+    return {"successes": successes, "dodge_need": need, "d": d,
+            "result": result["id"], "name": result["name"],
+            "hits": result["hits"], "effect": result["effect"],
+            "overflow": overflow}
+
+
+# ── 超载连锁（02B 第七节 / data/system/build_overload_chain.json）──────
+# 当一次判定的成功数达到需求成功数的两倍（且至少盈余 3 枚）时触发；
+# 玩家立即选择 4 项之一，不消耗任何资源；每名角色每个场景限一次。
+
+BUILD_OVERLOAD_CHAIN_MIN_MARGIN = 3
+BUILD_OVERLOAD_CHAIN_LIMIT = 1
+BUILD_OVERLOAD_CHAIN_OPTIONS = (
+    "立即追加一个 1 AP 的动作",
+    "刷新一项本场景已消耗的能力",
+    "把这次判定的结果向上升一档（险成 → 成功 → 凯旋）",
+    "为团队共享池注入 2 点动量",
+)
+
+
+def build_overload_chain_triggered(successes: int, need: int) -> bool:
+    """判定是否触发超载连锁（02B 第七节）。
+
+    两个条件同时满足：成功数 ≥ 需求的两倍，且盈余（成功数 − 需求）
+    ≥ 3 枚。
+    """
+    successes = int(successes or 0)
+    need = int(need or 0)
+    if need <= 0:
+        return False
+    return (successes >= 2 * need
+            and successes - need >= BUILD_OVERLOAD_CHAIN_MIN_MARGIN)
+
+
+def build_overload_chain(successes: int, need: int, *,
+                         used_this_scene: bool = False) -> dict:
+    """超载连锁的可选结果（02B 第七节）。
+
+    返回 {triggered, available, options, limit, reason}。每名角色每
+    场景限一次——已用过（used_this_scene=True）则 available=False。
+    """
+    triggered = build_overload_chain_triggered(successes, need)
+    available = triggered and not used_this_scene
+    reason = None
+    if not triggered:
+        reason = "未达触发条件（成功数需 ≥ 需求两倍且盈余 ≥ 3）"
+    elif used_this_scene:
+        reason = f"本场景已用过（每场景限 {BUILD_OVERLOAD_CHAIN_LIMIT} 次）"
+    return {"triggered": triggered, "available": available,
+            "options": list(BUILD_OVERLOAD_CHAIN_OPTIONS),
+            "limit": BUILD_OVERLOAD_CHAIN_LIMIT, "reason": reason}
+
+
+# ── 符纹插槽系统（02B 第八节 / data/system/build_glyph_slots.json）────
+# 角色的每一个能力（Faculty）都是一个基底；符纹（Glyph）嵌入它的
+# 插槽从而改变能力行为。一个能力最多 3 个插槽；同一场景开始时可将
+# 符纹在能力之间调整一次。
+
+BUILD_MAX_SLOTS_PER_FACULTY = 3
+
+# 插槽的获得（5 源）：id → (数量, 说明)。
+BUILD_SLOT_SOURCES = (
+    ("start", 1, "起始 1 个"),
+    ("level4", 1, "等级 4 +1"),
+    ("level7", 1, "等级 7 +1"),
+    ("level10", 1, "等级 10 +1"),
+    ("purchase", 1, "用构建点购买（每个 3 BP，上限 2 个）"),
+)
+BUILD_SLOT_PURCHASE_BP = 3
+BUILD_SLOT_PURCHASE_MAX = 2
+
+# 符纹的获得（3 源）：id → 说明。
+BUILD_GLYPH_SOURCES = (
+    ("start", "起始角色得 2 枚（自选）"),
+    ("levelup", "每次升级可获得 1 枚新符纹（消耗 2 BP）"),
+    ("world", "世界模组中的特定地点、导师与任务奖励会提供稀有符纹"),
+)
+BUILD_STARTING_GLYPHS = 2
+
+# 符纹结构模板（02B 第八节）：每条符纹都有代价，堆满符纹不是无脑最优解。
+BUILD_GLYPH_TEMPLATE = ("【符纹名】（等级 N）／效果：<改变能力的行为>"
+                        "／代价：<嵌入后这个能力带来的副作用>")
+
+
+def build_slot_total(level: int, *, purchased: int = 0) -> int:
+    """角色的插槽总数（02B 第八节 5 源）。
+
+    起始 1 个；等级 4/7/10 各 +1；用构建点购买（每个 3 BP，上限 2 个）。
+    `purchased` 为已购买个数，须在 0–BUILD_SLOT_PURCHASE_MAX 之间。
+    """
+    level = int(level or 0)
+    purchased = int(purchased or 0)
+    if purchased < 0 or purchased > BUILD_SLOT_PURCHASE_MAX:
+        raise ValueError(
+            f"购买的插槽个数须在 0–{BUILD_SLOT_PURCHASE_MAX}"
+            f"（02B 第八节「上限 2 个」）")
+    total = 1
+    for threshold in (4, 7, 10):
+        if level >= threshold:
+            total += 1
+    return total + purchased
+
+
+# ── 构建点与成长（02B 第九节 / data/system/build_growth.json）──────────
+# 构建引擎的成长单位是构建点（Build Point, BP）：每升一级 +2 BP；
+# 每项都要单独投资（属性 / 骰阶 / 技能 / 符纹 / 插槽 / 能力 / 上限等）。
+
+BUILD_BP_PER_LEVEL = 2
+BUILD_STARTING_BP = 0
+
+# 花费表（12 项）：id → (BP, 名称, 备注)。
+BUILD_GROWTH_SPEND = {
+    "attribute": (3, "属性 +1", "单项上限 10；通过此方式每项最多 +4"),
+    "die_rank": (4, "某属性的骰阶 +1 阶", "上限 V 阶（d20）"),
+    "new_skill": (2, "获得一项新技能熟练", "该技能的骰池额外 +1 枚"),
+    "specialize": (2, "技能升级为专精", "需已有熟练；骰池再 +1 枚"),
+    "new_glyph": (2, "获得一枚新符纹", "永久拥有，可随时调整安装位置"),
+    "new_slot": (3, "新增一个插槽", "最多额外购买 2 个"),
+    "faculty_level": (2, "一项能力等级 +1", "伤害／范围／持续时间提升"),
+    "new_faculty": (3, "掌握一项新能力", "从所属职途的能力列表中选择"),
+    "focus_cap": (1, "专注上限 +2", "无上限限制"),
+    "stress_cap": (1, "应力上限 +2", "无上限限制"),
+    "momentum_start": (2, "场景起始动量 +1", "最多 +3"),
+    "crossover": (5, "越界学习：跨流派学一项能力", "每角色限 2 次"),
+}
+
+# 起始资源分配（1 级，6 项）。
+BUILD_STARTING_RESOURCES = (
+    "属性：按 CORE 第 1 节方法确定（所有骰阶为 d8）",
+    "2 项技能熟练 + 1 项技能专精",
+    "1 个插槽",
+    "2 枚自选符纹",
+    "3 项能力（其中 1 项可装符纹）",
+    "起始 BP：0（后续每级 2 BP）",
+)
+
+# 三种典型构筑路线（3 条）：name → (描述, 风险)。
+BUILD_ROUTES = (
+    ("「重炮」路线",
+     "把插槽全部装给一个伤害能力，堆叠增幅类与代价类符纹；属性投资到"
+     "相关的心智或力道上；相信一击定胜负。",
+     "弹药（专注）消耗极快。"),
+    ("「织网」路线",
+     "把效率类符纹堆在一起，让能力的消耗降到最低，然后用节省下来的"
+     "资源反复使用；属性投资到骰池规模上；靠多次行动取胜。",
+     "单点爆发不足，遇上高防护目标会很吃力。"),
+    ("「共鸣」路线",
+     "投入连锁类与转化类符纹，追求「一次判定引发多重效果」；高度依赖"
+     "队友先创造出状态再引爆。",
+     "单打独斗时大幅削弱，这是一条必须依赖团队的路线。"),
+)
+
+
+def build_bp_total(level: int) -> int:
+    """角色从 1 级升到 `level` 级累计获得的构建点（02B 第九节）。
+
+    每升一级 +2 BP，1 级起始 0。等级低于 1 返回 0。
+    """
+    level = int(level or 0)
+    if level < 1:
+        return 0
+    return (level - 1) * BUILD_BP_PER_LEVEL
+
+
+def build_growth_cost(spend_id: str) -> int:
+    """构建点花费项的 BP 消耗（02B 第九节 12 项）。"""
+    key = str(spend_id or "")
+    if key not in BUILD_GROWTH_SPEND:
+        raise ValueError(
+            f"未知构建点花费项：{spend_id}"
+            f"（可用：{'/'.join(BUILD_GROWTH_SPEND)}）")
+    return BUILD_GROWTH_SPEND[key][0]
+
+
+# ── 符纹库（02B 第十节 / data/system/build_glyphs.json）────────────────
+# 28 枚通用符纹，分六类；世界模组会追加各自特有的符纹。
+
+BUILD_GLYPH_CATEGORIES = ("增幅类", "效率类", "转化类", "触发类",
+                          "连锁类", "代价类")
+
+BUILD_GLYPHS = (
+    {"no": 1, "id": "assault", "name": "强袭符", "category": "增幅类",
+     "level": "I", "effect": "伤害 +3", "cost": "AP 消耗 +1"},
+    {"no": 2, "id": "area", "name": "广域符", "category": "增幅类",
+     "level": "I", "effect": "范围半径 +3 米", "cost": "专注消耗 +1"},
+    {"no": 3, "id": "pierce", "name": "穿透符", "category": "增幅类",
+     "level": "I", "effect": "无视目标 3 点防护与轻掩体", "cost": "需求成功数 +1"},
+    {"no": 4, "id": "lasting", "name": "持续符", "category": "增幅类",
+     "level": "I", "effect": "持续时间 +1 回合", "cost": "该能力无法在此期间被刷新"},
+    {"no": 5, "id": "multi", "name": "多重符", "category": "增幅类",
+     "level": "II", "effect": "额外命中一次（第二次伤害减半）", "cost": "应力 +1"},
+    {"no": 6, "id": "frugal", "name": "节俭符", "category": "效率类",
+     "level": "I", "effect": "专注消耗 −1（最低为 1）", "cost": "伤害骰降一阶"},
+    {"no": 7, "id": "swift", "name": "迅捷符", "category": "效率类",
+     "level": "I", "effect": "AP 消耗 −1（最低为 1）", "cost": "需求成功数 +1"},
+    {"no": 8, "id": "recharge", "name": "回充符", "category": "效率类",
+     "level": "II", "effect": "每场景一次，使用后立刻刷新一个已消耗的能力",
+     "cost": "应力 +2"},
+    {"no": 9, "id": "subtle", "name": "轻盈符", "category": "效率类",
+     "level": "I", "effect": "不再需要语言或手势成分（可沉默施放）",
+     "cost": "范围 −3 米"},
+    {"no": 10, "id": "symbiosis", "name": "共生符", "category": "效率类",
+     "level": "II", "effect": "命中同伴时为团队注入 1 点动量", "cost": "伤害 −2"},
+    {"no": 11, "id": "ember", "name": "燃烬符", "category": "转化类",
+     "level": "I", "effect": "伤害转为【火焰】并引燃可燃物",
+     "cost": "场景中未受控的可燃物亦会被引燃"},
+    {"no": 12, "id": "frostbite", "name": "霜噬符", "category": "转化类",
+     "level": "I", "effect": "伤害转为【寒霜】，并使目标获得 1 层【迟滞】",
+     "cost": "伤害 −2"},
+    {"no": 13, "id": "voltaic", "name": "雷引符", "category": "转化类",
+     "level": "I", "effect": "伤害转为【电击】，并传导至相邻的一个目标（一半伤害）",
+     "cost": "在导电环境中你自己也会受影响"},
+    {"no": 14, "id": "sonic", "name": "音爆符", "category": "转化类",
+     "level": "I", "effect": "伤害转为【声波】，并完全无视掩体",
+     "cost": "发出巨响，暴露所有人位置"},
+    {"no": 15, "id": "entropy", "name": "熵染符", "category": "转化类",
+     "level": "II", "effect": "伤害转为【熵蚀】，并使目标获得 1 层【熵染】",
+     "cost": "你自己获得 1 点应力"},
+    {"no": 16, "id": "exploit", "name": "破绽符", "category": "触发类",
+     "level": "I", "effect": "命中后目标获得 1 层【破绽】", "cost": "需求成功数 +1"},
+    {"no": 17, "id": "knockback", "name": "震退符", "category": "触发类",
+     "level": "I", "effect": "命中后推动目标 2 米", "cost": "伤害 −1"},
+    {"no": 18, "id": "slow", "name": "迟缓符", "category": "触发类",
+     "level": "I", "effect": "命中后目标移动减半，持续一回合", "cost": "专注消耗 +1"},
+    {"no": 19, "id": "mark", "name": "标记符", "category": "触发类",
+     "level": "I", "effect": "命中后，你对该目标的下一次攻击骰池 +1 枚", "cost": "无"},
+    {"no": 20, "id": "seize", "name": "攫取符", "category": "触发类",
+     "level": "I", "effect": "命中后可以夺取目标的一件手持物", "cost": "AP 消耗 +1"},
+    {"no": 21, "id": "detonate", "name": "引爆符", "category": "连锁类",
+     "level": "II", "effect": "命中已带状态的目标时，额外造成 2d6 伤害",
+     "cost": "专注消耗 +1"},
+    {"no": 22, "id": "hunter", "name": "追猎符", "category": "连锁类",
+     "level": "I", "effect": "命中后若目标移动，你可立即移动 3 米", "cost": "无"},
+    {"no": 23, "id": "echo", "name": "回声符", "category": "连锁类",
+     "level": "II", "effect": "若该能力本次判定落空，立即返还一半专注消耗",
+     "cost": "每场景只能触发一次"},
+    {"no": 24, "id": "resonance_detonate", "name": "共感引爆符",
+     "category": "连锁类", "level": "III",
+     "effect": "当你对这个目标造成伤害时，所有处于同一状态的目标各受到一半伤害",
+     "cost": "应力 +2"},
+    {"no": 25, "id": "sacrifice", "name": "献祭符", "category": "代价类",
+     "level": "I", "effect": "伤害 +4", "cost": "自身承受 3 点不可减免伤害"},
+    {"no": 26, "id": "overdraw", "name": "透支符", "category": "代价类",
+     "level": "I", "effect": "本次判定骰池 +2 枚", "cost": "场景结束时获得 2 点应力"},
+    {"no": 27, "id": "silence", "name": "缄默符", "category": "代价类",
+     "level": "II", "effect": "目标一回合内无法使用能力",
+     "cost": "你在自己的下个回合之前也无法使用能力"},
+    {"no": 28, "id": "fate", "name": "命运符", "category": "代价类",
+     "level": "III", "effect": "重掷整个骰池一次",
+     "cost": "永久 −1 活力上限（每个会话首次使用时生效）"},
+)
+
+# 符纹等级限制：I 任意 / II ≥ 4 / III ≥ 7。
+BUILD_GLYPH_LEVEL_LIMITS = {"I": 1, "II": 4, "III": 7}
+# 安装上限：同一能力上不能安装两枚同名或同类（同一分类）的符纹。
+BUILD_GLYPH_INSTALL_LIMIT = ("同一个能力上不能安装两枚同名或同类的符纹"
+                             "（同类指同一分类）。")
+
+
+def build_glyph(glyph_id: str) -> dict:
+    """按 id 或名称取一枚符纹（02B 第十节）。返回副本，勿改原表。"""
+    key = str(glyph_id or "").strip()
+    for glyph in BUILD_GLYPHS:
+        if key in (glyph["id"], glyph["name"]):
+            return dict(glyph)
+    raise ValueError(f"未知符纹：{glyph_id}")
+
+
+def build_glyphs_by_category(category: str) -> list:
+    """取某一分类下的全部符纹（02B 第十节 六类）。"""
+    key = str(category or "").strip()
+    if key not in BUILD_GLYPH_CATEGORIES:
+        raise ValueError(
+            f"未知符纹分类：{category}"
+            f"（可用：{'/'.join(BUILD_GLYPH_CATEGORIES)}）")
+    return [dict(g) for g in BUILD_GLYPHS if g["category"] == key]
+
+
+def build_glyph_level_requirement(level: str) -> int:
+    """符纹等级 → 安装所需的最低角色等级（02B 第十节）。"""
+    key = str(level or "").strip().upper()
+    if key not in BUILD_GLYPH_LEVEL_LIMITS:
+        raise ValueError(f"未知符纹等级：{level}（I/II/III）")
+    return BUILD_GLYPH_LEVEL_LIMITS[key]
+
+
+def build_can_install_glyph(glyph_id: str, installed=(),
+                            *, character_level: int = 1) -> dict:
+    """判断能否把某符纹装进同一个能力（02B 第十节安装上限）。
+
+    `installed` 为该能力上**已装**的符纹 id / 名称列表。拒绝条件：
+      · 角色等级不满足该符纹的等级要求（I 任意 / II ≥ 4 / III ≥ 7）；
+      · 该能力已装**同名**符纹；
+      · 该能力已装**同类**（同分类）符纹。
+    返回 {allowed, reason}。
+    """
+    glyph = build_glyph(glyph_id)
+    level = int(character_level or 0)
+    required = build_glyph_level_requirement(glyph["level"])
+    if level < required:
+        return {"allowed": False,
+                "reason": f"{glyph['level']} 级符纹需角色等级 ≥ {required}"}
+    existing = [build_glyph(item) for item in (installed or ())]
+    if any(item["id"] == glyph["id"] for item in existing):
+        return {"allowed": False,
+                "reason": f"该能力已装同名符纹「{glyph['name']}」"}
+    if any(item["category"] == glyph["category"] for item in existing):
+        return {"allowed": False,
+                "reason": f"该能力已装同类（{glyph['category']}）符纹"}
+    return {"allowed": True, "reason": None}
+
+
+# ── 双引擎互转（02B 第十一节 / data/system/build_conversion.json）─────
+# 两套引擎共用同一份内核（属性 / 技能 / 状态 / AP / 破韧 / 连携 / 场地
+# 要素 / 资源框架），因此角色、敌人、剧情都可在两套引擎之间迁移。
+
+# 什么时候应该换引擎（5 条）：situation → advice。
+BUILD_ENGINE_SWITCH = (
+    ("团里有新玩家加入，且他对复杂数值有压力",
+     "战术 → 更简单，但如果是构建团，建议让他用预先配好的角色卡"),
+    ("大家觉得「每次都在掷同一个骰子，没变化」", "换构建引擎"),
+    ("大家觉得「每次都要数一堆骰子，太慢」", "换战术引擎"),
+    ("战役中途想换", "建议等到章节分界点，避免中途换算造成混乱"),
+    ("主持人是 AI 且上下文有限", "战术引擎表达更紧凑，优先考虑"),
+)
+
+# 角色属性转换（5 行）：值区间 → (战术用法, 构建用法)。属性值本身不变，
+# 变的只是它被如何使用。
+BUILD_ATTRIBUTE_CONVERSION = (
+    ("1–3", "修正 −2 ~ −1", "骰池枚数 = 属性（1~3 枚）"),
+    ("4–5", "修正 +0", "骰池枚数 = 属性（4~5 枚）"),
+    ("6–7", "修正 +1", "骰池枚数 = 属性（6~7 枚）"),
+    ("8–9", "修正 +2", "骰池枚数 = 属性（8~9 枚）"),
+    ("10", "修正 +3", "骰池枚数 = 10 枚"),
+)
+
+# 熟练与专精转换（4 行）。
+BUILD_PROFICIENCY_CONVERSION = (
+    ("熟练（+2）", "+2 固定加值", "骰池 +1 枚"),
+    ("熟练（+3）", "+3 固定加值", "骰池 +2 枚"),
+    ("熟练（+4）", "+4 固定加值", "骰池 +2 枚，且该骰池整体骰阶 +1"),
+    ("专精", "额外 +1，自然最高值时 +2", "骰池额外 +1 枚"),
+)
+
+# 难度转换（8 行）：战术 DF → 构建需求成功数。
+BUILD_DIFFICULTY_CONVERSION = (
+    ("6–8", 1, "平凡"), ("10", 2, "简易"), ("12", 3, "常规"),
+    ("14", 4, "有挑战"), ("16", 5, "困难"), ("18", 6, "严峻"),
+    ("20", 8, "极限"), ("24", 10, "传说"),
+)
+# 中间的 DF（如 13、15）取较高一档需求成功数，并给玩家 1 枚额外骰补偿。
+BUILD_MID_DF_BONUS_DIE = 1
+
+# 助势骰 ↔ 骰池（4 行）：战术助势 → 构建骰池枚数增量。
+BUILD_EDGE_CONVERSION = (
+    ("1 枚助势骰（+1d6）", 1),
+    ("2 枚助势骰（+2d6）", 2),
+    ("3 枚助势骰（+3d6）", 3),
+    ("每层劣势（−1d6）", -1),
+)
+
+# 敌人防御转换（5 行）：Guard 区间 → 闪避需求成功数。
+BUILD_ENEMY_DEFENSE_CONVERSION = (
+    ((10, 11), 2), ((12, 13), 3), ((14, 15), 4),
+    ((16, 17), 5), ((18, None), 6),
+)
+
+# 伤害转换（5 行）：战术结果 → 构建对应。伤害骰本身不变，只是乘上命中次数。
+BUILD_DAMAGE_CONVERSION = (
+    ("暴击（超出 Guard 10+）", "D ≥ +3，多次命中"),
+    ("重击（超出 6–9）", "D = +2"),
+    ("命中（超出 0–5）", "D = 0 ~ +1"),
+    ("擦过（低 1–2）", "D = −1"),
+    ("落空（低 3+）", "D ≤ −2"),
+)
+
+# 迁移五步法（5 步）。
+BUILD_MIGRATION_STEPS = (
+    "保留六维属性值、背景标签、驱动、背景故事、关系网（这些与引擎无关）",
+    "重算派生值：活力上限公式不变；构建引擎额外计算应力上限",
+    "重述技能：把每项熟练换算为骰池枚数或固定加值",
+    "重述能力：把伤害骰与效果保留，只是改变「如何判定成功」",
+    "符纹拆分：若从构建引擎迁往战术引擎，把每枚符纹转化为一个等价的机动或专长",
+)
+
+# 混用限制（3 条）。
+BUILD_MIXING_LIMITS = (
+    "同一个团的所有人应当使用同一套引擎。混用会让导引者在不同角色之间"
+    "来回换算，容易出错。",
+    "同一场战斗中不允许部分人用 d20、另一部分人用骰池。",
+    "世界模组的内容两套引擎都可读：三套世界观里的所有敌人、职途、能力与"
+    "装备，都同时提供两套引擎所需的数值标注。",
+)
+
+# 难度转换表内 DF 区间（含端点）→ 需求成功数，用于插值取「较高一档」。
+_BUILD_DF_RANGES = ((6, 8, 1), (10, 10, 2), (12, 12, 3), (14, 14, 4),
+                    (16, 16, 5), (18, 18, 6), (20, 20, 8), (24, 24, 10))
+
+
+def build_df_to_need(df: int) -> dict:
+    """战术 DF → 构建需求成功数（02B 第十一节难度转换）。
+
+    命中表内 DF 直接取对应档（bonus_die=0）；落在两档之间（如 13、
+    15、9、11、19）时**取较高的一档**，并给玩家 1 枚额外骰补偿
+    （bonus_die=1）。DF 小于 6 或大于 24 源文档未定义，一律报错。
+    返回 {df, need, bonus_die}。
+    """
+    df = int(df or 0)
+    for low, high, need in _BUILD_DF_RANGES:
+        if low <= df <= high:
+            return {"df": df, "need": need, "bonus_die": 0}
+    # 源文档只定义 6–24；表外一律报错（不臆造更难的档）。
+    if df < _BUILD_DF_RANGES[0][0] or df > _BUILD_DF_RANGES[-1][1]:
+        raise ValueError(f"DF {df} 超出互转表范围（源文档只定义 6–24）")
+    # 落在两档之间：取比 df 大的最小档（即「较高的一档」）。
+    for low, _high, need in _BUILD_DF_RANGES:
+        if df < low:
+            return {"df": df, "need": need,
+                    "bonus_die": BUILD_MID_DF_BONUS_DIE}
+    raise ValueError(f"DF {df} 超出互转表范围（源文档只定义 6–24）")
+
+
+def build_guard_to_dodge(guard: int) -> int:
+    """敌人 Guard（战术）→ 闪避需求成功数（构建，02B 第十一节）。
+
+    10–11→2 / 12–13→3 / 14–15→4 / 16–17→5 / 18 以上→6。
+    """
+    guard = int(guard or 0)
+    for (low, high), dodge in BUILD_ENEMY_DEFENSE_CONVERSION:
+        if high is None:
+            if guard >= low:
+                return dodge
+        elif low <= guard <= high:
+            return dodge
+    raise ValueError(
+        f"Guard {guard} 低于互转表范围（源文档只定义 10 及以上）")
+
+
+def build_engine_switch_advice(situation: str) -> str:
+    """换引擎建议（02B 第十一节「什么时候应该换引擎」5 条）。"""
+    key = str(situation or "").strip()
+    for case, advice in BUILD_ENGINE_SWITCH:
+        if case == key:
+            return advice
+    raise ValueError(f"未记录的换引擎情形：{situation}")
+
+
 __all__ = [
     # 一、术语与白名单
     "ATTRIBUTES", "ATTRIBUTE_IDS", "ATTRIBUTE_MIN", "ATTRIBUTE_MAX",
@@ -3326,4 +3909,27 @@ __all__ = [
     "STRESS_REDUCTIONS", "LONG_REST_SAFE_HAVEN",
     "stress_cap", "stress_penalty", "stress_overload_event",
     "stress_gain", "stress_reduce",
+    # 十、构建引擎收尾（M2d，02B 第六至十一节）
+    "BUILD_ATTACK_FLOW", "BUILD_DODGE_NEEDS", "BUILD_DODGE_MODIFIER_MAX",
+    "BUILD_HIT_RESULTS", "BUILD_OVERFLOW_MIN_D", "BUILD_OVERFLOW_OPTIONS",
+    "build_dodge_need", "build_dodge_need_adjusted", "build_hit_result",
+    "build_attack_result",
+    "BUILD_OVERLOAD_CHAIN_MIN_MARGIN", "BUILD_OVERLOAD_CHAIN_LIMIT",
+    "BUILD_OVERLOAD_CHAIN_OPTIONS", "build_overload_chain_triggered",
+    "build_overload_chain",
+    "BUILD_MAX_SLOTS_PER_FACULTY", "BUILD_SLOT_SOURCES",
+    "BUILD_SLOT_PURCHASE_BP", "BUILD_SLOT_PURCHASE_MAX", "BUILD_GLYPH_SOURCES",
+    "BUILD_STARTING_GLYPHS", "BUILD_GLYPH_TEMPLATE", "build_slot_total",
+    "BUILD_BP_PER_LEVEL", "BUILD_STARTING_BP", "BUILD_GROWTH_SPEND",
+    "BUILD_STARTING_RESOURCES", "BUILD_ROUTES", "build_bp_total",
+    "build_growth_cost",
+    "BUILD_GLYPH_CATEGORIES", "BUILD_GLYPHS", "BUILD_GLYPH_LEVEL_LIMITS",
+    "BUILD_GLYPH_INSTALL_LIMIT", "build_glyph", "build_glyphs_by_category",
+    "build_glyph_level_requirement", "build_can_install_glyph",
+    "BUILD_ENGINE_SWITCH", "BUILD_ATTRIBUTE_CONVERSION",
+    "BUILD_PROFICIENCY_CONVERSION", "BUILD_DIFFICULTY_CONVERSION",
+    "BUILD_MID_DF_BONUS_DIE", "BUILD_EDGE_CONVERSION",
+    "BUILD_ENEMY_DEFENSE_CONVERSION", "BUILD_DAMAGE_CONVERSION",
+    "BUILD_MIGRATION_STEPS", "BUILD_MIXING_LIMITS",
+    "build_df_to_need", "build_guard_to_dodge", "build_engine_switch_advice",
 ]
