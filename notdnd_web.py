@@ -13,7 +13,7 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
   · ATLAS 自动地图接线（切片 I4）：Session 顶层 atlas 存档块（§3.4，与
     rules 平级，atlas.export_state / restore_state 进出），老档缺块时按
     当前世界懒编译；GET /api/atlas/exits 看出口（纯文本列表），
-    POST /api/atlas/move 移动并返回行程档与时段
+    POST /api/atlas/move 移动并返回行程档与名义分钟
   · 导引者接线（可选模块）：`guide` 状态块随存档落盘 / 按键还原；
     GET /api/guide/status 三个布尔；POST /api/guide/bind 记录显式的
     `world_key` / `scenario_id`（绑定之后 L1 才是这场剧本的典范卡）；
@@ -231,11 +231,11 @@ _SESSION_DEFAULTS: dict[str, object] = {
 # ATLAS 自动地图接线（切片 I4，Issue #66）
 # --------------------------------------------------------------------------
 
-#: 行程档 → 时段数（§5.2 / data/system/travel.json：短程 1、中程 2、
-#: 远程「全天」4、危险穿越 4 且每时段一次风险判定）。
-BAND_HOURS = {"short": 1, "medium": 2, "long": 4, "dangerous": 4}
+#: 行程档 → 名义分钟数（CHRON-DESIGN.md §2.3 / data/system/travel.json：
+#: 短程 360、中程 720、远程 1440、危险穿越 1440，1 时段 = 360 名义分钟）。
+BAND_MINUTES = {"short": 360, "medium": 720, "long": 1440, "dangerous": 1440}
 
-#: 行程档的显示名；band=None 是门 / 连接——地点内部的走动不是行程，不扣时段。
+#: 行程档的显示名；band=None 是门 / 连接——地点内部的走动不是行程，不计行程耗时。
 BAND_NAMES = {"short": "短程", "medium": "中程", "long": "远程",
               "dangerous": "危险穿越", None: "门内"}
 
@@ -570,7 +570,7 @@ class Session:
                                             self._locus.get("place_id"))
             exits = atlas_kernel.exits(self._atlas, self._locus)
             for entry in exits:
-                entry["hours"] = BAND_HOURS.get(entry["band"], 0)
+                entry["hours"] = BAND_MINUTES.get(entry["band"], 0)
             frame = self._atlas["frames"][place["frame_id"]]
             here = {
                 "place_id": place["id"],
@@ -587,22 +587,22 @@ class Session:
                 lines.append("出口：")
                 for entry in exits:
                     label = BAND_NAMES.get(entry["band"], "门内")
-                    hours = "· %d 时段" % entry["hours"] if entry["hours"] else ""
+                    minutes = "· %d 分钟" % entry["hours"] if entry["hours"] else ""
                     flag = "（不稳）" if entry["unstable"] else ""
                     lines.append("  %s → %s（%s%s）%s"
                                  % (entry["via"], entry["name"], label,
-                                    hours, flag))
+                                    minutes, flag))
             else:
                 lines.append("这里没有已知出口。")
             return {"here": here, "exits": exits, "text": "\n".join(lines)}
 
     def atlas_move(self, via: object) -> dict:
-        """沿 via 移动队伍：返回行程档与时段（POST /api/atlas/move）。
+        """沿 via 移动队伍：返回行程档与名义分钟（POST /api/atlas/move）。
 
-        行程档来自连接自身的 band（编译期定档，§5.2）；时段换算按
-        BAND_HOURS。内核（atlas.py）不改风险池，本层也暂不接风险判定——
-        dangerous 档「每时段一次风险判定」留给 M3 的移动接线
-        （prism_core.risk_roll 是纯函数，届时由移动层调用）。
+        行程档来自连接自身的 band（编译期定档，§5.2）；分钟换算按
+        BAND_MINUTES（CHRON-DESIGN.md §2.3：1 时段 = 360 名义分钟）。内核
+        （atlas.py）不改风险池，本层也暂不接风险判定——dangerous 档
+        「每时段一次风险判定」留给 M3 的移动接线（prism_core.risk_roll 是纯函数）。
         """
         via = str(via or "").strip()
         if not via:
@@ -619,7 +619,7 @@ class Session:
             view = self.atlas_view()
             view["status"] = "ok"
             view["band"] = band
-            view["hours"] = BAND_HOURS.get(band, 0)
+            view["hours"] = BAND_MINUTES.get(band, 0)
             return view
 
 
@@ -968,7 +968,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"status": "ok", "sid": sid})
 
             if path == "/api/atlas/move":
-                # 沿 via 移动队伍：返回行程档 + 时段 + 新位置的出口视图。
+                # 沿 via 移动队伍：返回行程档 + 名义分钟 + 新位置的出口视图。
                 # 方向不存在 / 没有该出口时 atlas_move 抛 ValueError → 400。
                 s = self._sess()
                 result = s.atlas_move(b.get("via"))
