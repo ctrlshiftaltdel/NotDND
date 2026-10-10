@@ -45,7 +45,7 @@ AI 任「**导引者**」，纯文本运行为主、视觉占位框架先行（D
 - **数据层**：`python3 tests/validate_data.py` → **79 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ `data/atlas/lexicon.json` + schema/registry）。
 - **回归**：`bash tests/run_all.sh` → **12 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel` / `test_atlas_compile` / `test_atlas_gen` / `test_atlas_ledger_pins` / `test_prism_guide` / `test_ui_smoke`）。
 - **里程碑**：M0 ✅ · M1 ✅（M1.0–M1.4；剧本 PR #58 / #74 / #77）· **M2 ✅（a–d：PR #57 / #70 / #76 / #130）** · M3 **a ✅（PR #56）/ b 并入 M8**（通用行动提案写接口）· **ATLAS I1–I6 ✅（PR #75 / #79 / #81 / #95 / #93 / #80；修复 PR #91）** · **M5 G0–G7 ✅（PR #83 / #92 / #96 / #99 / #101 / #106 / #108 / #119；时间盒 PR #126）** · **M4 骨架 ✅（PR #118）/ 正式 UI 设计单 #133**（`能力：设计`）· **M6 ✅（a PR #127 / b PR #128）** · **GDD v1.1 + 工程基线 ✅（PR #135）——路线自 M7 起以 [`GDD-BASELINE.md`](GDD-BASELINE.md) §5 为准**。
-- **并行分道**（2026-10-10）：**#113 ✅（PR #126）· M2d ✅（PR #130）· M6a ✅（PR #127 / #123）· M6b ✅（PR #128）· GDD 基线 ✅（PR #135）**；**首批设计单已开**：M7-a / M8-a / M9-a（**#136 / #137 / #138**）、候补单 GDD→Markdown（**#139**）、M4 设计单 **#133**（已追加 D2 视觉占位要求）；在办/待办：**#110**（待人派发）、治理同步（PR #TBD）。
+- **并行分道**（2026-10-10）：**#113 ✅（PR #126）· M2d ✅（PR #130）· M6a ✅（PR #127 / #123）· M6b ✅（PR #128）· GDD 基线 ✅（PR #135）**；**首批设计单已开**：M7-a / M8-a / M9-a（**#136 / #137 / #138**）、候补单 GDD→Markdown（**#139**）、M4 设计单 **#133**（已追加 D2 视觉占位要求）；在办/待办：**#110**（待人派发）、治理同步（PR #140）。
 
 ---
 
@@ -135,7 +135,7 @@ bash tests/content_firewall.sh
 > 全部为「已确认」；改动走新 Issue。详见 `AGENTS.md` §10。
 
 - **三条铁律**：① 内容边界（禁第三方版权内容照抄/翻译/改名派生；**允许**借鉴通用机制与题材设定）；② **技术选型效率优先**（不设依赖上限；引入依赖在 PR 说明理由与替代；测试期从简——2026-10-10 由「零第三方运行时依赖」改写，D3）；③ 密钥与隐私永不入库。
-- **GDD v1.1 + 工程基线**（2026-10-10）：[`GDD.html`](GDD.html)（原件）与 [`GDD-BASELINE.md`](GDD-BASELINE.md)（审计 / D1–D4 / 目标架构 / M7–M13 / 拆单依据）入库（PR #135）；治理同步（铁律 2、README、HANDOVER、tests 口径、本快照与路线）随 PR #TBD 落地；首批设计单 #136–#138、候补单 #139 已开。
+- **GDD v1.1 + 工程基线**（2026-10-10）：[`GDD.html`](GDD.html)（原件）与 [`GDD-BASELINE.md`](GDD-BASELINE.md)（审计 / D1–D4 / 目标架构 / M7–M13 / 拆单依据）入库（PR #135）；治理同步（铁律 2、README、HANDOVER、tests 口径、本快照与路线）随 PR #140 落地；首批设计单 #136–#138、候补单 #139 已开。
 - **六维命名**：产品层统一 PRISM 名 **力道 MGT / 灵巧 FIN / 体魄 VIG / 洞察 INS / 心智 MND / 气场 PRE**；D&D 通用名仅作同义词。
 - **`docs/` 可修订**：属内容变更，**单独开 Issue/PR**、不夹带在实现 PR。
 - **并行粒度按文件**：同一文件有开放 PR 时不并行。
@@ -149,7 +149,7 @@ bash tests/content_firewall.sh
   「别暴露到公网」警告）；`HANDOVER.md` = 每节答「为什么 + 踩过的坑」；测试约定见 `tests/README.md`。
 - **阶段收口**（2026-10-10）：**M1.4 剧本 / M2（a–d）/ M3a / ATLAS I1–I6（全部）/ 导引者 G0–G7 / M6 已完成**
   （PR #58 / #74 / #77 / #57 / #70 / #76 / #56 / #75 / #79 / #81 / #95 / #93 / #80 / #91 / #83 / #92 / #96 / #99 / #101 / #106 / #108 / #112 / **#119** / #126 / #130 / #127 / #128 / **#135**）；
-  **新路线自 M7 起**（基线 §5）；在办与待办：**#110（要点 cites 专规，待人派发）**、**M4 正式 UI（设计单 #133）**、**首批设计单 #136–#138（待派发）**、**治理同步（PR #TBD）**。
+  **新路线自 M7 起**（基线 §5）；在办与待办：**#110（要点 cites 专规，待人派发）**、**M4 正式 UI（设计单 #133）**、**首批设计单 #136–#138（待派发）**、**治理同步（PR #140）**。
 - **自动地图（ATLAS）**（2026-10-09 拍板）：跨 M2–M4 的**方向性设计**，方案入库 `ATLAS-DESIGN.md`
   （见 §7 文档地图）；拆六条切片 **I1–I6**（依赖见 §4 注）。**影响面**：新增 `atlas.py` /
   `atlas_compile.py` / `atlas_gen.py` 与 `data/atlas/lexicon.json`（新 kind）；I4 给会话加快照块 `atlas`；
