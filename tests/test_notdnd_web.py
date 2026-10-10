@@ -33,6 +33,13 @@
      并落盘；带 `location_id` 的回合在状态行之后、叙事之前调用一次
      `ensure_realization`（G6 起它会先发一次**非流式**实相请求，所以这一回合的上游
      不止叙事那一次；实相请求体与占位语义由 `tests/test_prism_guide.py` 自己测）。
+  9. 导引者行为与对白（G7 接线）：焦点变化的回合先发**一次**场外节拍请求
+     （非流式 + 思考关 + 无工具，user 只带 id / 名字 / drive / mask / lever / tell，
+     **不含秘密全文**），再发叙事；玩家的整段叙事进 L3 与切拍之前先过秘密门
+     （L3 里既没有秘密全文、也没有连续 8 码位）；`narration` 至多带一条 `trace`
+     （痕迹揭开随同一次 `save()` 落盘）；`npc_flags` 为 `betrayed` 时痕迹用典范
+     原文且**不发**场外请求；离线时不留痕、回合照常；`rules.scene.id` 变化时
+     为**当前焦点**记一轮。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -148,14 +155,16 @@ class _Server:
             # 与否都继续往下走到删临时目录，保证失败路径也收得干净。
             try:
                 os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
-            except (ProcessLookupError, PermissionError, OSError):
+            except (ProcessLookupError, PermissionError, OSError,
+                    AttributeError):
+                # Windows 没有 killpg / getpgid（AttributeError）→ 退回杀本进程。
                 self.proc.terminate()
             try:
                 self.proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 try:
                     os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
-                except OSError:
+                except (OSError, AttributeError):
                     self.proc.kill()
                 self.proc.wait(timeout=10)
             self.proc = None
@@ -409,6 +418,39 @@ def _set_last_beats(sid: str, beats: list) -> None:
     session.guide["last_beats"] = beats
     session.save()
     notdnd_web._sessions.pop(sid, None)
+
+
+def _set_guide(sid: str, patch: dict) -> None:
+    """按 `patch` 改磁盘上 `guide` 块的若干键（服务端随后自己载入）。"""
+    session = notdnd_web.Session.load(sid)
+    session.guide.update(patch)
+    session.save()
+    notdnd_web._sessions.pop(sid, None)
+
+
+def _set_scene(sid: str, scene_id: str) -> None:
+    """改磁盘上规则快照的 `scene.id`（§2.2：原检查点仍有效，测试可直接改快照）。"""
+    session = notdnd_web.Session.load(sid)
+    scene = dict(session.rules.get("scene") or {})
+    scene["id"] = scene_id
+    session.rules["scene"] = scene
+    session.save()
+    notdnd_web._sessions.pop(sid, None)
+
+
+# 非流式 + 思考关且**无工具**：只有场外节拍请求长这样（叙事是 stream=true；
+# 实相与工具预通行都是 `thinking` 为 enabled）。
+def _is_trace_call(call) -> bool:
+    payload = call["payload"]
+    return (payload.get("stream") is False
+            and payload.get("thinking") == {"type": "disabled"})
+
+
+_BAD_JSON = {"content": "这不是 JSON", "tool_calls": [], "usage": {}}
+
+
+def _sse_reply(text: str) -> dict:
+    return {"content": text, "tool_calls": [], "usage": {"prompt_tokens": 1}}
 
 
 def _tts_transport(chunks: list):
@@ -1607,6 +1649,172 @@ def check_guide_turn_location_focus():
     assert reloaded.guide["scenario_id"] == "yunji"
 
 
+def _bind(server, sid):
+    status, body, _raw, _heads = server.post(
+        "/api/guide/bind", {"world_key": "yunji", "scenario_id": "yunji"},
+        sid=sid)
+    assert status == 200, (status, body)
+
+
+def _npc(scenario_id, npc_id):
+    data = prism_guide.load_scenario(scenario_id) or {}
+    for item in data.get("npcs") or []:
+        if item.get("id") == npc_id:
+            return item
+    raise AssertionError("找不到 %s 里的 %s" % (scenario_id, npc_id))
+
+
+def check_guide_turn_traces_wiring():
+    """G7 接线：焦点变化回合 = 1 次场外（思考关 / 非流式 / 无工具）+ 1 次叙事；
+    `narration` 至多一条 `trace`；L3 无秘密（全文与 8 码位都查）。"""
+    sid = "g7-trace-wire"
+    _guide_session(sid)
+    huo = _npc("yunji", "npc-01")
+    secret = huo["secret"]
+    window = secret[:prism_guide.SECRET_WINDOW]
+    narration = ("【裁决】判定：成功\n\n"
+                 "【叙事】霍砚低声说他是守钥人计霜的儿子。温苔：「灯还亮着。」\n\n"
+                 "【钩子】泉声还在响。")
+    with _LocalServer() as server:
+        _bind(server, sid)
+        # 回合 A：无焦点，只建立 scene 检查点（不记痕）。
+        with _guide_online(_ONLINE_ENV, _FakeTransport()):
+            assert server.post("/api/guide/turn", {"text": "我看看四周"},
+                               sid=sid)[0] == 200
+        # 回合 B：第一次设焦点 loc-02（previous 空 → 不算变化，不记痕）。
+        with _guide_online(_ONLINE_ENV,
+                           _FakeTransport([_BAD_JSON, _BAD_JSON,
+                                           _sse_reply(_OK_NARRATION)])):
+            assert server.post(
+                "/api/guide/turn",
+                {"text": "我走进白壁", "location_id": "loc-02"}, sid=sid)[0] == 200
+        assert notdnd_web.get_session(sid).guide["focus_location_id"] == "loc-02"
+        # 回合 C：焦点 loc-02 → loc-05，才是真正的「离开」。先埋一条未揭开的痕迹。
+        _set_guide(sid, {"traces": [{"at": "loc-02", "id": "npc-01",
+                                     "text": "他换了把新锁。", "revealed": False}]})
+        fake = _FakeTransport([_BAD_JSON, _BAD_JSON, _BAD_JSON,
+                               _sse_reply(narration)])
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我走进灰市", "location_id": "loc-05"}, sid=sid)
+        assert status == 200, status
+        streams = [call["payload"].get("stream") for call in fake.calls]
+        trace_calls = [call for call in fake.calls if _is_trace_call(call)]
+        narrative_calls = [call for call in fake.calls
+                           if call["payload"].get("stream") is True]
+        assert len(trace_calls) == 1, streams
+        assert len(narrative_calls) == 1, streams
+        body = trace_calls[0]["payload"]
+        assert body["thinking"] == {"type": "disabled"}
+        assert body["stream"] is False and "tools" not in body
+        user = body["messages"][1]["content"]
+        assert secret not in user, "秘密全文不得进场外请求的 user"
+        assert "霍砚" in user and huo["drive"] in user, user
+        # narration：至多一条 trace，且是埋下的那条。
+        event = dict(_parse_sse(raw))["narration"]
+        assert event["trace"] == "他换了把新锁。", event.get("trace")
+        # 秘密门：玩家看到的叙事与 L3 都没有秘密全文、也没有 8 码位。
+        assert "……" in event["text"], event["text"]
+        assert secret not in event["text"] and window not in event["text"]
+        assert "灯还亮着。" in event["text"], "点出别人名字的对白要留下"
+        session = notdnd_web.get_session(sid)
+        l3 = "".join(entry["content"] for entry in session.guide["transcript"])
+        assert secret not in l3 and window not in l3, l3
+        # 切拍从涂掉之后的字里来；说话人按 npc.id 分配声线。
+        speakers = {beat["speaker"] for beat in event["beats"] if beat["speaker"]}
+        assert speakers == {"npc-02"}, event["beats"]
+        assert session.guide["voices"]["npc-02"] == \
+            prism_guide.npc_voice("npc-02") == "茉莉"
+        # `revealed` 随同一次 save() 落盘。
+        assert session.guide["traces"][0]["revealed"] is True
+        assert notdnd_web.Session.load(sid).guide["traces"][0]["revealed"] is True
+        assert session.guide["traces"][0]["at"] == "loc-02"
+
+
+def check_guide_turn_traces_betrayed():
+    """`npc_flags` 为 betrayed：痕迹等于 `if_dead_or_betrayed` 原文，且无场外请求。"""
+    sid = "g7-trace-betrayed"
+    _guide_session(sid)
+    huo = _npc("yunji", "npc-01")
+    with _LocalServer() as server:
+        _bind(server, sid)
+        with _guide_online(_ONLINE_ENV, _FakeTransport()):
+            server.post("/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+        with _guide_online(_ONLINE_ENV,
+                           _FakeTransport([_BAD_JSON, _BAD_JSON,
+                                           _sse_reply(_OK_NARRATION)])):
+            server.post("/api/guide/turn",
+                        {"text": "我走进白壁", "location_id": "loc-02"}, sid=sid)
+        _set_guide(sid, {"npc_flags": {"npc-01": "betrayed"}})
+        fake = _FakeTransport([_BAD_JSON, _BAD_JSON, _sse_reply(_OK_NARRATION)])
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我走进灰市", "location_id": "loc-05"}, sid=sid)
+        assert status == 200, status
+        assert [call for call in fake.calls if _is_trace_call(call)] == [], \
+            "终局标志的 NPC 不得叫模型"
+        event = dict(_parse_sse(raw))["narration"]
+        assert event["trace"] == huo["if_dead_or_betrayed"], event.get("trace")
+
+
+def check_guide_turn_traces_offline():
+    """离线：场外与叙事都发不出去 → 不留痕、不走第二行 HTTP 状态、回合照常。"""
+    sid = "g7-trace-offline"
+    _guide_session(sid)
+    with _LocalServer() as server:
+        _bind(server, sid)
+        with _guide_online(_ONLINE_ENV, _FakeTransport()):
+            server.post("/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+        with _guide_online(_ONLINE_ENV,
+                           _FakeTransport([_BAD_JSON, _BAD_JSON,
+                                           _sse_reply(_OK_NARRATION)])):
+            server.post("/api/guide/turn",
+                        {"text": "我走进白壁", "location_id": "loc-02"}, sid=sid)
+        offline = {"BASE_URL": "", "MODEL": "mm", "API_KEY": ""}
+        fake = _FakeTransport()
+        with _guide_online(offline, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我走进灰市", "location_id": "loc-05"}, sid=sid)
+        assert status == 200, status
+        assert fake.calls == [], "离线不得调用传输"
+        session = notdnd_web.get_session(sid)
+        assert session.guide["traces"] == [], session.guide["traces"]
+        assert session.guide["focus_location_id"] == "loc-05"
+        events = [name for name, _payload in _parse_sse(raw)]
+        assert "fallback" in events and "done" in events, events
+
+
+def check_guide_turn_scene_change_traces():
+    """`rules.scene.id` 变化：为**当前焦点**记一轮场外痕迹（§2.2 原检查点）。"""
+    sid = "g7-trace-scene"
+    _guide_session(sid)
+    with _LocalServer() as server:
+        _bind(server, sid)
+        with _guide_online(_ONLINE_ENV, _FakeTransport()):
+            server.post("/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+        with _guide_online(_ONLINE_ENV,
+                           _FakeTransport([_BAD_JSON, _BAD_JSON,
+                                           _sse_reply(_OK_NARRATION)])):
+            server.post("/api/guide/turn",
+                        {"text": "我走进白壁", "location_id": "loc-02"}, sid=sid)
+        # 直接改快照的 scene.id（§2.2：原检查点仍有效）。
+        _set_scene(sid, "sc-2")
+        fake = _FakeTransport([_BAD_JSON, _sse_reply(_OK_NARRATION)])
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "我继续查"}, sid=sid)
+        assert status == 200, status
+        trace_calls = [call for call in fake.calls if _is_trace_call(call)]
+        assert len(trace_calls) == 1, \
+            [call["payload"].get("stream") for call in fake.calls]
+        user = trace_calls[0]["payload"]["messages"][1]["content"]
+        assert "霍砚" in user, "scene.id 变化记的是**当前焦点**（loc-02）的在场 NPC"
+        assert notdnd_web.get_session(sid).guide["l2_scene_id"] == "sc-2"
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -1637,6 +1845,10 @@ CHECKS = (
     check_guide_bind_endpoint,
     check_guide_bind_no_module,
     check_guide_turn_location_focus,
+    check_guide_turn_traces_wiring,
+    check_guide_turn_traces_betrayed,
+    check_guide_turn_traces_offline,
+    check_guide_turn_scene_change_traces,
 )
 
 

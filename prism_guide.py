@@ -1719,10 +1719,10 @@ def ensure_realization(web_session, location_id, env=None, transmit=None):
 
 # ── §2.2 / §5.8 / §5.9 行为与对白（G7）─────────────────────────────────
 #
-# 声线、秘密门、场外痕迹、路人。产品路径只把这些函数挂在已有回合流程上
-# （`bind` 填 `npc_home`；网页层每回合调 `beats_of`，这里顺手写 `voices` /
-# `npc_at`）。秘密涂掉与场外请求的**调用点**在 `notdnd_web.py`，本切片不改它
-# （见 PR 风险节）。
+# 声线、秘密门、场外痕迹、路人。产品路径的挂载点：`bind` 填 `npc_home`；
+# 网页层每回合调 `beats_of`（这里顺手写 `voices` / `npc_at`）；`_guide_turn`
+# 在实相之后、叙事之前调 `record_traces`，叙事进 L3 之前调 `redact_narration`，
+# 并在该回合的 `narration` 事件里带一条 `reveal_next_trace` 揭开痕迹。
 
 
 def npc_voice(npc_id):
