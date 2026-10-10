@@ -26,7 +26,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GATE = os.path.join(ROOT, "tests", "commit_email_gate.sh")
 
 ZERO_SHA = "0" * 40                                     # push 事件「新分支首推」时 BEFORE 的全 0 形状
-NOREPLY = "123456+bot@users.noreply.github.com"        # 本地实现 Agent 应配的形状
+NOREPLY = "123456+bot@users.noreply.github.com"        # 本地 Execution Agent 应配的形状
 NOREPLY_MIXED = "123456+Bot@Users.Noreply.GitHub.com"  # 大小写变体
 WEB_MERGE = "noreply@github.com"                       # GitHub 网页 / API 合并
 # 真实邮箱：应当被拦。用拼接构造——本文件也在内容防火墙的扫描范围内，
