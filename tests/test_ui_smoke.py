@@ -2,14 +2,18 @@
 # -*- coding: utf-8 -*-
 """UI 冒烟：起服务 → 无头浏览器打开首页 → 检查几条最便宜的不变量。
 
-只回答一个问题：「首页还能不能用」。三条断言都针对「整页级」的故障，
+只回答一个问题：「首页还能不能用」。四条断言都针对「整页级」的故障，
 不碰任何具体交互（那些交给各自的专项用例）：
 
   1. 首页加载完成（document.readyState 到 complete）；
   2. `window.__ERRS` 为空——前端把**未捕获错误**与**未处理的 Promise 拒绝**
      都收集到这个数组里，非空即代表页面在初始化期就抛了错；
   3. 至少有一个 `.view` 处在 `is-on` 状态——视图系统靠这个 class 决定
-     哪个界面可见，一个都没点亮说明页面白屏。
+     哪个界面可见，一个都没点亮说明页面白屏；
+  4. 页面不发起任何**外部**（跨源）资源请求——前端约定「零外链」，
+     不能出现 CDN 脚本、外链样式、Web Font、外链图片。同源请求
+     （自己的 `/css/*` `/js/*` `/api/*`）不算，浏览器自动要的
+     `/favicon.ico` 也是同源。
 
 前置条件任一缺失即**优雅跳过**并返回 0（CI 不红）：
   · 没有 `static/index.html`（前端还没落地，或这份测试被单独拎出来跑）；
@@ -159,6 +163,15 @@ def main():
             errs = page.js("return window.__ERRS || [];")
             check("window.__ERRS 为空", not errs,
                   "捕获到未捕获错误：%r" % (errs,))
+            # 外部（跨源）资源请求：只认 http(s) 且 origin 与页面不同的。
+            # 同源的 /css/* /js/* /api/*、以及浏览器自动要的 /favicon.ico 都不算。
+            ext = page.js(
+                "const o = location.origin;"
+                "return performance.getEntriesByType('resource')"
+                "  .map(e => e.name)"
+                "  .filter(u => /^https?:/i.test(u) && new URL(u).origin !== o);")
+            check("页面不发起外部资源请求", not ext,
+                  "外部请求：%r" % (ext,))
             if not _fails:
                 try:
                     saved = page.screenshot("ui-smoke.png")

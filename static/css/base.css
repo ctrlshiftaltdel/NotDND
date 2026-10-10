@@ -1,76 +1,11 @@
 /* ═══════════════════════════════════════════════════════════
-   棱镜 · 前端工程骨架样式
+   棱镜 · 基础样式（重置 + 跨片共用件 + 浮层外壳 + 全局动效开关）
    纯 CSS，无构建步骤、无外部字体、无图片资源。手机优先，
    320px 宽度下不产生横向溢出；宽屏时中间留一条 860px 的「桌面」。
+
+   令牌一律引用 css/tokens.css（本文件不定义任何 --* 变量）；
+   某一「片」专属的样式放该片自己的文件（lobby.css / stream.css …）。
    ═══════════════════════════════════════════════════════════ */
-
-/* ── 设计令牌：语义变量 + 派生色。组件只引用令牌，不写死颜色，
-      改主题时只动这一块。 ─────────────────────────────────── */
-:root {
-  /* 颜色 */
-  --bg-0: #0e1015;
-  --bg-1: #151821;
-  --bg-2: #1b1f2b;
-  --bg-3: #232838;
-  --text-1: #e7ebf3;
-  --text-2: #aeb6c6;
-  --text-3: #7c8598;
-  --accent: #6ea8fe;
-  --accent-2: #7ee0c0;
-  --danger: #f2796b;
-  --success: #74d99f;
-  --line: #2b3142;
-  --line-strong: #3d4560;
-  --on-accent: #0a1020;
-
-  /* 字体 */
-  --font-sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
-  --font-serif: Georgia, "Songti SC", "Noto Serif SC", serif;
-  --font-mono: ui-monospace, Menlo, Consolas, monospace;
-
-  /* 字号（由 html[data-font] 覆盖，实现设置里的「字号」档位） */
-  --fs-xs: 11px;
-  --fs-sm: 12.5px;
-  --fs-ui: 14px;
-  --fs-body: 15px;
-  --fs-lg: 17.5px;
-  --fs-xl: 21px;
-
-  /* 间距 / 圆角 / 阴影 */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
-  --sp-5: 24px;
-  --r-sm: 6px;
-  --r: 10px;
-  --r-lg: 14px;
-  --r-pill: 999px;
-  --elev-1: 0 2px 8px rgba(0, 0, 0, .32);
-  --elev-2: 0 10px 28px rgba(0, 0, 0, .5);
-
-  /* 动效 */
-  --dur-fast: 120ms;
-  --dur: 200ms;
-  --ease: cubic-bezier(.2, .8, .2, 1);
-
-  /* 图标 */
-  --icon-sm: 16px;
-  --icon: 20px;
-
-  /* 布局常量 */
-  /* 首屏兜底值：JS 未跑或 ResizeObserver 不可用时用它。
-     真实值由 app.js 的 syncDockHeight() 实测后回写到行内样式上，
-     因为工具条高度 = 内容 + 内边距（+ 安全区），硬编码偏小会让
-     最后一屏内容被工具条压住。 */
-  --dock-h: 56px;
-  --safe-b: env(safe-area-inset-bottom, 0px);
-  --safe-t: env(safe-area-inset-top, 0px);
-}
-
-/* 字号档位：只改字号令牌，布局与 --dock-h 会跟着实测自适应 */
-html[data-font="s"] { --fs-xs: 10px; --fs-sm: 11.5px; --fs-ui: 13px; --fs-body: 13.5px; --fs-lg: 15.5px; --fs-xl: 19px; }
-html[data-font="l"] { --fs-xs: 12px; --fs-sm: 14px; --fs-ui: 15.5px; --fs-body: 17px; --fs-lg: 19.5px; --fs-xl: 23px; }
 
 * { box-sizing: border-box; }
 
@@ -132,7 +67,7 @@ button:focus-visible, input:focus-visible {
 
 /* （宽屏桌面框） */
 @media (min-width: 900px) {
-  body { display: flex; justify-content: center; background: #090b10; }
+  body { display: flex; justify-content: center; background: var(--bg-frame); }
   .view { width: 100%; max-width: 860px; border-left: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--bg-0); }
 }
 
@@ -180,76 +115,6 @@ button:focus-visible, input:focus-visible {
 .top-line2 { font-size: var(--fs-sm); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top-spacer { width: 40px; flex: 0 0 auto; }
 
-/* ══════════════ 主画面：单一滚动容器 ══════════════ */
-/* 剧情卡 → 叙事流 → 行动区都在这一根滚动条里。
-   min-height:0 是关键：没有它，flex 子项不肯收缩，
-   滚动条会落到整个 .view 上，顶栏与工具条也被一起滚走。 */
-.play-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  overscroll-behavior: contain;
-  padding: 0 var(--sp-3) var(--sp-4);
-  scroll-behavior: smooth;
-}
-html.no-anim .play-scroll { scroll-behavior: auto; }
-
-/* 剧情卡 */
-.scene-card {
-  flex: 0 0 auto;
-  padding: var(--sp-4) var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--line);
-}
-.sc-crumb {
-  font-size: var(--fs-xs); letter-spacing: .16em; text-transform: uppercase;
-  color: var(--accent);
-}
-.sc-name {
-  font-family: var(--font-serif); font-size: var(--fs-xl); font-weight: 700;
-  color: var(--text-1); margin: var(--sp-1) 0 var(--sp-2);
-}
-.sc-read {
-  font-family: var(--font-serif); font-size: var(--fs-body); color: var(--text-2);
-  line-height: 1.65; padding-left: var(--sp-3);
-  border-left: 2px solid var(--accent);
-}
-.sc-read::first-letter { font-size: 1.3em; color: var(--accent); }
-
-/* 叙事流 */
-.stream { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) 0; }
-.msg {
-  max-width: 92%;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r);
-  font-size: var(--fs-body);
-  background: color-mix(in srgb, var(--bg-2) 70%, transparent);
-  border: 1px solid var(--line);
-}
-.msg-narrate { align-self: flex-start; border-left: 3px solid var(--accent-2); color: var(--text-1); }
-.msg-act { align-self: flex-end; background: color-mix(in srgb, var(--accent) 14%, var(--bg-2)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--text-1); }
-.msg-note { align-self: center; background: transparent; border-style: dashed; color: var(--text-3); font-size: var(--fs-sm); }
-.stream-empty, .boot { color: var(--text-3); font-size: var(--fs-sm); padding: var(--sp-3); text-align: center; }
-
-/* 行动区：信息流最后一节，跟着内容一起滚，不吸底 */
-.act-zone { flex: 0 0 auto; padding-bottom: var(--sp-4); }
-.btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); }
-.act-btn {
-  justify-content: flex-start;
-  text-align: left;
-  padding: var(--sp-2) var(--sp-3);
-}
-.act-key {
-  flex: 0 0 auto;
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 22px; height: 22px; border-radius: var(--r-sm);
-  background: var(--bg-3); color: var(--text-2);
-  font-size: var(--fs-xs); font-family: var(--font-mono);
-}
-.act-label { flex: 1 1 auto; }
-.act-hint { flex: 0 0 auto; font-size: var(--fs-xs); color: var(--text-3); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 1px 8px; }
-
 /* ── 底部工具条 / 标签页 ─────────────────────────────── */
 .dock {
   flex: 0 0 auto;
@@ -274,37 +139,8 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
   width: 24px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent);
 }
 
-/* ══════════════ 会话列表 ══════════════ */
-.lobby-head { flex: 0 0 auto; padding: calc(24px + var(--safe-t)) var(--sp-4) var(--sp-3); border-bottom: 1px solid var(--line); }
-.brand { font-family: var(--font-serif); font-size: var(--fs-xs); letter-spacing: .3em; text-transform: uppercase; color: var(--accent); }
-.lobby-head h1 { font-family: var(--font-serif); font-size: var(--fs-xl); margin: var(--sp-1) 0 0; }
-.lobby-sub { margin-top: var(--sp-1); color: var(--text-3); font-size: var(--fs-sm); }
-
-.lobby-scroll {
-  flex: 1 1 auto; min-height: 0; overflow-y: auto;
-  overscroll-behavior: contain;
-  padding: var(--sp-2) var(--sp-3) var(--sp-4);
-}
-
-.save-list { display: flex; flex-direction: column; gap: var(--sp-2); }
-.save-row {
-  display: flex; align-items: center; gap: var(--sp-2);
-  border: 1px solid var(--line); border-radius: var(--r);
-  background: var(--bg-1);
-  overflow: hidden;
-}
-.save-row.is-current { border-color: color-mix(in srgb, var(--accent) 55%, transparent); }
-.save-main { flex: 1 1 auto; min-width: 0; text-align: left; padding: var(--sp-3); }
-.save-name { font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600; color: var(--text-1); }
-.save-meta { font-size: var(--fs-sm); color: var(--text-3); margin-top: 2px; }
-.save-actions { flex: 0 0 auto; padding-right: var(--sp-1); }
-.save-empty, .save-more { color: var(--text-3); font-size: var(--fs-sm); text-align: center; padding: var(--sp-5) var(--sp-3); }
-.tag {
-  display: inline-block; margin-left: var(--sp-2); padding: 1px 7px;
-  font-size: var(--fs-xs); font-family: var(--font-sans); font-weight: 400;
-  border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--text-3);
-}
-.tag-on { color: var(--accent); border-color: var(--accent); }
+/* ── 共享空态 / 加载态（叙事流与存档列表共用）─────────── */
+.stream-empty, .boot { color: var(--text-3); font-size: var(--fs-sm); padding: var(--sp-3); text-align: center; }
 
 /* ══════════════ 设置 ══════════════ */
 .settings-scroll {
@@ -317,7 +153,9 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
 .set-title {
   padding: var(--sp-2) var(--sp-3);
   font-size: var(--fs-xs); letter-spacing: .14em; text-transform: uppercase;
-  color: var(--text-3); background: var(--bg-2); border-bottom: 1px solid var(--line);
+  /* 卡片头在 --bg-2 上：--text-3 在 bg-2 只有 4.4:1（低于 4.5:1），
+     按 UI-DESIGN.md §3.2 的硬规则改用 --text-2。 */
+  color: var(--text-2); background: var(--bg-2); border-bottom: 1px solid var(--line);
 }
 .set-row {
   display: flex; align-items: center; gap: var(--sp-3);
@@ -391,7 +229,7 @@ html.no-anim .scrim, html.no-anim .sheet, html.no-anim .drawer { animation: none
 }
 .menu-item:hover { background: var(--bg-2); color: var(--text-1); }
 
-/* 通用辅助层：底部弹出的全宽面板（关于 / 帮助） */
+/* 通用辅助层：底部弹出的全宽面板（关于 / 帮助 / 未来的各片面板） */
 .sheet {
   position: fixed; left: 0; right: 0; bottom: 0;
   z-index: 65;
@@ -439,10 +277,6 @@ html.no-anim .scrim, html.no-anim .sheet, html.no-anim .drawer { animation: none
   box-shadow: var(--elev-2);
   animation: slideUp var(--dur) var(--ease);
 }
-
-/* ── 紧凑排版（设置项）：收窄叙事行距 ─────────────────── */
-html[data-dense="on"] .stream { gap: 4px; }
-html[data-dense="on"] .msg { line-height: 1.45; }
 
 /* ── 动效开关：系统偏好 + 设置里的「动效」都关掉过渡 ─── */
 @media (prefers-reduced-motion: reduce) {

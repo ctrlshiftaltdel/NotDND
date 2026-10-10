@@ -1,0 +1,77 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 片 U2/U3/U5：主画面（场景卡 → 叙事流 → 行动区）
+   本片专属样式；令牌见 css/tokens.css，跨片共用件见 css/base.css。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ══════════════ 主画面：单一滚动容器 ══════════════ */
+/* 剧情卡 → 叙事流 → 行动区都在这一根滚动条里。
+   min-height:0 是关键：没有它，flex 子项不肯收缩，
+   滚动条会落到整个 .view 上，顶栏与工具条也被一起滚走。 */
+.play-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 0 var(--sp-3) var(--sp-4);
+  scroll-behavior: smooth;
+}
+html.no-anim .play-scroll { scroll-behavior: auto; }
+
+/* 剧情卡 */
+.scene-card {
+  flex: 0 0 auto;
+  padding: var(--sp-4) var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--line);
+}
+.sc-crumb {
+  font-size: var(--fs-xs); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--accent);
+}
+.sc-name {
+  font-family: var(--font-serif); font-size: var(--fs-xl); font-weight: 700;
+  color: var(--text-1); margin: var(--sp-1) 0 var(--sp-2);
+}
+.sc-read {
+  font-family: var(--font-serif); font-size: var(--fs-body); color: var(--text-2);
+  line-height: 1.65; padding-left: var(--sp-3);
+  border-left: 2px solid var(--accent);
+}
+.sc-read::first-letter { font-size: 1.3em; color: var(--accent); }
+
+/* 叙事流 */
+.stream { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) 0; }
+.msg {
+  max-width: 92%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r);
+  font-size: var(--fs-body);
+  background: color-mix(in srgb, var(--bg-2) 70%, transparent);
+  border: 1px solid var(--line);
+}
+.msg-narrate { align-self: flex-start; border-left: 3px solid var(--accent-2); color: var(--text-1); }
+.msg-act { align-self: flex-end; background: color-mix(in srgb, var(--accent) 14%, var(--bg-2)); border-color: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--text-1); }
+.msg-note { align-self: center; background: transparent; border-style: dashed; color: var(--text-3); font-size: var(--fs-sm); }
+
+/* 行动区：信息流最后一节，跟着内容一起滚，不吸底 */
+.act-zone { flex: 0 0 auto; padding-bottom: var(--sp-4); }
+.btn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); }
+.act-btn {
+  justify-content: flex-start;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+}
+.act-key {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: var(--r-sm);
+  background: var(--bg-3); color: var(--text-2);
+  font-size: var(--fs-xs); font-family: var(--font-mono);
+}
+.act-label { flex: 1 1 auto; }
+.act-hint { flex: 0 0 auto; font-size: var(--fs-xs); color: var(--text-3); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 1px 8px; }
+
+/* ── 紧凑排版（设置项）：收窄叙事行距 ─────────────────── */
+html[data-dense="on"] .stream { gap: 4px; }
+html[data-dense="on"] .msg { line-height: 1.45; }
