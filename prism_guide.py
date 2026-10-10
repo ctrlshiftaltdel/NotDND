@@ -75,7 +75,7 @@ G6（实相）：
 - `ensure_realization`（§5.2 / §5.7）：锁内写 `pending` 并 `save`（`claim` +
   `claimed_at`）；新鲜 `pending`（120 秒内）直接返回，不重画，也不写要点退回；
   锁外才读上游，硬失败再请求一次，**两次共用** `REALIZATION_TIMEOUT_S`（§5.11）：
-  第一次用满这 40 秒，第二次只剩剩余预算，第一次就吃满时不再发第二次；两次都失败
+  第一次用满这 75 秒，第二次只剩剩余预算，第一次就吃满时不再发第二次；两次都失败
   或超时就由服务端造要点链，`source` 为 `fallback`；只有自己仍是 `claim` 的主人才
   用图或退回替换 `pending`，删掉 `claim` / `claimed_at`，此时才重写 L2（salt 与
   实相摘要在这时才进 L2）并清空 L3。焦点仍是显式 `location_id`，实相只落
@@ -857,9 +857,14 @@ def location_ok(guide, location_id):
 # 实相请求参数（§5.7）：思考开、非流式、4096、无工具、自己的 messages。
 REALIZATION_MAX_TOKENS = 4096
 
-# 实相的时间盒（§5.11）：另计 40 秒，不从叙事的 45 秒里扣。硬失败再请求一次，
+# 实相的时间盒（§5.11）：另计 75 秒，不从叙事的 45 秒里扣。硬失败再请求一次，
 # 两次共用这一个盒子。
-REALIZATION_TIMEOUT_S = 40.0
+#
+# 75 不是拍脑袋：40 写在实测之前，而 mimo-v2.6-flash（思考开、4096、非流式）
+# 单次含组装与校验实测 37.3s / 49.8s，两次都贴/超 40s —— 共用时间盒下第一次
+# 就吃满，重试形同虚设。取 ≈ 50s 实测 + 一次重试余量 = 75s。注意 urllib 的
+# timeout 是「每次 socket 读」的超时，不是墙钟硬上限。
+REALIZATION_TIMEOUT_S = 75.0
 
 # 典范切片上限（§2.1：**不含输出合同**）；区域摘要先截到 200 字（§2.1）。
 REALIZATION_SLICE_LIMIT = 4000
@@ -1612,8 +1617,8 @@ def generate_realization(canon, salt="", env=None, transmit=None):
 
     只发生丢弃、而且丢完之后还有非要点节点 → 直接采用这张图，**不再**重试。
 
-    两次尝试**共用** `REALIZATION_TIMEOUT_S`（§5.11「两次共用这 40 秒」）：
-    第一次用满这 40 秒，第二次的 `timeout` 是**剩余预算**；第一次就把预算吃满
+    两次尝试**共用** `REALIZATION_TIMEOUT_S`（§5.11「两次共用这 75 秒」）：
+    第一次用满这 75 秒，第二次的 `timeout` 是**剩余预算**；第一次就把预算吃满
     （超时）时不再发第二次，直接返回 `None`（调用方造要点链）。
     """
     reasons = None
