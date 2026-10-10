@@ -51,6 +51,7 @@ G6 覆盖（实相）：
 - `canon_for`：白壁五条专名逐字在；灰市第一条是 `绳会账房`；没有 `key_places`
   的地点不生成实相；
 - `validate_realization`（纯函数）：改了典范名 / 缺少要点 / 无引用 / 只有要点；
+  要点必须**自引其专名**（引 `atmosphere`、引别的专名、空 `cites` 都归到无引用）；
   近名只丢弃那个节点，不是整张图失败；只靠「老钱」的贫区丢弃并删边；落盘的是
   典范原文的 `unlock` / `if_botched`；实相对象没有坐标；
 - `build_realization_body`：思考开、非流式、4096、无工具；输出合同在 user 消息，
@@ -1623,6 +1624,57 @@ def test_validate_realization_hard_failures():
     ok("validate_realization：改了典范名 / 缺少要点 / 无引用 / 只有要点")
 
 
+def test_validate_realization_keypoint_self_cite():
+    """要点必须自引专名（§2.1）：引用 atmosphere、或引用**别的**专名 → 无引用。
+
+    修正前只做通用 `cites_valid`：要点引 `atmosphere`（`ref` 是氛围的连续文本）、
+    或引别的专名（合法 `key_places` 引用）都会被接受。现按设计 §2.1 末句，
+    要点的 `cites` 必须 `field==key_places` 且 `ref` 逐字等于自身 `name`。
+    """
+    canon = _canon("loc-02")
+
+    def _key_with(node_id, name, cites):
+        node = _key_node("loc-02", node_id, name)
+        node["cites"] = cites
+        return node
+
+    # 合法自引继续通过（白壁五要点既有夹具 + 一条街）。
+    good = _payload("loc-02", "白壁", _wall_key_nodes() + [_wall_street()])
+    stored, why = pg.validate_realization(good, canon)
+    assert stored is not None and why == [], why
+
+    # 违规一：要点引用 atmosphere（`ref` 确是氛围的连续文本，字段不是 key_places）。
+    assert pg.cites_valid([{"field": "atmosphere", "ref": "每月洗一次"}], canon)
+    bad_atmo = _wall_key_nodes()
+    bad_atmo[0] = _key_with("tingquan", "听泉馆",
+                            [{"field": "atmosphere", "ref": "每月洗一次"}])
+    assert pg.validate_realization(
+        _payload("loc-02", "白壁", bad_atmo + [_wall_street()]), canon) == \
+        (None, ["失败：无引用：loc-02/tingquan"])
+
+    # 违规二：要点引用**别的**专名（合法 key_places 引用，但 ref != 自身 name）。
+    assert pg.cites_valid([{"field": "key_places", "ref": "白壁行地库"}], canon)
+    bad_other = _wall_key_nodes()
+    bad_other[0] = _key_with("tingquan", "听泉馆",
+                             [{"field": "key_places", "ref": "白壁行地库"}])
+    assert pg.validate_realization(
+        _payload("loc-02", "白壁", bad_other + [_wall_street()]), canon) == \
+        (None, ["失败：无引用：loc-02/tingquan"])
+
+    # 违规三：要点缺 cites → 仍归到 无引用。
+    bad_empty = _wall_key_nodes()
+    bad_empty[0] = _key_with("tingquan", "听泉馆", [])
+    assert pg.validate_realization(
+        _payload("loc-02", "白壁", bad_empty + [_wall_street()]), canon) == \
+        (None, ["失败：无引用：loc-02/tingquan"])
+
+    # 非要点节点不受影响：街引用 atmosphere 照旧通过。
+    street_only = pg.validate_realization(
+        _payload("loc-02", "白壁", _wall_key_nodes() + [_wall_street()]), canon)
+    assert street_only[0] is not None
+    ok("validate_realization：要点自引专名；引错字段 / 引错专名 / 空 cites → 无引用")
+
+
 def test_validate_realization_near_name_is_drop_not_fail():
     """近名只丢那个节点，不是整张图失败；旁边还有合法街就不重试。"""
     canon = _canon("loc-02")
@@ -2310,6 +2362,7 @@ def main():
     test_location_ok()
     test_realization_canon_fixtures()
     test_validate_realization_hard_failures()
+    test_validate_realization_keypoint_self_cite()
     test_validate_realization_near_name_is_drop_not_fail()
     test_validate_realization_old_money_poor_zone()
     test_validate_realization_market_street_kind()

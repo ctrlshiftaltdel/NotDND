@@ -82,6 +82,8 @@ G6（实相）：
   `guide.realizations`；
 - `validate_realization`：**纯函数**（§2.1）。硬失败只来自整张图（`失败：`），
   多一个近名、多一条指向已丢节点的边只丢弃（`丢弃：`），不是整张图失败；
+  要点必须**自引其专名**（`field==key_places` 且 `ref` 逐字等于自身 `name`），
+  引用 `atmosphere` 或引用别的专名都归到 `失败：无引用`；
 - 实相请求体：思考开、`stream` 为 false、4096、无工具、自己的 messages；
   user 消息 = 典范切片 + salt + 输出合同（合同按这一张卡的专名填，不写进 L0）；
 - 种类印证词写在 Python 元组里，**不**写进 `data/atlas/lexicon.json`（那是 ATLAS
@@ -1107,6 +1109,32 @@ def cites_valid(cites, canon):
     return True
 
 
+def keypoint_self_cite(node):
+    """`要点` 节点是否**自引其专名**（§2.1）。
+
+    §2.1「引用合法」末句：``要点`` 的 ``cites`` 必须是 `field==key_places` 且
+    `ref` 与该节点 `name` **逐字相等**。要点只锚在自己的专名上——引用
+    `atmosphere`、或引用**别的**专名，都算这张图的 `失败：无引用`（与现表归口
+    一致，不给它另起一个失败词）。**纯函数**。
+
+    `cites` 缺失 / 为空 / 任一条不是字典 / 任一条 `field` 不是 `key_places` /
+    任一条 `ref` 与该节点 `name` 不逐字相等 → False。
+    """
+    node = node if isinstance(node, dict) else {}
+    name = str(node.get("name") or "")
+    cites = node.get("cites")
+    if not isinstance(cites, list) or not cites:
+        return False
+    for cite in cites:
+        if not isinstance(cite, dict):
+            return False
+        if str(cite.get("field") or "") != "key_places":
+            return False
+        if str(cite.get("ref") or "") != name:
+            return False
+    return True
+
+
 def _cite_refs(cites):
     """引用句列表（`ref` 文本）。"""
     refs = []
@@ -1302,7 +1330,11 @@ def validate_realization(realization, canon, salt=""):
         if str(node.get("kind") or "") not in REALIZATION_KINDS:
             return None, [realize_fail_kind(str(node.get("id") or ""))]
     for node in raw_nodes:
-        if not cites_valid(node.get("cites"), canon):
+        # 要点：必须自引其专名（§2.1）；其余节点走通用引用校验。
+        ok_cites = (keypoint_self_cite(node)
+                    if str(node.get("kind") or "") == "要点"
+                    else cites_valid(node.get("cites"), canon))
+        if not ok_cites:
             return None, [realize_fail_no_cite(str(node.get("id") or ""))]
 
     # 丢弃只拿掉那个节点；原因累积，不判死。
