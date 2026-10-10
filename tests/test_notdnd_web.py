@@ -46,6 +46,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -126,23 +127,41 @@ class _Server:
                    PYTHONIOENCODING="utf-8")
         # 服务端输出落文件：管道写满会死锁，事后读文件还能拿到崩溃证据。
         self._log_handle = open(self.log, "w", encoding="utf-8")
+        # start_new_session：让服务自成一个会话 / 进程组，收摊时按进程组杀，
+        # 连带它可能拉起的子进程一起收干净（否则 kill 直接子进程会留下一串孤儿）。
         self.proc = subprocess.Popen(
             [sys.executable, os.path.join(ROOT, "notdnd_web.py")],
             cwd=ROOT, env=env, stdout=self._log_handle,
-            stderr=subprocess.STDOUT)
-        self._wait_ready()
+            stderr=subprocess.STDOUT, start_new_session=True)
+        # ⚠️ 起不来 / 提前退出时也必须收摊：`with` 只在 __enter__ 成功后才进
+        # 正文，若这里直接抛出去，__exit__ 根本不会被调用，进程就泄漏了。
+        try:
+            self._wait_ready()
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
         return self
 
     def __exit__(self, *_exc):
         if self.proc is not None:
-            self.proc.terminate()
+            # 按进程组收（负 PID = 进程组），失败再退回直接杀进程；无论成功
+            # 与否都继续往下走到删临时目录，保证失败路径也收得干净。
+            try:
+                os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
+            except (ProcessLookupError, PermissionError, OSError):
+                self.proc.terminate()
             try:
                 self.proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                self.proc.kill()
+                try:
+                    os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
+                except OSError:
+                    self.proc.kill()
                 self.proc.wait(timeout=10)
+            self.proc = None
         if self._log_handle is not None:
             self._log_handle.close()
+            self._log_handle = None
         shutil.rmtree(self.dir, ignore_errors=True)
         return False
 
