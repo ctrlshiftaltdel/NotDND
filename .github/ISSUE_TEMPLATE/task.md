@@ -23,3 +23,9 @@ title: ""
 ## 依赖的 PR
 
 <!-- 没有就写「无」；有则写编号与先后顺序。 -->
+
+## 交回要求（通用）
+
+<!-- 固定两条，不必改写： -->
+<!-- 开工前 `gh pr list --state open` 查同文件开放 PR；有则停下报告。 -->
+<!-- 交回复核前 `git fetch && git rebase origin/master`，重跑 `run_all` 与内容防火墙并把结果写进 PR；PR 保持 `MERGEABLE`。 -->
