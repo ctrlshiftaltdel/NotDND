@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN" data-font="m" data-anim="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>棱镜 · AI 导引者</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+
+<!-- 内嵌图标 sprite：纯几何线条，无外部字体 / 图片资源。
+     用 <use href="#i-*"> 复用，避免模板字符串里重复堆 SVG。 -->
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5 8 12l7 7"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20l4-1 9-9-3-3-9 9z"/><path d="M14 7l3 3"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 13l4 4 10-11"/></symbol>
+  <symbol id="i-tune" viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2.4"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2.4"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="8" r=".7"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M4 19c0-3 2.2-4.6 5-4.6s5 1.6 5 4.6"/><path d="M16 7.5a3 3 0 0 1 0 5.6"/><path d="M17 19c0-2.4-.9-3.8-2.4-4.4"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.4 3 14.6 0 18"/><path d="M12 3c-3 3.4-3 14.6 0 18"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><rect x="5.5" y="4" width="13" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12.5" x2="15" y2="12.5"/><line x1="9" y1="16" x2="13" y2="16"/></symbol>
+</svg>
+
+<!-- ══════════ 视图一：会话列表（无会话时可用）══════════ -->
+<section id="v-lobby" class="view is-on" aria-label="会话列表">
+  <header class="lobby-head">
+    <div class="brand">棱镜</div>
+    <h1>会话列表</h1>
+    <p class="lobby-sub">AI 担任导引者，纯文本推进。下面是可以继续的存档。</p>
+  </header>
+
+  <!-- 单一滚动容器：列表再长也只滚这一块，页头与底部工具条固定。 -->
+  <main class="lobby-scroll">
+    <div class="sec-title">存档 <span id="lobbyCount" class="sec-hint"></span></div>
+    <div id="lobbySaves" class="save-list" aria-live="polite">
+      <div class="boot">正在读取存档…</div>
+    </div>
+    <div id="lobbyTruncated" class="save-more" hidden></div>
+  </main>
+
+  <footer class="dock">
+    <div class="bar">
+      <button id="btnLobbySettings" class="btn btn-ghost"><svg class="i i-sm" aria-hidden="true"><use href="#i-tune"/></svg> 设置</button>
+      <button id="btnLobbyAbout" class="btn btn-ghost"><svg class="i i-sm" aria-hidden="true"><use href="#i-info"/></svg> 关于</button>
+    </div>
+  </footer>
+</section>
+
+<!-- ══════════ 视图二：主画面（占位）══════════ -->
+<!-- 顺序固定：剧情卡 → 叙事流 → 行动区，共用同一根滚动条。
+     叙事追加在末尾，所以「最新一段」永远在最下方，选项紧跟其后。 -->
+<section id="v-play" class="view" aria-label="主画面">
+  <header class="top">
+    <button id="btnMenu" class="ic" aria-label="打开菜单" aria-haspopup="dialog"><svg class="i" aria-hidden="true"><use href="#i-menu"/></svg></button>
+    <div class="top-mid">
+      <div id="playSave" class="top-line1">—</div>
+      <div id="playScene" class="top-line2">—</div>
+    </div>
+    <button id="btnPlaySettings" class="ic" aria-label="设置"><svg class="i" aria-hidden="true"><use href="#i-tune"/></svg></button>
+  </header>
+
+  <main id="playScroll" class="play-scroll">
+    <div id="sceneCard" class="scene-card"></div>
+    <div id="stream" class="stream" aria-live="polite"></div>
+    <section id="actZone" class="act-zone" aria-label="当前场景行动">
+      <div class="sec-title">你可以</div>
+      <div id="actList" class="btn-grid"></div>
+      <div class="sec-title">前往</div>
+      <div id="exitList" class="btn-grid"></div>
+    </section>
+  </main>
+
+  <footer class="dock">
+    <nav class="tabs" role="tablist" aria-label="面板">
+      <button class="tab is-on" data-panel="party" role="tab" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>队伍</span></button>
+      <button class="tab" data-panel="scene" role="tab" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>世界</span></button>
+      <button class="tab" data-panel="log" role="tab" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-scroll"/></svg><span>记录</span></button>
+    </nav>
+  </footer>
+</section>
+
+<!-- ══════════ 视图三：设置 ══════════ -->
+<section id="v-settings" class="view" aria-label="设置">
+  <header class="top">
+    <button id="btnSettingsBack" class="ic" aria-label="返回"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <div class="top-mid">
+      <div class="top-line1">设置</div>
+      <div class="top-line2">偏好只保存在这台设备上</div>
+    </div>
+    <span class="top-spacer" aria-hidden="true"></span>
+  </header>
+
+  <main class="settings-scroll">
+    <div id="settingsForm" class="settings-form"></div>
+  </main>
+
+  <footer class="dock">
+    <div class="bar">
+      <button id="btnSettingsDone" class="btn btn-primary btn-block">完成</button>
+    </div>
+  </footer>
+</section>
+
+<!-- ══════════ 浮层：抽屉菜单（第 1 层）══════════ -->
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" hidden role="dialog" aria-modal="true" aria-label="菜单">
+  <div class="drawer-head">
+    <b>菜单</b>
+    <button id="btnDrawerClose" class="ic" aria-label="关闭"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="drawer-body">
+    <nav class="menu" aria-label="菜单">
+      <button class="menu-item" data-menu="settings"><svg class="i" aria-hidden="true"><use href="#i-tune"/></svg> 设置</button>
+      <button class="menu-item" data-menu="help"><svg class="i" aria-hidden="true"><use href="#i-scroll"/></svg> 帮助</button>
+      <button class="menu-item" data-menu="about"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg> 关于</button>
+    </nav>
+  </div>
+  <div class="drawer-foot">
+    <button id="btnBackToLobby" class="btn btn-block">返回会话列表</button>
+  </div>
+</aside>
+
+<!-- ══════════ 浮层：通用辅助层（第 2 层，压在抽屉之上）══════════ -->
+<div id="auxScrim" class="scrim scrim-top" hidden></div>
+<div id="auxSheet" class="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="auxTitle">
+  <div class="sheet-head">
+    <b id="auxTitle">关于</b>
+    <button id="btnAuxClose" class="ic" aria-label="关闭"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div id="auxBody" class="sheet-body"></div>
+</div>
+
+<!-- 提示条：aria-live 让读屏软件播报，视觉上短暂浮现 -->
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="/app.js"></script>
+</body>
+</html>
