@@ -65,7 +65,7 @@
   "time_units": [
     {"id": "beat", "name": "节拍", "duration": "数秒",
      "use": "战斗中的一次行动", "source": "docs/system/01-core.md:347"},
-    {"id": "period", "name": "时段", "duration": "10 分钟",
+    {"id": "period", "name": "小事", "duration": "约 10 分钟",
      "use": "搜查一个房间、闲聊一段、短距移动", "source": "docs/system/01-core.md:348"},
     {"id": "scene", "name": "场景", "en": "Scene", "duration": "任意",
      "use": "一段连续虚构时间的完整情节", "source": "docs/system/01-core.md:349"},

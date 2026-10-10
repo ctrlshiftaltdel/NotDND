@@ -5,10 +5,10 @@
   "note": "行程与移动裁定：按距离与危险度分四档；迷路不应当是惩罚，而应当是岔路。",
   "declared": {"routes": 4},
   "routes": [
-    {"id": "short", "name": "短程", "scope": "同城一个区到另一个区", "duration": "1 时段", "check": "无，或特殊情况下的人脉／熟悉度判定", "source": "docs/system/03-interaction-layer.md:46"},
-    {"id": "medium", "name": "中程", "scope": "跨城、郊外深入", "duration": "半天（2 时段）", "check": "导航 DF 12 或载具操作", "source": "docs/system/03-interaction-layer.md:47"},
-    {"id": "long", "name": "远程", "scope": "荒野、穿越被封锁的区域", "duration": "全天 +", "check": "生存 DF 14，且每段行程都做风险判定", "source": "docs/system/03-interaction-layer.md:48"},
-    {"id": "dangerous", "name": "危险穿越", "scope": "敌区、阈界裂隙、雷区", "duration": "视情况", "check": "潜行／生存 DF 16，每 1 时段一次风险判定", "source": "docs/system/03-interaction-layer.md:49"}
+    {"id": "short", "name": "短程", "scope": "同城一个区到另一个区", "duration": "6 小时", "minutes": 360, "check": "无，或特殊情况下的人脉／熟悉度判定", "source": "docs/system/03-interaction-layer.md:46"},
+    {"id": "medium", "name": "中程", "scope": "跨城、郊外深入", "duration": "12 小时（半天）", "minutes": 720, "check": "导航 DF 12 或载具操作", "source": "docs/system/03-interaction-layer.md:47"},
+    {"id": "long", "name": "远程", "scope": "荒野、穿越被封锁的区域", "duration": "1 天 +", "minutes": 1440, "check": "生存 DF 14，且每段行程都做风险判定", "source": "docs/system/03-interaction-layer.md:48"},
+    {"id": "dangerous", "name": "危险穿越", "scope": "敌区、阈界裂隙、雷区", "duration": "视情况", "minutes": 1440, "check": "潜行／生存 DF 16，每 1 时段一次风险判定", "source": "docs/system/03-interaction-layer.md:49"}
   ],
   "lost_rules": {
     "source": "docs/system/03-interaction-layer.md:70",

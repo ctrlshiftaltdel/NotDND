@@ -21,12 +21,13 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "scope", "duration", "check", "source"],
+        "required": ["id", "name", "scope", "duration", "minutes", "check", "source"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
           "name": {"type": "string", "minLength": 1},
           "scope": {"type": "string", "minLength": 1},
           "duration": {"type": "string", "minLength": 1},
+          "minutes": {"type": "integer", "minimum": 1},
           "check": {"type": "string", "minLength": 1},
           "source": {"$ref": "common.schema.json#/$defs/source"}
         },
