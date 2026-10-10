@@ -41,8 +41,8 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门 / 回归门 / 内容防火墙门 / **提交邮箱门**。
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
 - **数据层**：`python3 tests/validate_data.py` → **79 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ `data/atlas/lexicon.json` + schema/registry）。
-- **回归**：`bash tests/run_all.sh` → **11 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel` / `test_atlas_compile` / `test_atlas_gen` / `test_atlas_ledger_pins` / `test_prism_guide`）。
-- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 ✅（PR #58 / #74 / #77 数据↔docs 对齐）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I6 全部完成 ✅（PR #75 / #79 / #81 / #95 / #93 / #80；后续修复 PR #91）** · **M5 导引者 G0–G6 ✅（PR #83 / #92 / #96 / #99 / #101 / #106 / #108）** · M4 / M2d / M6 待。
+- **回归**：`bash tests/run_all.sh` → **12 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel` / `test_atlas_compile` / `test_atlas_gen` / `test_atlas_ledger_pins` / `test_prism_guide` / `test_ui_smoke`）。
+- **里程碑**：M0 ✅ · M1.0 ✅ · **M1.1 a–e ✅** · **M1.2 a–c ✅** · **M1.3 a–b ✅** · **M1.4 剧本 ✅（PR #58 / #74 / #77 数据↔docs 对齐）** · **M2 规则核心 a–c ✅（PR #57 / #70 / #76）** · M3 **a ✅（PR #56）/ b 待** · **ATLAS I1–I6 全部完成 ✅（PR #75 / #79 / #81 / #95 / #93 / #80；后续修复 PR #91）** · **M5 导引者 G0–G6 ✅（PR #83 / #92 / #96 / #99 / #101 / #106 / #108）** · **M4 骨架 ✅（PR #118）/ 正式 UI 待** · M2d / M6 待。
 
 ---
 
@@ -67,11 +67,6 @@ AI 任「**导引者**」，纯文本、无图片；**零第三方运行时依�
   - **难度**（三档，单选）：`难度：低` / `难度：中` / `难度：高`。
   - **主要能力**（多选，1–3 个）：`能力：编程` / `能力：逻辑` / `能力：文学` / `能力：数据` /
     `能力：测试` / `能力：前端` / `能力：文档`。
-- **DNDWeb 资产取用（多 Agent 协作）**：Issue 若需取用 `~/Projects/DNDWeb` 的**代码 / 工程做法**，
-  而实现 Agent 无该目录访问权，主管**先派一个有访问权的 subagent**把相关资产**脱敏迁移**到本项目：
-  只搬「怎么做」（结构 / 函数切分 / 工程范式），**重写命名与术语、剔除第三方专名与数据**，
-  产物落**最终目标路径**（根 `.py` / `static/`）并仍须过内容防火墙；
-  随后在需要它的 Issue 里写清**取用指引**（「资产已迁移：`<路径>`，见 PR #N」）。
 - **实现 Agent 一律不合并**（含自主推进期）；合并只由主管执行。
 
 ### 常用命令
@@ -105,7 +100,7 @@ bash tests/content_firewall.sh
 | 　M1.4 | 剧本（`data/scenarios/`：09/S8 + S1–S6 结构件 + 账本模板） | a S1–S6 结构件 ✅（PR #58）/ b 09/S8 战役 ✅（PR #74）——**完成** |
 | **M2** | 规则核心（离线可玩） | a 判定 / 结果 / 代价 / 资源 ✅（PR #57）/ b 战斗 / 派生 / 成长 ✅（PR #70）/ c 构建引擎 ✅（PR #76）；M2d（符纹 / 插槽 / 构建点 / 互转）待 |
 | **M3** | 会话与存档 + 后端 API | a 规则快照接线 ✅（PR #56）/ b 写接口 / API 待 |
-| **M4** | 前端 UI（`static/`） | 待 |
+| **M4** | 前端 UI（`static/`） | 骨架 ✅（PR #118）；正式 UI 待 |
 | **M5** | AI 导引者（可选模块，import 失败不影响离线）。方案见 `GUIDE-DESIGN.md` | **进行中**：G0–G6 ✅（PR #83 / #92 / #96 / #99 / #101 / #106 / #108）；修复 #109 ✅（PR #112）；G7 已开单（#90）；#110、#113 待办 |
 | **M6** | 测试与文档收口（README + HANDOVER + run_all 全量） | 待 |
 
@@ -128,15 +123,16 @@ bash tests/content_firewall.sh
 > 全部为「已确认」；改动走新 Issue。详见 `AGENTS.md` §10。
 
 - **三条铁律**：① 内容边界（禁第三方版权内容照抄/翻译/改名派生；**允许**借鉴通用机制与题材设定）；② 零第三方运行时依赖（测试期从简）；③ 密钥与隐私永不入库。
-- **参考项目 DNDWeb 的代码与工程做法可复用**；其**内容 / 数据**（reference、corpus、spells/monsters/species/backgrounds、campaigns）**一律不得入库**。
 - **六维命名**：产品层统一 PRISM 名 **力道 MGT / 灵巧 FIN / 体魄 VIG / 洞察 INS / 心智 MND / 气场 PRE**；D&D 通用名仅作同义词。
 - **`docs/` 可修订**：属内容变更，**单独开 Issue/PR**、不夹带在实现 PR。
 - **并行粒度按文件**：同一文件有开放 PR 时不并行。
 - **数据规范**（`data/FORMAT.md`）：封套 `{schema_version, kind, 载荷}`；`kind = <family>.<name>`，**每个 kind 一份平铺 schema + `registry.json` 登记**；每个实体带 `source:"docs/…:行号"` 溯源；散文不进 JSON。
 - **主管自主运行**（2026-10-09 授权）：能合就合、有问题写说明或开 Issue、能推进就推进、能并行就并行，不逐件请示（**除非无法决定**）。
-- **DNDWeb 脱敏迁移**（2026-10-09）：M2/M3 的**工程骨架**已由主管派的迁移 Agent 完成并合并
-  （`prism_core.py` / `notdnd_web.py`，PR #49 / #48）；实现 Agent 直接在其上继续即可，
-  **无需** DNDWeb 访问权（流程见 §3）。`DNDWEB-ASSETS.md` §1/§2 状态已改 ✅、§3 已改 🟡（结构）。
+- **工程骨架补全**（2026-10-10）：前端 `static/` 三视图骨架（PR #118）与测试基座
+  （`tests/_cdp.py` / `cleanup_servers.sh` / UI 冒烟 / `tests/README.md`，PR #117）已落地；
+  `run_all` 现有 **12 个脚本**。
+- **M6 文档骨架（归档约定）**：`README.md` = 跑起来 → 结构取舍 → 测试 → 已知边界（含
+  「别暴露到公网」警告）；`HANDOVER.md` = 每节答「为什么 + 踩过的坑」；测试约定见 `tests/README.md`。
 - **阶段收口**（2026-10-09）：**M1.4 剧本 / M2（a–c）/ M3a / ATLAS I1–I6（全部）/ 导引者 G0–G6 已完成**
   （PR #58 / #74 / #77 / #57 / #70 / #76 / #56 / #75 / #79 / #81 / #95 / #93 / #80 / #91 / #83 / #92 / #96 / #99 / #101 / #106 / #108 / #112）；
   在办与待办：**导引者 G7（#90）**、#110（要点 cites 专规）、#113（时间盒 40→75）、M2d。
@@ -152,19 +148,17 @@ bash tests/content_firewall.sh
 - **文件命名**（2026-10-09 人拍板）：仓库文件名一律**纯英文 + 数字**（ASCII；推荐小写 + `-`），
   不新增非 ASCII 文件名。既有 `docs/` 的 20 个中文文件名**已迁移完毕**（PR #104，Issue #102；
   全库非 ASCII 文件名 = 0）。
-- **全面检查**：每 1–2 阶段一次（§6），并持续挖掘 DNDWeb 资产（§DNDWeb-ASSETS）。
+- **全面检查**：每 1–2 阶段一次（§6）。
 
 ---
 
 ## 6. 全面检查清单（每 1–2 个阶段做一次）
 
-- [ ] **DNDWeb 资产再盘点**：对照 `DNDWEB-ASSETS.md`，更新每项「未搬 / 部分 / 已搬 / 不再需要」；
-      当所有高价值项都已搬或明确不需要时，记录「DNDWeb 已无借鉴价值」并结案。
 - [ ] **项目健康**：CI 四门全绿；`run_all` 绿；`validate_data` 绿；
       `git log --format='%ae%n%ce' | grep -i gmail` **为空**；无密钥 / 本机路径。
 - [ ] **流程健康**：无长期挂起的开放 PR；每个 Issue 单一意图；无「撞同一文件」的并行。
 - [ ] **数据一致性**：抽查若干 `source` 行号与 `docs/` 对齐；计数与文档一致。
-- [ ] **文档**：更新本文件 §2 快照、§5 决策记录、`DNDWEB-ASSETS.md` 状态列。
+- [ ] **文档**：更新本文件 §2 快照、§5 决策记录。
 - [ ] **下一步**：按 §4 开下一切片 Issue（数据切片串行）。
 
 ---
@@ -175,7 +169,6 @@ bash tests/content_firewall.sh
 |---|---|---|
 | `AGENTS.md` | 所有 Agent | 角色 / 三条铁律 / Issue 循环 / 四行审查 / 合并约定 / 目录边界 |
 | **`MASTER.md`** | **主管 Agent** | **本文件**：接手 + 状态 + 路线 + 检查清单 |
-| `DNDWEB-ASSETS.md` | 主管 / 实现 | DNDWeb 可复用资产与挖掘状态 + 剥离红线 |
 | **`ATLAS-DESIGN.md`** | 主管 / 实现 | 自动地图（ATLAS）设计方案：帧 / 词表 / 编译 / 生成 / 六条拆单依据 |
 | **`GUIDE-DESIGN.md`** | 主管 / 实现 | 导引者：把地点卡走成可印证的街道、演已有人物、同一剧本每局不同；Chat Completions、前缀缓存、pcm16；G0–G7 |
 | `README.md` | 使用者 | 怎么跑、定位、**「别暴露到公网」警告** |
