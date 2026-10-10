@@ -570,7 +570,7 @@ class Session:
                                             self._locus.get("place_id"))
             exits = atlas_kernel.exits(self._atlas, self._locus)
             for entry in exits:
-                entry["hours"] = BAND_MINUTES.get(entry["band"], 0)
+                entry["minutes"] = BAND_MINUTES.get(entry["band"], 0)
             frame = self._atlas["frames"][place["frame_id"]]
             here = {
                 "place_id": place["id"],
@@ -587,7 +587,7 @@ class Session:
                 lines.append("出口：")
                 for entry in exits:
                     label = BAND_NAMES.get(entry["band"], "门内")
-                    minutes = "· %d 分钟" % entry["hours"] if entry["hours"] else ""
+                    minutes = "· %d 分钟" % entry["minutes"] if entry["minutes"] else ""
                     flag = "（不稳）" if entry["unstable"] else ""
                     lines.append("  %s → %s（%s%s）%s"
                                  % (entry["via"], entry["name"], label,
@@ -619,7 +619,7 @@ class Session:
             view = self.atlas_view()
             view["status"] = "ok"
             view["band"] = band
-            view["hours"] = BAND_MINUTES.get(band, 0)
+            view["minutes"] = BAND_MINUTES.get(band, 0)
             return view
 
 
