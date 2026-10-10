@@ -90,7 +90,9 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
    `能力：测试` / `能力：前端` / `能力：文档`，1–3 个），供人按能力指派实现 Agent。
    主管不实现这条 Issue。主管**能并行就并行**——不与在办 PR 撞同一文件即可同时开单，节约总工时。
 3. 人把 Issue 编号交给某个实现 Agent，并要求它先读本文件。
-4. 实现 Agent 从最新 `master` 开分支、推送、开 **Draft PR**，只改允许的路径。
+4. 实现 Agent 从最新 `master` 开分支、推送、开 **Draft PR**，只改允许的路径；
+   **开工前**先 `gh pr list --state open` 查同文件开放 PR（有 → 停下报告，别并行开工）；
+   **交回复核前** `git fetch && git rebase origin/master` 并重跑回归（见 §7）。
 5. 主管 Agent 只读该 Issue 和 PR，对照验收标准审查，在 PR 评论里留下**四行建议**。
 6. 主管写「先别合」就退回；写「建议合」且 **CI 全绿**，**由主管 Agent 直接合并并删除远端分支**，
    不再逐件请示人；有未完成项 / 问题则写四行说明或**开 Issue 跟踪**。
@@ -119,6 +121,10 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
   **不新增非 ASCII 文件名**（既有中文文件名已按迁移单 #102 / PR #104 处理完毕，见 §10）。
 - **一个意图 = 一个分支 = 一个 PR。** 不在未合并的功能分支上再开分支，除非 Issue 写明依赖顺序。
 - 开工后**尽快**推送并开 Draft PR；禁止对已有人拉取或正在审查的分支 **force push**。
+- **交回前 rebase**：请求复核（或把 PR 改为可审查）之前，先 `git fetch && git rebase origin/master`，
+  rebase 后重跑 `bash tests/run_all.sh` 与内容防火墙，结果更新进 PR；确认 PR 为 `MERGEABLE`。
+  复核开始后分支不得自行 force push；若因别的 PR 合并产生冲突，**经主管同意后** rebase——
+  这是「正在审查分支禁止 force push」的**唯一例外**。
 - 提交信息**写明为什么**。
 - 隔离工作区用 `.worktrees/`（已 gitignore）。合并后删除远端分支，其他机器 `git fetch --prune`。
 
@@ -192,8 +198,11 @@ Python 3 标准库 + 原生前端。任何要引入**运行时**依赖的改动*
 
 1. 读本文件（`AGENTS.md`）与你要领的 Issue。
 2. `git fetch --prune`，从最新 `master` 开分支：`git worktree add .worktrees/<name> -b feat/<scope>-<short>`。
+   **开前先 `gh pr list --state open`**——若有人正在改你要动的文件，先停下并报告（别并行开工）、
+   或按 Issue 写明的依赖顺序等其合并。
 3. 只改 Issue 允许的路径，不顺手重构。
 4. 尽快推送并开 **Draft PR**（模板见 `.github/pull_request_template.md`）。
 5. 逐条对照验收标准；未完成项写进 PR 的「没做什么」。
 6. 验证命令真跑一遍，把命令与结果写进 PR。
-7. 做完把 PR 改为可审查，交人指定的主管 Agent 审查。
+7. 做完：**先 `git fetch && git rebase origin/master` 并重跑回归**（命令与结果更新进 PR），
+   确认 PR `MERGEABLE`，再把 PR 改为可审查、交人指定的主管 Agent 审查。
