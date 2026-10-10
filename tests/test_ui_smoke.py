@@ -17,7 +17,7 @@
   · 机器上没有可用浏览器。
 「跑不了」不等于「坏了」，所以这里打印 `skip：…` 后以 0 退出。
 
-零第三方**运行时**依赖；测试期依赖只有 websocket-client（经 `_cdp` 使用）。
+测试期依赖从简：只用标准库 + websocket-client（经 `_cdp` 使用）。
 
 直接运行：python3 tests/test_ui_smoke.py
 """
