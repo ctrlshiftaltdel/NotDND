@@ -3,7 +3,7 @@
 > 状态：**待审**——人审并合并后成为路线图依据，并按 §7 开首批 Issue。
 > 依据：[`GDD.html`](GDD.html)（v1.1，随本次变更入库）+ 仓库实况审查（`master @ 3ca5a38`，2026-10-10）。
 > 读者：人（拍板）、Master Agent（拆单 / 路线维护）、Execution Agent（领单）。
-> 维护：Master Agent。修订本文件属治理变更，走独立 PR。
+> 维护：Master Agent（只做跟踪与拆单）。修订本文件属治理变更，走独立 Issue / PR（人派单的 Execution Agent 执笔）。
 
 本文是 GDD 与仓库实现之间的**翻译层**，不是第二份 GDD：产品愿景、系统语义、风险清单以
 `GDD.html` 为准；「本仓库先做什么、按什么顺序、做到什么算完成」以本文为准。两者冲突时，
@@ -286,7 +286,7 @@ D3（依赖放开）与 D2（视觉占位口径）落地后，以下文件与现
 | `HANDOVER.md` | 「为什么校验器零依赖」等理由叙述 | 标注为历史决策；校验器本身可保持零依赖（不需改） |
 | `tests/README.md`、`tests/*.py` 注释 | 「零第三方运行时依赖」 | 改为「测试期依赖从简」或保持现状描述 |
 
-> 该治理 PR 在基线合并后立即由 Master Agent 执行（同批衔接）。
+> 该治理 PR 由 Master Agent 收成 Issue、经人派单后交 Execution Agent 执行（同批衔接）；Master 只做审 / 合与跟踪。
 
 ---
 
@@ -318,4 +318,4 @@ D3（依赖放开）与 D2（视觉占位口径）落地后，以下文件与现
 
 ---
 
-*本文件由 Master Agent 维护；修订走独立 PR，重大修订先开 Issue。*
+*本文件由 Master Agent 跟踪维护；修订走独立 Issue / PR（人派单的 Execution Agent 执笔），重大修订先开 Issue。*
