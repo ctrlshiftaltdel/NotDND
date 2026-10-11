@@ -277,7 +277,8 @@ world_type ∈ { "fantasy", "modern", "future" }
 | `--wt-title-font` | `var(--font-serif)` / `var(--font-sans)` / `var(--font-mono)` | 场景名 / 叙事标题的字形族 | 不得用于正文（正文永远 `--font-sans`） |
 | `--wt-title-track` | `0` / `.04em` / `.01em` | 标题字距 | 不得用于正文与数值 |
 | `--wt-motif` | 一个 CSS 背景（`repeating-linear-gradient(...)` 等纯 CSS 几何） | 卡片顶边 / 面板头的母题纹 | 不得铺在叙事正文背后；不得引用外部图片 |
-| `--wt-motif-alpha` | `.05`–`.10` | 母题强度上限 | 叠加后不得使任何文本对低于 §4.6 目标 |
+| `--wt-motif-ink` | 母题墨色（`rgba(...)`，透明度直接写在色值里） | 母题强度上限：**alpha ≤ .12** | 叠加后不得使任何文本对低于 §4.6 目标 |
+| `--wt-motif-size` | `auto` / `12px 12px` | 母题重复尺寸（未来主题的网格用） | 不得用于正文区域 |
 | `--wt-edge` | `none` / `cut` / `orbit` | 卡片转角母题（角切 / 弧线） | 不得吃掉焦点环、不得改变触控目标尺寸 |
 
 > **为什么只给 5 个**：装饰令牌每多一个，实现单的 CSS 分支就多一处，评审也无法逐条核对。
@@ -319,7 +320,7 @@ world_type ∈ { "fantasy", "modern", "future" }
 | `--line` / `--line-strong` | `#2c3a30` / `#40543f` | `#ddd8c6` / `#c1bca6` |
 | `--bg-frame` / `--scrim` | `#080d0a` / `rgba(6,10,8,.64)` | `#e8e4d6` / `rgba(27,25,19,.40)` |
 | `--wt-title-font` / `--wt-title-track` | `var(--font-serif)` / `.01em` | 同左（字形不随明暗变） |
-| `--wt-motif` / `--wt-motif-alpha` | 细密横线（等高线） / `.07` | 同左（强度相同，底色已换） |
+| `--wt-motif`（+ `--wt-motif-ink` / `--wt-motif-size`） | 细密横线（等高线）· `rgba(220,180,95,.10)` · `auto` | 同左，墨色换 `rgba(113,84,13,.10)` |
 | `--wt-edge` | `none` | `none` |
 
 **未来 · Orbit（新增）**
@@ -339,7 +340,7 @@ world_type ∈ { "fantasy", "modern", "future" }
 | `--line` / `--line-strong` | `#1c2a44` / `#2d4363` | `#d4dfec` / `#b6c6d9` |
 | `--bg-frame` / `--scrim` | `#03060b` / `rgba(3,6,12,.68)` | `#e3ebf5` / `rgba(15,21,32,.40)` |
 | `--wt-title-font` / `--wt-title-track` | `var(--font-sans)` / `.04em` | 同左 |
-| `--wt-motif` / `--wt-motif-alpha` | 细网格（12px 带内） / `.08` | 同左 |
+| `--wt-motif`（+ `--wt-motif-ink` / `--wt-motif-size`） | 细网格 · `rgba(95,216,232,.10)` · `12px 12px` | 同左，墨色换 `rgba(11,108,122,.12)` |
 | `--wt-edge` | `orbit` | `orbit` |
 
 **语义令牌（B 层，明暗各一套，三主题共用、逐项相同）**
@@ -559,7 +560,7 @@ world_type ∈ { "fantasy", "modern", "future" }
 | # | 要求 | 判据 |
 |---|---|---|
 | 1 | **母题不得压在叙事正文后** | 母题只出现在容器边缘 12px 带内 / 面板头 / 分隔处；正文区域背景纯令牌色 |
-| 2 | **母题叠加后仍达标** | 取母题**最深**处与底色的混合值，重算 §4.6 的 `text-1/2/3` 目标（做法：`--wt-motif-alpha ≤ .10`，实测混合后 `text-1` 仍 ≥ 7:1、`text-2` ≥ 4.5:1） |
+| 2 | **母题叠加后仍达标** | 取母题**最深**处与底色的混合值，重算 §4.6 的 `text-1/2/3` 目标（做法：`--wt-motif-ink` 的 alpha ≤ .12，且母题只落在容器边缘带内——正文区域没有母题） |
 | 3 | **发光不承担信息** | 未来主题的发光只做一次性强调；删掉发光后信息仍完整（评审时把发光关掉看一遍） |
 | 4 | **禁止循环动画** | 不出现呼吸 / 脉动 / 扫描线动画；`prefers-reduced-motion: reduce` 与 `html.no-anim` 下所有过渡 ≤1ms（沿用现值） |
 | 5 | **角切不吃焦点环、不改尺寸** | `clip-path` 只在卡片 / 徽标；焦点环用 `outline` + `outline-offset`（不被裁剪）；触控目标仍 ≥44px |
@@ -581,7 +582,7 @@ world_type ∈ { "fantasy", "modern", "future" }
 | 自包含 | **单文件**：内联 `<style>` + `<script>`，**零外链**（无 `<link>`、无 CDN、无 Web Font、无外链图片）；`file://` 直接打开即可 |
 | 主题切换 | `data-world` 三档 + `data-appearance`（跟随系统 / 暗 / 明）**评审专用**；正式产品没有对局中切换（§2.3 第 4 条） |
 | 渐进增强 | **无 JS 仍可读**：`<noscript>` 样式把三个 L2 面板就地展开为主列内容、隐藏只对 JS 有意义的控件；默认渲染为**现代 / 跟随系统** |
-| 键盘 | 全部控件是原生 `button` / `textarea` / `a`；`Esc` 关浮层并归还焦点；`1–5` 选行动（与产品同口径） |
+| 键盘 | 全部控件是原生 `button` / `textarea` / `a`；`Esc` 关浮层并归还焦点；`1–6` 选行动 / 出口（`aria-keyshortcuts`，与产品同口径），输入框内不劫持 |
 | 数据 | 全部是**样例**，页面上明确标注「原型样例 · 未接后端」；**不伪造**接口返回、不显示假的服务端时间 |
 | 素材 | 只用 **CSS / 字符 / 内联 SVG**：场景 / 地点 / 肖像位用 `figure.ph[data-slot][data-state="empty"]` 的几何占位，与正式资产隔离 |
 | 场景选择 | 一个**世界中立**的样例场景（三主题共用同一段叙事、同一组状态、同一组行动），否则三套主题不可直接比较 |
