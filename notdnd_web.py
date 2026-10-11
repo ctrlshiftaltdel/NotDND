@@ -522,6 +522,23 @@ def _restore_rules(raw: object, sid: str) -> dict:
 # --------------------------------------------------------------------------
 
 
+class SaveError(Exception):
+    """存档落盘失败（目录创建 / 临时写 / `os.replace`）。
+
+    取代旧的「无条件吞异常」：`Session.save()` 失败时**抛这个异常**，调用方
+    **必须显式处理**——要么回滚内存态到写入前，要么如实回报失败；不得把
+    未持久化的状态当作已成功。
+    只带 `sid` 与底层 `OSError`（`__cause__`），**不**携带存档内容或密钥。
+    """
+
+    def __init__(self, sid: str, cause: BaseException | None = None):
+        super().__init__("存档 %s 落盘失败" % sid)
+        self.sid = sid
+        self.cause = cause
+        if cause is not None:
+            self.__cause__ = cause
+
+
 class Session:
     """一局游戏的持久化骨架（**存档容器**，不是规则运行时）。
 
@@ -588,19 +605,25 @@ class Session:
     def save(self) -> None:
         """原子写：先写同目录 .tmp，再 os.replace 换名——中断不会留下半个 JSON。
 
-        写入失败不抛（best-effort）：持久化路径与请求处理解耦；确实关心
-        结果的调用方在 save() 之后**回读校验**（见 /api/save/rename）。
+        落盘失败**抛 `SaveError`**（不再是 best-effort 静默吞掉）：调用方据此
+        回滚内存态或如实回报失败，绝不把未持久化的状态当作已成功。`to_dict()`
+        的序列化错误是编程错误，**照原样抛**，不伪装成磁盘故障。
+
+        失败时磁盘维持写入前的旧档（`os.replace` 未执行）；同目录可能残留一个
+        `.{sid}.tmp`，不影响后续保存（下次写会被覆盖，列表也不扫它）。
         """
-        try:
-            _ensure_save_dir()
-            f = SAVE_DIR / f"{self.sid}.json"
-            tmp = SAVE_DIR / f".{self.sid}.tmp"
-            with self.lock:
-                payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=1)
+        f = SAVE_DIR / f"{self.sid}.json"
+        tmp = SAVE_DIR / f".{self.sid}.tmp"
+        with self.lock:
+            # 序列化在锁内、try 外：它不该失败（to_dict 是白名单且 JSON 可序列化），
+            # 真失败就是代码缺陷，不该被吞掉当成「磁盘问题」。
+            payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=1)
+            try:
+                _ensure_save_dir()
                 tmp.write_text(payload, encoding="utf-8")
                 os.replace(tmp, f)
-        except Exception:
-            pass
+            except OSError as exc:
+                raise SaveError(self.sid, exc) from exc
 
     @classmethod
     def load(cls, sid: str) -> "Session | None":
@@ -1116,16 +1139,15 @@ class Handler(BaseHTTPRequestHandler):
                     return self._err("存档不存在", 404)
                 # 界线 1：改名只改展示名，**不动 sid、不动磁盘文件名**。
                 with s.lock:
+                    previous_name = s.save_name
                     s.save_name = name
-                    s.save()
-                # 界线 2：save() 失败不抛，这里回读校验——显示「改名成功」
-                # 却实际没落盘，是最难查的一类假成功。
-                try:
-                    d = json.loads((SAVE_DIR / f"{sid}.json").read_text(encoding="utf-8"))
-                except Exception:
-                    d = {}
-                if str(d.get("save_name") or "") != name:
-                    return self._err("保存失败，请重试", 500)
+                    try:
+                        s.save()
+                    except SaveError:
+                        # 落盘失败：回滚内存里的展示名，内存态与磁盘一致，
+                        # 客户端拿到 500、绝不会显示「改名成功」的假象。
+                        s.save_name = previous_name
+                        return self._err("保存失败，请重试", 500)
                 return self._json({"status": "ok", "sid": sid, "name": name})
 
             if path == "/api/save/delete":
@@ -1151,8 +1173,18 @@ class Handler(BaseHTTPRequestHandler):
                 # 沿 via 移动队伍：返回行程档 + 名义分钟 + 新位置的出口视图。
                 # 方向不存在 / 没有该出口时 atlas_move 抛 ValueError → 400。
                 s = self._sess()
+                s.ensure_atlas()        # 先编译好地图，位置快照才是真实的起点
+                with s.lock:
+                    previous_locus = copy.deepcopy(s._locus)
                 result = s.atlas_move(b.get("via"))
-                s.save()        # 位置改变要落盘：重新加载后队伍还在原地
+                try:
+                    s.save()        # 位置改变要落盘：重新加载后队伍还在原地
+                except SaveError:
+                    # 位置没落盘：回滚内存里的队伍位置，内存与磁盘都留在原处，
+                    # 客户端拿到 500，不会以为「已经走过去」。
+                    with s.lock:
+                        s._locus = previous_locus
+                    return self._err("保存失败，请重试", 500)
                 return self._json(result)
 
             # TODO(M3)：PRISM 会话 / 结算等写入接口在此追加（路径 if 链）。
@@ -1169,7 +1201,8 @@ class Handler(BaseHTTPRequestHandler):
         体只有 `{"world_key", "scenario_id"}`，都走 `X-Session` 那一局。
         校验与写盘都归 `prism_guide.bind`（它自己加锁并 `save()`），这里只把
         `ValueError` 翻成固定 JSON：`没有这场战役` / `世界对不上` 是 400，
-        `已经绑定` 是 409（§6）。没有 SSE，也没有第二套状态码。
+        `已经绑定` 是 409（§6）。没有 SSE，也没有第二套状态码。绑定写盘失败
+        （`SaveError`）回滚 `guide` 后回 500，不会让「已经绑定」在内存里生效。
         """
         sid = (self.headers.get("X-Session") or "").strip()
         session = get_session(sid) if sid else None
@@ -1179,11 +1212,19 @@ class Handler(BaseHTTPRequestHandler):
             return self._err(GUIDE_ABSENT_ERROR, 400)
         world_key = str(body.get("world_key") or "").strip()
         scenario_id = str(body.get("scenario_id") or "").strip()
+        with session.lock:
+            previous_guide = copy.deepcopy(session.guide)
         try:
             bound = prism_guide.bind(session, world_key, scenario_id)
         except ValueError as exc:
             return self._err(str(exc),
                              GUIDE_BIND_ERRORS.get(str(exc), GUIDE_BIND_DEFAULT))
+        except SaveError:
+            # 绑定没落盘：回滚 guide，客户端拿到 500；后续重试不会因为
+            # 内存里残留的绑定而误报「已经绑定」。
+            with session.lock:
+                session.guide = previous_guide
+            return self._err("保存失败，请重试", 500)
         return self._json({"status": "ok", **bound})
 
     # ── 导引者回合（G2，§5.2 / §5.10）───────────────────────
@@ -1240,12 +1281,20 @@ class Handler(BaseHTTPRequestHandler):
         action_id = str(body.get("action_id") or "")
         result = None
         if action_id:
+            with session.lock:
+                previous_rules = copy.deepcopy(session.rules)
             try:
                 result = prism_guide.settle(session, action_id)
             except ValueError as exc:
                 phrase, code = GUIDE_SETTLE_ERRORS.get(str(exc),
                                                        GUIDE_SETTLE_DEFAULT)
                 return self._err(phrase, code)
+            except SaveError:
+                # 结算没落盘：回滚规则态到本回合之前，状态行之前用固定 JSON
+                # 报失败——绝不让玩家以为「这个行动已经结算成功」。
+                with session.lock:
+                    session.rules = previous_rules
+                return self._err("保存失败，请重试", 500)
 
         # 变动之前先把焦点与检查点各留一份：G7 的场外痕迹与「痕迹揭开」看的是
         # **离开的地点**（§2.2），不是写完之后的那个新焦点。
@@ -1254,10 +1303,17 @@ class Handler(BaseHTTPRequestHandler):
         # 这一回合即使叙事失败，G6 的下一回合也要看得到队伍走到了哪里。
         with session.lock:
             scene_before = str(session.guide.get("l2_scene_id") or "")
+            previous_guide = copy.deepcopy(session.guide) if location_id else None
             prism_guide.ensure_l2(session.guide, session.rules)
             if location_id:
                 session.guide["focus_location_id"] = location_id
-                session.save()
+                try:
+                    session.save()
+                except SaveError:
+                    # 焦点没落盘：回滚 guide（连 ensure_l2 的改写一起），回到
+                    # 状态行之前用固定 JSON 报失败。
+                    session.guide = previous_guide
+                    return self._err("保存失败，请重试", 500)
         current_focus = str(session.guide.get("focus_location_id") or "")
         scene_now = str((session.rules.get("scene") or {}).get("id") or "")
         # 两条触发线（§2.2）：焦点换了一处（只有**离开**的那一处才算），或
@@ -1294,6 +1350,7 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:      # noqa: BLE001
                     pass
             completion = None
+            save_failed = False
             try:
                 env = prism_guide.load_env()
                 messages = prism_guide.build_narrative_messages(
@@ -1310,6 +1367,11 @@ class Handler(BaseHTTPRequestHandler):
                     messages = prism_guide.build_narrative_messages(
                         session.rules, session.guide, text, result)
                 completion = prism_guide.call_narrative(messages, env=env)
+            except SaveError:
+                # 工具预通行里的结算没落盘：头已写出，不能改 HTTP 状态；照旧
+                # 走兜底叙事，但记下「本回合未完全持久化」，最终 `done` 如实回报。
+                save_failed = True
+                completion = None
             except Exception:   # noqa: BLE001 — 上游读取失败不改整回合为 _err
                 completion = None
             reviewed = None
@@ -1318,6 +1380,7 @@ class Handler(BaseHTTPRequestHandler):
                     reviewed = prism_guide.review_narration(result, completion)
                 except Exception:   # noqa: BLE001
                     reviewed = None
+            saved = not save_failed
             if reviewed is None:
                 # 头已写出：失败只能用 fallback，拿不到第二行 HTTP 状态。
                 self._sse("fallback", {"text": _guide_fallback_text(result)})
@@ -1339,13 +1402,22 @@ class Handler(BaseHTTPRequestHandler):
                     stats = session.guide.get("stats")
                     if isinstance(stats, dict):
                         stats["calls"] = int(stats.get("calls") or 0) + 1
-                    session.save()      # L3 与 revealed 要跟着落盘
+                    try:
+                        session.save()      # L3 与 revealed 要跟着落盘
+                    except SaveError:
+                        # 头已写出：不能改 HTTP 状态，也**不**回滚——本回合的
+                        # L3 / last_beats 是一份可恢复的提交态，下一次成功保存
+                        # 即落盘。用下面的 `done` 明确回报未持久化，不谎报成功。
+                        saved = False
                 payload = {"text": redacted, "beats": beats}
                 if trace:
                     payload["trace"] = trace
                 self._sse("narration", payload)
                 self._sse("usage", completion.get("usage") or {})
-            self._sse("done", {"status": "ok"})
+            if saved:
+                self._sse("done", {"status": "ok"})
+            else:
+                self._sse("done", {"status": "error", "reason": "save_failed"})
             self._sse_close()
         except (BrokenPipeError, ConnectionResetError):
             pass                # 客户端中途断线（锁屏 / 切网）不该让服务端报错
@@ -1477,7 +1549,11 @@ class Handler(BaseHTTPRequestHandler):
             session.room["members"][member_id] = member
             session.room["host_member_id"] = member_id
             session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
-            session.save()
+            try:
+                session.save()
+            except SaveError:
+                # 建房没落盘：**不**把半成品塞进缓存，客户端拿到 500 可重试。
+                return self._err("保存失败，请重试", 500)
             _sessions[room_id] = session
         return self._json({
             "status": "ok",
@@ -1507,6 +1583,7 @@ class Handler(BaseHTTPRequestHandler):
             if len(_room_seats(session.room)) >= int(
                     session.room.get("capacity") or ROOM_MAX_MEMBERS):
                 return self._err("房间已满", 409, "room_full")
+            previous_room = copy.deepcopy(session.room)
             now = time.time()
             member_id = _new_member_id()
             token = _new_room_token()
@@ -1526,7 +1603,12 @@ class Handler(BaseHTTPRequestHandler):
             if role == "host":
                 session.room["host_member_id"] = member_id
             session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
-            session.save()
+            try:
+                session.save()
+            except SaveError:
+                # 入房没落盘：回滚房间块，内存与磁盘一致；令牌作废，客户端重试。
+                session.room = previous_room
+                return self._err("保存失败，请重试", 500)
         return self._json({
             "status": "ok",
             "room_id": room_id,
@@ -1549,12 +1631,18 @@ class Handler(BaseHTTPRequestHandler):
         except _RoomAuthError as exc:
             return self._err(exc.msg, exc.code, exc.reason)
         with session.lock:
+            previous_room = copy.deepcopy(session.room)
             member["state"] = "left"
             member["last_seen_at"] = time.time()
             if session.room.get("host_member_id") == member["member_id"]:
                 session.room["host_member_id"] = ""
             session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
-            session.save()
+            try:
+                session.save()
+            except SaveError:
+                # 离房没落盘：回滚房间块；成员仍在座，客户端拿到 500 可重试。
+                session.room = previous_room
+                return self._err("保存失败，请重试", 500)
         return self._json({"status": "ok", "room_id": room_id,
                            "member_id": member["member_id"]})
 
@@ -1585,10 +1673,16 @@ class Handler(BaseHTTPRequestHandler):
                 return self._err("成员不存在", 404, "member_not_found")
             if target_id == member["member_id"]:
                 return self._err("不能踢出自己", 400, "bad_target")
+            previous_room = copy.deepcopy(session.room)
             target["state"] = "left"
             target["last_seen_at"] = time.time()
             session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
-            session.save()
+            try:
+                session.save()
+            except SaveError:
+                # 踢人没落盘：回滚房间块；被踢者仍在座，客户端拿到 500 可重试。
+                session.room = previous_room
+                return self._err("保存失败，请重试", 500)
         return self._json({"status": "ok", "room_id": room_id,
                            "member_id": target_id})
 

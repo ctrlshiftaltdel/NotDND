@@ -58,6 +58,7 @@ import contextlib
 import http.client
 import json
 import os
+import pathlib
 import re
 import shutil
 import signal
@@ -108,6 +109,31 @@ def _write_save(path: str, payload: dict) -> None:
     """把一份存档 JSON 写到指定目录（模拟已有存档 / 老档）。"""
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False)
+
+
+@contextlib.contextmanager
+def _storage_fault(*, write: bool = False, replace: bool = False):
+    """往存档落盘路径注入故障（只在**本进程**生效，用完即还原）。
+
+    `write=True` → `pathlib.Path.write_text` 抛 `OSError`（临时写失败）；
+    `replace=True` → `os.replace` 抛 `OSError`（原子换名失败）。
+    `notdnd_web` 与测试进程共享同一个 `os` / `pathlib` 模块，直接换属性即可
+    命中服务端（`_LocalServer` 就在本进程里处理请求）。
+    """
+    def boom(*_args, **_kwargs):
+        raise OSError("注入的落盘故障")
+
+    saved_write = pathlib.Path.write_text
+    saved_replace = os.replace
+    if write:
+        pathlib.Path.write_text = boom
+    if replace:
+        os.replace = boom
+    try:
+        yield
+    finally:
+        pathlib.Path.write_text = saved_write
+        os.replace = saved_replace
 
 
 def _load_json(body: bytes):
@@ -2130,9 +2156,229 @@ def check_room_auth_chain():
         assert block["host_member_id"] == host_id
 
 
+# --------------------------------------------------------------------------
+# 持久化失败不得静默（Issue #170）：save() 报错 + 有副作用调用点回滚
+# --------------------------------------------------------------------------
+
+
+def check_session_save_reports_failure():
+    """`save()` 三态：正常落盘；临时写 / `os.replace` 失败都抛 `SaveError`。"""
+    sid = "save-unit"
+    session = notdnd_web.Session(sid)
+    session.save_name = "甲"
+
+    # 正常保存：不抛、返回 None，磁盘就是刚写的内容。
+    session.save()
+    with open(_save_path(sid), encoding="utf-8") as handle:
+        assert json.load(handle)["save_name"] == "甲"
+
+    # 临时写失败：抛 SaveError（带 sid 与底层 OSError），磁盘维持上一份。
+    with _storage_fault(write=True):
+        try:
+            session.save()
+            raised = False
+        except notdnd_web.SaveError as exc:
+            raised = True
+            assert exc.sid == sid, exc.sid
+            assert isinstance(exc.cause, OSError), exc.cause
+        assert raised, "临时写失败必须抛 SaveError，不得静默"
+    with open(_save_path(sid), encoding="utf-8") as handle:
+        assert json.load(handle)["save_name"] == "甲"
+
+    # os.replace 失败：同样抛 SaveError，换名未发生、磁盘不变。
+    session.save_name = "乙"
+    with _storage_fault(replace=True):
+        try:
+            session.save()
+            raised = False
+        except notdnd_web.SaveError:
+            raised = True
+        assert raised, "os.replace 失败必须抛 SaveError，不得静默"
+    with open(_save_path(sid), encoding="utf-8") as handle:
+        assert json.load(handle)["save_name"] == "甲", "换名失败不得改写磁盘"
+
+
+def check_save_rename_failure_rolls_back():
+    """改名：临时写 / os.replace 失败 → 500、磁盘不变、内存回滚；恢复后能改。"""
+    sid = "save-fault-rename"
+    session = notdnd_web.Session(sid)
+    session.save_name = "旧名"
+    session.save()
+    notdnd_web._sessions.pop(sid, None)
+
+    with _LocalServer() as server:
+        # 正对照：正常保存成功 → 200，且真的落盘。
+        status, body, _raw, _heads = server.post(
+            "/api/save/rename", {"sid": sid, "name": "正常名"})
+        assert status == 200 and body.get("name") == "正常名", (status, body)
+        with open(_save_path(sid), encoding="utf-8") as handle:
+            assert json.load(handle)["save_name"] == "正常名"
+
+        for label, kwargs in (("临时写失败", {"write": True}),
+                              ("os.replace 失败", {"replace": True})):
+            with _storage_fault(**kwargs):
+                status, body, _raw, _heads = server.post(
+                    "/api/save/rename", {"sid": sid, "name": "注入名"})
+            assert status == 500, "%s 应回 500，实际 %s / %s" % (label, status, body)
+            assert body.get("error"), (label, body)
+            # 磁盘维持故障前那一份（未落盘）。
+            with open(_save_path(sid), encoding="utf-8") as handle:
+                assert json.load(handle)["save_name"] == "正常名", label
+            # 内存也回滚：不留「内存已改名、磁盘没改」的错位。
+            cached = notdnd_web._sessions.get(sid)
+            assert cached is not None and cached.save_name == "正常名", (label, cached)
+
+        # 故障解除后重试成功：磁盘与内存都跟上。
+        status, body, _raw, _heads = server.post(
+            "/api/save/rename", {"sid": sid, "name": "重试名"})
+        assert status == 200 and body.get("name") == "重试名", (status, body)
+        with open(_save_path(sid), encoding="utf-8") as handle:
+            assert json.load(handle)["save_name"] == "重试名"
+
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_atlas_move_save_failure_rolls_back():
+    """`/api/atlas/move` 落盘失败：500、磁盘与内存都留在原地；恢复后能走。"""
+    sid = "atlas-save-fault"
+    session = notdnd_web.Session(sid)
+    session.ensure_atlas()
+    view = session.atlas_view()
+    origin = view["here"]["place_id"]
+    target = next((e for e in view["exits"] if e["band"]), view["exits"][0])
+    assert target["place_id"] != origin, "需要一个会真的改变位置的出口"
+    _write_save(_save_path(sid), session.to_dict())
+    notdnd_web._sessions.pop(sid, None)
+
+    with _LocalServer() as server:
+        with _storage_fault(replace=True):
+            status, body, _raw, _heads = server.post(
+                "/api/atlas/move", {"via": target["via"]}, sid=sid)
+        assert status == 500, (status, body)
+        assert body.get("error"), body
+        # 磁盘维持原位置。
+        with open(_save_path(sid), encoding="utf-8") as handle:
+            on_disk = json.load(handle)
+        assert on_disk["atlas"]["party_locus"]["place_id"] == origin, on_disk["atlas"]
+        # 内存也回滚：队伍没有移动。
+        cached = notdnd_web._sessions.get(sid)
+        assert cached is not None and cached._locus["place_id"] == origin, \
+            (cached and cached._locus)
+
+        # 故障解除后重试：真的走过去，且落盘。
+        status, moved, _raw, _heads = server.post(
+            "/api/atlas/move", {"via": target["via"]}, sid=sid)
+        assert status == 200 and moved["status"] == "ok", (status, moved)
+        with open(_save_path(sid), encoding="utf-8") as handle:
+            on_disk = json.load(handle)
+        assert on_disk["atlas"]["party_locus"]["place_id"] == target["place_id"]
+
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_guide_turn_settle_save_failure():
+    """结算落盘失败：状态行之前回 500、结算回滚、不叫模型、磁盘无该行动。"""
+    sid = "g2-settle-save-fault"
+    _guide_session(sid)
+    fake = _FakeTransport()
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            with _storage_fault(replace=True):
+                status, body, _raw, heads = server.post(
+                    "/api/guide/turn",
+                    {"text": "我按住门栓", "action_id": "a-lock"}, sid=sid)
+            assert status == 500, (status, body)
+            assert body.get("error"), body
+            assert "event-stream" not in heads.get("content-type", ""), heads
+            assert fake.calls == [], "结算失败不得叫模型"
+            cached = notdnd_web._sessions.get(sid)
+            assert cached is not None and \
+                "a-lock" not in cached.rules.get("done_actions", {}), \
+                "结算失败必须回滚内存规则态"
+
+    reloaded = notdnd_web.Session.load(sid)
+    assert "a-lock" not in reloaded.rules.get("done_actions", {}), \
+        "结算失败不得落盘"
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_guide_turn_focus_save_failure():
+    """`location_id` 焦点落盘失败：状态行之前回 500、guide 回滚、磁盘焦点不变。"""
+    sid = "g5-focus-save-fault"
+    _guide_session(sid)
+    with _LocalServer() as server:
+        status, body, _raw, _heads = server.post(
+            "/api/guide/bind",
+            {"world_key": "yunji", "scenario_id": "yunji"}, sid=sid)
+        assert status == 200, (status, body)
+
+        with _storage_fault(replace=True):
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn",
+                {"text": "我走进白壁", "location_id": "loc-02"}, sid=sid)
+        assert status == 500, (status, body)
+        assert body.get("error"), body
+        assert "event-stream" not in heads.get("content-type", ""), heads
+        cached = notdnd_web._sessions.get(sid)
+        assert cached is not None and not cached.guide.get("focus_location_id"), \
+            "焦点未落盘必须回滚内存"
+    reloaded = notdnd_web.Session.load(sid)
+    assert not reloaded.guide.get("focus_location_id"), "磁盘不该有未落盘的焦点"
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_guide_tool_settle_save_failure():
+    """工具预通行里的结算落盘失败：不再谎报成功，`done` 明确回报未持久化。"""
+    sid = "g4-tool-save-fault"
+    _guide_session(sid)
+    fake = _FakeTransport([
+        {"content": "", "tool_calls": [_tool_call("request_check",
+                                                  {"action_id": "a-lock"})],
+         "usage": {}},
+    ])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            with _storage_fault(replace=True):
+                status, _body, raw, _heads = server.post(
+                    "/api/guide/turn", {"text": "查规则"}, sid=sid)
+    assert status == 200, status
+    events = _parse_sse(raw)
+    assert [name for name, _ in events] == ["fallback", "done"], events
+    assert events[1][1] == {"status": "error", "reason": "save_failed"}, events[1][1]
+    # 结算失败已打断工具链：只发了工具那一轮，没有再叫叙事。
+    assert len(fake.calls) == 1, fake.calls
+    # 那次结算没落盘：磁盘上没有它。
+    reloaded = notdnd_web.Session.load(sid)
+    assert "a-lock" not in reloaded.rules.get("done_actions", {})
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_room_create_save_failure():
+    """建房落盘失败：500、不进缓存、磁盘无档；恢复后能建房。"""
+    rid = "room-save-fault"
+    with _LocalServer() as server:
+        with _storage_fault(replace=True):
+            status, body, _raw, _heads = server.post(
+                "/api/room/create", {"room_id": rid, "display_name": "甲"})
+        assert status == 500, (status, body)
+        assert body.get("error"), body
+        assert rid not in notdnd_web._sessions, "半成品不得进缓存"
+        assert not os.path.exists(_save_path(rid)), "磁盘不得留下半成品"
+
+        # 故障解除后重试：建房成功并落盘。
+        status, body, _raw, _heads = server.post(
+            "/api/room/create", {"room_id": rid, "display_name": "甲"})
+        assert status == 200, (status, body)
+        assert body.get("token") and body.get("role") == "host", body
+        assert os.path.exists(_save_path(rid))
+    notdnd_web._sessions.pop(rid, None)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
+    check_session_save_reports_failure,
+    check_save_rename_failure_rolls_back,
     check_legacy_save_lazy_migration,
     check_api_session_view,
     check_api_session_without_session_400,
@@ -2140,6 +2386,7 @@ CHECKS = (
     check_atlas_legacy_save_lazy_compile,
     check_atlas_relocation_on_deleted_place,
     check_api_atlas_exits_and_move,
+    check_atlas_move_save_failure_rolls_back,
     check_guide_block_wiring,
     check_guide_load_contract,
     check_guide_status_endpoint,
@@ -2148,10 +2395,12 @@ CHECKS = (
     check_guide_turn_stream_failure,
     check_guide_turn_review_failure_keeps_verdict,
     check_guide_turn_settle_errors_before_stream,
+    check_guide_turn_settle_save_failure,
     check_guide_missing_module,
     check_guide_tool_prepass_requests,
     check_guide_tool_prepass_rebuilds_l4,
     check_guide_tool_error_never_new_status,
+    check_guide_tool_settle_save_failure,
     check_guide_narrative_tool_calls_no_second_round,
     check_guide_turn_writes_beats,
     check_guide_speak_validation,
@@ -2160,11 +2409,13 @@ CHECKS = (
     check_guide_bind_endpoint,
     check_guide_bind_no_module,
     check_guide_turn_location_focus,
+    check_guide_turn_focus_save_failure,
     check_guide_turn_traces_wiring,
     check_guide_turn_traces_betrayed,
     check_guide_turn_traces_offline,
     check_guide_turn_scene_change_traces,
     check_room_create_join_leave,
+    check_room_create_save_failure,
     check_room_legacy_lazy_migration,
     check_room_capacity_full,
     check_room_kick_authorization,
