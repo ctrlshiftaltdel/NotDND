@@ -29,6 +29,10 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     （非流式 / 思考关，失败不留痕、不兜底）；玩家的整段叙事进 L3 与切拍之前
     先过秘密门（未放行的秘密换成「……」，不第二次叫模型）；`narration` 事件
     至多带一条服务端揭开的 `trace`；对白拍按 `npc.id` 分配白桦 / 茉莉
+  · 回合落会话日志（M4-B2，UI-DESIGN §1.3.5 / §7 缺口 B2）：`/api/guide/turn`
+    结束后把玩家的 `act`、导引者 `narrate`（含离线 / 上游失败的兜底句）与
+    揭开的 `trace` 写进 `Session.log`（`seq` 在锁内递增），`GET /api/log?since=`
+    据此增量取回；叙事记的是秘密门**涂掉之后**的字，被删内容不因日志重新可见
   · 多人房间骨架（M10-S1，MULTIPLAYER-DESIGN.md §3.2 / §4）：顶层 `room` 块
     随存档落盘（旧单人档惰性迁移成最小房间，M-16）；`POST /api/room/create` /
     `join` / `leave` / `kick` 走 `Authorization: Bearer` + `X-Room` / `X-Member`
@@ -328,6 +332,31 @@ def _guide_beats(narration, guide) -> list:
         return prism_guide.beats_of(narration, guide)
     except Exception:      # noqa: BLE001 — 切拍失败不该带走整回合
         return []
+
+
+def _turn_act_text(session: "Session", text: object, action_id: object) -> str:
+    """这一回合玩家「做了什么」的日志正文（M4-B2 / UI-DESIGN §1.3.5 的 `act`）。
+
+    有自由文本就用它的 `strip()`；只有 `action_id`（点行动按钮、不带散文）时，
+    用该行动的 `label`（从 `rules.scene.actions` 里按 id 找），拿不到 label 就
+    退回 `action_id` 本身——日志里**不出现空正文**。两者都没有时返回空串
+    （调用方据此不记 `act`）。
+    """
+    stripped = str(text or "").strip()
+    if stripped:
+        return stripped
+    action_id = str(action_id or "")
+    if not action_id:
+        return ""
+    scene = session.rules.get("scene") if isinstance(session.rules, dict) else None
+    actions = (scene or {}).get("actions") if isinstance(scene, dict) else None
+    for action in actions or []:
+        if isinstance(action, dict) and str(action.get("id") or "") == action_id:
+            label = str(action.get("label") or "")
+            if label:
+                return label
+            break
+    return action_id
 
 
 # 速率窗口：{sid: {"turn": [时间戳…], "speak": […]}}。窗口滑动、只留 60 秒内的。
@@ -1242,6 +1271,19 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"status": "ok", **bound})
 
     # ── 导引者回合（G2，§5.2 / §5.10）───────────────────────
+    def _log_fixed_turn(self, session, text, action_id, narration) -> None:
+        """不叫模型、直接回 JSON 的回合落日志（M4-B2 / UI-DESIGN §1.3.5）。
+
+        覆盖三条短路：淡出 / 跳过整句（§5.10）与模块缺失的离线兜底（§5.1）——
+        它们这一刻已经把玩家可见的正文定稿，所以记 `act` + `narrate`。这几条
+        路径不发状态行、不结算，因此只 `add_log`（`seq` 仍在锁内递增），由随后
+        任一次 `save()` 一并持久化——与既有 `ensure_atlas` 说明条目同一口径。
+        """
+        act_text = _turn_act_text(session, text, action_id)
+        if act_text:
+            session.add_log("act", act_text)
+        session.add_log("narrate", narration)
+
     def _guide_turn(self, body: dict):
         """`POST /api/guide/turn`：先结算，后叙事。
 
@@ -1260,6 +1302,12 @@ class Handler(BaseHTTPRequestHandler):
         之前记一轮场外痕迹；玩家可见的整段叙事在进 L3 与切拍之前过秘密门；
         该回合的 `narration` 事件至多带一条服务端揭开的 `trace`。三件事都只动
         `prism_guide`，失败一律吞掉，绝不把整回合改成兜底句或第二行 HTTP 状态。
+
+        M4-B2：这一回合的玩家输入（`act`）、导引者叙事（`narrate`，含兜底句）
+        与揭开的痕迹（`trace`）写进 `Session.log`（`seq` 沿 `add_log` 锁内递增），
+        `GET /api/log?since=` 据此增量取回；叙事落的是**涂掉之后**的字，秘密门
+        对日志同样生效，被删内容不会经日志重新可见。日志不改响应结构（SSE 事件
+        与顺序不变），落盘沿用本回合既有的 `save()`。
         """
         text = str(body.get("text") or "")
         if len(text) > GUIDE_TEXT_LIMIT:
@@ -1271,17 +1319,23 @@ class Handler(BaseHTTPRequestHandler):
         if not _rate_ok(sid, "turn", GUIDE_TURN_LIMIT):
             return self._err("太频繁", 429)
 
+        action_id = str(body.get("action_id") or "")
         stripped = text.strip()
         if stripped == GUIDE_FADE_WORD:
             # 淡出 / 跳过是整句相等：**不结算**，也不叫模型（§5.10）。
+            # M4-B2：玩家看到的这句仍进会话日志，刷新后叙事流不丢这一段。
+            self._log_fixed_turn(session, text, action_id, GUIDE_FADE_TEXT)
             return self._json({"status": "ok",
                                "narration": {"text": GUIDE_FADE_TEXT}})
         if stripped == GUIDE_SKIP_WORD:
+            self._log_fixed_turn(session, text, action_id, GUIDE_SKIP_TEXT)
             return self._json({"status": "ok",
                                "narration": {"text": GUIDE_SKIP_TEXT}})
 
         if prism_guide is None:
             # 模块缺失：状态行之前返回固定 JSON 兜底，不结算（§5.1）。
+            # M4-B2 验收：无 AI 配置时回合同样落日志（兜底句照记）。
+            self._log_fixed_turn(session, text, action_id, FALLBACK_NARRATION)
             return self._json({"status": "offline",
                                "narration": {"text": FALLBACK_NARRATION}})
 
@@ -1292,7 +1346,6 @@ class Handler(BaseHTTPRequestHandler):
                                                        location_id):
             return self._err(GUIDE_NO_LOCATION, 400)
 
-        action_id = str(body.get("action_id") or "")
         result = None
         if action_id:
             with session.lock:
@@ -1336,6 +1389,14 @@ class Handler(BaseHTTPRequestHandler):
         focus_changed = (bool(location_id) and bool(previous_focus)
                          and location_id != previous_focus)
         scene_changed = bool(scene_now) and scene_now != scene_before
+
+        # M4-B2 / UI-DESIGN §1.3.5：玩家这一回合「做了什么」进会话日志（`act`）。
+        # 放在状态行之前——所有会返回 4xx 的校验（长度 / 会话 / 速率 / 地点 /
+        # 结算）都已过去，这一回合确定走 200；`seq` 在 `add_log` 内锁内递增。
+        # 这一条随后由本回合的 `save()`（叙事 / 兜底路径）一并落盘。
+        act_text = _turn_act_text(session, text, action_id)
+        if act_text:
+            session.add_log("act", act_text)
 
         try:
             self._begin_stream()
@@ -1397,7 +1458,16 @@ class Handler(BaseHTTPRequestHandler):
             saved = not save_failed
             if reviewed is None:
                 # 头已写出：失败只能用 fallback，拿不到第二行 HTTP 状态。
-                self._sse("fallback", {"text": _guide_fallback_text(result)})
+                # M4-B2：兜底句是玩家实际看到的正文，同样落日志——并落盘，离线
+                # 回合刷新 / 重载后不丢。落盘失败走下面的 `done` 如实回报。
+                fallback = _guide_fallback_text(result)
+                with session.lock:
+                    session.add_log("narrate", fallback)
+                    try:
+                        session.save()
+                    except SaveError:
+                        saved = False
+                self._sse("fallback", {"text": fallback})
             else:
                 # 秘密门（G7 / §5.8）：玩家将要看到的整段在进 L3 与切拍之前过一遍；
                 # L3 与朗读都用**涂掉之后**的字（不第二次叫模型）。痕迹的揭开也在
@@ -1416,6 +1486,13 @@ class Handler(BaseHTTPRequestHandler):
                     stats = session.guide.get("stats")
                     if isinstance(stats, dict):
                         stats["calls"] = int(stats.get("calls") or 0) + 1
+                    # M4-B2 / §1.3.5：叙事落日志——记的是**涂掉之后**的字
+                    # （`redacted`），秘密门对日志同样生效：被删掉的秘密不会经
+                    # `/api/log` 重新可见（§2.3「无痕删除」）。痕迹只在真正揭开
+                    # （玩家可见）时才记一条。
+                    session.add_log("narrate", redacted)
+                    if trace:
+                        session.add_log("trace", trace)
                     try:
                         session.save()      # L3 与 revealed 要跟着落盘
                     except SaveError:
