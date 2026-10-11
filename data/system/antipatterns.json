@@ -24,7 +24,7 @@
     {"no": 8, "name": "全员一个口吻", "manifestation": "所有 NPC 说话像同一个 AI",
      "fix": "每个 NPC 一句语言指纹", "source": "docs/system/04-conductor-os.md:977"},
     {"no": 9, "name": "忘记时间", "manifestation": "场景之间从不提及时间流逝",
-     "fix": "每次切场景就说一句时间，并消耗一个时段", "source": "docs/system/04-conductor-os.md:978"},
+     "fix": "每次切场景就说一句时间，并消耗一个时段（「时段」= 一天四段之一）", "source": "docs/system/04-conductor-os.md:978"},
     {"no": 10, "name": "剥夺玩家代理", "manifestation": "「你感到一阵恐惧，你决定后退」",
      "fix": "只描述角色可能感受到的，把决定权留给玩家", "source": "docs/system/04-conductor-os.md:979"},
     {"no": 11, "name": "无限分支不收束", "manifestation": "挖了十条线索，一条也没完结",

@@ -30,7 +30,7 @@
        "source": "docs/system/04-conductor-os.md:101"},
       {"order": 3, "situation": "一个 NPC 知道什么", "default_rule": "若他与信息来源有合理联系，默认他知道；否则默认不知道但能猜到一部分",
        "source": "docs/system/04-conductor-os.md:102"},
-      {"order": 4, "situation": "距离／时间的模糊判定", "default_rule": "取对玩家有利的值，但要付出一个时段",
+      {"order": 4, "situation": "距离／时间的模糊判定", "default_rule": "取对玩家有利的值，但要付出一个时段（「时段」= 一天四段之一）",
        "source": "docs/system/04-conductor-os.md:103"},
       {"order": 5, "situation": "某项行动是否需要掷骰", "default_rule": "若失败会很有趣，就掷；否则直接给结果",
        "source": "docs/system/04-conductor-os.md:104"},

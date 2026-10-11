@@ -13,7 +13,7 @@
   ],
   "consequences": {
     "success": "成功的追踪会缩短距离。",
-    "failure": "失败的追踪会让对方增加一个时段的领先。",
+    "failure": "失败的追踪会让对方增加 6 小时的领先。",
     "source": "docs/system/03-interaction-layer.md:88"
   }
 }

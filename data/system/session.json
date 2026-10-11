@@ -25,7 +25,7 @@
     {"id": "exploration", "name": "探索模式", "en": "EXPLORATION",
      "goal": "让玩家发现空间的价值：出口、资源、威胁、线索、氛围",
      "default_action": "描述 → 提供 3 个可被操作的对象 → 等待",
-     "advance": "每个时段一次风险判定",
+     "advance": "每个时段一次风险判定（「时段」= 一天四段之一）",
      "end_condition": "玩家找到一个有意义的东西，或消耗了预设的时间",
      "pitfall": "不要让探索变成「你走到走廊尽头，什么都没有」",
      "source": "docs/system/04-conductor-os.md:145"},

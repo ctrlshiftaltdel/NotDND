@@ -5,7 +5,7 @@
   "note": "每当队伍进入移动状态，创建一个风险池，把「路上不太平」变成可预期的紧张感，而不是随机骚扰。",
   "declared": {"trigger_steps": 3, "die_adjustments": 2},
   "steps": [
-    {"order": 1, "step": "每次移动一个单元（约 1 时段），向池中放入 1 枚标记。", "source": "docs/system/03-interaction-layer.md:58"},
+    {"order": 1, "step": "每次移动一个单元（约 6 小时），向池中放入 1 枚标记。", "source": "docs/system/03-interaction-layer.md:58"},
     {"order": 2, "step": "移动结束时，导引者掷 d6。", "source": "docs/system/03-interaction-layer.md:59"},
     {"order": 3, "step": "无论是否触发，触发后清空标记。", "source": "docs/system/03-interaction-layer.md:61"}
   ],

@@ -95,7 +95,7 @@
      "recovery": "恢复活力上限的 1/4；专注恢复一半；可花费医疗用品额外治疗；可修理装备",
      "source": "docs/system/01-core.md:709"},
     {"id": "long_rest", "name": "长歇", "en": "Long Rest", "duration": "8 小时", "condition": "安全据点（需有遮蔽与守卫安排）",
-     "recovery": "活力与专注全满；负担 −1；清除不需要专门解除的状态；部分能力在该时段重新充能",
+     "recovery": "活力与专注全满；负担 −1；清除不需要专门解除的状态；部分能力在该时段（「时段」= 长歇这段时间）重新充能",
      "source": "docs/system/01-core.md:710"},
     {"id": "interlude", "name": "间幕", "en": "Interlude", "duration": "会话之间", "condition": "虚构时间流逝",
      "recovery": "处理个人事务、声望变化、工艺制作、关系维护（见 03）", "source": "docs/system/01-core.md:711"}
