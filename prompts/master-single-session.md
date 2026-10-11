@@ -64,9 +64,12 @@
    读每个 PR 的评论 → 重建状态、审查轮次与锁表（开放 PR 触及的文件集合）。
    **同时读取每个开放 Issue 的最新「活动任务登记」评论**（§3.4）——`DISPATCHED` 尚无 PR 的任务
    只在登记里可见；把登记声明的锁定路径与开放 PR 触及的文件**合并**为锁表。**没有 PR ≠ 没有活动任务**。
-   **并扫描未完成清理项**（§2.1.1 / §3.3）：`gh issue list --state all --label '编排：待清理'`
-   → 对其中每个 Issue（**含已关闭**）读登记评论的 `cleanup` 字段。原 Issue 合并后常已因 `Closes #N`
-   自动关闭，**这一步必须用 `--state all`**，否则待清理项会从恢复视野里漏掉。
+   **并扫描未完成清理项**（§2.1.1 / §3.3）：
+   `gh issue list --state all --label '编排：待清理'`（**含已关闭 Issue**；`--state all` 必须用，
+   否则合并后自动关闭的 Issue 会漏掉）→ 读各自最新登记评论的 `cleanup` 字段；**再扫开放 Issue 中标题以
+   `[清理跟踪]` 开头的跟踪 Issue**（标签不可用时的兜底），按指针读其指向的登记 → **取并集、按原 Issue 去重**。
+   得到 `cleanup_watch` / `cleanup_pending` / `cleanup_blocked` 全部条目；恢复时**先核验合并事实**
+   （`gh pr view <n> --json state,mergedAt`）——**未合并者不得删分支**。
 4. **派发前冲突检查**（§3.1）：任务可改路径与**开放 PR 触及文件或活动登记锁定路径**相交 → 不并行派发，
    标 `BLOCKED` 并说明等其合并。依赖满足的判据是**依赖已合入 `master`**。
 5. 输出开工确认（§4），再进入 §5 主循环。
@@ -111,11 +114,12 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 5. **独立审查**（§6）：对每个到达 `MASTER_REVIEW` 的 PR 自行审查，**不采信自报**。
    有缺陷 → 退回 `DISPATCHED`（**修复轮次 +1**），在**同一任务**上再派发修复。
    **默认重试上限 3 轮**（§4.5）；达上限 → `BLOCKED` 并汇报。
-6. **合并与清理**（§7）：`APPROVED` 且 head 未变 → 由**你**执行合并；**合并确认成功后**按
-   `AGENT-ORCHESTRATION.md` §2.1.1 收尾远端分支清理——删分支失败**不**回退 `MERGED`、
-   **不**重复合并，按有限重试 / 显式阻塞处理；清理**未完成**时必须**同时**给关联 Issue 贴上
-   **索引标签 `编排：待清理`**（允许贴到已关闭 Issue），否则新 Master 发现不了该待清理项；
-   清理置 `cleanup_complete` 时移除该标签。
+6. **合并与清理**（§7）：`APPROVED` 且 head 未变 → **先预置（两阶段提交）**：把登记更新为
+   `APPROVED` + `cleanup：cleanup_watch`，并建立索引（贴 `编排：待清理` 标签，或建 `[清理跟踪]` 跟踪
+   Issue），**预置成功后才执行 merge**（预置失败 → **不得合并**）；合并确认后更新为 `MERGED` +
+   `cleanup_pending`（**保留索引**），再按 `AGENT-ORCHESTRATION.md` §2.1.1 收尾远端分支清理——
+   删分支失败**不**回退 `MERGED`、**不**重复合并，按有限重试 / 显式阻塞处理；清理置 `cleanup_complete`
+   时移除索引。
 7. **重复**直到所有任务终态化；随后判断阶段出口（§8），满足则汇报、不满足则继续或阻塞。
 
 > **活动任务登记贯穿循环（§3.4）**：交回（`MASTER_REVIEW`）、阻塞、失败、取消、合并**各更新一次**，
@@ -123,9 +127,10 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 > （§2.1.1）：确认合并置 `cleanup_pending`，删分支成功 / 分支已不存在置 `cleanup_complete`，
 > 权限 / 保护规则或重试耗尽置 `cleanup_blocked`——未完成的清理项**不得隐瞒**。恢复时先读**所有**
 > 活动登记再重建锁表；**没有 PR ≠ 没有活动任务**，实例状态不明时**不释放**锁。
-> **清理未完成时贴上索引标签 `编排：待清理`，置 `cleanup_complete` 时移除**；发现未完成清理项时用
-> `gh issue list --state all --label '编排：待清理'`（**含已关闭 Issue**）连同开放 Issue 登记一并恢复，
-> **只核实 / 删除分支**，绝不重复 merge、绝不回退 `MERGED`。
+> **合并前预置**（`cleanup_watch` + 索引）、**合并确认后**保留索引，直到 `cleanup_complete` 才移除；
+> 标签贴不上时改用 `[清理跟踪]` 开放 Issue 作**纯指针**。发现未完成清理项时用
+> `gh issue list --state all --label '编排：待清理'`（**含已关闭 Issue**）**∪** `[清理跟踪]` 开放 Issue，
+> **取并集去重**；恢复时**先核验合并事实**，**只对已合并 PR 核实 / 删除分支**，绝不重复 merge、绝不回退 `MERGED`。
 
 **派发给 Execution Subagent 的任务包（模板）：**
 
@@ -179,8 +184,9 @@ Subagent 的自述仅是线索，不是审查结论**（`AGENT-ORCHESTRATION.md`
 **合并与清理分离**：`MERGED` 只以合并成功为准；删分支失败**不**回退状态、**不**重复合并——
 按 §2.1.1 处理（删除成功 / 分支已不存在 → `cleanup_complete`；暂时性错误有限重试；权限 /
 保护规则或重试耗尽 → `cleanup_blocked`，显式报告），未完成清理项保留在登记与汇报中。
-**清理未完成必须贴索引标签 `编排：待清理`**（§2.1.1；`cleanup_complete` 时移除），否则合并后
-原 Issue 自动关闭会让该待清理项从下次启动的恢复扫描中消失。
+**合并前必须先预置** `cleanup_watch` + 索引（标签 `编排：待清理`，或 `[清理跟踪]` 跟踪 Issue），
+**预置成功后才 merge**；**清理未完成必须保留索引**（§2.1.1；`cleanup_complete` 时移除），否则合并后
+原 Issue 自动关闭、或「合并成功与建立索引之间」的中断，都会让该待清理项从下次启动的恢复扫描中消失。
 **严禁**为跑通而降低验收标准、伪造证据或无限重试。
 
 ---
@@ -198,7 +204,7 @@ Subagent 的自述仅是线索，不是审查结论**（`AGENT-ORCHESTRATION.md`
 ```
 
 - 引用 PR 一律 **`PR #N（Issue #M）`**；**没有 PR 时写明当前状态，不得编造编号**。
-- **不得隐瞒未完成的清理项**：`cleanup_pending` / `cleanup_blocked` 必须列出（`AGENT-ORCHESTRATION.md` §2.1.1 / §6.2）。
+- **不得隐瞒未完成的清理项**：`cleanup_watch` / `cleanup_pending` / `cleanup_blocked` 必须列出（`AGENT-ORCHESTRATION.md` §2.1.1 / §6.2）。
 - 若曾因能力不足降级，**必须显式声明**「当前环境不具备 C1–C4，已降级为多会话交接」。
 
 ---

@@ -45,8 +45,10 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
    - `gh pr list --state open --json number,title,isDraft,headRefName,mergeable`
    - 对每个 PR 读状态与评论 → 重建其 §2 状态与**当前锁表**（开放 PR 触及的文件集合 **∪** 活动登记声明的锁定路径）。
    - **未完成清理项**（`AGENT-ORCHESTRATION.md` §2.1.1 / §3.3）：`gh issue list --state all --label '编排：待清理'`
-     → 对其中每个 Issue（**含已关闭**）读登记评论的 `cleanup` 字段。原 Issue 合并后常已因 `Closes #N`
-     自动关闭，**必须用 `--state all`**，否则待清理项会漏掉。
+     （**含已关闭**；`--state all` 必须用）→ 读各自最新登记评论的 `cleanup` 字段；**再扫开放 Issue 中标题以
+     `[清理跟踪]` 开头的跟踪 Issue**（标签不可用时的兜底）→ **取并集、按原 Issue 去重**。原 Issue 合并后
+     常已因 `Closes #N` 自动关闭。恢复时**先核验合并事实**（`gh pr view <n> --json state,mergedAt`），
+     **未合并者不得删分支**。
 4. **输出开工确认**（见 §3）。
 5. 按 §4 推进：能派发就派发、遇到开放 PR 就走审查与合并闸门、阶段收束即按 §7 汇报。
 
@@ -101,8 +103,10 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
   取消 / 合并**各更新一次**登记并刷新最近更新时间；合并 / 终止收尾后写终态以**释放锁**。
   合并事件须同时写入 `cleanup` 状态（`AGENT-ORCHESTRATION.md` §2.1.1）：确认合并置 `cleanup_pending`，
   删分支成功 / 分支已不存在置 `cleanup_complete`，权限 / 保护规则或重试耗尽置 `cleanup_blocked`。
-  **清理未完成时必须同时给关联 Issue 贴索引标签 `编排：待清理`**（允许贴到已关闭 Issue），置
-  `cleanup_complete` 时移除；否则原 Issue 自动关闭会让该待清理项从后续会话的恢复扫描中消失。
+  **合并前先预置** `cleanup_watch` + 索引（贴 `编排：待清理` 标签，或建 `[清理跟踪]` 跟踪 Issue），
+  **预置成功后才执行 merge**（预置失败 → 不得合并）；合并确认后保留索引，置 `cleanup_complete` 时移除；
+  标签贴不上时改用 `[清理跟踪]` 开放 Issue 作**纯指针**。否则原 Issue 自动关闭、或「合并成功与建立索引
+  之间」的中断，都会让该待清理项从后续会话的恢复扫描中消失。
 - **恢复纪律**：每轮开始先读**所有**活动登记再重建锁表；**没有 PR ≠ 没有活动任务**；
   实例是否仍在运行**不明**时**不释放**锁；PR 关闭**不能**证明实例已停止；超时 / 状态不明 → 转显式 `BLOCKED`
   并按流程核实（§3.4）。
@@ -144,7 +148,8 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 **合并与清理分离**：`MERGED` 只以合并成功为准；删分支失败**不**回退状态、**不**重复合并——
 按 §2.1.1 处理（删除成功 / 分支已不存在 → `cleanup_complete`；暂时性错误有限重试；权限 /
 保护规则或重试耗尽 → `cleanup_blocked`，显式报告）。未完成的清理项必须保留在登记与汇报中；
-**清理未完成必须贴索引标签 `编排：待清理`**（§2.1.1；`cleanup_complete` 时移除）。
+**合并前必须先预置** `cleanup_watch` + 索引（标签 `编排：待清理` 或 `[清理跟踪]` 跟踪 Issue），
+**预置成功后才 merge**；**清理未完成必须保留索引**（§2.1.1；`cleanup_complete` 时移除）。
 
 ### 4.5 审查评论格式（四行，`AGENTS.md` §6 / `AGENT-ORCHESTRATION.md` §4.2）
 
@@ -186,7 +191,7 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 ```
 
 > 汇报贯穿全程的硬规则：**引用 PR 一律用 `PR #N（Issue #M）`；没有 PR 时写明当前状态（如「尚未开 PR」），不得编造编号。**
-> **不得隐瞒未完成的清理项**：`cleanup_pending` / `cleanup_blocked` 必须列出（`AGENT-ORCHESTRATION.md` §2.1.1 / §6.2）。
+> **不得隐瞒未完成的清理项**：`cleanup_watch` / `cleanup_pending` / `cleanup_blocked` 必须列出（`AGENT-ORCHESTRATION.md` §2.1.1 / §6.2）。
 
 ---
 
