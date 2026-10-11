@@ -157,9 +157,9 @@
 - **行动区** `#actZone`：「你可以」+ 行动按钮（序号 + 标签 + 属性提示 chip）、
   「前往」+ 出口按钮。数据：行动 ← `rules.scene.actions`；出口 ←
   `GET /api/atlas/exits`（`:895`）的 `here` / `exits[]`（`via` / `name` / `band` /
-  `hours` / `unstable`）。
+  `minutes` / `unstable`）。
   > 出口的**显示口径**：用 `BAND_NAMES` 的中文（短程 / 中程 / 远程 / 危险穿越 /
-  > 门内）+ `hours` 时段数 + `（不稳）` 标记（`:589-594` 已经是这个口径，
+  > 门内）+ `minutes`（名义分钟）+ `（不稳）` 标记（`:780-786` 已经是这个口径，
   > 前端照抄，不要另造词）。
 - **工具条** `dock`（`static/index.html:83-89`）：**目标态＝输入区 + 三个 tab**。输入区是一行：
   多行自适应 `textarea` + 「说 / 做」发送按钮。
@@ -190,7 +190,7 @@
 #### 1.3.4 世界面板（L2 浮层，tab「世界」）
 
 - **看到什么**：当前位置（`here.name`，小字 `place_id`、`kind`、`world_key`）；
-  出口列表（与主画面「前往」同源，这里给更长说明：`via` / 档位 / 时段 / 不稳）；
+  出口列表（与主画面「前往」同源，这里给更长说明：`via` / 档位 / `minutes`（名义分钟）/ 不稳）；
   `/api/atlas/exits` 的 `text` 整段纯文本可折叠展示（给需要复制 / 朗读的场景）。
 - **能做什么**：点出口 = 主画面的「前往」（同一动作，同一确认）。
 - **数据来源**：`GET /api/atlas/exits`。
@@ -419,12 +419,12 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 
 ```
 行动区「前往」点出口 x
-  → 若该出口 band=dangerous：先弹 L2 确认（「危险穿越 · 4 时段，继续？」）
+  → 若该出口 band=dangerous：先弹 L2 确认（「危险穿越 · 1440 分钟，继续？」）
   → POST /api/atlas/move { via: x.via }
-      ├ 200 → 返回 atlas_move 视图：{ here, exits, text, status:'ok', band, hours }
+      ├ 200 → 返回 atlas_move 视图：{ here, exits, text, status:'ok', band, minutes }
       │     → 顶栏地点名更新为 here.name
       │     → 「前往」列表整体替换为新 here 的 exits
-      │     → 叙事流追加一条 kind='atlas' 的系统条目：「你到达了……（N 时段）」
+      │     → 叙事流追加一条 kind='atlas' 的系统条目：「你到达了……（N 分钟）」
       └ 400（缺少移动方向 via / 该方向不存在）→ 就地提示，不移动
   → 移动之后 GET /api/session（位置变了，规则层快照可能一起变）
 ```
@@ -432,8 +432,11 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 - **为什么用 `via` 而不是 `place_id`**：接口只接受 `via`（`notdnd_web.py:970-976`，
   `atlas_move` 按 `entry["via"]` 查连接）。前端拿 `exits[].via` 回传，
   **不要**自己拼地点 id。
-- **时段**：`hours` 由服务端按档位换算（`BAND_HOURS` = 1/2/4/4，`:236`）。
-  前端显示，**不算**。
+- **行程分钟**：`minutes` 由服务端按档位换算（`BAND_MINUTES` = 360/720/1440/1440
+  名义分钟，`:389`）。前端显示，**不算**。
+  > 历史：PR #160（Issue #155）把常量 `BAND_HOURS`（旧值 1/2/4/4，名为 hours
+  > 实为时段数）改名为 `BAND_MINUTES`；PR #178（Issue #161）把
+  > `/api/atlas/{exits,move}` 的响应键 `hours` 改为 `minutes`。本设计只描述改名后的当前口径。
 - **空态**：`exits` 为空 → 「前往」小节整体隐藏（而不是显示一行空标题），
   世界面板里仍保留服务端的「这里没有已知出口。」原文。
 - **错误态**：网络断 → 保持原地，提示可重试；**不**乐观地把队伍画到新地点。
@@ -951,7 +954,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 | 回合（点行动） | `POST /api/guide/turn { action_id }` | ✅ 已实现（`:1060-1068`，`prism_guide.settle`）；通用行动提案契约属 M8 | 前端占位（`pickAction` 只弹提示） |
 | 淡出 / 跳过 | 同上（整句相等 → JSON） | ✅ 已实现（`:110-114`、`:1040-1046`） | 前端需处理"非 SSE 的 200" |
 | 看出口 | `GET /api/atlas/exits` | ✅ 已实现（`:895`），`here` / `exits[]` / `text` | — |
-| 移动 | `POST /api/atlas/move { via }` | ✅ 已实现（`:970`），返回 `atlas_view` + `status` / `band` / `hours` | 前端占位（`pickExit` 只弹提示） |
+| 移动 | `POST /api/atlas/move { via }` | ✅ 已实现（`:970`），返回 `atlas_view` + `status` / `band` / `minutes` | 前端占位（`pickExit` 只弹提示） |
 | 导引者状态 | `GET /api/guide/status` | ✅ 已实现（`:858`，无需会话） | 前端未用 |
 | 绑战役 | `POST /api/guide/bind` | ✅ 已实现（`:920`） | 前端未用（属 B1 的配套） |
 | 朗读一拍 | `POST /api/guide/speak { text }` | ✅ 已实现（`:923`），pcm16 流 + `X-Audio-*` 头 | 前端未用 |
