@@ -61,6 +61,8 @@
      落盘）；叙事记的是秘密门**涂掉之后**的字，被删内容不因落日志重新可见；
      `result` 先于 `narration` 的既有事件顺序不变；离线 / 模块缺失 / 淡出 / 跳过
      这些短路回合同样落 `act` + `narrate`（真子进程覆盖启动路径）。
+     M4-B5 追加：`narrate` 条目带上该回合的 `beats`（无拍时不写空字段），
+     全量 / `?since=` 增量与重载往返都一致——刷新后恢复的历史叙事仍能按拍切段。
 
  13. 存档接线与老档迁移（M7-3，STATE-DESIGN §10 / §11）：`Session` 仍是网页层
      内存门面，`save()` / `load()` 委托 `state`——新档落在
@@ -2859,6 +2861,65 @@ def check_turn_log_wiring():
     notdnd_web._sessions.pop(sid, None)
 
 
+def check_turn_log_narration_beats():
+    """M4-B5：`narrate` 条目带上这一回合的 `beats`（无拍时不写空字段）。
+
+    刷新 / 重进会话后前端从 `/api/log?since=` 恢复历史叙事，靠的就是这条：
+    条目自带与即时渲染同一份 `beats`，切拍与朗读入口（`tts=true` 时）跟着回来。
+    """
+    sid = "b5-log-beats"
+    _guide_session(sid)
+    narration = ("【裁决】你把手按上门栓。\n"
+                 "【叙事】风从巷口灌进来。霍砚：「别出声。」\n"
+                 "【钩子】巷口有人影。")
+    fake = _FakeTransport([_sse_reply(narration)])
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我按住门栓", "action_id": "a-lock"}, sid=sid)
+        assert status == 200, status
+        payload = dict(_parse_sse(raw))["narration"]
+        beats = payload["beats"]
+        assert beats, payload
+
+        # 全量：叙事条目带着与 SSE `narration` 事件**同一份** `beats`。
+        status, body = server.get("/api/log", sid=sid)
+        assert status == 200, (status, body)
+        entries = body["log"]
+        assert [e["kind"] for e in entries] == ["act", "narrate"], entries
+        assert entries[1]["text"] == payload["text"], entries[1]
+        assert entries[1]["beats"] == beats, (entries[1].get("beats"), beats)
+        # 无拍的条目（`act`）不新增空字段——既有条目形状不变。
+        assert "beats" not in entries[0], entries[0]
+
+        # 增量：`?since=` 回来的同一条也带 `beats`（前端恢复走的就是这条）。
+        status, inc = server.get("/api/log?since=%d" % entries[0]["seq"], sid=sid)
+        assert status == 200, (status, inc)
+        assert [e["seq"] for e in inc["log"]] == [entries[1]["seq"]], inc
+        assert inc["log"][0]["beats"] == beats, inc
+
+    # 重载往返：`beats` 随日志落盘，重启后恢复的历史叙事仍有拍。
+    notdnd_web._sessions.pop(sid, None)
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded is not None
+    assert reloaded.log[1]["beats"] == beats, reloaded.log[1]
+    notdnd_web._sessions.pop(sid, None)
+
+    # 兜底 / 短路回合没有切拍：`narrate` 条目同样不带这个键。
+    sid = "b5-log-beats-fallback"
+    _guide_session(sid)
+    with _LocalServer() as server:
+        with _guide_online(_OFFLINE_ENV, _FakeTransport()):
+            status, _body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+        assert status == 200, status
+        status, log = server.get("/api/log", sid=sid)
+        assert [e["kind"] for e in log["log"]] == ["act", "narrate"], log["log"]
+        assert all("beats" not in e for e in log["log"]), log["log"]
+    notdnd_web._sessions.pop(sid, None)
+
+
 def check_turn_log_offline_paths():
     """M4-B2：无 AI 配置 / 短路回合的日志——离线兜底、模块缺失、淡出 / 跳过。"""
     offline = {"BASE_URL": "", "MODEL": "mm", "API_KEY": ""}
@@ -3720,6 +3781,7 @@ CHECKS = (
     check_session_create_reload,
     check_session_create_save_failure,
     check_turn_log_wiring,
+    check_turn_log_narration_beats,
     check_turn_log_offline_paths,
     check_turn_log_action_only,
     check_turn_log_subprocess,

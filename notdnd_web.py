@@ -2267,6 +2267,9 @@ class Handler(BaseHTTPRequestHandler):
         `GET /api/log?since=` 据此增量取回；叙事落的是**涂掉之后**的字，秘密门
         对日志同样生效，被删内容不会经日志重新可见。日志不改响应结构（SSE 事件
         与顺序不变），落盘沿用本回合既有的 `save()`。
+
+        M4-B5：`narrate` 条目还带上这一回合的 `beats`（切拍 / 朗读入口随历史恢复
+        一起回来）；没有拍时不写这个键，条目形状与 B2 一致。
         """
         text = str(body.get("text") or "")
         if len(text) > GUIDE_TEXT_LIMIT:
@@ -2449,7 +2452,11 @@ class Handler(BaseHTTPRequestHandler):
                     # （`redacted`），秘密门对日志同样生效：被删掉的秘密不会经
                     # `/api/log` 重新可见（§2.3「无痕删除」）。痕迹只在真正揭开
                     # （玩家可见）时才记一条。
-                    session.add_log("narrate", redacted)
+                    # M4-B5：这一回合的 `beats` 一并落进条目——刷新 / 重进后
+                    # 从 `/api/log?since=` 恢复的历史叙事仍能按拍切段、保留朗读
+                    # 入口。没有拍时不写这个键，条目形状与 B2 一致。
+                    session.add_log("narrate", redacted,
+                                    extra={"beats": beats} if beats else None)
                     if trace:
                         session.add_log("trace", trace)
                     try:
