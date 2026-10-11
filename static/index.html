@@ -196,6 +196,19 @@
   <div id="exitConfirmBody" class="sheet-body"></div>
 </div>
 
+<!-- ══════════ 浮层：即时行动的确认 / 澄清（第 2 层）══════════ -->
+<!-- 片 A4（js/turn.js）的 L2 模态：R2+ 的提案先在这里确认（R0/R1 直通，§6.4），
+     一次性澄清在这里只问**一个**问题并给出服务端给的选项（§6.3）。
+     与 U1 的删除确认、U3 的出口确认同层同视觉（scrim-top / sheet），自成一体：
+     core 的 SHEETS 只登记抽屉与辅助层，片的模态自己管 Esc / 遮罩点击。 -->
+<div id="actionScrim" class="scrim scrim-top" hidden></div>
+<div id="actionSheet" class="sheet action-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="actionSheetTitle">
+  <div class="sheet-head">
+    <b id="actionSheetTitle">需要确认</b>
+  </div>
+  <div id="actionSheetBody" class="sheet-body"></div>
+</div>
+
 <!-- ══════════ 浮层：删除存档确认（第 2 层）══════════ -->
 <!-- 片 U1（js/lobby.js）的 L2 确认框：删除存档是破坏性动作，必须点名存档名再确认，
      不用 window.confirm（会打断 aria-live、手机不可样式化，见 UI-DESIGN.md §1.3.7）。

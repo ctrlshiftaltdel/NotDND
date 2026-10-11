@@ -1,11 +1,17 @@
 /* ═══════════════════════════════════════════════════════════
-   棱镜 · 片 U2：跑团主循环（输入区 + 叙事流 + 行动区）
+   棱镜 · 片 U2 / A4：跑团主循环（输入区 + 叙事流 + 行动区）
    一个回合走完：输入 → 判定卡 → 叙事 → 兜底 → 收尾（UI-DESIGN.md §2.3）。
 
    · 输入区固定在工具条里（`#turnComposer`），Enter 发送 / Shift+Enter 换行，
      长度上限 2000 字符本地拦住（与后端 GUIDE_TEXT_LIMIT 同值）；
-   · `POST /api/guide/turn` 有**两种 200**——`text/event-stream`（增量渲染）
-     与整段 JSON（`淡出` / `跳过这段` / 离线兜底，§2.3），两种都要吃；
+   · 两个入口都走**行动管线** `POST /api/action/propose`（A4，ACTION-DESIGN §9）：
+     输入框的一句话是 `mode: "nl"`，行动按钮是 `mode: "action"`（**不需要 AI**）；
+     R0/R1 直通提交，R2+ 先弹 L2 确认（§6.4），澄清式提案只问一个问题（§6.3）；
+   · `POST /api/action/commit` 有**两种 200**——`text/event-stream`（增量渲染
+     `result` → `narration`|`fallback` → `usage` → `done`，§9.3）与整段 JSON，
+     两种都要吃；
+   · `淡出` / `跳过这段` 两个整句口令仍走旧的 `POST /api/guide/turn`（§5.10）：
+     它们是「这一回合怎么讲」的口令，不是一条行动；
    · 加载 / 刷新时经 `GET /api/log?since=<seq>` 恢复既有的回合流（B2 已落流）；
    · 玩家输入与导引者叙事由服务端落进 `Session.log`，前端**只读**两份真相：
      流里的增量与 `?since=` 的增量按 (kind, text) 认领同一条，不会出现两遍。
@@ -40,11 +46,48 @@ var TURN = {
   sessionError: '',   // 会话加载失败（§2.2 / §2.8）：错误卡 + 输入区/行动区禁用
   sessionRetry: null, // 错误卡「重试」要做的事（由发起加载的那一片给）
   guide: { chat: false, tts: false, configured: false },   // 导引者能力探测（§1.3.8）
-  rendered: ''        // 已渲染的签名：状态没变就不重画（避免 live 区重播整段）
+  rendered: '',        // 已渲染的签名：状态没变就不重画（避免 live 区重播整段）
+  /* ── M8-A4：即时行动的状态（§9 管线）── */
+  risk: {},           // `GET /api/action/catalog`：action_id → 风险级（只画角标）
+  catalogKey: '',     // catalog 归属的会话 + 行动 id 集合：变了才重取（失败也记，免得反复打）
+  catalogId: 0,       // catalog 请求单调序号：迟到的旧响应丢弃
+  pending: null,      // 待确认的提案：{proposal, base_seq, risk, costs_preview, key, verb, local}
+  clarify: null,      // 待回答的澄清：{clarify_id, question, options, text}
+  lastRequest: null,  // 失败重试用：上一个入口请求（{kind, text, action_id, clarify_id, answer}）
+  confirming: false   // 确认令牌请求在途（防连点）
 };
 
 var TURN_TEXT_LIMIT = 2000;      // 与 notdnd_web.GUIDE_TEXT_LIMIT 同值（§1.3.2）
 var TURN_COOLDOWN_MS = 3000;     // 429「太频繁」后本地禁用发送的时间（§1.3.10）
+
+/* 整句口令（§5.10）：与 notdnd_web.GUIDE_FADE_WORD / GUIDE_SKIP_WORD 同文。
+   判据是**整句相等**（先 strip），不是关键字包含。 */
+var TURN_FADE_WORD = '淡出';
+var TURN_SKIP_WORD = '跳过这段';
+
+/* 服务端固定短语（§9.5）：用于把 409 分成「可重试」与「已经提交过」两类处置。
+   与 notdnd_web 的常量同文——两边改一处要一起改。 */
+var TURN_MSG_STALE_SEQ = '状态已变，请重试';
+var TURN_MSG_NEED_CONFIRM = '需要确认';
+var TURN_MSG_ALREADY_COMMITTED = '该提案已提交';
+
+/* NL 提案离线（§9.2 的 `type: "offline"` 是 200、**不是错误**）：这句话没变成
+   行动，得说清楚它去哪了、以及还能做什么（措辞沿用 §1.3.8 的「未配置」）。 */
+var TURN_OFFLINE_NOTE = '导引者未配置：这句话没法变成行动。本地规则照常——点下面的行动按钮照样可以做事。';
+
+/* 风险级的中文短名（ACTION-DESIGN §6.1 的「含义」栏收成短名）：只在按钮角标与
+   确认框里出现，**不参与任何判定**；是否真确认以服务端的 `needs_confirm` 为准。 */
+var TURN_RISK_ZH = {
+  R0: '无副作用', R1: '可逆', R2: '消耗资源', R3: '高风险', R4: '世界级'
+};
+/* 行动结果的状态（§5.1 的 status 枚举）：文字与判定卡的档位表同一套词。 */
+var TURN_STATUS_ZH = {
+  success: '成功', partial: '险成', failure: '挫败', blocked: '受阻'
+};
+/* 时间单位（prism_core.TIME_COST_UNITS 的中文名）。 */
+var TURN_TIME_UNIT_ZH = {
+  round: '轮', turn: '回合', minute: '分钟', hour: '小时', watch: '更', day: '天'
+};
 
 /* 五档中文（§2.4 / §3.5.3）：档位**必须有文字**，颜色只是辅助——
    色盲用户靠文字就能分辨（§5.4 硬要求）。 */
@@ -72,7 +115,11 @@ function turnSnapshot() {
     sessionError: TURN.sessionError,
     guide: { chat: TURN.guide.chat, tts: TURN.guide.tts, configured: TURN.guide.configured },
     cooldown: TURN.cooldownUntil > Date.now(),
-    text: turnText().length
+    text: turnText().length,
+    pending: !!TURN.pending,
+    pendingRisk: TURN.pending ? String(TURN.pending.risk || '') : '',
+    clarify: !!TURN.clarify,
+    risk: Object.assign({}, TURN.risk)
   };
 }
 
@@ -102,6 +149,12 @@ function resetTurnStream() {
   TURN.loadError = '';
   TURN.note = '';
   TURN.rendered = '';
+  // 换了一局：上一局在办的提案 / 澄清与风险角标都不能留下（串味）。
+  TURN.pending = null;
+  TURN.clarify = null;
+  TURN.risk = {};
+  TURN.catalogKey = '';
+  closeActionSheet();
 }
 
 /* 渲染签名：状态没变就不重画 `#stream`——`#stream` 是 aria-live 区，
@@ -176,11 +229,18 @@ function traceBlockHtml(text) {
 }
 
 /* 判定卡（§2.4 / §3.5.3）：档位徽标 + 骰值（notation）+ 代价块 + 资源变化。
-   规则层日志里的 `result` 条目只有正文（没有结构化载荷），按纯文本画。 */
+   规则层日志里的 `result` 条目只有正文（没有结构化载荷），按纯文本画。
+
+   两种 `result` 载荷共用这一张卡：旧 `perform_action` 结果（`outcome` 五档）与
+   M8 行动结果契约（ACTION-DESIGN §5.1，带 `committed` / `costs`）——后者没有
+   `outcome`，交给 actionResultHtml（见下）。 */
 function resultCardHtml(e) {
   var r = e && e.result;
   if (!r) {
     return '<div class="msg msg-result"><span class="msg-text">' + esc(e && e.text) + '</span></div>';
+  }
+  if (typeof r.committed === 'boolean' && Array.isArray(r.costs)) {
+    return actionResultHtml(e, r);
   }
   var outcome = String(r.outcome || '');
   var status = String(r.status || '');
@@ -275,6 +335,80 @@ function grantedHtml(granted) {
   }).filter(Boolean);
   if (!names.length) return '';
   return '<div class="res-granted">获得 ' + esc(names.join(' · ')) + '</div>';
+}
+
+/* ── 行动结果卡（M8-A4，ACTION-DESIGN §5.1）──────────────
+   管线提交后的 `result` 是**已提交的事实**：状态徽标（成功 / 险成 / 挫败 /
+   受阻）+ 行动名 + 代价块 + 变化块。只画结果里真有的结构化条目，不解释、
+   不补话术；`discovered_facts` 只记「发现了什么」（id + 可见范围），正文归
+   叙事，所以这里不渲染它（§5.1 的字段说明）。 */
+function actionResultHtml(e, r) {
+  var status = String(r.status || '');
+  var zh = TURN_STATUS_ZH[status] || '结算';
+  var tone = status === 'success' ? 'success'
+    : (status === 'partial' ? 'accent' : 'danger');
+  var action = (e && e.action) ? String(e.action) : '';
+
+  var head = '<div class="res-head">' +
+    '<span class="res-badge" data-tone="' + tone + '" data-solid="false">' + esc(zh) + '</span>' +
+    (action ? '<span class="res-action">' + esc(action) + '</span>' : '') +
+    (status === 'partial' ? '<span class="res-flag">附一个代价</span>' : '') +
+    (r.committed === false ? '<span class="res-flag is-danger">未提交</span>' : '') +
+  '</div>';
+
+  var cost = actionRowsBlock('res-cost', '代价', actionCostRows(r.costs));
+  var effects = actionRowsBlock('res-effects', '变化', actionEffectRows(r.effects));
+
+  return '<div class="msg msg-result" data-outcome="' + esc(status) + '">' +
+    head + cost + effects + '</div>';
+}
+
+/* 代价 / 变化共用一个「细边 + 逐项列」的块；空清单不画空块（§2.4 的口径）。 */
+function actionRowsBlock(cls, title, rows) {
+  if (!rows || !rows.length) return '';
+  return '<div class="' + cls + '">' +
+    '<div class="res-cost-title">' + esc(title) + '</div>' +
+    '<dl class="res-rows">' + rows.map(function (p) {
+      return '<dt>' + esc(p[0]) + '</dt><dd>' + esc(p[1]) + '</dd>';
+    }).join('') + '</dl></div>';
+}
+
+/* `costs[]` → 行：时间 / 资源池 / 活力用既有中文名（§2.4 不写自造词），
+   其余 kind 照原样列出来（不猜、不合并）。 */
+function actionCostRows(costs) {
+  var rows = [];
+  (costs || []).forEach(function (c) {
+    if (!c || typeof c !== 'object') return;
+    var kind = String(c.kind || '');
+    var value = turnInt(c.value, 0);
+    if (kind === 'time') {
+      var unit = TURN_TIME_UNIT_ZH[String(c.unit || '')] || String(c.unit || '');
+      if (value > 0) rows.push(['时间', value + (unit ? ' ' + unit : '')]);
+    } else if (kind === 'resource') {
+      var pool = String(c.pool || '');
+      rows.push([TURN_POOL_ZH[pool] || pool || '资源', '−' + Math.abs(value)]);
+    } else if (kind === 'vitality') {
+      rows.push(['活力', '−' + Math.abs(value)]);
+    } else if (kind) {
+      rows.push([kind, value > 0 ? '−' + Math.abs(value) : String(value)]);
+    }
+  });
+  return rows;
+}
+
+/* `effects[]` → 行：状态（condition）与奖励（reward）用中文标签，其余 kind
+   照原样列出来。 */
+function actionEffectRows(effects) {
+  var rows = [];
+  (effects || []).forEach(function (f) {
+    if (!f || typeof f !== 'object') return;
+    var kind = String(f.kind || '');
+    var add = String(f.add == null ? '' : f.add);
+    if (kind === 'condition') { if (add) rows.push(['状态', add]); return; }
+    if (kind === 'reward') { if (add) rows.push(['获得', add]); return; }
+    if (add) rows.push([kind || '变化', add]);
+  });
+  return rows;
 }
 
 /* 流末尾的如实说明（§2.8）：中途断流 / 未持久化 / 恢复失败。 */
@@ -455,9 +589,11 @@ function attachTrace(text) {
 }
 
 /* ══════════════ 行动区 ══════════════
-   点一下 = 带 `action_id` 的一回合（§2.3）。已完成 / 机会耗尽的行动就地置灰——
-   去重表在服务端快照的 `done_actions` / `action_fails` 里，
-   **前端不自己维护一张耗尽表**（§2.4）。 */
+   点一下 = 一条**显式行动**（`mode: "action"`，§9.2）——不需要 AI（§7.1）。
+   已完成 / 机会耗尽的行动就地置灰——去重表在服务端快照的 `done_actions` /
+   `action_fails` 里，**前端不自己维护一张耗尽表**（§2.4）。
+   风险级只用来提前提示「需确认」（§6.4）：是否真确认以 propose 回的
+   `needs_confirm` 为准（服务端在场景行动表上读 `risk`）。 */
 function actionList() {
   var scene = (ST && ST.scene) || {};
   var list = (scene.actions && scene.actions.length) ? scene.actions
@@ -477,6 +613,17 @@ function actionExhausted(a) {
   return turnInt(ST.action_fails[a.id], 0) >= maxFail;
 }
 
+/* 风险角标：R2–R4 会先弹确认（§6.4），R0/R1 直通——角标只说前者。
+   行动表没写风险级时服务端按最保守的 R2 处理（`_action_risk`），所以那一格
+   也标「需确认」；行动单还没回来（map 里没这个 id）时什么都不说。 */
+function actionNeedsConfirm(id) {
+  var key = String(id || '');
+  if (!(key in TURN.risk)) return false;
+  var risk = String(TURN.risk[key] || '');
+  if (!risk) return true;
+  return risk === 'R2' || risk === 'R3' || risk === 'R4';
+}
+
 function renderActions() {
   var box = turnEl('actList');
   if (!box) return;
@@ -493,6 +640,7 @@ function renderActions() {
       '<span class="act-key">' + (i + 1) + '</span>' +
       '<span class="act-label">' + esc(a.label) + '</span>' +
       (a.hint ? '<span class="act-hint">' + esc(a.hint) + '</span>' : '') +
+      (actionNeedsConfirm(a.id) ? '<span class="act-hint act-risk">需确认</span>' : '') +
       (done ? '<span class="act-hint act-spent">已完成</span>'
         : (spent ? '<span class="act-hint act-spent">已用尽</span>' : '')) +
       '</button>';
@@ -502,14 +650,47 @@ function renderActions() {
     if (b.disabled) return;
     b.addEventListener('click', function () { pickAction(b.dataset.act); });
   });
+  maybeLoadCatalog();
 }
 
-/* 行动按钮也是回合入口：带 `action_id` 走同一回合管线。输入区里已经写了话
-   就一起带上——服务端以正文为准记 `act`（`_turn_act_text`），两边同口径。 */
+/* 行动单（§9.1 `GET /api/action/catalog`）：只取 id / label / 风险级。
+   列表本身仍画规则快照（它带已完成 / 已用尽），catalog 只补「需确认」角标；
+   拿不到就**不画角标**、也不挡任何操作——离线时 catalog 同样可用（§7.1）。 */
+function maybeLoadCatalog() {
+  if (!SID || TURN.sessionError) return;
+  var ids = actionList().map(function (a) { return String((a && a.id) || ''); })
+    .filter(Boolean);
+  if (!ids.length) return;
+  var key = SID + ':' + ids.join(',');
+  if (key === TURN.catalogKey) return;
+  loadActionCatalog(key);
+}
+
+async function loadActionCatalog(key) {
+  var my = ++TURN.catalogId;
+  var sid = SID;
+  TURN.catalogKey = key;         // 先记下：失败也不反复重打（角标只是提示）
+  try {
+    var d = await api('/api/action/catalog');
+    if (my !== TURN.catalogId || sid !== SID) return;   // 迟到的旧响应 / 已换局
+    var map = {};
+    ((d && d.actions) || []).forEach(function (a) {
+      if (a && a.id) map[String(a.id)] = String(a.risk || '');
+    });
+    TURN.risk = map;
+    renderActions();             // 角标可能出现：行动区重画一次
+  } catch (e) {
+    /* 拿不到行动单不改变任何可用性：没有角标，按钮照旧能点。 */
+  }
+}
+
+/* 行动按钮也是回合入口：整条走行动管线（`mode: "action"`，§9.2）。
+   输入框里已经写了的话**不**并入这次提交——显式行动就是这条行动本身
+   （§7.1：显式行动不需要 AI，也不经过解析段）；输入框内容原样留着。 */
 function pickAction(id) {
   if (turnBlocked()) return;
   buzz(12);
-  runTurn({ text: turnText(), action_id: id });
+  runAction({ kind: 'action', action_id: id });
 }
 
 /* ══════════════ 输入区 ══════════════ */
@@ -755,22 +936,35 @@ function submitTurn() {
   if (turnBlocked()) return;
   var text = turnText();
   if (!text.trim()) return;
-  if (text.length > TURN_TEXT_LIMIT) {
-    TURN.inputError = '这句话太长';
-    renderComposer();
-    var ta = turnEl('turnInput');
-    if (ta) { try { ta.focus(); } catch (e) { /* 忽略 */ } }
-    return;
-  }
-  runTurn({ text: text, action_id: '' });
+  if (text.length > TURN_TEXT_LIMIT) { turnInputTooLong(); return; }
+  // 两个整句口令仍走旧的导引者回合（§5.10）：它们是「这一回合怎么讲」的口令，
+  // 不是一条行动——行动管线里没有对应语义（拒绝会把它说成「做不了这件事」）。
+  if (isTurnCommand(text)) { runTurn({ text: text, action_id: '' }); return; }
+  runAction({ kind: 'nl', text: text });
 }
 
+/* 超长：不发请求，就地提示并把焦点送回输入框（§1.3.2）。 */
+function turnInputTooLong() {
+  TURN.inputError = '这句话太长';
+  renderComposer();
+  var ta = turnEl('turnInput');
+  if (ta) { try { ta.focus(); } catch (e) { /* 忽略 */ } }
+}
+
+/* 失败重试：把**上一个入口请求**原样再来一遍。行动管线会重新提案（拿新的
+   `base_seq` 与新的 `proposal_id`），所以过期 / 需要确认这类 409 重试是安全的。 */
 function retryTurn() {
   if (turnBlocked()) return;
   TURN.error = '';
   TURN.retryable = false;
   renderComposer();
-  runTurn({ text: TURN.lastText, action_id: TURN.lastActionId });
+  var req = TURN.lastRequest;
+  if (!req) {
+    runTurn({ text: TURN.lastText, action_id: TURN.lastActionId });
+    return;
+  }
+  if (req.kind === 'turn') runTurn({ text: req.text, action_id: req.action_id || '' });
+  else runAction(req);
 }
 
 async function runTurn(opts) {
@@ -784,6 +978,7 @@ async function runTurn(opts) {
   TURN.note = '';
   TURN.lastText = text;
   TURN.lastActionId = actionId;
+  TURN.lastRequest = { kind: 'turn', text: text, action_id: actionId };
   TURN.busy = true;
   setWriteInFlight(true);     // 回合是写请求：登记进 core 的统一在途守卫（§2.0）
 
@@ -927,7 +1122,13 @@ function applyTurnEvent(name, payload) {
   if (name === 'result') {
     // 判定卡只有流里有（规则层结果不落 Session.log），所以它不带 pending：
     // 不会有人来认领它。
-    addStreamEntry({ seq: null, kind: 'result', text: '', result: payload }, false);
+    var entry = { seq: null, kind: 'result', text: '', result: payload };
+    // 行动结果契约（§5.1）自己不带行动名：从**在办提案**的 `intent.verb` 取
+    // 标签（与日志同口径：场景行动表里的 label）。
+    if (payload && typeof payload.committed === 'boolean' && TURN.pending) {
+      entry.action = actionLabel(TURN.pending.verb);
+    }
+    addStreamEntry(entry, false);
     return false;
   }
   if (name === 'narration') {
@@ -996,6 +1197,417 @@ async function refreshTurnSession() {
   }
 }
 
+/* ══════════════ 即时行动：/api/action/*（M8-A4，ACTION-DESIGN §9）══════════════
+   两个入口（输入框的一句话 / 行动按钮）都从这里走：
+     提案 `propose` →（R2+ 确认 `confirm` / 一次性澄清回答）→ 提交 `commit`。
+   提交是 SSE：`result` → `narration`|`fallback` → `usage` → `done`（§9.3），
+   前端**不重排**（§2.3 的顺序就是到达顺序）。 */
+
+/* 整句口令的判据（§5.10）：与 notdnd_web 一样是 strip 后**整句相等**。 */
+function isTurnCommand(text) {
+  var t = String(text || '').trim();
+  return t === TURN_FADE_WORD || t === TURN_SKIP_WORD;
+}
+
+/* 日志里的「我说的话」正文：与 notdnd_web._turn_act_text 同口径——
+   显式行动用场景行动表的 label；NL 提案用 `intent.verb` 的 label（拿不到就用
+   verb 本身）。乐观条目与随后 `?since=` 拉回的权威条目按 (kind, text) 认领，
+   所以两边必须同口径，否则会看到两条。 */
+function actTextForVerb(verb) {
+  var id = String(verb || '');
+  return id ? actionLabel(id) : '';
+}
+
+/* 提案请求体（§9.2）：`mode: "action"` 只带 `action_id`（不需要 AI）；
+   `mode: "nl"` 带原话，回答澄清时再带 `clarify_id` + `answer`。 */
+function actionRequestBody(req) {
+  var kind = String((req && req.kind) || 'nl');
+  if (kind === 'action') {
+    return { mode: 'action', action_id: String(req.action_id || ''), params: {} };
+  }
+  var body = { mode: 'nl', text: String((req && req.text) || '') };
+  var clarifyId = String((req && req.clarify_id) || '');
+  if (clarifyId) {
+    body.clarify_id = clarifyId;
+    body.answer = String((req && req.answer) || '');
+  }
+  return body;
+}
+
+/* 幂等键（§9.4）：`^[A-Za-z0-9_-]{8,64}$`。同一次提交的重试**沿用同一把键**
+   （服务端据此返回首次结果、不重复结算）；换了提案才换新键。 */
+function actionIdemKey() {
+  return 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+/* 行动管线的写请求（JSON 回执）。core.api() 只把错误文本抛出来、拿不到状态码，
+   而 §9.5 的错误要按码分处置（429 冷却 / 409 可重试 / 400 会话失效），所以这里
+   按 core.api() 的口径复写一遍：同 X-Session、同会话失效清理、同单一在途守卫。 */
+async function actionPost(path, body, extraHeaders) {
+  if (writeInFlight()) {
+    return { ok: false, blocked: true, message: '上一项操作还没完成，请稍候' };
+  }
+  var headers = { 'Content-Type': 'application/json' };
+  if (SID) headers['X-Session'] = SID;
+  Object.keys(extraHeaders || {}).forEach(function (k) { headers[k] = extraHeaders[k]; });
+  setWriteInFlight(true);
+  try {
+    var res;
+    try {
+      res = await fetch(path, { method: 'POST', headers: headers,
+                                body: JSON.stringify(body || {}) });
+    } catch (e) {
+      return { ok: false, message: '无法连接服务，请确认后端仍在运行', retryable: true };
+    }
+    var data = null;
+    try { data = await res.json(); } catch (e) { /* 非 JSON 响应 */ }
+    if (!res.ok) return actionFailure(res.status, data);
+    return { ok: true, data: data || {} };
+  } finally {
+    setWriteInFlight(false);      // 成功 / 失败 / 异常一律恢复，不留死在途
+  }
+}
+
+/* 提交（§9.3）：这是**流式**的写请求，在途守卫要**跨整条流**持有，
+   所以不走 core.api()——与旧回合同一手法（见 postTurn 的注释）。 */
+async function actionCommit(pending, confirmToken) {
+  if (writeInFlight()) {
+    return { ok: false, blocked: true, message: '上一项操作还没完成，请稍候' };
+  }
+  var headers = { 'Content-Type': 'application/json',
+                  'Idempotency-Key': String(pending.key || '') };
+  if (SID) headers['X-Session'] = SID;
+  var body = { proposal: pending.proposal, base_seq: pending.base_seq };
+  if (confirmToken) body.confirm_token = confirmToken;
+  setWriteInFlight(true);
+  try {
+    var res;
+    try {
+      res = await fetch('/api/action/commit', { method: 'POST', headers: headers,
+                                                body: JSON.stringify(body) });
+    } catch (e) {
+      return { ok: false, message: '无法连接服务，请确认后端仍在运行', retryable: true };
+    }
+    var ctype = String(res.headers.get('content-type') || '').toLowerCase();
+    if (!res.ok) {
+      var data = null;
+      try { data = await res.json(); } catch (e) { /* 非 JSON 响应 */ }
+      return actionFailure(res.status, data);
+    }
+    if (ctype.indexOf('text/event-stream') >= 0 && res.body && res.body.getReader) {
+      return { ok: true, complete: await readTurnStream(res) };
+    }
+    var raw = '';
+    try { raw = await res.text(); } catch (e) { /* 读体失败：按整段处理 */ }
+    return parseBufferedTurn(raw);
+  } finally {
+    setWriteInFlight(false);
+  }
+}
+
+/* 状态行之前的失败（§9.5）：固定短语原文照抄，只按码分处置。 */
+function actionFailure(status, data) {
+  var message = String((data && data.error) || ('请求失败（' + status + '）'));
+  var out = { ok: false, message: message, status: status, retryable: status >= 500 };
+  if (status === 429) {
+    out.tone = 'toast';                       // §2.8：速率限制走提示条 + 禁 3 秒
+    out.cooldown = true;
+    out.retryable = false;
+  } else if (status === 400 && /会话/.test(message)) {
+    out.tone = 'toast';                       // 会话失效：清 SID + 回大厅（同 core.api()）
+    out.sessionGone = true;
+  } else if (status === 409 && message === TURN_MSG_STALE_SEQ) {
+    out.retryable = true;                     // §7.4：重读状态再提一次（重试 = 重新提案）
+  } else if (status === 409 && message === TURN_MSG_NEED_CONFIRM) {
+    out.retryable = true;                     // 确认令牌过期：重试会重新走确认
+  } else if (status === 409 && message === TURN_MSG_ALREADY_COMMITTED) {
+    out.refresh = true;                       // 服务端说这提案提交过了：别再提，补齐权威条目
+  }
+  return out;
+}
+
+/* ── 入口：一次即时行动（提案 →（确认 / 澄清）→ 提交）── */
+async function runAction(req) {
+  if (turnBlocked()) return;
+  var kind = String((req && req.kind) || 'nl');
+  var text = String((req && req.text) || '');
+  var actionId = String((req && req.action_id) || '');
+  if (kind === 'action') {
+    if (!actionId) return;
+  } else if (!text.trim()) {
+    return;
+  }
+  if (text.length > TURN_TEXT_LIMIT) { turnInputTooLong(); return; }
+
+  TURN.error = '';
+  TURN.retryable = false;
+  TURN.inputError = '';
+  TURN.note = '';
+  TURN.pending = null;
+  TURN.clarify = null;
+  TURN.confirming = false;
+  TURN.lastRequest = { kind: kind, text: text, action_id: actionId,
+                       clarify_id: String((req && req.clarify_id) || ''),
+                       answer: String((req && req.answer) || '') };
+  TURN.busy = true;               // 提案 →（确认 / 澄清）→ 提交：整段都算在途（§2.0）
+  closeActionSheet();
+  renderComposer();
+
+  var out = await actionPost('/api/action/propose', actionRequestBody(TURN.lastRequest));
+  if (!out.ok) { failAction(out, text); return; }
+
+  var d = out.data || {};
+  if (d.type === 'proposal') { adoptProposal(d); return; }
+  if (d.type === 'clarify') { openClarify(d.clarify, text); return; }
+  if (d.type === 'offline') { offlineAction(text); return; }
+  failAction({ message: '这一回合没能开始，请重试', retryable: true }, text);
+}
+
+/* 提案到手（§9.2）：记下原样带回的提案 + 并发基线，R0/R1 直通提交、
+   R2+（`needs_confirm`）先弹 L2 确认——是否确认**以服务端为准**。 */
+function adoptProposal(d) {
+  var proposal = (d && d.proposal) || {};
+  var intent = proposal.intent || {};
+  TURN.pending = {
+    proposal: proposal,
+    base_seq: (d && d.base_seq),
+    risk: String((d && d.risk) || ''),
+    costs_preview: Array.isArray(d && d.costs_preview) ? d.costs_preview.slice() : [],
+    needs_confirm: !!(d && d.needs_confirm),
+    key: '',
+    local: null,
+    verb: String(intent.verb || ''),
+    desired: String(intent.desired || '')
+  };
+  if (TURN.pending.needs_confirm) { openActionConfirm(); return; }
+  finishCommit('');
+}
+
+/* 提交这一段（§9.3）：先把「我说的话」乐观地放进流（服务端同一回合会落进
+   日志，收尾按 (kind, text) 认领），再发流式请求。 */
+async function finishCommit(confirmToken) {
+  var p = TURN.pending;
+  if (!p) { endAction(); return; }
+  closeActionSheet();
+  if (!p.key) p.key = actionIdemKey();
+  var act = actTextForVerb(p.verb);
+  if (act) {
+    p.local = addStreamEntry({ seq: null, kind: 'act', text: act, pending: true }, false);
+  }
+  renderStream();
+
+  var out = await actionCommit(p, confirmToken);
+  if (!out.ok) { failAction(out, String((TURN.lastRequest || {}).text || ''), p); return; }
+  // 行动按钮入口不清输入框：这次提交用的不是输入框里的那句话（见 pickAction）。
+  if (String((TURN.lastRequest || {}).kind || '') !== 'action') setComposerText('');
+  if (!out.complete) {
+    // §2.8：SSE 中途断流（没有 done）——已收到的部分保留，如实说一句。
+    TURN.note = '这一回合没说完';
+  }
+  endAction();
+  renderStream();
+  await afterTurn();
+}
+
+/* 行动结束（成功 / 失败 / 取消）：关掉模态、放开在途、重画三块。 */
+function endAction() {
+  TURN.busy = false;
+  TURN.pending = null;
+  TURN.clarify = null;
+  TURN.confirming = false;
+  closeActionSheet();
+  TURN.rendered = '';
+  renderComposer();
+  renderActions();
+  renderStream();
+}
+
+/* 失败：撤回乐观条目、把话还回输入框；按处置分「提示条」与「就地错误行」。 */
+function failAction(out, text, pending) {
+  var p = pending || TURN.pending;
+  if (p && p.local) dropStreamEntry(p.local);
+  var message = String((out && out.message) || '这一回合没能开始，请重试');
+  if (out && out.sessionGone) {
+    SID = '';
+    try { localStorage.removeItem(SID_KEY); } catch (e) { /* 隐私模式 */ }
+    closeAllSheets();
+    showView('v-lobby');
+    toast(message);
+  } else if (out && out.tone === 'toast') {
+    toast(message);
+    if (out.cooldown) startCooldown();
+  } else {
+    TURN.error = message;
+    TURN.retryable = !!(out && out.retryable);
+    if (text && !turnText()) setComposerText(text);   // 不丢玩家打的字
+  }
+  if (out && out.refresh) {
+    // 服务端说这提案已经提交过：不重提，把权威条目补齐（结果已在世界里）。
+    loadStreamLog();
+    refreshTurnSession();
+  }
+  endAction();
+}
+
+/* 离线（§9.2 的 `type: "offline"`，200、不是错误）：这句话没变成行动。
+   显式行动**不受影响**（§7.1）——提示里直接说清楚下一步做什么。 */
+function offlineAction(text) {
+  TURN.busy = false;
+  TURN.pending = null;
+  TURN.clarify = null;
+  TURN.error = TURN_OFFLINE_NOTE;
+  TURN.retryable = false;
+  if (text && !turnText()) setComposerText(text);
+  renderComposer();
+  renderActions();
+}
+
+/* ── R2+ 的确认（§6.4）：L2 模态，点名这一步 + 风险级 + 时间成本 ── */
+function openActionConfirm() {
+  var p = TURN.pending;
+  if (!p) return;
+  var els = actionSheetEls();
+  if (!els.dlg || !els.scrim || !els.body) {
+    // 没有挂点就**不提交**（安全侧）：宁可让玩家重新点一次。
+    failAction({ message: '这一回合没能开始，请重试', retryable: true }, '');
+    return;
+  }
+  els.dlg.dataset.kind = 'confirm';
+  els.dlg.dataset.risk = p.risk;
+  turnEl('actionSheetTitle').textContent = '需要确认';
+  els.body.innerHTML =
+    '<p class="confirm-line">' + esc(p.desired || p.verb || '') + '</p>' +
+    '<p class="confirm-sub">' + esc(confirmSubText(p)) + '</p>' +
+    '<div class="confirm-actions">' +
+      '<button type="button" class="btn" data-action-cancel="1">取消</button>' +
+      '<button type="button" class="btn btn-primary" data-action-go="1">确认执行</button>' +
+    '</div>';
+  showActionSheet(els, '[data-action-go]');
+  var cancel = els.body.querySelector('[data-action-cancel]');
+  var go = els.body.querySelector('[data-action-go]');
+  if (cancel) cancel.addEventListener('click', cancelAction);
+  if (go) go.addEventListener('click', function () {
+    if (TURN.confirming) return;
+    TURN.confirming = true;
+    go.disabled = true;              // 防连点：确认只发一次请求
+    confirmPending();
+  });
+}
+
+/* 确认框的副行：风险级中文短名 + 已知的时间成本（§6.4 的 `costs_preview`）。 */
+function confirmSubText(p) {
+  var parts = [];
+  var risk = String((p && p.risk) || '');
+  if (risk) {
+    parts.push(TURN_RISK_ZH[risk] ? TURN_RISK_ZH[risk] + '（' + risk + '）' : risk);
+  }
+  ((p && p.costs_preview) || []).forEach(function (c) {
+    if (!c || String(c.kind || '') !== 'time') return;
+    var unit = TURN_TIME_UNIT_ZH[String(c.unit || '')] || String(c.unit || '');
+    parts.push('耗时 ' + turnInt(c.value, 0) + (unit ? ' ' + unit : ''));
+  });
+  return parts.join(' · ');
+}
+
+/* 确认（§9.1 `POST /api/action/confirm`）：拿确认令牌，再带令牌提交。 */
+async function confirmPending() {
+  var p = TURN.pending;
+  if (!p) { endAction(); return; }
+  var out = await actionPost('/api/action/confirm',
+                             { proposal_id: (p.proposal || {}).proposal_id,
+                               decision: 'confirm' });
+  if (!out.ok) { failAction(out, '', p); return; }
+  var token = String(((out.data || {}).confirm_token) || '');
+  if (!token) {
+    failAction({ message: '这一回合没能开始，请重试', retryable: true }, '', p);
+    return;
+  }
+  await finishCommit(token);
+}
+
+/* ── 一次性澄清（§6.3）：只问**一个**问题，选项由服务端给 ── */
+function openClarify(clarify, text) {
+  var c = (clarify && typeof clarify === 'object') ? clarify : {};
+  var options = Array.isArray(c.options) ? c.options : [];
+  var question = String(c.question || '');
+  var els = actionSheetEls();
+  if (!String(c.clarify_id || '') || !question || !options.length
+      || !els.dlg || !els.scrim || !els.body) {
+    failAction({ message: '这一回合没能开始，请重试', retryable: true }, text);
+    return;
+  }
+  TURN.clarify = { clarify_id: String(c.clarify_id), question: question,
+                   options: options, text: String(text || '') };
+  els.dlg.dataset.kind = 'clarify';
+  delete els.dlg.dataset.risk;
+  turnEl('actionSheetTitle').textContent = '一个问题';
+  els.body.innerHTML =
+    '<p class="confirm-line">' + esc(question) + '</p>' +
+    '<div class="clarify-options">' + options.map(function (o, i) {
+      return '<button type="button" class="btn clarify-option" data-clarify-option="' + i + '">' +
+        esc((o && (o.label || o.id)) || '') + '</button>';
+    }).join('') + '</div>' +
+    '<div class="confirm-actions">' +
+      '<button type="button" class="btn" data-action-cancel="1">取消</button>' +
+    '</div>';
+  showActionSheet(els, '[data-clarify-option]');
+  $$('#actionSheetBody [data-clarify-option]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var idx = turnInt(b.dataset.clarifyOption, -1);
+      var opts = (TURN.clarify && TURN.clarify.options) || [];
+      answerClarify(opts[idx]);
+    });
+  });
+  var cancel = els.body.querySelector('[data-action-cancel]');
+  if (cancel) cancel.addEventListener('click', cancelAction);
+}
+
+/* 回答澄清：带上 `clarify_id` **重新提案**（§6.3）——服务端把答案并入草案，
+   仍定不下来会降级为拒绝，前端不再追问第二条。 */
+function answerClarify(option) {
+  var c = TURN.clarify;
+  if (!c || !option) return;
+  var value = String(option.id || option.label || '');
+  if (!value) return;
+  closeActionSheet();
+  TURN.busy = false;          // 交回入口：下一次行动走正常闸门（runAction 会重新登记）
+  runAction({ kind: 'nl', text: c.text, clarify_id: c.clarify_id, answer: value });
+}
+
+/* 取消 = **不提交**。R2+ 的确认令牌 300 秒自然过期（§6.4 的 `decision: "cancel"`
+   只丢令牌、不改世界状态），所以这里不额外发一次写请求。 */
+function cancelAction() {
+  var text = String((TURN.lastRequest || {}).text || '');
+  var wasClarify = !!TURN.clarify;
+  closeActionSheet();
+  TURN.busy = false;
+  TURN.pending = null;
+  TURN.clarify = null;
+  TURN.confirming = false;
+  // 澄清取消：把原话还回输入框（这一回合什么都没发生）。
+  if (wasClarify && text && !turnText()) setComposerText(text);
+  renderComposer();
+  renderActions();
+}
+
+function actionSheetEls() {
+  return { scrim: turnEl('actionScrim'), dlg: turnEl('actionSheet'),
+           body: turnEl('actionSheetBody') };
+}
+
+function showActionSheet(els, focusSel) {
+  els.scrim.hidden = false;
+  els.dlg.hidden = false;
+  var target = focusSel ? els.body.querySelector(focusSel) : null;
+  if (target) { try { target.focus(); } catch (e) { /* 忽略 */ } }
+}
+
+function closeActionSheet() {
+  var els = actionSheetEls();
+  if (els.scrim) els.scrim.hidden = true;
+  if (els.dlg) els.dlg.hidden = true;
+}
+
 /* ══════════════ 本片事件绑定 ══════════════ */
 
 function bindTurn() {
@@ -1016,6 +1628,19 @@ function bindTurn() {
     });
   }
   if (btn) btn.addEventListener('click', function () { submitTurn(); });
+
+  // 确认 / 澄清的 L2 模态是本片自成一体的浮层（同 U1 / U3 的确认框口径）：
+  // core 的 Esc 只认它自己的浮层栈，不认识这个框，所以这里自己收。
+  document.addEventListener('keydown', function (e) {
+    var dlg = turnEl('actionSheet');
+    if (e.key === 'Escape' && dlg && !dlg.hidden) {
+      e.preventDefault();
+      e.stopPropagation();
+      cancelAction();
+    }
+  });
+  var scrim = turnEl('actionScrim');
+  if (scrim) scrim.addEventListener('click', cancelAction);
 
   // 视口变了（横竖屏、桌面窗口缩放、手机键盘弹起）要重量一次工具条高度。
   window.addEventListener('resize', syncPlayDock);

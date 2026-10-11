@@ -260,3 +260,36 @@ html[data-dense="on"] .msg { line-height: 1.45; }
 .msg-beat.is-playing { border-left-color: var(--accent-2); }
 @keyframes beatPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 html.no-anim .beat-say.is-playing .i { animation: none; }
+
+/* ── 即时行动：风险角标 / 结果卡的「变化」块 / 确认与澄清模态（A4）────
+   行动管线的三条新东西。确认 / 澄清复用 U3 在 atlas.css 里定稿的
+   .confirm-line / .confirm-sub / .confirm-actions（同层同视觉），本片只补
+   选项列表与风险角标。 */
+
+/* 行动按钮上的「需确认」（§6.4）：R2–R4 会先弹确认；R0 / R1 直通、不摆角标。
+   只是提示——是否真确认以服务端回执的 `needs_confirm` 为准。 */
+.act-risk {
+  color: var(--text-1);
+  border-color: var(--line-strong);
+}
+
+/* 结果卡的「变化」块（§5.1 的 effects）：与代价块同一套细边 + 逐项列，
+   语义色用 --accent（是「世界变了」，不是「你受损了」）。 */
+.res-effects {
+  margin-top: var(--sp-2);
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--accent);
+}
+.res-effects .res-cost-title { color: var(--accent); }
+
+/* 澄清的选项（§6.3）：一题一列，逐条可读（不做横向挤在一起的 pill）。 */
+.clarify-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+.clarify-option { justify-content: flex-start; text-align: left; }
+
+/* 确认 / 澄清模态的标题与内容之间收一点距离（同 .exit-confirm 的口径）。 */
+.action-sheet .sheet-head { padding-bottom: var(--sp-2); }
