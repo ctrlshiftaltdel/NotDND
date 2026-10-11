@@ -448,6 +448,10 @@ svg.i.i-sm { width:var(--icon-sm); height:var(--icon-sm); }
 }
 .btn-text { flex:1 1 auto; min-width:0; }
 .btn:hover { background:var(--bg-3); }
+/* 有过渡才有「动效三重关闭」可验证（H1 断言：reduce 下压到 1ms） */
+.btn, .seg-btn, .ic { transition: background-color var(--dur-fast) var(--ease),
+                                  color var(--dur-fast) var(--ease),
+                                  border-color var(--dur-fast) var(--ease); }
 .btn-primary { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
 .btn-primary:hover { filter:brightness(1.06); }
 .btn[disabled] { opacity:.5; cursor:not-allowed; }
