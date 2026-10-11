@@ -67,7 +67,16 @@
      `campaigns/<sid>/snapshot.json`（检查点），展示流走 `stream.cursor`；
      老档（旧单文件 `<sid>.json`）在**第一次 save 时**才落成新档并留
      `snapshot.json.pre-v0.bak`（只读接口不改写它）；各块逐字搬、salt 不变；
-     `?since=` / `/api/session` 的既有语义与用例保持通过。
+     `?since=` / `/api/session` 的既有语义与用例保持通过；
+
+ 14. 行动管线写接口（M8-A3，ACTION-DESIGN §3.3 / §7 / §8 / §9）：`GET
+     /api/action/catalog` 与 `POST /api/action/propose|confirm|commit`。离线
+     （无 AI / 导引者模块缺失）时 `mode: "action"` 走完「验证 → 结算 → 提交 →
+     叙事」一轮，`result` 一定早于叙事段，提交走状态层拿回真实 `event_ids` /
+     `commit_ref`；第 9.5 节错误码总表逐条有断言，且**状态行写出之后**绝不出现
+     第二行 HTTP 状态（叙事失败 / 门面落盘失败都只走 SSE）；幂等键（同键重放
+     回首次结果、无重复副作用；同 `proposal_id` 换键 → 409）与排程钩子（M8
+     空实现 `mode == "sync"`、恰好一次）各自成条。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -462,16 +471,50 @@ def _dechunk(raw: bytes) -> bytes:
     return b"".join(out)
 
 
-def _raw_http(port: int, path: str, body: dict, sid: str = "") -> bytes:
-    """用裸 socket 发一次 POST，读到连接关闭——用来数有几行 HTTP 状态。"""
+def _raw_http(port: int, path: str, body: dict, sid: str = "",
+              headers: dict | None = None) -> bytes:
+    """用裸 socket 发一次 POST，读到连接关闭——用来数有几行 HTTP 状态。
+
+    `headers` 用来附加请求头（`Idempotency-Key` / `Accept` 等）。
+    """
     payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
     lines = ["POST %s HTTP/1.1" % path, "Host: 127.0.0.1",
              "Content-Type: application/json",
              "Content-Length: %d" % len(payload)]
     if sid:
         lines.append("X-Session: %s" % sid)
+    for key, value in (headers or {}).items():
+        lines.append("%s: %s" % (key, value))
     request = ("\r\n".join(lines) + "\r\n\r\n").encode("utf-8") + payload
     with socket.create_connection(("127.0.0.1", port), timeout=15) as sock:
+        sock.sendall(request)
+        pieces = []
+        while True:
+            piece = sock.recv(65536)
+            if not piece:
+                break
+            pieces.append(piece)
+        return b"".join(pieces)
+
+
+def _raw_body_http(port: int, path: str, raw: bytes, sid: str = "",
+                   headers: dict | None = None,
+                   content_length: int | None = None) -> bytes:
+    """用裸 socket 发一段**原始字节**体（畸形 JSON / 超限体专用）。
+
+    `content_length` 可覆盖头里声明的长度：测「请求体过大」时头里声明超限、
+    体**不必真发**——服务端在读体之前就按 400 拒了，真发 2 MB 只会撞上 EPIPE。
+    """
+    length = len(raw) if content_length is None else int(content_length)
+    lines = ["POST %s HTTP/1.1" % path, "Host: 127.0.0.1",
+             "Content-Type: application/json",
+             "Content-Length: %d" % length]
+    if sid:
+        lines.append("X-Session: %s" % sid)
+    for key, value in (headers or {}).items():
+        lines.append("%s: %s" % (key, value))
+    request = ("\r\n".join(lines) + "\r\n\r\n").encode("utf-8") + raw
+    with socket.create_connection(("127.0.0.1", port), timeout=30) as sock:
         sock.sendall(request)
         pieces = []
         while True:
@@ -2932,6 +2975,660 @@ def check_turn_log_subprocess():
         assert saved["log"][0]["text"] == "我看看四周", saved["log"][0]
 
 
+# --------------------------------------------------------------------------
+# 行动管线写接口（M8-A3，ACTION-DESIGN §3.3 / §7 / §8 / §9）
+# --------------------------------------------------------------------------
+
+
+def _seed_action_session(save_dir: str, sid: str, *, risk: str = "R1",
+                         party: bool = True, combat: bool = False,
+                         action_id: str = "a-lock", label: str = "撬锁") -> None:
+    """在**指定存档目录**里造一局带一条行动的存档（子进程服务的目录也认）。
+
+    `Session.save()` 读模块级 `SAVE_DIR`，所以先把常量指到目标目录再落盘——
+    真子进程服务随后从磁盘载入这一局，新路由的「从命令行启动」路径也因此被
+    覆盖。默认写成 R1（直通，不弹确认，§6.4）；要测确认就传 `risk="R3"`。
+    """
+    saved_dir = notdnd_web.SAVE_DIR
+    notdnd_web.SAVE_DIR = pathlib.Path(save_dir)
+    try:
+        session = notdnd_web.Session(sid)
+        rules = prism_core.RuleSession(sid)
+        if party:
+            rules.party.append(prism_core.new_unit(
+                "u-1", "试炼者", attributes={"MGT": 6, "INS": 7}))
+        rules.scene = {"id": "sc-1", "actions": [
+            {"id": action_id, "label": label, "kind": "check", "df": 12,
+             "auto_pass": True, "on_pass": "锁簧弹开。", "risk": risk}]}
+        if combat:
+            rules.combat = {"over": False}
+        session.rules = rules.snapshot()
+        session.save()
+    finally:
+        notdnd_web.SAVE_DIR = saved_dir
+    notdnd_web._sessions.pop(sid, None)     # 丢掉本进程缓存，逼出真实读盘
+
+
+def _post(server, path, body, sid="", headers=None):
+    """`_Server`（子进程）与 `_LocalServer`（本进程）统一的 POST：(状态, JSON)。"""
+    out = server.post(path, body, sid=sid, headers=headers)
+    return out[0], out[1]
+
+
+def _propose_action(server, sid, action_id="a-lock"):
+    """显式行动的 `propose`（§9.2 `mode: "action"`）：返回 (状态, 回执)。"""
+    return _post(server, "/api/action/propose",
+                 {"mode": "action", "action_id": action_id}, sid)
+
+
+def _commit_body(proposal, base_seq, confirm_token="", **extra):
+    """`commit` 的请求体（§9.3）：提案 + 并发基线 +（R2–R4 的）确认令牌。"""
+    body = {"proposal": proposal, "base_seq": base_seq}
+    if confirm_token:
+        body["confirm_token"] = confirm_token
+    body.update(extra)
+    return body
+
+
+def _raw_status(raw: bytes) -> int:
+    """裸响应第一行的 HTTP 状态码（`_raw_http` 专用）。"""
+    try:
+        return int(raw.split(b"\r\n", 1)[0].split(b" ")[1])
+    except (IndexError, ValueError):
+        return 0
+
+
+def _raw_json(raw: bytes) -> dict:
+    """裸响应里的 JSON 体（`_raw_http` 专用）。"""
+    _head, _sep, rest = raw.partition(b"\r\n\r\n")
+    body = _dechunk(rest) if b"chunked" in _head.lower() else rest
+    return _load_json(body)
+
+
+def check_action_catalog_and_offline_round():
+    """M8-A3：**真子进程 + 离线**——catalog / propose / commit 走完一轮。
+
+    离线（无 AI 配置）也走得通（§7.1 离线底线）：`mode: "action"` 的第 3–5 段
+    一行模型都不调；`result` 一定早于叙事段（§3.3 硬边界），离线时叙事段是
+    `fallback` + 兜底句（§7.3），整条流只有**一行** HTTP 状态（§9.5）。
+    """
+    sid = "a3-offline-round"
+    with _Server(offline=True) as server:
+        status, info = server.get("/api/saves")
+        assert status == 200, "服务未就绪：%s" % status
+        _seed_action_session(info["save_dir"], sid)
+
+        status, catalog = server.get("/api/action/catalog", sid=sid)
+        assert status == 200, (status, catalog)
+        assert catalog["actions"] == [{"id": "a-lock", "label": "撬锁",
+                                       "risk": "R1"}], catalog
+
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)
+        assert prop["type"] == "proposal" and prop["risk"] == "R1", prop
+        assert prop["needs_confirm"] is False, prop      # R1 直通（§6.4）
+        assert prop["base_seq"] == 0, prop               # 还没提交过：基线 0
+        assert prop["costs_preview"] == [], prop         # 行动表没给时间成本
+        proposal = prop["proposal"]
+        assert proposal["source"] == "action", proposal
+        assert proposal["actor"] == {"kind": "player", "id": "u-1"}, proposal
+        assert prism_core.validate_proposal(proposal) == [], proposal
+
+        raw = _raw_http(
+            server.port, "/api/action/commit",
+            _commit_body(proposal, prop["base_seq"]), sid=sid,
+            headers={"Idempotency-Key": "a3-offline-key-0001"})
+        assert _status_lines(raw) == 1, "整条流只允许一行状态：%r" % raw[:160]
+        events = _parse_sse(_dechunk(raw))
+        names = [name for name, _payload in events]
+        assert names[0] == "result", names
+        assert names[1] in ("fallback", "narration"), names
+        assert names[-1] == "done", names
+        result = events[0][1]
+        assert result["status"] == "success", result
+        assert result["committed"] is True, result
+        assert len(result["event_ids"]) == 1, result        # A0：一次提交一条事件
+        assert result["commit_ref"]["seq_from"] == 1, result
+        assert result["commit_ref"]["seq_to"] == 1, result
+        fallback = dict(events[1][1])
+        assert fallback["status"] == "offline", fallback
+        assert fallback["action_id"] == result["action_id"], fallback
+        assert fallback["seq_to"] == 1, fallback
+        assert notdnd_web.FALLBACK_NARRATION in fallback["text"], fallback
+
+        # 规则层真结算了：`done_actions` 进了磁盘上的存档（离线也要真改世界）
+        saved = _read_save(sid, info["save_dir"])
+        assert "a-lock" in saved["rules"]["done_actions"], saved["rules"]
+        # 会话日志：玩家做了什么 + 玩家实际看到的正文
+        status, log = server.get("/api/log", sid=sid)
+        assert status == 200, (status, log)
+        assert [entry["kind"] for entry in log["log"]] == ["act", "narrate"], log
+
+
+def check_action_subprocess_error_rows():
+    """新路由在**真子进程**下的固定错误（§9.5）：覆盖命令行启动路径。"""
+    sid = "a3-subprocess"
+    with _Server(offline=True) as server:
+        status, info = server.get("/api/saves")
+        assert status == 200, "服务未就绪：%s" % status
+        _seed_action_session(info["save_dir"], sid)
+        # 会话不存在 → 400（不是 404「未知接口」：路径确实接上了）
+        status, body = _post(server, "/api/action/propose",
+                             {"mode": "action", "action_id": "a-lock"}, "s-nope")
+        assert (status, body.get("error")) == (400, "会话不存在或已过期"), (status, body)
+        status, body = server.get("/api/action/catalog", sid="s-nope")
+        assert (status, body.get("error")) == (400, "会话不存在或已过期"), (status, body)
+        # 行动不在当前场景 → 404 没有这个行动
+        status, body = _propose_action(server, sid, "no-such-action")
+        assert (status, body.get("error")) == (404, "没有这个行动"), (status, body)
+        # commit 缺幂等键 → 400（真跑一次写接口）
+        status, body = _post(server, "/api/action/commit",
+                             {"proposal": {}, "base_seq": 0}, sid)
+        assert (status, body.get("error")) == (400, "幂等键不合法"), (status, body)
+        # 提案形状过不了重验 → 404 没有这个提案
+        status, body = _post(server, "/api/action/commit",
+                             {"proposal": {"nope": True}, "base_seq": 0}, sid,
+                             headers={"Idempotency-Key": "a3-subprocess-key-0001"})
+        assert (status, body.get("error")) == (404, "没有这个提案"), (status, body)
+
+
+def check_action_nl_module_missing():
+    """导引者缺失：`mode: "nl"` 回 200 `type: "offline"`，显式行动照常走完（§9.2）。"""
+    sid = "a3-nl-absent"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    saved_guide = notdnd_web.prism_guide
+    notdnd_web.prism_guide = None
+    try:
+        with _LocalServer() as server:
+            status, body = _post(server, "/api/action/propose",
+                                 {"mode": "nl", "text": "我看看"}, sid)
+            assert (status, body) == (200, {"status": "offline",
+                                            "type": "offline"}), (status, body)
+            # 显式行动不需要 AI：catalog + propose + 第 3–5 段照常
+            status, catalog = server.get("/api/action/catalog", sid=sid)
+            assert status == 200 and catalog["actions"][0]["id"] == "a-lock", \
+                (status, catalog)
+            status, prop = _propose_action(server, sid)
+            assert status == 200, (status, prop)
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "a3-absent-key-0001"})
+            assert status == 200, (status, body)
+            events = _parse_sse(raw)
+            assert [name for name, _payload in events] == ["result", "fallback",
+                                                          "done"], events
+            assert events[0][1]["committed"] is True, events[0]
+            assert events[1][1]["status"] == "offline", events[1]
+    finally:
+        notdnd_web.prism_guide = saved_guide
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_nl_translation_and_rate():
+    """`mode: "nl"`：澄清回路 / 拒绝 / 速率的 HTTP 翻译（§6.3 / §9.2 / §9.5）。"""
+    sid = "a3-nl"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    clarify_out = {"clarify_id": "c_" + "1" * 32, "missing": "target",
+                   "question": "你要说服谁？",
+                   "options": [{"id": "npc-01", "label": "守卫"},
+                               {"id": "npc-02", "label": "队长"}],
+                   "proposal_draft": {"intent": {"verb": "a-lock"}}}
+    calls = []
+    proposal_out = {}
+
+    def fake_propose(rules, guide, text, *, clarify=None, answer="", env=None,
+                     transmit=None):
+        """替身：第一次给澄清，带澄清 id 的第二次给提案，其后一律拒绝。"""
+        calls.append({"text": text, "clarify": clarify, "answer": answer})
+        if len(calls) == 1:
+            return {"status": "ok", "type": "clarify", "clarify": clarify_out}
+        if clarify is not None:
+            return {"status": "ok", "type": "proposal",
+                    "proposal": proposal_out["proposal"]}
+        return {"status": "reject", "type": "reject", "reason": "做不了这件事"}
+
+    saved_propose = prism_guide.propose_nl
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)
+        proposal_out["proposal"] = prop["proposal"]
+        prism_guide.propose_nl = fake_propose
+        try:
+            status, body = _post(server, "/api/action/propose",
+                                 {"mode": "nl", "text": "我想说服守卫"}, sid)
+            assert (status, body["type"]) == (200, "clarify"), (status, body)
+            assert body["clarify"]["clarify_id"] == clarify_out["clarify_id"], body
+            # 带着澄清 id 回答：服务端取回那一次澄清，把回答并入草案（§6.3）
+            status, body = _post(server, "/api/action/propose",
+                                 {"mode": "nl",
+                                  "clarify_id": clarify_out["clarify_id"],
+                                  "answer": "npc-01"}, sid)
+            assert (status, body["type"]) == (200, "proposal"), (status, body)
+            assert calls[1]["clarify"] == clarify_out, calls[1]
+            assert calls[1]["answer"] == "npc-01", calls[1]
+            assert calls[1]["text"] == "我想说服守卫", calls[1]   # 沿用第一次原文
+            # 澄清不消耗资源、不落世界事件：基线还是 0
+            assert body["base_seq"] == 0, body
+            # 澄清不存在 / 过期 → 404 没有这个提案（§9.5）
+            status, body = _post(server, "/api/action/propose",
+                                 {"mode": "nl", "text": "我看看",
+                                  "clarify_id": "c_" + "9" * 32}, sid)
+            assert (status, body.get("error")) == (404, "没有这个提案"), (status, body)
+            # 拒绝 → §9.5 的固定短语 + 403
+            status, body = _post(server, "/api/action/propose",
+                                 {"mode": "nl", "text": "我要屠龙"}, sid)
+            assert (status, body.get("error")) == (403, "做不了这件事"), (status, body)
+            # 速率：每会话每 60 秒 30 次 propose，第 31 次起 429
+            limited = None
+            for _ in range(40):
+                status, body = _post(server, "/api/action/propose",
+                                     {"mode": "nl", "text": "再看看"}, sid)
+                if status == 429:
+                    limited = body
+                    break
+            assert limited is not None, "第 31 次 propose 必须被限流"
+            assert limited.get("error") == "太频繁", limited
+        finally:
+            prism_guide.propose_nl = saved_propose
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_commit_errors_and_confirm():
+    """`commit` 状态行**之前**的固定错误 + R2–R4 确认回路（§9.4 / §9.5）。"""
+    sid = "a3-commit-errors"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, risk="R3")
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)
+        assert prop["risk"] == "R3" and prop["needs_confirm"] is True, prop
+        proposal = prop["proposal"]
+        base_seq = prop["base_seq"]
+
+        def expect(code, error, body, key="a3-err-key-0001", sid_=sid):
+            """一次 commit：恰好一行 HTTP 状态 + 固定短语。"""
+            raw = _raw_http(server.port, "/api/action/commit", body, sid=sid_,
+                            headers={"Idempotency-Key": key})
+            assert _status_lines(raw) == 1, raw[:160]
+            assert _raw_status(raw) == code, (code, raw[:200])
+            assert (_raw_json(raw).get("error") or "") == error, _raw_json(raw)
+            return raw
+
+        body = _commit_body(proposal, base_seq)
+        # ① 会话不存在 / 过期 → 400（四条路由同一口径）
+        expect(400, "会话不存在或已过期", body, sid_="s-does-not-exist")
+        # ② 幂等键缺失 / 非法 → 400（缺失用裸 socket，绕开客户端的头）
+        raw = _raw_http(server.port, "/api/action/commit", body, sid=sid)
+        assert _raw_status(raw) == 400, raw[:160]
+        assert _raw_json(raw)["error"] == "幂等键不合法", _raw_json(raw)
+        expect(400, "幂等键不合法", body, key="short")
+        expect(400, "幂等键不合法", body, key="x" * 65)
+        # ③ 请求体畸形 / 超限 → 400（§9.5）
+        malformed = _raw_body_http(server.port, "/api/action/commit", b"{not json",
+                                   sid=sid,
+                                   headers={"Idempotency-Key": "a3-err-key-0002"})
+        assert _raw_status(malformed) == 400, malformed[:160]
+        assert _raw_json(malformed)["error"] == "JSON 解析失败", _raw_json(malformed)
+        oversize = _raw_body_http(server.port, "/api/action/commit", b"",
+                                  sid=sid,
+                                  headers={"Idempotency-Key": "a3-err-key-0003"},
+                                  content_length=2_000_001)
+        assert _raw_status(oversize) == 400, oversize[:160]
+        assert _raw_json(oversize)["error"] == "请求体过大", _raw_json(oversize)
+        # ④ 提案不存在 / 更高 schema_version / 未知行动 / 实体引用无效
+        expect(404, "没有这个提案", _commit_body({"not": "a proposal"}, base_seq))
+        expect(409, "版本不支持",
+               _commit_body(dict(proposal, schema_version=2), base_seq))
+        unknown = dict(proposal, proposal_id="p_" + "2" * 32,
+                       intent=dict(proposal["intent"], verb="no-such-action"))
+        expect(404, "没有这个行动", _commit_body(unknown, base_seq))
+        bad_target = dict(proposal, proposal_id="p_" + "3" * 32,
+                          intent=dict(proposal["intent"],
+                                      target={"kind": "npc", "id": "npc-404"}))
+        expect(404, "目标不存在", _commit_body(bad_target, base_seq))
+        # ⑤ R3 缺确认令牌 / 令牌不对 / 令牌已失效 → 409 需要确认
+        expect(409, "需要确认", body)
+        expect(409, "需要确认",
+               _commit_body(proposal, base_seq, confirm_token="cf_" + "0" * 32))
+        status, confirmed = _post(server, "/api/action/confirm",
+                                  {"proposal_id": proposal["proposal_id"]}, sid)
+        assert status == 200, (status, confirmed)
+        token = confirmed["confirm_token"]
+        assert notdnd_web.ACTION_CONFIRM_TOKEN_RE.fullmatch(token), confirmed
+        expect(409, "需要确认",
+               _commit_body(proposal, base_seq, confirm_token="cf_" + "1" * 32))
+        with notdnd_web._ACTION_LOCK:       # 把有效期拨到过去 = 确认已失效
+            notdnd_web._action_confirms[(sid, proposal["proposal_id"])][
+                "expires_at"] = 0
+        expect(409, "需要确认",
+               _commit_body(proposal, base_seq, confirm_token=token))
+        # ⑥ 有了有效令牌后：旧 base_seq → 409 状态已变，请重试（不结算、不落事件）
+        status, again = _post(server, "/api/action/confirm",
+                              {"proposal_id": proposal["proposal_id"]}, sid)
+        assert status == 200, (status, again)
+        expect(409, "状态已变，请重试",
+               _commit_body(proposal, base_seq + 7,
+                            confirm_token=again["confirm_token"]))
+        # ⑦ 取消：丢令牌——「取消」就是不提交，带旧令牌再来仍是 409
+        status, cancelled = _post(server, "/api/action/confirm",
+                                  {"proposal_id": proposal["proposal_id"],
+                                   "decision": "cancel"}, sid)
+        assert (status, cancelled["type"]) == (200, "cancelled"), (status, cancelled)
+        expect(409, "需要确认",
+               _commit_body(proposal, base_seq,
+                            confirm_token=again["confirm_token"]))
+        # ⑧ 确认不存在 / 过期 → 404 没有这个提案（提案 id 形状不对也算没有）
+        status, body2 = _post(server, "/api/action/confirm",
+                              {"proposal_id": "bogus"}, sid)
+        assert (status, body2.get("error")) == (404, "没有这个提案"), (status, body2)
+        # ⑨ 重新确认 + 正确基线 → 提交成功（机制没被前面的错误路径卡死）
+        status, final = _post(server, "/api/action/confirm",
+                              {"proposal_id": proposal["proposal_id"]}, sid)
+        status, body3, raw3, _heads = server.post(
+            "/api/action/commit",
+            _commit_body(proposal, base_seq,
+                         confirm_token=final["confirm_token"]), sid=sid,
+            headers={"Idempotency-Key": "a3-err-key-0009"})
+        assert status == 200, (status, body3)
+        assert _parse_sse(raw3)[0][1]["committed"] is True, raw3[:300]
+        # 同一提案 + 新键 → 409 该提案已提交（§9.4 提案级幂等）
+        status, body4 = _post(server, "/api/action/commit",
+                              _commit_body(proposal, base_seq,
+                                           confirm_token=final["confirm_token"]),
+                              sid, headers={"Idempotency-Key": "a3-err-key-0010"})
+        assert (status, body4.get("error")) == (409, "该提案已提交"), (status, body4)
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_commit_combat_lock_and_server_error():
+    """战斗锁 → 409；钩子炸了 → 500 且**不开** SSE（§9.5 末段）。"""
+    sid = "a3-combat"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, combat=True)
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)        # propose 不结算（§7.5）
+        raw = _raw_http(server.port, "/api/action/commit",
+                        _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                        headers={"Idempotency-Key": "a3-combat-key-0001"})
+        assert _status_lines(raw) == 1 and _raw_status(raw) == 409, raw[:200]
+        assert _raw_json(raw)["error"] == "战斗还没结束", _raw_json(raw)
+        assert b"event: result" not in raw, "状态行已写 409 就不再开 SSE"
+    notdnd_web._sessions.pop(sid, None)
+
+    sid = "a3-server-error"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    events_path = _campaign_file(sid, "events.ndjson")
+
+    class BoomHook:
+        def enqueue(self, proposal, draft, *, base_seq):
+            raise RuntimeError("钩子炸了")
+
+        def cancel(self, task_id):
+            return False
+
+    saved_hook = notdnd_web.SCHEDULE_HOOK
+    notdnd_web.SCHEDULE_HOOK = BoomHook()
+    try:
+        with _LocalServer() as server:
+            status, prop = _propose_action(server, sid)
+            raw = _raw_http(server.port, "/api/action/commit",
+                            _commit_body(prop["proposal"], prop["base_seq"]),
+                            sid=sid,
+                            headers={"Idempotency-Key": "a3-boom-key-0001"})
+            assert _status_lines(raw) == 1 and _raw_status(raw) == 500, raw[:200]
+            assert _raw_json(raw)["error"].startswith("服务器内部错误："), \
+                _raw_json(raw)
+            assert b"event: result" not in raw, "500 之后不许再开 SSE"
+            assert open(events_path, encoding="utf-8").read().strip() == "", \
+                "钩子失败时不该落任何事件"
+    finally:
+        notdnd_web.SCHEDULE_HOOK = saved_hook
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_schedule_hook():
+    """排程钩子（§8.2 / §8.3）：空实现回的键固定六个；管线恰好调一次。"""
+    empty = notdnd_web._SyncOnlySchedule()
+    hook_out = empty.enqueue({"proposal_id": "p_x"}, {"draft": True}, base_seq=3)
+    assert set(hook_out) == {"mode", "task_id", "start_at", "expected_end_at",
+                             "barrier", "resume_token"}, hook_out
+    assert hook_out == {"mode": "sync", "task_id": None, "start_at": 0,
+                        "expected_end_at": 0, "barrier": False,
+                        "resume_token": None}, hook_out
+    assert empty.cancel("t-1") is False, "M8 的同步行动不可取消（§8.3）"
+
+    sid = "a3-hook"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    calls = []
+
+    class FakeHook:
+        """假钩子：记录调用（深拷贝入参，管线之后还会改草案）。"""
+
+        def enqueue(self, proposal, draft, *, base_seq):
+            calls.append({"proposal": json.loads(json.dumps(proposal)),
+                          "draft": json.loads(json.dumps(draft)),
+                          "base_seq": base_seq})
+            return empty.enqueue(proposal, draft, base_seq=base_seq)
+
+        def cancel(self, task_id):
+            return False
+
+    saved_hook = notdnd_web.SCHEDULE_HOOK
+    notdnd_web.SCHEDULE_HOOK = FakeHook()
+    try:
+        with _LocalServer() as server:
+            status, prop = _propose_action(server, sid)
+            assert status == 200, (status, prop)
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "a3-hook-key-0001"})
+            assert status == 200, (status, body)
+            assert _parse_sse(raw)[0][1]["committed"] is True, raw[:300]
+    finally:
+        notdnd_web.SCHEDULE_HOOK = saved_hook
+    assert len(calls) == 1, "一次提交只排一次，实际 %d 次" % len(calls)
+    call = calls[0]
+    assert call["proposal"]["proposal_id"] == prop["proposal"]["proposal_id"], call
+    assert call["base_seq"] == prop["base_seq"], call
+    # 钩子在**提交之前**收到草案：未提交、无事件引用
+    assert call["draft"]["committed"] is False, call["draft"]
+    assert call["draft"]["commit_ref"] is None, call["draft"]
+    assert prism_core.validate_result(call["draft"]) == [], call["draft"]
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_idempotency():
+    """幂等（§7.7 / §9.4）：同键重放回首次结果、不写新事件；换键 → 409。"""
+    sid = "a3-idem"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    events_path = _campaign_file(sid, "events.ndjson")
+
+    def event_lines() -> int:
+        with open(events_path, encoding="utf-8") as handle:
+            return len([line for line in handle if line.strip()])
+
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        proposal, base_seq = prop["proposal"], prop["base_seq"]
+        body = _commit_body(proposal, base_seq)
+        status, head, raw, _heads = server.post(
+            "/api/action/commit", body, sid=sid,
+            headers={"Idempotency-Key": "a3-idem-key-0001"})
+        assert status == 200, (status, head)
+        first = _parse_sse(raw)[0][1]
+        lines_after_first = event_lines()
+        assert lines_after_first == 1, "首次提交应恰一条事件"
+        # 同键同载荷（连 base_seq 已过期也照旧）：重放，不结算、不写事件
+        status, head, raw, _heads = server.post(
+            "/api/action/commit", body, sid=sid,
+            headers={"Idempotency-Key": "a3-idem-key-0001"})
+        assert status == 200, (status, head)
+        replayed = _parse_sse(raw)
+        assert [name for name, _payload in replayed] == ["result", "done"], replayed
+        assert replayed[0][1] == first, replayed[0][1]
+        assert replayed[-1][1] == {"status": "ok", "replayed": True}, replayed[-1]
+        assert event_lines() == lines_after_first, "重放不得写新事件"
+        # 换个键再提同一份提案 → 409 该提案已提交（防「换个键再赌一次」）
+        status, body2, _raw, _heads = server.post(
+            "/api/action/commit", body, sid=sid,
+            headers={"Idempotency-Key": "a3-idem-key-0002"})
+        assert (status, body2.get("error")) == (409, "该提案已提交"), (status, body2)
+        # 新提案 + 新键 → 正常提交；同一行动第二次走 already_done（不重复发奖）
+        status, prop2 = _propose_action(server, sid)
+        assert status == 200, (status, prop2)
+        assert prop2["base_seq"] == first["commit_ref"]["seq_to"], prop2
+        status, head2, raw2, _heads = server.post(
+            "/api/action/commit",
+            _commit_body(prop2["proposal"], prop2["base_seq"]), sid=sid,
+            headers={"Idempotency-Key": "a3-idem-key-0003"})
+        assert status == 200, (status, head2)
+        second = _parse_sse(raw2)[0][1]
+        assert second["status"] == "success", second
+        assert second["rule_ref"]["perf"] == "already_done", second["rule_ref"]
+        assert second["commit_ref"]["seq_to"] == 2, second["commit_ref"]
+        assert event_lines() == 2, "第二次提交是**新**提案：各得一条事件"
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_narration_and_frozen_snapshot():
+    """第 6 段（§7.2 / §7.5）：在线叙事用提交后快照重拼，帧带 action_id / seq_to。"""
+    sid = "a3-narrate"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    fake = _FakeTransport()
+    with _guide_online(_ONLINE_ENV, fake):
+        with _LocalServer() as server:
+            status, prop = _propose_action(server, sid)
+            assert status == 200, (status, prop)
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "a3-narrate-key-0001"})
+            assert status == 200, (status, body)
+            events = _parse_sse(raw)
+            names = [name for name, _payload in events]
+            assert names == ["result", "narration", "usage", "done"], names
+            result = events[0][1]
+            narration = events[1][1]
+            assert result["committed"] is True, result
+            assert narration["action_id"] == result["action_id"], narration
+            assert narration["seq_to"] == result["commit_ref"]["seq_to"], narration
+            assert narration["text"].strip(), narration
+            assert narration["beats"], narration
+            assert events[2][1].get("prompt_tokens") == 7, events[2]
+            # 叙事请求只发一次，且 L4 带的是**已提交**的判定与行动菜单（§7.2）
+            assert len(fake.calls) == 1, fake.calls
+            messages = fake.calls[0]["payload"]["messages"]
+            l4 = messages[-1]["content"]
+            assert "判定：" in l4 and result["action_id"] in l4, l4
+            assert "行动菜单：a-lock 撬锁" in l4, l4
+    # 冻结快照是**值快照**：提交之后世界再变，副本不受影响（§7.5）
+    session = notdnd_web.Session.load(sid)
+    snapshot = notdnd_web._action_snapshot(session.rules, session.guide)
+    session.rules["scene"]["actions"].append({"id": "a-extra", "label": "加戏"})
+    assert [item["id"] for item in snapshot["rules"]["scene"]["actions"]] == \
+        ["a-lock"], snapshot["rules"]["scene"]["actions"]
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_narration_failure_keeps_result():
+    """叙事失败 → `fallback`，`result` 仍已提交、不回滚（§7.3 / §7.7）。"""
+    sid = "a3-narrate-fail"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    fake = _FakeTransport([RuntimeError("上游断线")])
+    with _guide_online(_ONLINE_ENV, fake):
+        with _LocalServer() as server:
+            status, prop = _propose_action(server, sid)
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "a3-narrate-fail-key-0001"})
+            assert status == 200, (status, body)
+            events = _parse_sse(raw)
+            names = [name for name, _payload in events]
+            assert names == ["result", "fallback", "done"], names
+            assert events[0][1]["committed"] is True, events[0]
+            assert notdnd_web.FALLBACK_NARRATION in events[1][1]["text"], events[1]
+            assert events[-1][1] == {"status": "ok"}, events[-1]
+            assert "a-lock" in _read_save(sid)["rules"]["done_actions"], "结果不得回滚"
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_save_failure_keeps_result():
+    """已提交的结果不回滚（§7.7）：门面落盘失败只让 `done` 如实回报。
+
+    这也是「状态行前 / 后行为分叉」的后半：状态行已经写出，失败只能走 SSE——
+    绝不允许出现第二行 HTTP 状态。
+    """
+    sid = "a3-save-failure"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)
+        with _storage_fault(replace=True):
+            raw = _raw_http(
+                server.port, "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "a3-save-key-0001"})
+        assert _status_lines(raw) == 1, "落盘失败也不许发第二行状态：%r" % raw[:160]
+        events = _parse_sse(_dechunk(raw))
+        names = [name for name, _payload in events]
+        assert names[0] == "result", names
+        assert events[0][1]["committed"] is True, events[0]
+        assert events[-1] == ("done", {"status": "error",
+                                       "reason": "save_failed"}), events[-1]
+    # 事件已经落盘：从磁盘重放（检查点 + 事件日志）仍能看到这次提交
+    notdnd_web._sessions.pop(sid, None)
+    reloaded = notdnd_web.Session.load(sid)
+    assert "a-lock" in reloaded.rules["done_actions"], reloaded.rules["done_actions"]
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_commit_json_accept():
+    """`Accept: application/json` → 非流式整段结果，没有 SSE（§9.3）。"""
+    sid = "a3-json"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        status, head, raw, heads = server.post(
+            "/api/action/commit",
+            _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+            headers={"Idempotency-Key": "a3-json-key-0001",
+                     "Accept": "application/json"})
+        assert status == 200, (status, head)
+        assert "text/event-stream" not in heads.get("content-type", ""), heads
+        assert raw.lstrip().startswith(b"{"), raw[:80]      # 整段 JSON，不是 SSE
+        assert head["status"] == "success" and head["committed"] is True, head
+        assert head["commit_ref"]["seq_to"] == 1, head
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_precondition_no_party():
+    """桌上还没有角色 → 409 `现在做不了`（§6.4 前置条件面，§9.5）。
+
+    两条路径都要拦：`mode: "action"` 的提案构造（没有行动者可归属），以及
+    `commit` 的回带重验（提案里的行动者不在本局队伍里）。
+    """
+    sid = "a3-no-party"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, party=False)
+    with _LocalServer() as server:
+        status, body = _propose_action(server, sid)
+        assert (status, body.get("error")) == (409, "现在做不了"), (status, body)
+    # 队伍里有角色：先拿一份合法提案，再把行动者换成不存在的 id 回带
+    sid = "a3-ghost-actor"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)
+        ghost = dict(prop["proposal"], proposal_id="p_" + "4" * 32,
+                     actor={"kind": "player", "id": "u-ghost"})
+        status, body = _post(server, "/api/action/commit",
+                             _commit_body(ghost, prop["base_seq"]), sid,
+                             headers={"Idempotency-Key": "a3-ghost-key-0001"})
+        assert (status, body.get("error")) == (409, "现在做不了"), (status, body)
+    notdnd_web._sessions.pop(sid, None)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -2990,6 +3687,19 @@ CHECKS = (
     check_turn_log_offline_paths,
     check_turn_log_action_only,
     check_turn_log_subprocess,
+    check_action_catalog_and_offline_round,
+    check_action_subprocess_error_rows,
+    check_action_nl_module_missing,
+    check_action_nl_translation_and_rate,
+    check_action_precondition_no_party,
+    check_action_commit_errors_and_confirm,
+    check_action_commit_combat_lock_and_server_error,
+    check_action_schedule_hook,
+    check_action_idempotency,
+    check_action_narration_and_frozen_snapshot,
+    check_action_narration_failure_keeps_result,
+    check_action_save_failure_keeps_result,
+    check_action_commit_json_accept,
 )
 
 

@@ -159,6 +159,68 @@ GUIDE_ABSENT_ERROR = "导引者不在席"
 # （§5.1：「兜底句是模块级常量，不向模型现编」）。模块在时以它为准。
 FALLBACK_NARRATION = "导引者这会儿不在席。刚才的规则结果已经生效，请按桌上的判定继续。"
 
+# ── 行动管线（M8-A3，ACTION-DESIGN §8 / §9）──────────────────────────────
+#
+# 四条写接口（§9.1）：`GET /api/action/catalog` 与 `POST /api/action/`
+# propose / confirm / commit。管线六段（§3.3）：解析 → 检索 → 验证 → 结算 →
+# 提交 → 叙事；**第 3–5 段一行模型都不调**（§7.1）——`mode: "action"` 的
+# 显式行动因此在没有 AI 配置时也能完整走完一轮；第 6 段才是可选的叙事段。
+#
+# 提交走状态层 `state.Handle.commit`（§10.1 目标态：M7 已把 `Session` 接线到
+# `state`，无需再走 §10.2 的过渡出口），因此结果里 `event_ids` / `commit_ref`
+# 是**真实**的提交引用，`seq_to` 即该行动的叙事基线版本（§7.5）。
+
+# 排程钩子的世界时间占位（§8.3）：M8 没有世界时钟，世界分钟取纪元 0；
+# M9 由 CHRON 提供真实值（本模块不 import `chron`）。
+ACTION_EPOCH_MINUTE = 0
+
+# 幂等键（§9.4）：`Idempotency-Key` 请求头，`^[A-Za-z0-9_-]{8,64}$`。
+ACTION_IDEM_KEY_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+# 提案 ID（§4.2，与 A1 `prism_core` 同一形状）与确认令牌（§6.4 `cf_<32hex>`）。
+ACTION_PROPOSAL_ID_RE = re.compile(r"^p_[0-9a-f]{32}$")
+ACTION_CONFIRM_TOKEN_RE = re.compile(r"^cf_[0-9a-f]{32}$")
+# §9.5 末段：每会话每 60 秒 12 次 commit、30 次 propose（复用 `_rate_ok` 的
+# 60 秒窗口，与 turn / speak 同一把锁）。
+ACTION_COMMIT_LIMIT = 12
+ACTION_PROPOSE_LIMIT = 30
+# 澄清与确认令牌都是**进程内短期记忆**（提案本身无状态透明，§9.2 / §10.3 不落盘）；
+# 过期即 404 `没有这个提案` / 409 `需要确认`。
+ACTION_CLARIFY_TTL_S = 300.0
+ACTION_CONFIRM_TTL_S = 300.0
+# 幂等记录的进程内 TTL（§9.4「键不过期或设长 TTL」）：状态层另有一份**持久**
+# 幂等索引（§7.3 / §9.4），进程内这份只是「任何结算之前短路」的那一层。
+ACTION_IDEM_TTL_S = 7 * 86400.0
+
+# §9.5 错误码总表：固定短语 + **仅状态行写出之前**可用的 HTTP 码。
+# 状态行写出之后一律走 SSE 事件（`fallback` / `done`），不再发第二行状态。
+ACTION_NO_SESSION = "会话不存在或已过期"       # 400
+ACTION_BAD_IDEM_KEY = "幂等键不合法"           # 400
+ACTION_NO_ACTION = "没有这个行动"              # 404
+ACTION_NO_PROPOSAL = "没有这个提案"            # 404
+ACTION_NO_TARGET = "目标不存在"                # 404
+ACTION_FORBIDDEN = "做不了这件事"              # 403
+ACTION_NOT_NOW = "现在做不了"                  # 409
+ACTION_COMBAT = "战斗还没结束"                 # 409
+ACTION_STALE_SEQ = "状态已变，请重试"           # 409
+ACTION_ALREADY_COMMITTED = "该提案已提交"       # 409
+ACTION_NEED_CONFIRM = "需要确认"               # 409
+ACTION_BAD_VERSION = "版本不支持"              # 409
+ACTION_TOO_FREQUENT = "太频繁"                 # 429
+
+# `propose` 回执里的 `type`（§9.2）与 `commit` 的 SSE 事件名（§9.3）。
+ACTION_TYPE_PROPOSAL = "proposal"
+ACTION_TYPE_CLARIFY = "clarify"
+ACTION_TYPE_OFFLINE = "offline"
+ACTION_TYPE_CANCELLED = "cancelled"
+
+# §9.5 的固定短语 → 仅状态行之前可用的 HTTP 码（A2 `propose_nl` 的拒绝短语
+# 与 §9.5 同文，网页层只做翻译，不改语义）。
+ACTION_REJECT_CODES = {
+    ACTION_NO_ACTION: 404,
+    ACTION_NO_TARGET: 404,
+    ACTION_FORBIDDEN: 403,
+}
+
 # ── 多人房间（M10-S1）常量 ───────────────────────────────────────────────
 #
 # 依据 MULTIPLAYER-DESIGN.md §3.1 / §3.2 / §4.1 / §4.2：房间 == 存档
@@ -1100,6 +1162,699 @@ def rules_view(session: Session) -> dict:
 
 
 # --------------------------------------------------------------------------
+# 行动管线（M8-A3，ACTION-DESIGN §3.3 / §7 / §8 / §9）
+#
+# 六段（§3.3）：解析（`propose` 的第 1 段）→ 检索 → 验证 → 结算 → 提交
+# （`commit` 的第 3–5 段）→ 叙事（第 6 段）。**只有第 1 段与第 6 段碰模型**；
+# 第 3–5 段一行都不调，所以 `mode: "action"` 在没有 AI 配置时照常走完一轮。
+# --------------------------------------------------------------------------
+
+
+class _ActionError(Exception):
+    """写接口的固定错误（§9.5）：固定短语 + **仅状态行之前**可用的 HTTP 码。
+
+    状态行写出之后不再有第二行 HTTP 状态——那时失败一律走 SSE `fallback` /
+    `done`，所以本异常只在 `_begin_stream()` 之前抛出，由 `do_POST` 翻成
+    唯一一行状态（正文 `{"error": <固定短语>}`）。
+    """
+
+    def __init__(self, phrase: str, code: int):
+        super().__init__(phrase)
+        self.phrase = phrase
+        self.code = code
+
+
+class _SyncOnlySchedule:
+    """M8 的排程钩子空实现（§8.3）：同步行动**不推进世界时间**。
+
+    协议是 §8.2 的 L1 `ScheduleHook`——`enqueue` 的**返回键固定六个**，M9
+    只在值上做文章（`mode` 转 `"async"`、`task_id` 取 CHRON 的行动 id、
+    `start_at` / `expected_end_at` 取世界分钟、`barrier` 按事件屏障置位）。
+    `cancel` 在 M8 恒为 `False`：同步行动不可取消（§8.4 的中断语义归 M9）。
+    """
+
+    def enqueue(self, proposal, draft, *, base_seq):
+        """把一次已验证的行动交给时间线（§8.2 L1）。
+
+        `proposal` 是第 4 节的提案；`draft` 是第 4 段结算出的结果草案
+        （尚未提交）；`base_seq` 是提交方的乐观并发基线。本实现只回执
+        `mode == "sync"` 的固定形状，不改调用方任何状态、不碰磁盘。
+        """
+        return {"mode": "sync", "task_id": None,
+                "start_at": ACTION_EPOCH_MINUTE,
+                "expected_end_at": ACTION_EPOCH_MINUTE,
+                "barrier": False, "resume_token": None}
+
+    def cancel(self, task_id):
+        """取消一个已排程行动：M8 的同步行动不可取消（恒 `False`）。"""
+        return False
+
+
+# 排程钩子的**注入点**（§8.3）：M9 的适配器在启动时替换这个模块级常量
+# （「`chron` 可导入则用、否则回退空实现」，与 `prism_guide` 的可选导入同风格）。
+# 管线只认 §8.2 的协议，不 import `chron`。
+SCHEDULE_HOOK = _SyncOnlySchedule()
+
+# 事件类型与规则版本（状态层事件封套的必填字段，STATE §5.1）：
+# `type` 走 `<domain>.<verb>`；`rules_version` 与 A1 的 `rule_ref.version` 同文。
+ACTION_EVENT_TYPE = "action.commit"
+ACTION_RULES_VERSION = "prism-core@0.1"
+
+# 管线用到的**进程内**短期记忆（§9.2 / §9.4 的口径：不落盘、不新增第二套
+# 持久化字段；权威事实仍在状态层的事件日志与它的持久幂等索引里）。
+_action_idem: dict = {}        # (sid, Idempotency-Key) → {"payload": 首次结果, "ts"}
+_action_committed: dict = {}   # (sid, proposal_id) → {"ts"}（防「换个键再赌一次」）
+_action_clarifies: dict = {}   # (sid, clarify_id) → {"clarify", "text", "ts"}
+_action_confirms: dict = {}    # (sid, proposal_id) → {"token", "expires_at"}
+_ACTION_LOCK = threading.RLock()
+
+
+def _action_now_ms() -> int:
+    """当前毫秒时间戳（管线内部记录用）。"""
+    return int(time.time() * 1000)
+
+
+def _action_prune(now_ms: int) -> None:
+    """顺手清掉过期的进程内记录（在 `_ACTION_LOCK` 内调用）。
+
+    只按时间清；记录量只与在办会话数相关，没有容量问题。
+    """
+    for store, ttl_s in ((_action_idem, ACTION_IDEM_TTL_S),
+                         (_action_clarifies, ACTION_CLARIFY_TTL_S)):
+        for key, record in list(store.items()):
+            if now_ms - int(record.get("ts") or 0) > ttl_s * 1000:
+                store.pop(key, None)
+    for key, record in list(_action_confirms.items()):
+        if now_ms > int(record.get("expires_at") or 0):
+            _action_confirms.pop(key, None)
+
+
+# ── 上下文查询（第 2–3 段的读面：全是纯读，不结算）───────────────────────
+
+
+def _action_menu(rules) -> list:
+    """当前场景行动单（§9.1 `catalog`）：`[{"id", "label", "risk"}]`。
+
+    形状归 `prism_guide.action_menu`（只认带非空 id 的条目，`risk` 只留 §6.1
+    的五级之一，其余留空串）；导引者模块缺失时按**同一口径**本地读一遍规则
+    快照——catalog 与显式行动在离线（无 AI）时也必须可用（§7.1）。
+    """
+    if prism_guide is not None:
+        return prism_guide.action_menu(rules)
+    rules = rules if isinstance(rules, dict) else {}
+    scene = rules.get("scene")
+    actions = scene.get("actions") if isinstance(scene, dict) else None
+    menu = []
+    for item in actions or []:
+        if not isinstance(item, dict):
+            continue
+        action_id = str(item.get("id") or "")
+        if not action_id:
+            continue
+        risk = str(item.get("risk") or "")
+        menu.append({"id": action_id,
+                     "label": str(item.get("label") or action_id),
+                     "risk": risk if risk in prism_core.ACTION_RISKS else ""})
+    return menu
+
+
+def _action_scene_entry(rules, action_id):
+    """场景行动表里 id 命中的**原始条目**（没有 → `None`）。
+
+    §9.5「没有这个行动」的判据就是它：`intent.verb` 的取值域是当前场景的
+    行动表（§4.2），不是任意串。
+    """
+    rules = rules if isinstance(rules, dict) else {}
+    scene = rules.get("scene")
+    actions = scene.get("actions") if isinstance(scene, dict) else None
+    wanted = str(action_id or "")
+    for item in actions or []:
+        if isinstance(item, dict) and str(item.get("id") or "") == wanted:
+            return item
+    return None
+
+
+def _action_risk(rules, action_id) -> str:
+    """提案的风险级（§6.1）：行动表写死的优先，否则取最保守的 R2。"""
+    entry = _action_scene_entry(rules, action_id)
+    risk = str((entry or {}).get("risk") or "")
+    return risk if risk in prism_core.ACTION_RISKS else "R2"
+
+
+def _action_is_confirm_risk(risk) -> bool:
+    """R2–R4 需要确认（§6.4）：R0 / R1 直通，其余默认保守必确认。"""
+    return str(risk or "") in ("R2", "R3", "R4")
+
+
+def _action_time_cost(entry) -> dict:
+    """提案的 `time_cost`（§8.1）：行动表给的优先，形状不对退回默认值。
+
+    只认 `{value: int>=0, unit: 枚举}`；单位换算（到世界分钟）归 CHRON / M9，
+    M8 只把它当**结果字段**记录下来（§8.1「M8 语义」）。
+    """
+    raw = (entry or {}).get("time_cost")
+    if isinstance(raw, dict):
+        value = raw.get("value")
+        if isinstance(value, int) and not isinstance(value, bool) and value >= 0 \
+                and str(raw.get("unit") or "") in prism_core.TIME_COST_UNITS:
+            return {"value": value, "unit": str(raw["unit"])}
+    return {"value": 0, "unit": "minute"}
+
+
+def _action_actor(rules) -> dict:
+    """行动者（§4.2）：`active_unit_id`，空则 `party[0]`（同 `prism_guide.settle`）。"""
+    rules = rules if isinstance(rules, dict) else {}
+    party = [unit for unit in (rules.get("party") or []) if isinstance(unit, dict)]
+    active = str(rules.get("active_unit_id") or "")
+    picked = None
+    for unit in party:
+        if active and str(unit.get("id") or "") == active:
+            picked = unit
+            break
+    if picked is None and party:
+        picked = party[0]
+    return {"kind": "player", "id": str((picked or {}).get("id") or "")}
+
+
+def _action_party_ids(rules) -> list:
+    """本局队伍里的角色 id（§6.4 前置条件面：行动者必须是桌上的人）。"""
+    rules = rules if isinstance(rules, dict) else {}
+    return [str(unit.get("id") or "") for unit in (rules.get("party") or [])
+            if isinstance(unit, dict)]
+
+
+def _action_entity_ids(guide) -> set:
+    """本场可引用的实体 id（§9.5「目标不存在」的判据）。
+
+    来源是已绑定剧本的地点 / 人物 / 节点 / 线索四张表（`prism_guide.entity_index`）。
+    导引者模块缺失、或本局还没绑定剧本时是**空集**——此刻服务端无法证明
+    目标存在，按 §4.2「目标须能过实体引用校验」判 404，不猜。
+    """
+    if prism_guide is None:
+        return set()
+    try:
+        return set(prism_guide.entity_index(guide))
+    except Exception:      # noqa: BLE001 — 实体表读不出来不等于目标存在
+        return set()
+
+
+def _action_target_ref(value):
+    """把客户端给的 `params.target` 规范成 §4.2 的实体引用（没有 → `None`）。"""
+    if isinstance(value, dict):
+        entity_id = str(value.get("id") or "")
+        if not entity_id:
+            return None
+        return {"kind": str(value.get("kind") or "npc"), "id": entity_id}
+    entity_id = str(value or "").strip()
+    return {"kind": "npc", "id": entity_id} if entity_id else None
+
+
+# ── 第 1 段（显式路径）与服务端重验 ─────────────────────────────────────
+
+
+def _action_proposal_from_id(session, action_id, params) -> dict:
+    """显式行动 → 提案（§9.2 `mode: "action"`）：**一行模型都不调**（§7.1）。
+
+    行动表里没有这个 id → 404 `没有这个行动`；桌上还没有角色 → 409
+    `现在做不了`（§6.4 的前置条件面）。`params` 只透传 A1 契约里的
+    `dc_override` / `items_used` 与一个可选 `target` / `desired` / `means`
+    （§4.2 `params` 是**结构参数**，不是自由文本）。
+    """
+    entry = _action_scene_entry(session.rules, action_id)
+    if entry is None:
+        raise _ActionError(ACTION_NO_ACTION, 404)
+    actor = _action_actor(session.rules)
+    if not actor["id"]:
+        raise _ActionError(ACTION_NOT_NOW, 409)
+    params = params if isinstance(params, dict) else {}
+    proposal = prism_core.new_proposal(
+        actor=actor,
+        intent={"verb": str(entry.get("id") or action_id),
+                "target": _action_target_ref(params.get("target")),
+                "desired": str(params.get("desired") or entry.get("label")
+                               or action_id),
+                "means": str(params.get("means") or "")},
+        params={"dc_override": params.get("dc_override"),
+                "items_used": list(params.get("items_used") or [])},
+        source="action",
+        risk=_action_risk(session.rules, action_id),
+        time_cost=_action_time_cost(entry),
+        created_at=_action_now_ms(),
+    )
+    return proposal
+
+
+def _action_prepare_proposal(session, raw) -> dict:
+    """服务端**重验**客户端回带的提案（§9.2：永不信任回带的形状与实体）。
+
+    - 不是对象 / 形状过不了 A1 `validate_proposal` → 404 `没有这个提案`；
+    - 未知的更高 `schema_version` → 409 `版本不支持`（A1 的迁移惰性补齐
+      缺键、不覆盖已有值、不猜更高版本）；
+    - `intent.verb` 不在当前场景的行动表里 → 404 `没有这个行动`；
+    - `intent.target` 的实体引用在本场实体表里落不了地 → 404 `目标不存在`；
+    - 行动者不是本局队伍里的角色 → 409 `现在做不了`。
+    """
+    if not isinstance(raw, dict):
+        raise _ActionError(ACTION_NO_PROPOSAL, 404)
+    try:
+        proposal = prism_core.migrate_proposal(raw)
+    except ValueError:
+        raise _ActionError(ACTION_BAD_VERSION, 409)
+    if prism_core.validate_proposal(proposal):
+        raise _ActionError(ACTION_NO_PROPOSAL, 404)
+    intent = proposal.get("intent") if isinstance(proposal.get("intent"), dict) else {}
+    if _action_scene_entry(session.rules, intent.get("verb")) is None:
+        raise _ActionError(ACTION_NO_ACTION, 404)
+    target = intent.get("target")
+    if isinstance(target, dict) and str(target.get("id") or "") \
+            and str(target["id"]) not in _action_entity_ids(session.guide):
+        raise _ActionError(ACTION_NO_TARGET, 404)
+    actor_id = str((proposal.get("actor") or {}).get("id") or "")
+    if actor_id not in _action_party_ids(session.rules):
+        raise _ActionError(ACTION_NOT_NOW, 409)
+    return proposal
+
+
+# ── 第 4 段（结算）→ §8.2 钩子 → 第 5 段（提交）──────────────────────────
+
+
+def _action_roll_ref(roll) -> str:
+    """随机判定引用（§5.1 `rule_ref.roll_ref`）。
+
+    M8 没有随机流编号（事件层的 `roll_refs` 叙事归 M9 之后）；这里用**骰面
+    明细的规范化 JSON 摘要前 12 位**当引用——同一份骰面永远得到同一个
+    `roll_ref`，复盘时可逐字比对。没有掷骰（`auto_pass` / 纯叙述 / 幂等回放）
+    时是空串。
+    """
+    if not isinstance(roll, dict) or not roll:
+        return ""
+    blob = json.dumps(roll, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"))
+    return "rand_" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]
+
+
+def _action_result(proposal, perf, status, entry) -> dict:
+    """把结算产出拼成 §5.1 的行动结果（**提交之前**的草案）。
+
+    `costs` / `effects` 只放规则层真结算出来的**结构化**条目（时间 / 资源 /
+    活力 / 状态 / 奖励），不写自由文本；`event_ids` / `commit_ref` /
+    `committed` 由第 5 段（状态层提交）回填。险成（`partial`）的代价内容
+    在 M8 还没有裁定钩子（§5.2 / TODO(M3)），按契约在 `rule_ref` 注明
+    `pending_judgement`。
+    """
+    actor_id = str((proposal.get("actor") or {}).get("id") or "")
+    time_cost = proposal.get("time_cost") if isinstance(
+        proposal.get("time_cost"), dict) else {"value": 0, "unit": "minute"}
+    if int(time_cost.get("value") or 0) > 0:
+        costs = [{"kind": "time", "value": int(time_cost["value"]),
+                  "unit": str(time_cost.get("unit") or "minute")}]
+    else:
+        costs = []
+    failure = perf.get("cost") if isinstance(perf.get("cost"), dict) else {}
+    detail = failure.get("cost") if isinstance(failure.get("cost"), dict) else {}
+    for pool in ("focus", "strain"):
+        used = int(detail.get(pool) or 0)
+        if used:
+            costs.append({"kind": "resource", "pool": pool, "value": used,
+                          "target": actor_id})
+    damage = failure.get("damage") if isinstance(failure.get("damage"), dict) else {}
+    lost = int(damage.get("lost") or 0)
+    if lost:
+        costs.append({"kind": "vitality", "value": lost, "target": actor_id})
+    effects = []
+    for name in detail.get("conditions") or []:
+        effects.append({"kind": "condition", "target": actor_id, "add": str(name)})
+    for item in perf.get("granted") or []:
+        effects.append({"kind": "reward", "target": actor_id,
+                        "add": item.get("name", item) if isinstance(item, dict)
+                        else item})
+    roll = perf.get("roll") if isinstance(perf.get("roll"), dict) else None
+    rule_ref = {"version": ACTION_RULES_VERSION,
+                "df": int((entry or {}).get("df") or 0),
+                "roll_ref": _action_roll_ref(roll)}
+    if status == "partial":
+        rule_ref["pending_judgement"] = True
+    perf_status = str(perf.get("status") or "")
+    if perf_status and perf_status != "resolved":
+        rule_ref["perf"] = perf_status
+    return prism_core.new_result(
+        proposal_id=str(proposal.get("proposal_id") or ""),
+        actor=proposal.get("actor") or {"kind": "player", "id": ""},
+        status=status, costs=costs, effects=effects, time_cost=time_cost,
+        interrupt_conditions=list(proposal.get("interrupt_conditions") or []),
+        rule_ref=rule_ref,
+    )
+
+
+def _action_event_target(proposal):
+    """事件封套的 `target`（字符串或 `None`）：取提案的实体引用 id。"""
+    target = (proposal.get("intent") or {}).get("target")
+    entity_id = str((target or {}).get("id") or "") if isinstance(target, dict) else ""
+    return entity_id or None
+
+
+def _action_apply_commit(session, result, commit, new_rules) -> None:
+    """把状态层的 `CommitResult` 填进结果（§5.1 `event_ids` / `commit_ref`）。
+
+    - `committed`：事件已落盘 → 本局 `rules` 换成**提交后**的快照；
+    - `replayed`：状态层**持久**幂等索引命中了同一把键（本进程的临时层没
+      记住，例如重启后）——不写新事件、不改状态，只回填首次提交的引用
+      （§7.7：不重复掷骰 / 扣费 / 发奖）；
+    - 其余（`conflict` / `rejected`）：按 §9.5 的固定短语抛出。
+    """
+    commit = commit if isinstance(commit, dict) else {}
+    status = str(commit.get("status") or "")
+    if status not in ("committed", "replayed"):
+        code = str(commit.get("code") or "")
+        message = str(commit.get("message") or "")
+        if status == "conflict" and code == "幂等键冲突":
+            # 同一把键 + 不同载荷：本进程的临时幂等层没记住（重启），但该
+            # 提案**确实**已经提交过——按提案级幂等同口径拒绝，防重复副作用。
+            raise _ActionError(ACTION_ALREADY_COMMITTED, 409)
+        if status == "conflict":
+            raise _ActionError(ACTION_STALE_SEQ, 409)
+        raise _ActionError(
+            "服务器内部错误：状态层拒绝提交（%s）" % (message or code), 500)
+    if status == "committed":
+        session.rules = copy.deepcopy(new_rules)
+    result["event_ids"] = list(commit.get("event_ids") or [])
+    result["commit_ref"] = {
+        "commit_id": commit.get("commit_id"),
+        "seq_from": commit.get("seq_from"),
+        "seq_to": commit.get("seq_to"),
+        "state_digest": commit.get("state_digest"),
+    }
+    result["committed"] = True
+
+
+def _action_snapshot(rules, guide) -> dict:
+    """提交点冻结快照（§7.5）：在席时用 `prism_guide.commit_snapshot` 的值快照。"""
+    if prism_guide is not None:
+        return prism_guide.commit_snapshot(rules, guide)
+    return {"rules": copy.deepcopy(rules), "guide": copy.deepcopy(guide)}
+
+
+def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> dict:
+    """第 3–5 段 + 提交点冻结快照（§7 / §8.2 / §10.1），全程持**单局锁**。
+
+    「结算 → 提交 → 取提交后快照」是设计里那一小段临界区（§7.4 锁边界）；
+    模型调用不在其中——叙事段拿到的是值快照，在锁外跑。任何状态行之前的
+    失败都以 `_ActionError` 抛出。**已提交的结果不回滚**（§7.7）：落盘失败
+    只把 `saved` 置假，由流末的 `done` 如实回报。
+
+    返回 `{"result":…, "snapshot":…, "saved": bool}`。
+    """
+    with session.lock:
+        handle = session._handle or session._open_handle()   # 开句柄在锁内：并发不重开
+        current = _int_or(handle.view().get("seq"), 0)
+        if base_seq != current:
+            # §7.4：`base_seq` 过期 = 并发 / 传输层拒绝——**不结算、不落事件**。
+            raise _ActionError(ACTION_STALE_SEQ, 409)
+        action_id = str((proposal.get("intent") or {}).get("verb") or "")
+        entry = _action_scene_entry(session.rules, action_id)
+        if entry is None:
+            raise _ActionError(ACTION_NO_ACTION, 404)
+        # 4. 结算：PRISM 纯规则，一行模型都不调（§7.1）
+        live = prism_core.RuleSession.from_snapshot(session.rules)
+        try:
+            perf = prism_core.perform_action(live, action_id)
+        except prism_core.CombatLocked:
+            raise _ActionError(ACTION_COMBAT, 409)
+        except ValueError:
+            raise _ActionError(ACTION_NO_ACTION, 404)
+        status = prism_core.action_status(perf)
+        new_rules = live.snapshot()
+        result = _action_result(proposal, perf, status, entry)
+        errors = prism_core.validate_result(result)
+        if errors:
+            # 结果契约不过关就**不进提交**：状态层一旦落事件就不可回滚（§7.7）。
+            raise _ActionError(
+                "服务器内部错误：结果契约不成立（%s）" % "；".join(errors), 500)
+        # §8.2：结算之后、**提交之前**，排程钩子恰好一次
+        SCHEDULE_HOOK.enqueue(proposal, result, base_seq=base_seq)
+        # 5. 提交：状态层是唯一能改世界事实的出口（§10.1）——一次提交 = 一条事件
+        change = {"block": "rules", "op": "replace_block", "path": "",
+                  "before": copy.deepcopy(session.rules),
+                  "after": copy.deepcopy(new_rules)}
+        commit = handle.commit(
+            base_seq=base_seq, idempotency_key=idempotency_key,
+            type=ACTION_EVENT_TYPE,
+            actor=str((proposal.get("actor") or {}).get("id") or ""),
+            target=_action_event_target(proposal), changes=[change],
+            rules_version=ACTION_RULES_VERSION,
+            roll_refs=[result["rule_ref"]["roll_ref"]]
+            if result["rule_ref"].get("roll_ref") else [],
+            source="player")
+        _action_apply_commit(session, result, commit, new_rules)
+        # 6. 的输入：**提交点**的冻结快照（§7.5）——叙事只读这份副本
+        snapshot = _action_snapshot(session.rules, session.guide)
+        act_text = _turn_act_text(session, "", action_id)
+        if act_text:
+            session.add_log("act", act_text)
+        saved = True
+        try:
+            session.save()
+        except SaveError:
+            saved = False
+    return {"result": result, "snapshot": snapshot, "saved": saved}
+
+
+# ── 第 6 段（叙事，可选后置）与进程内短期记忆 ─────────────────────────────
+
+
+def _action_seq_to(result):
+    """结果里的提交版本（§7.5 `commit_ref.seq_to`）：叙事的归位基线。"""
+    ref = result.get("commit_ref")
+    return ref.get("seq_to") if isinstance(ref, dict) else None
+
+
+def _action_narrate(session, snapshot, result, text) -> dict:
+    """第 6 段（§7.2 / §7.3）：叙事只读**提交点冻结快照**，不改规则事实。
+
+    返回 `{"event": "narration"|"fallback", "payload": {…}, "usage": {…}}`。
+    `payload` 一定带 `action_id` 与 `seq_to`（§9.3：客户端据此把叙事挂回它
+    所属的行动、按提交版本归位）。失败 / 离线一律走 `fallback`（§7.3）：
+    `result` 已发、已提交，叙事绝不回滚它。
+    """
+    bind = {"action_id": result.get("action_id"), "seq_to": _action_seq_to(result)}
+    if prism_guide is None or not _action_guide_available():
+        return {"event": "fallback",
+                "payload": {"text": FALLBACK_NARRATION,
+                            "status": ACTION_TYPE_OFFLINE, **bind},
+                "usage": {}}
+    completion = None
+    try:
+        env = prism_guide.load_env()
+        messages = prism_guide.build_commit_messages(snapshot, text, result)
+        completion = prism_guide.call_narrative(messages, env=env)
+    except Exception:      # noqa: BLE001 — 上游失败不改整轮的已提交结果
+        completion = None
+    reviewed = None
+    if completion is not None:
+        try:
+            reviewed = prism_guide.review_narration(result, completion)
+        except Exception:   # noqa: BLE001
+            reviewed = None
+    if reviewed is None:
+        return {"event": "fallback",
+                "payload": {"text": _guide_fallback_text(result), **bind},
+                "usage": {}}
+    try:
+        redacted = prism_guide.redact_narration(reviewed, snapshot.get("guide"),
+                                                player_text=text,
+                                                rules=snapshot.get("rules"))
+    except Exception:       # noqa: BLE001 — 秘密门失败退回未经涂改的整段
+        redacted = reviewed
+    return {"event": "narration",
+            "payload": {"text": redacted,
+                        "beats": _guide_beats(redacted, snapshot.get("guide")),
+                        **bind},
+            "usage": (completion or {}).get("usage") or {}}
+
+
+def _action_guide_available() -> bool:
+    """叙事段可不可用（§5.3）：要 BASE_URL / MODEL / API_KEY 都非空。"""
+    try:
+        return bool(prism_guide.status().get("chat"))
+    except Exception:       # noqa: BLE001 — 环境读不出来按离线处理
+        return False
+
+
+def _action_store_narration(session, event, payload) -> bool:
+    """把叙事段写进会话（`narrate` 日志 + L3 transcript），返回是否落盘。
+
+    与旧 `turn` 路径同一口径：日志记的是**涂掉之后**的字（秘密门对日志同样
+    生效）；兜底句也记（玩家实际看到的就是它）。落盘失败不回滚已提交的结果
+    （§7.7），由流末的 `done` 如实回报。
+    """
+    with session.lock:
+        if event == "narration":
+            transcript = session.guide.get("transcript")
+            if not isinstance(transcript, list):
+                transcript = session.guide["transcript"] = []
+            transcript.append({"role": "assistant",
+                               "content": str(payload.get("text") or "")})
+            session.guide["last_beats"] = payload.get("beats") or []
+            stats = session.guide.get("stats")
+            if isinstance(stats, dict):
+                stats["calls"] = int(stats.get("calls") or 0) + 1
+        session.add_log("narrate", str(payload.get("text") or ""))
+        try:
+            session.save()
+        except SaveError:
+            return False
+    return True
+
+
+def _action_base_seq(session) -> int:
+    """当前状态层的 `seq`（§12.1）——提案 / 提交的乐观并发基线。
+
+    句柄没打开时**就地打开**：新档建创世检查点、老档按 §10 惰性迁移，下一句
+    读到的才是真实序号（迁移会补一条事件，`seq` 从 0 变 1——猜一个「大概是 0」
+    会让第一次 commit 直接吃 409）。本函数只在 `propose` 里调用（POST）；
+    只读路由（catalog）不为读一个数碰磁盘。
+    """
+    handle = session._handle or session._open_handle()
+    return _int_or(handle.view().get("seq"), 0)
+
+
+def _action_costs_preview(proposal) -> list:
+    """`costs_preview`（§9.2 / §6.4）：只列**已知**的成本与耗时。
+
+    资源 / 状态代价要等结算（M8 不预支规则判定），所以这里只有时间成本。
+    """
+    time_cost = proposal.get("time_cost")
+    time_cost = time_cost if isinstance(time_cost, dict) else {}
+    value = int(time_cost.get("value") or 0)
+    return ([{"kind": "time", "value": value,
+              "unit": str(time_cost.get("unit") or "minute")}]
+            if value > 0 else [])
+
+
+def _action_propose_payload(session, proposal) -> dict:
+    """提案回执（§9.2）：提案 + 风险级 + 是否要确认 + 成本预览 + 并发基线。"""
+    errors = prism_core.validate_proposal(proposal)
+    if errors:
+        raise _ActionError(
+            "服务器内部错误：提案契约不成立（%s）" % "；".join(errors), 500)
+    risk = str(proposal.get("risk") or "")
+    with session.lock:
+        # 基线要在同一把锁里读（句柄可能还没打开，开它要碰磁盘 / 迁移老档）。
+        base_seq = _action_base_seq(session)
+    return {"status": "ok", "type": ACTION_TYPE_PROPOSAL,
+            "proposal": proposal, "needs_confirm": _action_is_confirm_risk(risk),
+            "risk": risk, "costs_preview": _action_costs_preview(proposal),
+            "base_seq": base_seq}
+
+
+def _action_clarify_put(sid, clarify, text) -> str:
+    """记下一次澄清（§6.3）：回答时要拿它的原文并入草案。返回 `clarify_id`。"""
+    if not isinstance(clarify, dict):
+        return ""
+    clarify_id = str(clarify.get("clarify_id") or "")
+    if not clarify_id:
+        return ""
+    now = _action_now_ms()
+    with _ACTION_LOCK:
+        _action_prune(now)
+        _action_clarifies[(str(sid), clarify_id)] = {
+            "clarify": copy.deepcopy(clarify), "text": str(text or ""), "ts": now}
+    return clarify_id
+
+
+def _action_clarify_take(sid, clarify_id) -> dict:
+    """取一次未过期的澄清；过期 / 没有过按「不存在」处理（404 `没有这个提案`）。"""
+    now = _action_now_ms()
+    key = (str(sid), str(clarify_id))
+    with _ACTION_LOCK:
+        record = _action_clarifies.get(key)
+        if record is None:
+            return None
+        if now - int(record.get("ts") or 0) > ACTION_CLARIFY_TTL_S * 1000:
+            _action_clarifies.pop(key, None)
+            return None
+        return copy.deepcopy(record)
+
+
+def _action_confirm_issue(sid, proposal_id) -> dict:
+    """发一枚确认令牌（§6.4）：同一提案重复确认复用未过期的那一枚。"""
+    now = _action_now_ms()
+    key = (str(sid), str(proposal_id))
+    with _ACTION_LOCK:
+        _action_prune(now)
+        record = _action_confirms.get(key)
+        if record is not None:
+            return copy.deepcopy(record)
+        record = {"token": "cf_" + secrets.token_hex(16),
+                  "expires_at": now + int(ACTION_CONFIRM_TTL_S * 1000)}
+        _action_confirms[key] = dict(record)
+        return dict(record)
+
+
+def _action_confirm_check(sid, proposal_id, token) -> bool:
+    """校验确认令牌：缺 / 错 / 过期一律不通过（§9.5 → 409 `需要确认`）。"""
+    now = _action_now_ms()
+    key = (str(sid), str(proposal_id))
+    with _ACTION_LOCK:
+        record = _action_confirms.get(key)
+        if record is None or now > int(record.get("expires_at") or 0):
+            _action_confirms.pop(key, None)
+            return False
+        return bool(token) and str(record.get("token") or "") == str(token)
+
+
+def _action_confirm_cancel(sid, proposal_id) -> None:
+    """取消一次待确认（§6.4）：丢掉令牌——「取消」就是不提交。"""
+    with _ACTION_LOCK:
+        _action_confirms.pop((str(sid), str(proposal_id)), None)
+
+
+def _action_idem_get(sid, key):
+    """幂等查表（§7.7）：**任何结算之前**调用；命中即返回首次结果。"""
+    now = _action_now_ms()
+    record_key = (str(sid), str(key))
+    with _ACTION_LOCK:
+        record = _action_idem.get(record_key)
+        if record is None:
+            return None
+        if now - int(record.get("ts") or 0) > ACTION_IDEM_TTL_S * 1000:
+            _action_idem.pop(record_key, None)
+            return None
+        return copy.deepcopy(record.get("payload"))
+
+
+def _action_idem_put(sid, key, payload) -> None:
+    """记下首次结果（§9.4）：同会话 + 同键的重复 `commit` 回这一份。"""
+    now = _action_now_ms()
+    with _ACTION_LOCK:
+        _action_prune(now)
+        _action_idem[(str(sid), str(key))] = {
+            "payload": copy.deepcopy(payload), "ts": now}
+
+
+def _action_is_committed(sid, proposal_id) -> bool:
+    """同一 `proposal_id` 是否已提交过（§9.4 提案级幂等：防「换个键再赌一次」）。"""
+    now = _action_now_ms()
+    with _ACTION_LOCK:
+        record = _action_committed.get((str(sid), str(proposal_id)))
+    return bool(record) and now - int(record.get("ts") or 0) \
+        <= ACTION_IDEM_TTL_S * 1000
+
+
+def _action_mark_committed(sid, proposal_id) -> None:
+    """记下已提交的 `proposal_id`（与首次结果同一生命周期）。"""
+    now = _action_now_ms()
+    with _ACTION_LOCK:
+        _action_committed[(str(sid), str(proposal_id))] = {"ts": now}
+
+
+def _wants_json(accept) -> bool:
+    """`Accept: application/json`（且没点名 SSE）时回**非流式**结果（§9.3）。"""
+    text = str(accept or "").lower()
+    return "application/json" in text and "text/event-stream" not in text
+
+
+# --------------------------------------------------------------------------
 # HTTP 骨架
 # --------------------------------------------------------------------------
 
@@ -1277,6 +2032,9 @@ class Handler(BaseHTTPRequestHandler):
                 with s.lock:
                     view = rules_view(s)
                 return self._json(view)
+            if path == "/api/action/catalog":
+                # 当前可用行动单（§9.1）：只读，不结算也不开状态层句柄。
+                return self._action_catalog()
             if path == "/api/atlas/exits":
                 # 查看当前地点的出口：返回文本出口列表（不是图片，§2）。
                 # 只读接口：不 save()，不改写存档。
@@ -1288,6 +2046,12 @@ class Handler(BaseHTTPRequestHandler):
             if rel:
                 return self._static(rel)
             self._err("未知路径", 404)
+        except _ActionError as e:
+            # 行动管线的固定错误（§9.5）：短语 + 仅状态行之前可用的码。
+            self._err(e.phrase, e.code)
+        except SaveError:
+            # 存档落盘失败（含开句柄 / 老档迁移）：如实回报，不谎报成功。
+            self._err("保存失败，请重试", 500)
         except ValueError as e:
             self._err(str(e), 400)
         except Exception as e:  # noqa: BLE001 — 单个请求出错不该带走整个服务
@@ -1307,6 +2071,15 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/guide/speak":
                 return self._guide_speak(b)
+
+            if path == "/api/action/propose":
+                return self._action_propose(b)
+
+            if path == "/api/action/confirm":
+                return self._action_confirm(b)
+
+            if path == "/api/action/commit":
+                return self._action_commit(b)
 
             if path == "/api/room/create":
                 return self._room_create(b)
@@ -1392,6 +2165,9 @@ class Handler(BaseHTTPRequestHandler):
 
             # TODO(M3)：PRISM 会话 / 结算等写入接口在此追加（路径 if 链）。
             return self._err("未知接口", 404)
+        except _ActionError as e:
+            # 行动管线的固定错误（§9.5）：短语 + 仅状态行之前可用的码。
+            self._err(e.phrase, e.code)
         except ValueError as e:
             self._err(str(e), 400)
         except Exception as e:  # noqa: BLE001
@@ -1719,6 +2495,193 @@ class Handler(BaseHTTPRequestHandler):
             self._sse_close()       # 零长度块收尾：空合成也是一条完整的流
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # ── 行动管线（M8-A3，ACTION-DESIGN §9）──────────────────
+    def _action_catalog(self):
+        """`GET /api/action/catalog`（§9.1）：当前可用行动单（id / 标签 / 风险级）。
+
+        只读：不结算、不提交、**不为读一个数打开状态层句柄**（开句柄会碰磁盘，
+        老档还会就地迁移）。离线（无 AI / 导引者模块缺失）时照常可用——行动单
+        直接来自规则快照的场景行动表（§7.1）。
+        """
+        session = self._sess()
+        with session.lock:
+            actions = _action_menu(session.rules)
+        return self._json({"status": "ok", "actions": actions})
+
+    def _action_propose(self, body: dict):
+        """`POST /api/action/propose`（§9.2）：NL 或显式动作 → 提案 / 澄清 / 拒绝。
+
+        `mode: "action"`（显式 `action_id`）**一行模型都不调**，所以没有 AI
+        配置时也走得通（§7.1 离线底线）；`mode: "nl"` 交 `prism_guide.propose_nl`
+        （第 1 段），导引者缺失或没有 AI 配置时回 `{"status": "offline",
+        "type": "offline"}`（200，**不是错误**，§9.5）。
+
+        回执里的 `base_seq` 是**这一刻**的状态层序号：客户端 `commit` 时原样
+        带回，状态层按它做乐观并发（§9.3 / §7.4）。提案本身无状态透明——
+        服务端不做提案缓存，`commit` 时重验回带的提案（§9.2）。
+        """
+        session = self._sess()
+        if not _rate_ok(session.sid, "action_propose", ACTION_PROPOSE_LIMIT):
+            return self._err(ACTION_TOO_FREQUENT, 429)
+        mode = str(body.get("mode")
+                   or ("action" if body.get("action_id") else "nl"))
+        if mode == "action":
+            with session.lock:
+                proposal = _action_proposal_from_id(session, body.get("action_id"),
+                                                    body.get("params"))
+            return self._json(_action_propose_payload(session, proposal))
+        return self._action_propose_nl(session, body)
+
+    def _action_propose_nl(self, session, body: dict):
+        """`mode: "nl"` 的第 1 段：交 `prism_guide.propose_nl`，本层只翻 HTTP。
+
+        带 `clarify_id` 时是**同一个澄清回合的回答**（§6.3）：取回那次澄清
+        （过期 / 没见过 → 404 `没有这个提案`），把回答并入草案重新解析；仍歧义
+        由 A2 降级为拒绝，本层不再二次追问。
+        """
+        if prism_guide is None:
+            # §9.5：导引者缺失**不是错误**——200 + `type: "offline"`，提示改用
+            # `mode: "action"`（显式行动不需要 AI）。
+            return self._json({"status": ACTION_TYPE_OFFLINE,
+                               "type": ACTION_TYPE_OFFLINE})
+        text = str(body.get("text") or "")
+        clarify = None
+        answer = ""
+        clarify_id = str(body.get("clarify_id") or "").strip()
+        if clarify_id:
+            record = _action_clarify_take(session.sid, clarify_id)
+            if record is None:
+                return self._err(ACTION_NO_PROPOSAL, 404)
+            clarify = record["clarify"]
+            text = str(record.get("text") or "")     # 回答路径沿用第一次的原文
+            answer = str(body.get("answer") or body.get("text") or "")
+        with session.lock:
+            rules = copy.deepcopy(session.rules)
+            guide = copy.deepcopy(session.guide)
+        out = prism_guide.propose_nl(rules, guide, text,
+                                     clarify=clarify, answer=answer)
+        out = out if isinstance(out, dict) else {}
+        kind = str(out.get("type") or "")
+        if kind == ACTION_TYPE_PROPOSAL:
+            return self._json(_action_propose_payload(session, out.get("proposal")))
+        if kind == ACTION_TYPE_CLARIFY:
+            _action_clarify_put(session.sid, out.get("clarify"), text)
+            return self._json({"status": "ok", "type": ACTION_TYPE_CLARIFY,
+                               "clarify": out.get("clarify")})
+        if kind == ACTION_TYPE_OFFLINE:
+            return self._json({"status": ACTION_TYPE_OFFLINE,
+                               "type": ACTION_TYPE_OFFLINE})
+        # 拒绝：A2 给的是 §9.5 的固定短语，本层只翻状态码（404 / 404 / 403）。
+        reason = str(out.get("reason") or ACTION_FORBIDDEN)
+        return self._err(reason, ACTION_REJECT_CODES.get(reason, 403))
+
+    def _action_confirm(self, body: dict):
+        """`POST /api/action/confirm`（§6.4 / §9.1）：R2–R4 提案的确认或取消。
+
+        `decision: "confirm"`（缺省即确认）发一枚确认令牌，客户端把它带进
+        `commit`；`decision: "cancel"` 丢弃该提案的令牌——R2–R4 的「取消」就是
+        不提交（M8 的同步行动没有可取消的已排程行动，§4.1）。
+
+        提案是**无状态透明**的（服务端不做提案缓存），所以这里只校验 id 形状：
+        形状不对 → 404 `没有这个提案`；确认令牌的有效期由本层管（过期 →
+        `commit` 回 409 `需要确认`）。
+        """
+        session = self._sess()
+        proposal_id = str(body.get("proposal_id") or "")
+        if not ACTION_PROPOSAL_ID_RE.fullmatch(proposal_id):
+            return self._err(ACTION_NO_PROPOSAL, 404)
+        if str(body.get("decision") or "confirm") == "cancel":
+            _action_confirm_cancel(session.sid, proposal_id)
+            return self._json({"status": "ok", "type": ACTION_TYPE_CANCELLED,
+                               "proposal_id": proposal_id})
+        record = _action_confirm_issue(session.sid, proposal_id)
+        return self._json({"status": "ok", "proposal_id": proposal_id,
+                           "confirm_token": record["token"],
+                           "expires_at": record["expires_at"]})
+
+    def _action_commit(self, body: dict):
+        """`POST /api/action/commit`（§9.3）：验证 → 结算 → 提交 →（可选）叙事。
+
+        状态行（唯一一行 HTTP 状态）写出**之前**依次做完（§9.5 / §7.7）：会话
+        → 幂等键 → **幂等查表**（任何结算之前短路，命中即回首次结果）→ 提案
+        重验 → 速率 → 提案级幂等（同 `proposal_id` 无新键 → 409）→ 确认令牌
+        → 第 3–5 段（结算 + 状态层提交）。此后一律走 SSE：`result` 一定早于
+        `narration`（§3.3 硬边界），叙事失败只发 `fallback`，**绝不发第二行
+        HTTP 状态**。
+        """
+        sid = (self.headers.get("X-Session") or "").strip()
+        session = get_session(sid) if sid else None
+        if not session:
+            return self._err(ACTION_NO_SESSION, 400)
+        key = str(self.headers.get("Idempotency-Key") or "").strip()
+        if not ACTION_IDEM_KEY_RE.fullmatch(key):
+            return self._err(ACTION_BAD_IDEM_KEY, 400)
+        replay = _action_idem_get(sid, key)
+        if replay is not None:
+            # §7.7：同会话 + 同键的重放**不结算、不写事件**，直接回首次结果。
+            return self._action_respond(session, {"result": replay, "snapshot": None,
+                                                 "saved": True}, "", replayed=True)
+        proposal = _action_prepare_proposal(session, body.get("proposal"))
+        if not _rate_ok(sid, "action_commit", ACTION_COMMIT_LIMIT):
+            return self._err(ACTION_TOO_FREQUENT, 429)
+        proposal_id = str(proposal.get("proposal_id") or "")
+        if _action_is_committed(sid, proposal_id):
+            # §9.4 提案级幂等：换个键再赌一次也不行（防误连点 / 防重复发奖）。
+            return self._err(ACTION_ALREADY_COMMITTED, 409)
+        if _action_is_confirm_risk(proposal.get("risk")):
+            token = str(body.get("confirm_token") or "")
+            if not ACTION_CONFIRM_TOKEN_RE.fullmatch(token) \
+                    or not _action_confirm_check(sid, proposal_id, token):
+                return self._err(ACTION_NEED_CONFIRM, 409)
+        base_seq = body.get("base_seq")
+        if not isinstance(base_seq, int) or isinstance(base_seq, bool) \
+                or base_seq < 0:
+            # §9.3 的 `base_seq` 是「提交方读到的最新 seq」——回 `propose` 给的
+            # 那一个；缺 / 不是整数一律按过期处理（重读状态再提，§7.4）。
+            return self._err(ACTION_STALE_SEQ, 409)
+        out = _action_settle_commit(session, proposal, base_seq=int(base_seq),
+                                    idempotency_key=key)
+        _action_idem_put(sid, key, out["result"])
+        _action_mark_committed(sid, proposal_id)
+        text = str(proposal.get("raw_text")
+                   or (proposal.get("intent") or {}).get("desired") or "")
+        return self._action_respond(session, out, text, replayed=False)
+
+    def _action_respond(self, session, out, text, *, replayed):
+        """把（已提交的）结果发回去：默认 SSE，`Accept: application/json` 回整段。
+
+        SSE 顺序（§9.3）：`result` → `narration`（或 `fallback`）→ `usage` →
+        `done`。幂等重放（`replayed`）**不再跑叙事段**（§7.7 重放 ≠ 重结算），
+        只回首次结果并在 `done` 上标 `replayed`；`saved` 为假（提交已成功但门面
+        没落盘）时 `done` 如实回报 `save_failed`，绝不谎报成功。
+        """
+        result = out["result"]
+        if _wants_json(self.headers.get("Accept") or ""):
+            return self._json(result)
+        try:
+            self._begin_stream()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        try:
+            self._sse("result", result)
+            if replayed:
+                self._sse("done", {"status": "ok", "replayed": True})
+                self._sse_close()
+                return
+            narration = _action_narrate(session, out.get("snapshot"), result, text)
+            self._sse(narration["event"], narration["payload"])
+            if narration["event"] == "narration":
+                self._sse("usage", narration["usage"])
+            saved = bool(out.get("saved")) and _action_store_narration(
+                session, narration["event"], narration["payload"])
+            if saved:
+                self._sse("done", {"status": "ok"})
+            else:
+                self._sse("done", {"status": "error", "reason": "save_failed"})
+            self._sse_close()
+        except (BrokenPipeError, ConnectionResetError):
+            pass                # 客户端中途断线（锁屏 / 切网）不该让服务端报错
 
     # ── 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）──────────
     def _session_create(self):
