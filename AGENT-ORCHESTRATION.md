@@ -43,7 +43,8 @@
   **人的指定 / 指定运行模式 / 缩小授权的权力始终不变。**
 - **进度跟踪**：维护每个任务的状态（§2），保证状态可从 GitHub 重建（§3.3）。
 - **独立审查**：对照 Issue 的验收标准**逐条**核对（§4），**不采信自报**。
-- **合并决策**：作为**唯一**被授权执行合并的角色，在合并闸门（§4.4）全部通过后合并并删除远端分支。
+- **合并决策**：作为**唯一**被授权执行合并的角色，在合并闸门（§4.4）全部通过后合并；
+  合并确认后按 §2.1.1 收尾**远端分支清理**（合并与清理是**两个独立操作**）。
 - **阶段汇报**：按 §6 的最小格式汇报。
 
 **不做**（越权红线，见 `AGENTS.md` §3）：
@@ -100,8 +101,42 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 | `PR_OPEN` | Draft PR 存在，实现进行中 | 分支已推送，Draft PR 已开 | 作者宣布交回复核（已 rebase + 重跑回归）→ `MASTER_REVIEW` | Execution Subagent |
 | `MASTER_REVIEW` | 独立审查中 | PR 已有可复核的 head；CI 有结论 | 逐条通过 → `APPROVED`；有缺陷 → 退回 `DISPATCHED`（修复轮次 +1，§4.5）；超上限 → `BLOCKED` | **Master** |
 | `APPROVED` | 验收通过，可合并 | §4 全部闸门通过，且 `APPROVED` 时记录的 head SHA 与待合并 head 一致 | 合并 → `MERGED` | **Master** |
-| `MERGED` | 已合入 `master`，远端分支已删 | 合并成功 + 删除远端分支 | 在合并结果上完成验证 → `VERIFIED` | Master |
-| `VERIFIED` | 结果已在 `master` 上得到验证 | 在**合并后**的 `master` 上重跑约定验证并记录证据 | 终态 | Master |
+| `MERGED` | **合并已确认成功**（`master` 上可见该合并事实：`mergedAt` / 合并 commit SHA 可核验）；**不代表**远端分支已清理 | **合并成功**（GitHub 可核验）；**不要求**已删远端分支 | 在**合并后的 `master`** 上完成验证 → `VERIFIED`；远端分支清理按 §2.1.1 **独立跟踪** | Master |
+| `VERIFIED` | 结果已在 `master` 上得到验证 | 在**合并后**的 `master` 上重跑约定验证并记录证据（**不以清理是否完成为依据**） | 终态 | Master |
+
+### 2.1.1 合并后的清理状态（`cleanup` 字段，与任务状态正交）
+
+`MERGED` **只表示「合并已确认成功」**。远端分支清理是**独立于任务状态的收尾项**，用单独的
+`cleanup` 字段记录——**不得**把「分支是否已删」混入 `MERGED` 的成立条件。两者**正交**：
+合并确认后任务即进入 `MERGED`，**无论清理是否完成**。
+
+| `cleanup` 值 | 含义 | 进入条件 | 恢复 / 前进条件 |
+|---|---|---|---|
+| `不适用` | 尚未合并，清理项不存在 | 任务未到 `MERGED` | — |
+| `cleanup_pending` | 合并已确认，远端分支**尚未确认删除** | 合并成功，但删分支尚未执行 / 尚未成功 | 成功删除，或确认分支**本已不存在**（幂等成功）→ `cleanup_complete` |
+| `cleanup_complete` | 远端分支删除**已确认完成** | 删除成功，或分支**本已不存在**（幂等成功） | 终态 |
+| `cleanup_blocked` | 清理被**不可自愈**的障碍阻塞，需显式报告 | 权限不足 / 受保护分支规则阻止删除，或暂时性错误**有限重试耗尽** | 障碍消除（授权 / 调整保护规则 / 人工删除）→ `cleanup_complete` |
+
+**各情形处理**（**绝不**仅为删分支失败而重新执行 merge）：
+
+1. **删除成功** → `cleanup_complete`；提示其他机器 `git fetch --prune`。
+2. **删除失败（暂时性网络 / 服务错误）** → **有限重试**（默认上限 **3 次**，与 §4.5 修复轮次同口径），
+   每次记录命令与结果；重试成功 → `cleanup_complete`；**重试耗尽仍未成功 → `cleanup_blocked`**。
+3. **分支已不存在**（远端已无该 ref）→ 按**幂等成功**处理 → `cleanup_complete`；**不**视为错误、
+   **不**重试、**不**重新合并。
+4. **权限不足 / 受保护分支规则阻止删除** → **不盲试**（不得反复重试）；**显式报告并阻塞**，
+   记 `cleanup_blocked`，写明命令、错误与所需人工处置（如由有权限者删除 / 调整保护规则），
+   并列入汇报「人类需要处理的动作」（§6.2 第 6 项）。
+5. **绝不**因为删分支失败而**回退 `MERGED`、重新执行 merge、或把已合并 PR 记为未合并**
+   （§2.3 第 7 条）。合并事实以 GitHub 为准，清理失败只是**待收尾项**。
+
+**记录与汇报**：`cleanup` 状态**必须保留在活动任务登记**（§3.4）与阶段汇报（§6.2）中；
+未完成的清理项（`cleanup_pending` / `cleanup_blocked`）**不得被隐瞒**、**不得**写成已完成
+（§6.2 第 3 / 5 项）。
+
+> **与 `MERGED → VERIFIED` 的关系**：`MERGED → VERIFIED` 以**合并后的 `master` 上的验证结果**为
+> 依据，**不以清理是否完成**为依据；`cleanup_blocked` **不阻止**进入 `VERIFIED`，但**必须**作为
+> 未决项保留在登记与汇报中，必要时**开 Issue 跟踪**（不静默搁置，§2.3 第 5 条）。
 
 ### 2.2 非成功终态
 
@@ -126,6 +161,9 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
    **spawn 成功并返回可寻址句柄**（§5.2 C1 / §5.3）。**不得**把「已计划」「已产出交接包」
    或「已发出文字指令」写成 `DISPATCHED`；单会话能力探测失败时必须走**多会话降级路径**（§5.4），
    而**不是**假装已派发。
+7. **合并与清理分离**：`MERGED` 只以**合并成功**为准（GitHub 可核验），**不以**远端分支是否已删
+   为准；删分支失败**不得**回退状态、**不得**重新执行 merge、**不得**把已合并 PR 记为未合并。
+   远端分支清理按 §2.1.1 的 `cleanup` 字段**独立记录、独立恢复**，未完成项必须在登记与汇报中保留。
 
 ---
 
@@ -205,6 +243,7 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 - 执行实例标识 / 句柄：<平台句柄；平台不提供或未启动则写「不适用」>
 - 分支名：<分支名 / 尚未创建>
 - PR：<#<n> / 尚未开 PR>
+- 清理状态（cleanup）：<不适用（未合并）/ cleanup_pending / cleanup_complete / cleanup_blocked（见 §2.1.1）>
 - 派发时间：<YYYY-MM-DD HH:MM 时区>
 - 最近更新时间：<YYYY-MM-DD HH:MM 时区>
 - 当前阻塞 / 失败原因：<原因 / 无>
@@ -219,8 +258,13 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 3. **Draft PR 创建后补充**：`PR_OPEN` 时补分支名与 PR 编号，刷新最近更新时间。
 4. **事件更新**：交回复核（`MASTER_REVIEW`）、阻塞（`BLOCKED`）、失败（`FAILED`）、**取消**、
    合并（`MERGED`）等**每个事件都更新一次**登记，写明原因与最近更新时间。
-5. **释放**：确认任务已终止 / 取消，或**完成合并及必要收尾**后，更新为终态
+   合并事件须同时写入 `cleanup` 状态（§2.1.1）——合并确认时置 `cleanup_pending`，
+   删除成功 / 分支已不存在时置 `cleanup_complete`，权限 / 保护规则或重试耗尽时置 `cleanup_blocked`。
+5. **释放**：确认任务已终止 / 取消，或**合并已确认**后，更新为终态
    （`MERGED` / `FAILED` / `VERIFIED` / 已取消），该登记对应的锁即释放。
+   **文件锁以「合并已确认」为释放判据**——合并后该分支的改动已进入 `master`，不再产生新的同文件改动；
+   但 `cleanup` **不是**释放锁的前提，**也不是**可以省略的项：`cleanup_pending` / `cleanup_blocked`
+   期间**必须**在登记里保留 `cleanup` 字段，并在阶段汇报中列出未完成清理项（§2.1.1 / §6.2）。
 
 **恢复与释放锁规则（新 Master 必做）**：
 
@@ -279,7 +323,10 @@ Master 只读 **Issue** 与 **PR**，并要求：
 | G6 | 风险已处置 | 未完成项、风险、权限 / 迁移 / 环境变量变化**已明确处理**（说明或开 Issue 跟踪），需人的已升级为 `NEEDS_HUMAN_DECISION` |
 
 - 合并**只能由 Master Agent 执行**；Execution Subagent 一律不合并。
-- 合并后**删除远端分支**，并使其他机器 `git fetch --prune`。
+- 合并确认后**按 §2.1.1 清理远端分支**（删除成功 / 分支已不存在 → `cleanup_complete`），
+  并使其他机器 `git fetch --prune`。
+- **合并与清理分离**：删分支失败**不**影响 `MERGED` 成立、**不**触发重复合并；清理失败按
+  §2.1.1 有限重试或显式阻塞（`cleanup_blocked`），并保留在登记与汇报中（G6 未完成项）。
 
 ### 4.5 修复循环与重试上限
 
@@ -349,7 +396,7 @@ Master 只读 **Issue** 与 **PR**，并要求：
 | E1 | **阶段必需项已验证完成** | 该阶段所有必需任务均达到 `VERIFIED`（或在合并后的 `master` 上验证通过），且有证据 |
 | E2 | **依赖与 CI 状态满足要求** | 前置依赖已合入 `master`；相关 PR / `master` 的 CI 四门为绿 |
 | E3 | **无未决人类决策** | 不存在未处理的 `NEEDS_HUMAN_DECISION`；需人拍板的已升级并登记 |
-| E4 | **无未消解的阻塞 / 失败** | 不存在未处理的 `BLOCKED` / `FAILED`；若存在，必须已登记原因与恢复条件并纳入下阶段 |
+| E4 | **无未消解的阻塞 / 失败** | 不存在未处理的 `BLOCKED` / `FAILED`，也不存在未完成的清理项（`cleanup_blocked` / `cleanup_pending`）；若存在，必须已登记原因与恢复条件并纳入下阶段（§2.1.1） |
 | E5 | **下一阶段状态已登记** | 下一阶段的 Issue 已在 GitHub 开出 / 登记，依赖与并行关系已注明 |
 
 > 出口条件**不因「时间到了」或「大部分做完」而放宽**；未满足即阶段未完成。
@@ -359,11 +406,16 @@ Master 只读 **Issue** 与 **PR**，并要求：
 每次阶段汇报**至少**包含以下六项（缺失即视为汇报不完整）：
 
 1. **本阶段范围与状态**：范围 + 每个任务的状态（§2）。
-2. **已合并事项**：逐条列 `PR #N（Issue #M）`。
-3. **仍阻塞事项**：逐条列状态（`BLOCKED` / `NEEDS_HUMAN_DECISION` / `FAILED`）、原因、恢复条件。
+2. **已合并事项**：逐条列 `PR #N（Issue #M）`，并标注其 `cleanup` 状态（§2.1.1，如
+   `cleanup_complete` / `cleanup_pending` / `cleanup_blocked`）——**不得**把 `cleanup_pending` /
+   `cleanup_blocked` 写成已完成，**不得隐瞒**未完成的清理项。
+3. **仍阻塞事项**：逐条列状态（`BLOCKED` / `NEEDS_HUMAN_DECISION` / `FAILED`）与**未完成的清理项**
+   （`cleanup_blocked` / `cleanup_pending`）、原因、恢复条件。
 4. **验证证据**：真跑过的命令 + 结果（对应 E1 / E2）。
-5. **未解决风险**：包括新依赖 / 迁移 / 权限 / 环境变量 / 公开行为变化。
-6. **下一阶段 / 人类需要处理的动作**：明确「谁、做什么」，以及是否已降级为多会话交接（§5.4）。
+5. **未解决风险**：包括新依赖 / 迁移 / 权限 / 环境变量 / 公开行为变化，以及未完成的清理项
+   （权限 / 保护规则导致的 `cleanup_blocked` 归此类）。
+6. **下一阶段 / 人类需要处理的动作**：明确「谁、做什么」，以及是否已降级为多会话交接（§5.4）；
+   `cleanup_blocked` 所需的人工处置（授权 / 调整保护规则 / 人工删除）在此列明。
 
 ---
 
@@ -376,8 +428,9 @@ DISPATCHED ──开 Draft PR──► PR_OPEN    DISPATCHED ──实例失败/
 PR_OPEN ──交回复核──► MASTER_REVIEW
 MASTER_REVIEW ──闸门通过──► APPROVED   MASTER_REVIEW ──有缺陷──► DISPATCHED（轮次 +1）
 MASTER_REVIEW ──轮次达上限 3──► BLOCKED
-APPROVED ──head 变更──► MASTER_REVIEW  APPROVED ──Master 合并──► MERGED
-MERGED ──合并后验证──► VERIFIED
+APPROVED ──head 变更──► MASTER_REVIEW  APPROVED ──Master 合并成功──► MERGED
+MERGED ──合并后 master 验证──► VERIFIED
+MERGED/VERIFIED ──cleanup 独立跟踪（§2.1.1，正交于任务状态）──► cleanup_pending → cleanup_complete（或 cleanup_blocked，待人工处置）
 任意状态 ──需人拍板──► NEEDS_HUMAN_DECISION ──人已决定──► 按其结论回到 READY / MASTER_REVIEW
 BLOCKED / FAILED ──恢复条件满足──► READY（或 MASTER_REVIEW）
 ```
