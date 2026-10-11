@@ -3,7 +3,8 @@
 > 状态：Draft。**本文只定设计与拆单，不含实现**——实现按 §6 的「拆单建议」另行开单。
 > 日期：2026-10-10。
 > 读者：Master Agent（据此拆单）、Execution Agent（照做）。
-> 依据：`static/index.html` / `static/app.js` / `static/app.css`（骨架，PR #118）、
+> 依据：`static/index.html` / `static/js/*.js` / `static/css/*.css`（U0 切分后的前端；
+> 骨架原为单文件 `static/app.js` / `static/app.css`，PR #118——旧名仅指该历史形态）、
 > `notdnd_web.py`（现有 `/api/*` 路由）、`prism_core.py`（规则快照与判定档位）、
 > `prism_guide.py`（导引者事件与切拍）、`MASTER.md` §4、`GDD-BASELINE.md` §2 D2 / §7。
 > 未推送到远端的本文按 `AGENTS.md` 不能当作交接；进 GitHub 后以 issue / PR 为准。
@@ -54,21 +55,21 @@
 
 | 已定的事 | 出处 | 本设计怎么用 |
 |---|---|---|
-| 三视图 `#v-lobby` / `#v-play` / `#v-settings`，显隐只由 `.is-on` 控制 | `index.html:29/56/87`；`app.css:130`；`app.js:69` | 保持。新增面板走浮层，不新增视图（§1.2 决定 4） |
-| 主画面是**单一滚动容器** `#playScroll`：剧情卡 → 叙事流 → 行动区共用一根滚动条 | `index.html:66`；`app.css:187` | 保持。输入区放**工具条**里，不进滚动流（§1.3.2） |
-| 状态只有一份，全部经 `applyState()` 一个入口再分发到 `render*` | `app.js:206` | 保持。新增渲染一律挂进 `applyState` 链路 |
-| 浮层是**栈**（`SHEET_STACK`），Esc 逐层关，抽屉压在 `z-index 55`、辅助层 `65` | `app.js:397-435`；`app.css:353-409` | 保持。新面板复用 L2 辅助层（§1.3.7） |
-| `--dock-h` 实测回写（`ResizeObserver`），不硬编码 | `app.js:480`；`app.css:62-66` | 保持。输入区增高工具条时它自动跟上 |
-| XSS 底线 `esc()`、错误收集 `window.__ERRS` | `app.js:17/45` | 保持。契约：任何拼进 `innerHTML` 的动态文本先过 `esc()` |
-| 内嵌图标 sprite（无外链字体 / 图片） | `index.html:14-26` | 保持。新图标一律加 `<symbol>`，不改用图标字体 |
-| 无障碍基线：`aria-live` 叙事流、`focus-visible` 焦点环、`[hidden]` 强于组件 display | `index.html:39/68`；`app.css:79/106` | 保持并扩展（§5） |
-| 设置三档字号 / 动效 / 震动 / 自动置底 / 紧凑排版，落 `localStorage` 且坏数据回退 | `app.js:309-342` | 保持。新增设置项必须同时改 `SETTINGS_DEF` 与 `loadSettings` 校验（§3.4） |
+| 三视图 `#v-lobby` / `#v-play` / `#v-settings`，显隐只由 `.is-on` 控制 | `static/index.html:35/62/93`；`static/css/base.css:70-71`；`static/js/core.js:75-80` | 保持。新增面板走浮层，不新增视图（§1.2 决定 4） |
+| 主画面是**单一滚动容器** `#playScroll`：剧情卡 → 叙事流 → 行动区共用一根滚动条 | `static/index.html:72`；`static/css/stream.css:10-19` | 保持。输入区放**工具条**里，不进滚动流（§1.3.2） |
+| 状态只有一份，全部经 `applyState()` 一个入口再分发到 `render*` | `static/js/core.js:173-181` | 保持。新增渲染一律挂进 `applyState` 链路 |
+| 浮层是**栈**（`SHEET_STACK`），Esc 逐层关，抽屉压在 `z-index 55`、辅助层 `65` | `static/js/core.js:288-320`（`SHEET_STACK`）；`static/css/base.css:400-445`（`.drawer` 55 / `.sheet` 65） | 保持。新面板复用 L2 辅助层（§1.3.7） |
+| `--dock-h` 实测回写（`ResizeObserver`），不硬编码 | `static/js/core.js:365-382`（`syncDockHeight`）；`static/css/tokens.css:77` | 保持。输入区增高工具条时它自动跟上 |
+| XSS 底线 `esc()`、错误收集 `window.__ERRS` | `static/js/core.js:23`（`window.__ERRS`）/ `:51-55`（`esc()`） | 保持。契约：任何拼进 `innerHTML` 的动态文本先过 `esc()` |
+| 内嵌图标 sprite（无外链字体 / 图片） | `static/index.html:19-32` | 保持。新图标一律加 `<symbol>`，不改用图标字体 |
+| 无障碍基线：`aria-live` 叙事流、`focus-visible` 焦点环、`[hidden]` 强于组件 display | `static/index.html:45/74`；`static/css/base.css:42-47`（`:focus-visible`）/ `:14`（`[hidden]`） | 保持并扩展（§5） |
+| 设置三档字号 / 动效 / 震动 / 自动置底 / 紧凑排版，落 `localStorage` 且坏数据回退 | `static/js/core.js:194-227`（`SETTINGS_DEF` / `loadSettings` / `applySettings`） | 保持。新增设置项必须同时改 `SETTINGS_DEF` 与 `loadSettings` 校验（§3.4） |
 
-**骨架里明确是占位、本文必须给出目标态的四处**（都源于 `app.js`）：
+**骨架里明确是占位、本文必须给出目标态的四处**（都在当前 `static/js/*.js` 里）：
 
-1. `pickAction()` / `pickExit()` 只弹 `toast`，**没有接后端**（`app.js:222-232`）。
-2. 底栏三个 tab（队伍 / 世界 / 记录）只改高亮，弹「该面板尚未接通」（`app.js:522-531`）。
-3. `/api/session` 失败时退回 `placeholderState()` 演示数据（`app.js:112-141`）——
+1. `pickAction()` / `pickExit()` 只弹 `toast`，**没有接后端**（`static/js/turn.js:40-44` / `static/js/atlas.js:26-30`）。
+2. 底栏三个 tab（队伍 / 世界 / 记录）只改高亮，弹「该面板尚未接通」（`static/js/panels.js:10-21`）。
+3. `/api/session` 失败时退回 `placeholderState()` 演示数据（`static/js/core.js:118-147`）——
    目标态要区分「服务端说这局没了」与「网络抖了一下」。
 4. 主画面**没有自由文本输入区**——而 `/api/guide/turn` 的 `text` 才是主循环的入口。
 
@@ -98,7 +99,7 @@
    （更"干净"），代价是每切一次都要存 / 还原状态。
 2. **面板（队伍 / 世界 / 记录）用 L2 辅助层实现，不用视图。** 理由：它们在主画面上
    叠加、需要保底下的叙事位置；`#auxSheet` 的 82dvh 上限、`overscroll-behavior: contain`
-   已经解决了"浮层内滚到底不带动底层"这个坑（`app.css:395-419`）。**放弃的备选**：
+   已经解决了"浮层内滚到底不带动底层"这个坑（`static/css/base.css:434-445` 的 `.sheet` + `:467-471` 的 `overscroll-behavior: contain`）。**放弃的备选**：
    底部标签直接切换视图内容——tab 与视图的语义会打架（tab 里的 `aria-selected`
    没有对应 `tabpanel`）。
 3. **输入区固定在工具条，不进滚动流。** 理由：手机键盘弹起时，滚动流里的输入框会
@@ -125,7 +126,7 @@
   `{ save_dir, current, saves[], total, truncated }`，每行
   `{ id, name, named, mtime, mtime_text, log_count }`（`list_saves()`，`:657`）。
   当前局靠 `X-Session` 头或 `?sid=` 标识为 `current`。
-- **空态**：`saves` 为空 → `app.css:301` 的 `.save-empty`：「还没有存档。」+
+- **空态**：`saves` 为空 → `static/css/lobby.css:29` 的 `.save-empty`：「还没有存档。」+
   小字「开一局之后，每一步都会自动写进存档目录。」+ **主按钮「开始新的一局」**。
 - **截断态**：`truncated > 0` → 列表末尾如实说「只显示最近 N 个存档，另有 M 个
   更早的未列出（文件仍在本机）」。**不得**假装只有这些（`list_saves` 的注释就是
@@ -137,7 +138,7 @@
 
 #### 1.3.2 主画面 `#v-play`
 
-- **顶栏**（`index.html:57-64`）：左「菜单」、中两行（存档名 / 当前场景名）、
+- **顶栏**（`static/index.html:63-70`）：左「菜单」、中两行（存档名 / 当前场景名）、
   右「设置」。**目标态追加**：右端在设置按钮旁加一个**导引者状态点**
   （`configured` 亮 = 有可用能力；`chat` 与 `tts` 的细分放抽屉里）。
 - **场景卡** `#sceneCard`：面包屑（世界 · 剧本）、场景名、`scene.read` 引文。
@@ -160,7 +161,7 @@
   > 出口的**显示口径**：用 `BAND_NAMES` 的中文（短程 / 中程 / 远程 / 危险穿越 /
   > 门内）+ `hours` 时段数 + `（不稳）` 标记（`:589-594` 已经是这个口径，
   > 前端照抄，不要另造词）。
-- **工具条** `dock`（`:77-83`）：**目标态＝输入区 + 三个 tab**。输入区是一行：
+- **工具条** `dock`（`static/index.html:83-89`）：**目标态＝输入区 + 三个 tab**。输入区是一行：
   多行自适应 `textarea` + 「说 / 做」发送按钮。
 - **输入区口径**（新，需实现）：
   - 占位文案轮换提示可做的事：「描述你要做的事，或直接说一句话……」
@@ -217,14 +218,14 @@
   - 「朗读导引者对白」：开 / 关（默认关）。理由：语音要花上游额度，且手机静音场景
     常见；**默认不自动播放**（§2.5）。
 - **坏数据回退**：任何新增键都必须进 `SETTINGS_DEF`，`loadSettings()` 只接受
-  类型一致的值（`app.js:318-329`）。**不要**为了新设置绕过这个校验。
+  类型一致的值（`static/js/core.js:203-214`）。**不要**为了新设置绕过这个校验。
 
 #### 1.3.7 抽屉菜单 `#drawer` 与辅助层 `#auxSheet`
 
 - 抽屉（L1）：设置 / 帮助 / 关于 / **返回会话列表**（现有四项目，保持）。
 - 辅助层（L2）：一个容器承载「关于 / 帮助 / 三个面板 / 存档管理 / 确认框」。
   实现口径：`openAux(kind)` 从"仅 about/help"扩成一张 `kind → 渲染函数 + 标题`
-  的注册表，仍复用 `#auxSheet` + `#auxScrim` + 栈语义（`app.js:403-474`）。
+  的注册表，仍复用 `#auxSheet` + `#auxScrim` + 栈语义（`static/js/core.js:327-359`）。
 - **确认框**（破坏性动作，如删除存档）**必须是 L2 浮层里的模态**，不能用
   `window.confirm`：`confirm` 会打断 `aria-live` 播报、在手机上不可样式化、
   且无法显示"删的是哪一局"。文案要**点名存档名**。
@@ -253,11 +254,11 @@
 
 | 场景 | 呈现 | 文案口径 |
 |---|---|---|
-| 后端连不上 | 视图内错误卡 + 重试 | 服务端 / 网络的原文（如「无法连接服务，请确认后端仍在运行」，`app.js:89`） |
-| 会话失效（400 含「会话」） | 清 `SID` + 回 `#v-lobby` + 提示 | 保持现有自动清状态逻辑（`app.js:97-100`），**不要**留着过期 `SID` 继续打 |
+| 后端连不上 | 视图内错误卡 + 重试 | 服务端 / 网络的原文（如「无法连接服务，请确认后端仍在运行」，`static/js/core.js:95`） |
+| 会话失效（400 含「会话」） | 清 `SID` + 回 `#v-lobby` + 提示 | 保持现有自动清状态逻辑（`static/js/core.js:100-106`），**不要**留着过期 `SID` 继续打 |
 | 速率限制 | 提示条 | 服务端 `太频繁`（429）+ 前端把发送按钮禁 3 秒 |
 | 列表为空 | 空态卡 | 见 §1.3.1 |
-| 叙事流为空 | 空态行 | 「还没有叙事。开局后每一步都会追加在这里。」（保持 `app.js:168`） |
+| 叙事流为空 | 空态行 | 「还没有叙事。开局后每一步都会追加在这里。」（保持 `static/js/turn.js:13`） |
 | 导引者没配置 | 状态点 + 抽屉说明 | 「导引者这会儿不在席」族（与兜底句同源，`notdnd_web.py:144`） |
 
 ---
@@ -275,7 +276,7 @@
 - **每个写动作都有三态**：进行中（`aria-busy`）/ 成功（就地更新或 `toast`）/
   失败（就地提示 + 可重试）。**不出现"点了没反应"**。
 - **键盘**：`Esc` 逐层关浮层（保持）；主画面 `1–5` 选行动（保持）；输入框聚焦时
-  数字键**不**劫持（`app.js:565` 已有 `INPUT/TEXTAREA/SELECT` 白名单，保持）。
+  数字键**不**劫持（`static/js/core.js:439` 已有 `INPUT/TEXTAREA/SELECT` 白名单，保持）。
 
 ### 2.1 新局 → 开场
 
@@ -309,7 +310,7 @@
 ```
 
 - **骨架先行**：`showView` 先于 `await`——现有 `enterSession()` 就是这个顺序
-  （`app.js:289-303`），保持。
+  （`static/js/lobby.js:60-74`），保持。
 - **禁止**：失败时静默换成 `placeholderState()` 演示数据。目标态用
   「该会话暂不可用」错误卡 + 「返回列表 / 重试」两个动作；演示数据只在
   **开发态**（`?demo=1` 查询参数）出现，且顶部有明确的「示例数据」水印。
@@ -352,7 +353,7 @@
   `/api/guide/turn` 一定是流。**这是最容易漏的一条**（#109 就是这类坑）。
 
 **回合期间的界面纪律**：`result` 到达前不滚动、`narration` 到达后按
-`autoScroll` 设置决定是否置底（`app.js:215`）；回合中不弹 `toast` 抢焦点。
+`autoScroll` 设置决定是否置底（`static/js/core.js:183-188`）；回合中不弹 `toast` 抢焦点。
 
 ### 2.4 判定与骰子结果的呈现
 
@@ -381,7 +382,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 - **代价与资源变化**：`cost` 非空时用「代价」块（`--danger` 细边），
   逐项列 key→值；数值变化用 `+N` / `−N` 的等宽字体标记。
   **不写"生命值-3"这种自造词**：资源池名字来自 `RESOURCE_POOLS`，
-  属性缩写来自六维表（`app.js:107-108` 已有 `ATTR_ORDER` / `ATTR_LABEL`，沿用）。
+  属性缩写来自六维表（`static/js/core.js:113-114` 已有 `ATTR_ORDER` / `ATTR_LABEL`，沿用）。
 - **机会耗尽**：`exhausted=true` 时该行动按钮置为「已用尽」并禁用，直到
   服务端下次快照里该行动不再出现（前端**不**自己维护耗尽表——去重表在
   `session.done_actions` / `action_fails` 里）。
@@ -478,14 +479,14 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
    但**行宽与行距**不牺牲可读性。
 2. **语义色只表达语义。** 颜色只用来表达"判定档位 / 资源 / 危险 / 焦点"，
    不用来表达"好看"。
-3. **令牌先行。** 组件只引用 `:root` 变量（`app.css:9-69` 已经这么做），
+3. **令牌先行。** 组件只引用 `:root` 变量（`static/css/tokens.css:15-80` 已经这么做），
    换主题 / 换档位只动令牌。
 4. **动效服务于因果。** 只在"发生了什么"处动：新叙事出现、浮层进出、判定卡落位；
    不做装饰性循环动画。
 
 ### 3.2 色板与语义色
 
-**明 / 暗策略取舍**：现有骨架只有一套**暗色优先**令牌（`app.css:9-69`，
+**明 / 暗策略取舍**：现有骨架只有一套**暗色优先**令牌（`static/css/tokens.css:15-80`，
 `<html>` 上声明 `color-scheme: dark light`）。本设计的决定：
 
 - **默认暗色，跟随系统切明色。** 明色以 `@media (prefers-color-scheme: light)`
@@ -498,7 +499,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 
 **调色板**（令牌名沿用骨架；明色为新增）：
 
-| 令牌 | 暗（现状，`app.css:11-24`） | 明（新增） | 语义 |
+| 令牌 | 暗（现状，`static/css/tokens.css:16-35`） | 明（新增） | 语义 |
 |---|---|---|---|
 | `--bg-0` | `#0e1015` | `#f7f8fb` | 页面底 |
 | `--bg-1` | `#151821` | `#ffffff` | 顶栏 / 工具条 / 卡片 |
@@ -529,7 +530,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 
 **由此得到一条硬规则**：`--text-3` 在 `--bg-2` 上低于 4.5:1（暗 4.4 / 明 4.2）——
 **`text-3` 只允许出现在 `bg-0` / `bg-1` 上**；要放在 `bg-2` 卡片里时改用 `text-2`。
-（现有 `.set-title`（`app.css:317-321`）就是 `text-3` on `bg-2`，属待修。）
+（现有 `.set-title`（`static/css/base.css:342-348`）就是 `text-3` on `bg-2`，属待修。）
 
 **明色不是把暗色反过来**：直接把 `--bg-*` 反成亮色会让 `accent` / `success`
 在白底上掉到 3:1 以下，所以明色的强调色都**加深、降饱和**（蓝 `#6ea8fe → #1f5fd0`，
@@ -561,15 +562,15 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 | `--fs-lg` 17.5px | 卡片标题 / 顶栏存档名 | |
 | `--fs-xl` 21px | 场景名 | 一屏最多一个 |
 
-- **三档字号**（`data-font="s|m|l"`，`app.css:72-73`）只改令牌值，
+- **三档字号**（`data-font="s|m|l"`，`static/css/tokens.css:134-135`）只改令牌值，
   布局与 `--dock-h` 靠实测自适应——**保持这个机制**，新增组件不得写死 px 字号。
 - **行距**：正文 `1.6`；叙事段落 `1.65`（`.sc-read` 现状）；`紧凑排版` 压到 `1.45`。
 - **行长**：手机上满宽（`padding: 0 12px`）；≥900px 时容器上限 860px
-  （`app.css:134-137`）→ 正文行长约 70–80 个汉字，落在舒适区。
+  （`static/css/base.css:74-77`）→ 正文行长约 70–80 个汉字，落在舒适区。
 
 ### 3.4 间距与密度
 
-- 间距令牌 4 / 8 / 12 / 16 / 24（`--sp-1..5`，`app.css:40-44`），
+- 间距令牌 4 / 8 / 12 / 16 / 24（`--sp-1..5`，`static/css/tokens.css:51-55`），
   **只用这五档**，不出现 7px / 13px 这类"随手值"。理由：叙事流是长列表，
   间距系统一旦有噪声，滚动时的节奏感立刻散掉。
 - 圆角 `--r-sm 6` / `--r 10` / `--r-lg 14` / `--r-pill`；阴影只用 `--elev-1/2`
@@ -581,7 +582,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 
 #### 3.5.1 叙事条目（`.msg`）——本设计的核心组件
 
-现状（`index.html:171-174`；`app.css:221-232`）把 `kind` 归成三类：
+现状（`static/js/turn.js:16-19`；`static/css/stream.css:44-55`）把 `kind` 归成三类：
 `narrate` / `act` / `note`。目标态需要**完整的 kind → 样式映射表**：
 
 | 来源 | `kind` | 视觉 | 为什么 |
@@ -625,28 +626,28 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 - **活力 / 韧性 / 应力**：数值用等宽 + 细进度条（`max_*` 为分母）。
   活力用 `--danger` 系（生命语义），韧性用 `--accent`，应力用 `--danger` 二级
   （或 `--accent` 到 `--danger` 的渐变，视实现成本选一）。
-- **状态层**：`conditions` 用中性 tag（复用 `.tag`，`app.css:302-307`）；
+- **状态层**：`conditions` 用中性 tag（复用 `.tag`，`static/css/lobby.css:30-35`）；
   `downed` 用实心 `--danger` 徽标；`dead` 去饱和 + `--text-3`（不用删除线，
   删除线在中文里容易被读成"划掉不算"）。
 - **场景压力 `pressure`**：一条细横条，`--accent → --danger` 渐变按值推进；
   **不显示数字上限**（上限是规则层的事，前端猜会猜错）。
-- **六维显示**：`MGT/FIN/VIG/INS/MND/PRE` + 中文名（`app.js:107-108` 已有表，沿用）。
+- **六维显示**：`MGT/FIN/VIG/INS/MND/PRE` + 中文名（`static/js/core.js:113-114` 已有表，沿用）。
   修正值若将来出现在快照里，用等宽 `+2 / −1`。
 
 #### 3.5.5 按钮 / 表单 / 浮层
 
-- 按钮三型（沿用 `app.css:149-160`）：`.btn`（默认）/ `.btn-primary`（主）/
+- 按钮三型（沿用 `static/css/base.css:89-110`）：`.btn`（默认）/ `.btn-primary`（主）/
   `.btn-ghost`（幽灵）。**状态补齐**：`hover`（已有）/ `focus-visible`
   （已有 2px accent 环）/ `disabled`（`opacity: .5` + `cursor: not-allowed` +
   **不可点击**）/ `aria-busy`（文字换成三点 + 禁用）。最小高度 44px 保持
   （触控目标）。
-- 行动按钮的 `.act-key` 号码块（`app.css:243-249`）保留：它是键盘 `1–5`
+- 行动按钮的 `.act-key` 号码块（`static/css/stream.css:65-71`）保留：它是键盘 `1–5`
   快捷键的视觉对应物。
-- 分段控件 `.seg`（`app.css:331-334`）与开关 `.switch`（`:336-350`）保持；
+- 分段控件 `.seg`（`static/css/base.css:358-366`）与开关 `.switch`（`static/css/base.css:368-384`）保持；
   新增"主题"三档时直接复用 `.seg`。
 - **浮层**：抽屉 `left` 滑入、辅助层 `bottom` 滑入，遮罩 `fade`。
-  两个关键细节保持：`body.is-locked` 锁底层滚动（`app.js:416`）、
-  辅助层 ≥900px 时与主画面同宽居中（`app.css:407-409`）。
+  两个关键细节保持：`body.is-locked` 锁底层滚动（`static/js/core.js:301`）、
+  辅助层 ≥900px 时与主画面同宽居中（`static/css/base.css:458-460`）。
 - **滚动条**：移动端天然不显示；桌面允许系统滚动条，但**内容区必须
   `overscroll-behavior: contain`**（现有三处都已设，新面板照做），
   否则浮层里滚到底会带着整页一起动。
@@ -655,25 +656,25 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 
 - **空态**：居中、`--text-3`、一句"为什么这里是空的"+ 一句"怎么让它不空"。
   现有 `.stream-empty` / `.save-empty` 就是这个结构，沿用。
-- **加载态**：首屏用一次 `.boot`「正在读取存档…」（`index.html:40`）。
+- **加载态**：首屏用一次 `.boot`「正在读取存档…」（`static/index.html:46`）。
   回合中用"输入区按钮转三点"，**不**盖全屏遮罩——叙事可能来得很慢
   （实相时间盒 75 秒，`MASTER.md` §5 / PR #126），全屏遮罩会像卡死。
 - **错误态**：就地错误卡（`--danger` 左细边 + 一行原因 + 一个动作按钮）。
-  原因文本优先用服务端 `error` 字段原文（保持 `app.js:101` 的口径）。
+  原因文本优先用服务端 `error` 字段原文（保持 `static/js/core.js:107` 的口径）。
 
 ### 3.6 动效
 
-- 令牌 `--dur-fast 120ms` / `--dur 200ms` / `--ease`（`app.css:53-55`）保持。
+- 令牌 `--dur-fast 120ms` / `--dur 200ms` / `--ease`（`static/css/tokens.css:64-66`）保持。
 - 允许的四种：浮层进出（fade + 4–6% 位移）、新叙事条目淡入、提示条上浮、
   判定卡落位（一次性）。**禁止**：循环脉动、打字机效果（会与"叙事是整段到达"
   的语义矛盾）、滚动动画以外的视差。
 - 三重关闭：`html.no-anim`（设置里的「动效」关）、`prefers-reduced-motion`
   （系统）、`html[data-anim="off"]`（同一件事的两种写法，保持现状双保险，
-  `app.css:364/448-455`）。
+  `static/css/base.css:498-505`）。
 
 ### 3.7 图标与图形（无图片资源）
 
-- 图标**只用内嵌 SVG sprite** `#i-*`（`index.html:14-26`）；新图标加
+- 图标**只用内嵌 SVG sprite** `#i-*`（`static/index.html:19-32`）；新图标加
   `<symbol viewBox="0 0 24 24">`，描边 1.75、圆头圆角（`.i` 的现状）。
   **不用**图标字体、不用 emoji 当图标。
 - **用户没有图**的前提下，所有分隔、徽标、进度、占位都用 CSS 几何
@@ -762,12 +763,12 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 | 宽度 | 目标设备 | 布局 |
 |---|---|---|
 | **< 600px** | 手机（局域网访问的主场景，`notdnd_web.py` 启动提示就给了局域网地址） | 满宽；工具条贴在底部安全区之上；浮层全宽；辅助层 82dvh；抽屉 `min(300px, 82vw)` |
-| **600–899px** | 平板竖屏 / 分屏 | 同上，但行动区按钮网格从 1 列变 2 列（`.btn-grid` 的 `auto-fill minmax(150px,1fr)` 已自动实现，`app.css:237`）；正文行宽由 `padding` 控制不超 ~70 字 |
-| **≥ 900px** | 桌面 | 主画面居中 860px 竖栏（`app.css:134-137`）；辅助层同宽居中（`:407-409`）；抽屉仍是左侧覆盖层 |
+| **600–899px** | 平板竖屏 / 分屏 | 同上，但行动区按钮网格从 1 列变 2 列（`.btn-grid` 的 `auto-fill minmax(150px,1fr)` 已自动实现，`static/css/stream.css:59`）；正文行宽由 `padding` 控制不超 ~70 字 |
+| **≥ 900px** | 桌面 | 主画面居中 860px 竖栏（`static/css/base.css:74-77`）；辅助层同宽居中（`static/css/base.css:458-460`）；抽屉仍是左侧覆盖层 |
 
-- **320px 不横向溢出**是硬指标（骨架的目标，`app.css:3-4`）：新组件一律
+- **320px 不横向溢出**是硬指标（骨架的目标，`static/css/base.css:3-4`）：新组件一律
   `min-width: 0` + `overflow-wrap: anywhere`（长 id、`place_id`、`mtime_text`）。
-- **安全区**：`--safe-t` / `--safe-b`（`app.css:67-68`）已用于顶栏与工具条，
+- **安全区**：`--safe-t` / `--safe-b`（`static/css/tokens.css:78-79`）已用于顶栏与工具条，
   新组件不得绕过。
 - **键盘弹起（手机）**：用 `dvh` 而非 `vh` 做高度上限（辅助层已用 `82dvh`）
   ——`vh` 在键盘弹起时不变，会让浮层底部被键盘盖住。
@@ -777,8 +778,8 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 - **焦点顺序** = 视觉顺序：顶栏（菜单 → 设置）→ 场景卡（无焦点）→ 叙事流
   （每条可操作项，如「朗读」）→ 行动区（行动 → 前往）→ 工具条（输入 → tab）。
 - **现状保持**：`button:focus-visible` 2px `--accent` 环 + 2px offset
-  （`app.css:106-109`）；`Esc` 逐层关浮层（`app.js:501-506`）；
-  主画面 `1–5` 选行动、输入框内不劫持（`app.js:562-570`）。
+  （`static/css/base.css:42-47`）；`Esc` 逐层关浮层（`static/js/core.js:392-397`）；
+  主画面 `1–5` 选行动、输入框内不劫持（`static/js/core.js:435-444`）。
 - **补齐**（需实现）：
   - **浮层焦点陷阱**：打开抽屉 / 辅助层时 `Tab` 循环限制在浮层内，
     关闭后焦点**回到触发按钮**（现有代码没有）。
@@ -819,12 +820,12 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 ### 5.5 `prefers-reduced-motion` 与动效开关
 
 - 系统级：`@media (prefers-reduced-motion: reduce)` → 动画 / 过渡压到 1ms，
-  滚动改 `auto`（`app.css:448-451`，保持）。
+  滚动改 `auto`（`static/css/base.css:498-501`，保持）。
 - 应用级：`html.no-anim`（设置里的「动效」关）与上面**并列生效**
-  （`app.css:452-455`，保持）。
+  （`static/css/base.css:502-505`，保持）。
 - 新增动效（叙事淡入、判定卡落位）必须同时进这三条路径；
   **`scroll-behavior: smooth` 也必须被关掉**（现有 `.play-scroll` 已处理，
-  `app.css:195-197`）。
+  `static/css/stream.css:18-20`）。
 
 ---
 
@@ -833,10 +834,12 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 > 供 Master Agent 直接开单。每片给：目标 / 建议可改路径 / 依赖顺序 / 验收要点。
 > **本单不实现任何一片。**
 >
-> **关于并行的一条硬事实**：所有 UI 切片现在都要改 `static/app.js`（604 行、
-> 单文件）与 `static/app.css`（455 行）——按 `AGENTS.md` §4「同一目录已有开放
-> PR 时不另派 Agent 改该目录」，它们**只能串行**，总工时会被拖成一条长链。
-> 所以第一片（U0）就是**解并行**用的：把单文件切成按视图分文件 + 令牌收敛。
+> **关于并行的一条硬事实（U0 切分之前的历史状态）**：当时所有 UI 切片都要改
+> `static/app.js`（604 行、单文件）与 `static/app.css`（455 行）——按 `AGENTS.md`
+> §4「同一目录已有开放 PR 时不另派 Agent 改该目录」，它们**只能串行**，总工时会被
+> 拖成一条长链。所以第一片（U0）就是**解并行**用的：把单文件切成按视图分文件 + 令牌收敛。
+> **U0 已合并**（PR #177（Issue #164））：**当前**落点是 `static/js/*.js` 与
+> `static/css/*.css`，上文 `app.js` / `app.css` 是切分前的历史文件名，不再是当前结构。
 
 ### U0 · 前端文件切分与设计令牌收敛（解并行）
 
@@ -849,7 +852,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
   - 行为零变化：`test_ui_smoke.py` 全绿（`window.__ERRS` 为空、至少一个 `.is-on`）；
   - 令牌集中在单一文件，明色覆盖用 `@media (prefers-color-scheme: light)`
     且**只改令牌名不改选择器**；
-  - 修掉 `text-3` on `bg-2` 的对比度问题（`.set-title`，`app.css:317-321`）；
+  - 修掉 `text-3` on `bg-2` 的对比度问题（`.set-title`，`static/css/base.css:342-348`）；
   - 新增断言：页面不发起任何**外部**资源请求（守"无外链"）；
   - 每片拥有独立文件（`js/lobby.js` / `js/turn.js` / `js/atlas.js` /
     `js/panels.js` / `js/voice.js` / `js/ph.js`），此后互不撞文件。
@@ -942,7 +945,7 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 | 列存档 | `GET /api/saves` | ✅ 已实现（`:864`，含 `save_dir` / `current` / `total` / `truncated`） | — |
 | 开一局 | 建会话写接口 | ❌ **无路由**：`_sess()` 找不到会话就 400（`:779-787`） | **B1** |
 | 拉整局视图 | `GET /api/session` | ✅ 已实现（`:886`），返回 `prism_core.RuleSession.snapshot()` + `save` 块 | 字段缺口见下 |
-| 世界 / 剧本名 | — | ❌ `snapshot()` 里**没有** `world` / `scenario`（`prism_core.py:460-472`）；骨架的场景卡是照占位数据写的（`app.js:153-162`） | 需在快照 / 视图里补（随 B1 或独立小单） |
+| 世界 / 剧本名 | — | ❌ `snapshot()` 里**没有** `world` / `scenario`（`prism_core.py:460-472`）；骨架的场景卡是照占位数据写的（`static/js/core.js:160-169`） | 需在快照 / 视图里补（随 B1 或独立小单） |
 | 增量拉日志 | `GET /api/log?since=` | 🟡 有路由（`:879`），但 `Session.log` 今天只被 ATLAS 说明写入（`:559`） | **B2** |
 | 回合（自由文本） | `POST /api/guide/turn` SSE | ✅ 已实现（`:917`；事件 `result` / `narration` / `usage` / `fallback` / `done`） | 前端未接线（骨架无输入区） |
 | 回合（点行动） | `POST /api/guide/turn { action_id }` | ✅ 已实现（`:1060-1068`，`prism_guide.settle`）；通用行动提案契约属 M8 | 前端占位（`pickAction` 只弹提示） |
@@ -959,8 +962,9 @@ max_fail,fail_count,left}` / `unit`（白名单字段）。
 
 ## 8. 参考与出处
 
-- `static/index.html`（142 行）/ `static/app.js`（604 行）/ `static/app.css`（455 行）
-  —— 骨架，PR #118；本设计把它当只读输入。
+- 前端骨架 `static/index.html` / `static/js/*.js` / `static/css/*.css`（骨架，PR #118；
+  单文件 `static/app.js`（604 行）/ `static/app.css`（455 行）为其**历史形态**，
+  U0（PR #177（Issue #164））已拆分）—— 本设计把它当只读输入。
 - `notdnd_web.py` —— 现有 `/api/*` 路由、`Session` 存档、SSE 事件、导引者接线。
 - `prism_core.py:143-149`（判定档位）、`:375-411`（单位字段）、`:441-448`（日志条目）、
   `:454-472`（`snapshot()`）、`:1084-1095`（结算返回）。
