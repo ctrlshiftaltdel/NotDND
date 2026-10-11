@@ -13,9 +13,13 @@
   （`ACTION_STATUSES`）、**全转换表**（`ACTION_TRANSITIONS`，一张显式表）、
   `transition`（每次转换产出**一条**事件；终态不可逆；非法转换**显式抛错**）、
   `apply_event`（把事件的 `changes` 落回行动卡）。`time_cost` 由外部传入，**不调 PRISM**。
+- 调度器（§5）：`new_scheduler` / `schedule` / `rebuild_heap` / `advance_to`、
+  `due_heap`（**稳定**排序键 `(due_minute, -priority, created_seq, action_id)`，§5.2）、
+  依赖图（**无环**是硬约束，有环提案 `proposed → failed`；默认**级联取消**，§5.3）、
+  `Window` 与冲突识别（同 `place` / 同 `resource` / `blocks`；只**识别**、**不裁决**，§5.4–§5.5）。
 
-**本单边界**：不排程（队列 / 到期排序归 C3）、不压缩时间（归 C4）、不落库、不碰 IO；
-不 import 任何业务模块（§7 依赖方向）。
+**本单边界**：不压缩时间、不判屏障（`next_barrier` 归 C4）、不判行动胜负（归 PRISM）、
+不落库、不碰 IO；不 import 任何业务模块（§7 依赖方向）。
 世界时间是一条**自战役纪元起的整数分钟轴，只增不减**（§3.2）。
 
 口径依据：
@@ -98,6 +102,33 @@ __all__ = (
     "new_action",
     "transition",
     "apply_event",
+    # §4.1 依赖失败语义（§5.3）
+    "DEFAULT_ON_DEP_FAIL",
+    "ON_DEP_FAIL_POLICIES",
+    # §5 调度器（C3）
+    "ScheduleError",
+    "DUE_KEY_FIELDS",
+    "DUE_IDEMPOTENCY_RE_TEXT",
+    "WINDOW_FIELDS",
+    "WINDOW_OPEN_EVENT",
+    "WINDOW_CLOSE_EVENT",
+    "ACTION_DUE_EVENT",
+    "SCHEDULER_FIELDS",
+    "new_scheduler",
+    "schedule",
+    "settle",
+    "cascade_dependents",
+    "advance_to",
+    "rebuild_heap",
+    "sort_key",
+    "created_seq",
+    "deps_satisfied",
+    "open_windows",
+    "windows_at",
+    "conflict_key",
+    "blocked_by",
+    "blocks_of",
+    "dependents_of",
 )
 
 
@@ -231,10 +262,13 @@ ACTION_TERMINAL_STATUSES = ("completed", "failed", "cancelled")
 # §4.2「谁触发」列的行内取值：P=玩家/NPC，S=调度器，R=PRISM，T=状态层。
 ACTION_TRIGGERS = ("P", "S", "R", "T")
 
-# §4.1 的行动卡字段。前 15 个与 §4.1 草案逐字对应；末尾两个是 §4.4「中断 / 恢复」
-# 落地所需的最小补充（§4.1 未列，但「用剩余耗时重排」必须有停点与进度口径）：
+# §4.1 的行动卡字段。前 15 个与 §4.1 草案逐字对应；末尾五个是「中断 / 恢复」（§4.4）与
+# 「调度器」（§5.3–§5.5）落地所需的最小补充（§4.1 未列，但后续语义必须有落点）：
 #   - `interrupt_minute`：**开始后**被打断的世界分钟（未开始即 `None`）；
-#   - `progress_kept`：中断时进度是否保留（§4.4；`None` = 尚未中断过）。
+#   - `progress_kept`：中断时进度是否保留（§4.4；`None` = 尚未中断过）；
+#   - `on_dep_fail`：依赖未成时本卡怎么办（§5.3；默认 `cancel` = 级联取消，`keep` = 转 blocked）；
+#   - `place` / `resource`：行动发生的地点与占用的资源（§5.4–§5.5 的冲突识别键；
+#     `None` = 与地点 / 资源无关，不参与冲突识别。**判定**归规则包与空间层，CHRON 只读）。
 ACTION_FIELDS = (
     "action_id",            # 唯一 ID（提交方生成，服务端校验唯一）
     "actor",                # 发起者（玩家角色 / NPC 的稳定 ID）
@@ -253,7 +287,15 @@ ACTION_FIELDS = (
     "events",               # 该行动产出的可追溯事件 id（每次转换追加一条）
     "interrupt_minute",     # 【实现补充】开始后被中断的世界分钟（§4.4）
     "progress_kept",        # 【实现补充】中断时进度是否保留（§4.4）
+    "on_dep_fail",          # 【实现补充】依赖未成：cancel（默认级联取消）/ keep（转 blocked）（§5.3）
+    "place",                # 【实现补充】地点（§5.5 冲突识别键；None = 无关）
+    "resource",             # 【实现补充】资源（§5.5 冲突识别键；None = 无关）
 )
+
+# §5.3：依赖的行动 `failed` / `cancelled` 时，默认**级联取消**（事件带 `reason`）；
+# 规则包标 `on_dep_fail = "keep"` 的卡改判 `blocked`。
+DEFAULT_ON_DEP_FAIL = "cancel"
+ON_DEP_FAIL_POLICIES = ("cancel", "keep")
 
 
 class ChronError(Exception):
@@ -270,6 +312,20 @@ def _require_str(value, name):
         raise TypeError("%s 必须是字符串，得到 %s" % (name, type(value).__name__))
     if not value:
         raise ValueError("%s 不能为空字符串" % name)
+    return value
+
+
+def _require_optional_str(value, name):
+    """要求 `None` 或非空字符串（§4.1 的 `place` / `resource` 可为空 = 与该维度无关）。"""
+    if value is None:
+        return None
+    return _require_str(value, name)
+
+
+def _require_choice(value, name, allowed):
+    """要求取值落在 `allowed` 里（枚举显式拒绝，不静默取默认）。"""
+    if value not in allowed:
+        raise ValueError("%s 必须是 %s 之一，得到 %r" % (name, " / ".join(allowed), value))
     return value
 
 
@@ -688,7 +744,8 @@ def _event_source(ctx):
 
 
 def new_action(action_id, actor, kind, time_cost, *, priority=0, depends_on=(),
-               interrupt_conditions=(), idempotency_key=None):
+               interrupt_conditions=(), idempotency_key=None,
+               on_dep_fail=DEFAULT_ON_DEP_FAIL, place=None, resource=None):
     """构造一张**尚未提议**的行动卡草稿（§4.1；`status = None`）。
 
     提议本身也是一次转换：`transition(draft, "proposed", {"world_minute": ...})`——
@@ -696,6 +753,8 @@ def new_action(action_id, actor, kind, time_cost, *, priority=0, depends_on=(),
     `blocks` 是 `depends_on` 的反向冗余索引（§4.1），由调度器（C3）维护，此处留空列表。
 
     `time_cost` 由外部（PRISM）传入，CHRON **只读不判**（§7 边界）。
+    `on_dep_fail`（§5.3）默认 `cancel` = 依赖失败时级联取消；`keep` = 改判 `blocked`。
+    `place` / `resource` 是 §5.5 的冲突识别键（`None` = 与该维度无关）。
     """
     return {
         "action_id": _require_str(action_id, "action_id"),
@@ -716,6 +775,9 @@ def new_action(action_id, actor, kind, time_cost, *, priority=0, depends_on=(),
         "events": [],
         "interrupt_minute": None,
         "progress_kept": None,
+        "on_dep_fail": _require_choice(on_dep_fail, "on_dep_fail", ON_DEP_FAIL_POLICIES),
+        "place": _require_optional_str(place, "place"),
+        "resource": _require_optional_str(resource, "resource"),
     }
 
 
@@ -869,3 +931,772 @@ def apply_event(action, event):
         else:
             raise ValueError("未知的变更 op：%r（只支持 set / append）" % (op,))
     return updated
+
+
+# ==========================================================================
+# §5 调度器（Scheduler）——M9-C3
+# ==========================================================================
+#
+# 状态形状（§5.1，纯 dict，可 JSON 落盘）：
+#
+#   scheduler_state = {
+#       world_minute: int,                    # 权威世界时间（§3.1）
+#       actions:      {action_id: Action},    # §4.1 行动卡（含终态，供审计与重建）
+#       due_heap:     [due_key, ...],         # 最小堆；按 §5.2 排序键**升序**排列
+#       windows:      [Window, ...],          # 事件窗口（§5.4）
+#       blocks:       {action_id: [action_id]},  # 反向索引（§5.1 `deps` / §4.1 `blocks`）
+#       running:      {action_id: key},       # 进行中行动的冲突键（§5.5 识别用，派生）
+#       seq:          int,                    # 已提交事件序号（接 C5 的幂等 / 重放）
+#       keys:         {idempotency_key: seq}, # 幂等键表（§8.3）
+#   }
+#
+# §5.1 的 `deps` 在这里**合并进 `blocks`**：同一条 `depends_on` 边，正向查（`dependents_of`）
+# 与反向查（`blocked_by`）都走同一张表，避免两份真相漂移。
+# `due_heap` / `blocks` / `running` 都是 `actions` 的**派生索引**，可由 `actions` 全量重建
+# （`rebuild_heap`），所以**不必**落盘（§8.1 / §8.2 第 4 步）。
+#
+# **本切片只识别、不裁决**（§5.5 / Key Decision 7）：调度器产出「该开窗口 / 该到期 / 该开始」
+# 的判断与事件；胜负、物品归属、伤害与死亡等**事实**由 PRISM 与权威状态层负责。
+# 屏障与时间压缩（`next_barrier`、B1–B8）归 C4，本切片不判。
+
+# §5.2 排序键的四段（字典序）。放在一处，测试与文档都引用它，避免口径散落。
+DUE_KEY_FIELDS = ("due_minute", "-priority", "created_seq", "action_id")
+
+# §5.4 的 `Window` 形状（JSON 友好；键顺序即落盘顺序）。
+WINDOW_FIELDS = (
+    "window_id",        # 唯一 ID（确定性：`<分钟>:<冲突键>`）
+    "key",              # 冲突键（`conflict_key` 的规范化串）
+    "participants",     # 参与的行动 id（**升序**，确定性）
+    "actors",           # 参与者的 actor（与 participants 对应，便于叙事层直接用）
+    "place",            # 地点（`None` = 该窗口不由地点触发）
+    "resource",         # 资源（`None` = 该窗口不由资源触发）
+    "open_minute",      # 开窗分钟（识别到冲突的那一刻）
+    "close_minute",     # 关窗分钟（`None` = 仍开着；关窗归 C4 的结算路径）
+    "reason",           # 识别依据：`place` / `resource` / `blocks`
+)
+
+WINDOW_OPEN_EVENT = "window.opened"
+WINDOW_CLOSE_EVENT = "window.closed"
+
+# 到期事件类型（§8.3 幂等键 `f"{action_id}:{due_minute}:{kind}"` 里的 `kind`）。
+# 名字**不叫** `action.completed`：到期 = 「结算点到了」，判成功 / 失败归 PRISM（§7 边界）。
+ACTION_DUE_EVENT = "action.due"
+
+# 幂等键的**确定性形状**（§8.3）：`<action_id>:<due_minute>:<kind>`。
+# 可用它区分「调度器自己的到期键」与「行动转换产出的 `<action_id>:eNNNNNN:<event>` 键」，
+# 也供 C5 的 `blocks.chron.idempotency` 表做重建 / 裁剪。
+DUE_IDEMPOTENCY_RE_TEXT = r"^(?P<action_id>[^:]+):(?P<minute>\d+):(?P<kind>[^:]+)$"
+
+
+class ScheduleError(ChronError):
+    """调度器**调用错误**：显式抛错，绝不静默忽略、绝不部分生效。
+
+    注意区分两种「拒绝」：
+
+    - **语义拒绝**（依赖有环的提案）→ **不是**异常，而是 `schedule()` 返回
+      `status = "rejected"` + 事件（`proposed → failed`，§5.3）——这是设计要求的路径；
+    - **调用错误**（重复 id、行动非草稿、依赖 id 不存在、时间倒流、自依赖）→ 本异常。
+    """
+
+
+# --------------------------------------------------------------------------
+# §5.1 构造 / 形状校验
+# --------------------------------------------------------------------------
+
+SCHEDULER_FIELDS = ("world_minute", "actions", "due_heap", "windows", "blocks",
+                    "running", "seq", "keys")
+
+
+def new_scheduler(world_minute=0):
+    """新建一个空调度器状态（§5.1）。
+
+    `world_minute` 是权威世界时间（≥ 0）；`actions` / `due_heap` / `windows` / `blocks` /
+    `running` / `keys` 全部为空，`seq = 0`。世界时间只在事件推进时前进（§3.3）。
+    """
+    return {
+        "world_minute": _require_non_negative(world_minute, "world_minute"),
+        "actions": {},
+        "due_heap": [],
+        "windows": [],
+        "blocks": {},
+        "running": {},
+        "seq": 0,
+        "keys": {},
+    }
+
+
+def _check_scheduler(state):
+    """校验调度器状态形状；返回原对象（只读，不改写）。"""
+    if not isinstance(state, dict):
+        raise TypeError("state 必须是 dict（用 new_scheduler 构造），得到 %s"
+                        % type(state).__name__)
+    missing = [field for field in SCHEDULER_FIELDS if field not in state]
+    if missing:
+        raise ValueError("调度器状态缺少字段：%s（用 new_scheduler 构造）" % ", ".join(missing))
+    _require_non_negative(state["world_minute"], "state.world_minute")
+    for field in ("actions", "blocks", "running", "keys"):
+        if not isinstance(state[field], dict):
+            raise TypeError("state.%s 必须是 dict，得到 %s" % (field, type(state[field]).__name__))
+    for field in ("due_heap", "windows"):
+        if not isinstance(state[field], list):
+            raise TypeError("state.%s 必须是 list，得到 %s" % (field, type(state[field]).__name__))
+    return state
+
+
+# --------------------------------------------------------------------------
+# §5.2 到期排序键（**稳定是硬要求**，GDD §6.9）
+# --------------------------------------------------------------------------
+
+def created_seq(action):
+    """行动的**创建序号**（§5.2 的 `created_seq`）= 「提议」在 `events` 里的序号。
+
+    每次转换都向 `events` 追加一条（§4.2 不变式），故第 1 条（`action.proposed`）的序号
+    就是创建序号。同一分钟提议多张卡时，它给出与插入顺序 / 哈希无关的稳定次序。
+    """
+    _check_action(action)
+    events = action["events"]
+    if not events:
+        raise ScheduleError("Action %s 尚无事件（events 为空），拿不到 created_seq"
+                            % action["action_id"])
+    parts = str(events[0]).rsplit(":e", 1)
+    if len(parts) != 2 or not parts[1].isdigit():
+        raise ScheduleError("Action %s 的首条事件 id 形状异常：%r"
+                            % (action["action_id"], events[0]))
+    return int(parts[1])
+
+
+def sort_key(action):
+    """§5.2 的排序键（字典序）：`(due_minute, -priority, created_seq, action_id)`。
+
+    四段各司其职，缺一不可：
+
+    - `due_minute` **升序**：先到先办；
+    - `priority` **降序**（取负）：规则包可让「中毒每时段恶化」压过「闲聊」；
+    - `created_seq` **升序**：先提出的先办——**确定性**，不随插入顺序 / 哈希漂移；
+    - `action_id` **升序**：最后的确定性 tie-break。
+
+    同一张行动卡两次调用恒得同一键（`created_seq` 就在 `events` 里），所以「同 `due_minute`
+    多卡两次运行顺序全等」不是靠运气，而是**由键唯一决定**。
+    """
+    _check_action(action)
+    due = action["due_minute"]
+    if due is None:
+        raise ScheduleError("Action %s 尚未安排（due_minute 为空），无法计算排序键"
+                            % action["action_id"])
+    return (due, -action["priority"], created_seq(action), action["action_id"])
+
+
+def _scheduling_key(action, world_minute):
+    """§5.2 排序键，但把 `due_minute` 折成**最早可办分钟** `max(due_minute, world_minute)`。
+
+    依赖把行动挡在队列外的这段时间里，世界时间会往前走；依赖成终态后行动被放行时，
+    它的「预计结束」可能已经过去——那时**立刻办**（`world_minute` 到期的第一件事），
+    而不是被静默丢掉。`due_minute <= world_minute` 的卡因此在同一分钟里按
+    `(-priority, created_seq, action_id)` 排定顺序（`due_minute` 不再区分先后）。
+    """
+    due, priority, created, action_id = sort_key(action)
+    return (max(due, world_minute), priority, created, action_id)
+
+
+# --------------------------------------------------------------------------
+# §5.3 依赖图（**无环是硬约束**）
+# --------------------------------------------------------------------------
+
+def dependents_of(state, action_id):
+    """反向索引（§4.1 `blocks` / §5.1 `deps`）：依赖 `action_id` 的行动 id（升序）。"""
+    _check_scheduler(state)
+    return sorted(state["blocks"].get(action_id, ()))
+
+
+def blocks_of(state, action_id):
+    """`dependents_of` 的别名，取 §4.1 `Action.blocks` 的语义（被 `action_id` 挡住的行动）。"""
+    return dependents_of(state, action_id)
+
+
+def blocked_by(action):
+    """依赖清单（§4.1 `depends_on`）；「一方 `blocks` 另一方」即从这里判定（§5.5）。"""
+    _check_action(action)
+    return sorted(action["depends_on"])
+
+
+def _dependency_cycle(state, action_id, deps):
+    """在「现有依赖图 + 本提案的新边」上做 DFS：**有环**返回环上的 id 序列，否则 `None`。
+
+    环检测在**建图时**做（§5.3 硬约束）：有环即拒绝该提案（`proposed → failed`）。
+    自依赖（`depends_on` 含自己）在调用方已被拦下，所以走到「回到自己」必然经过至少一条边。
+    起点是 `action_id`，因此返回的环**必然经过本提案**（新提案不可能属于别的环）。
+    """
+    def _deps(node):
+        if node == action_id:
+            return list(deps)
+        return list(state["actions"].get(node, {}).get("depends_on", ()))
+
+    stack = [(action_id, [action_id])]
+    seen = set()
+    while stack:
+        node, path = stack.pop()
+        if node in seen:
+            continue
+        seen.add(node)
+        for nxt in _deps(node):
+            if nxt == action_id:
+                return path + [action_id]
+            if nxt not in seen:
+                stack.append((nxt, path + [nxt]))
+    return None
+
+
+def _missing_dependencies(state, deps):
+    """列出图里不存在的依赖 id（提交顺序错误，不是依赖失败）。"""
+    return [dep for dep in deps if dep not in state["actions"]]
+
+
+def deps_satisfied(state, action):
+    """依赖是否**全部**成终态（§5.3 首条：依赖未完成不得进入队列）。"""
+    _check_action(action)
+    for dep in action["depends_on"]:
+        dep_card = state["actions"].get(dep)
+        if dep_card is None:
+            raise ScheduleError("依赖不存在：Action %s 依赖 %s，调度器里没有"
+                                % (action["action_id"], dep))
+        if dep_card["status"] not in ACTION_TERMINAL_STATUSES:
+            return False
+    return True
+
+
+# --------------------------------------------------------------------------
+# §5.2 派生索引：由 `actions` 全量重建到期队列
+# --------------------------------------------------------------------------
+
+def rebuild_heap(state):
+    """由 `actions` 全量重建 `due_heap`（§8.2 第 4 步：重启恢复必须能重建）。
+
+    放行条件（§5.3 首条 + §5.2）：
+
+    - 行动**在跑**（`running`）或**已排期**（`scheduled`）；
+    - 依赖**全部**已成终态（`completed` / `failed` / `cancelled`）——否则**不进堆**，
+      等依赖结算后由 `rebuild_heap` 放行。
+
+    返回按**最早可办分钟**（`_scheduling_key`）**升序**排列的 `due_heap`（最小在前）：
+    条目形状 `[minute, -priority, created_seq, action_id]`，其中 `minute = max(due_minute,
+    world_minute)`。依赖放行时已经「过期」的卡不会被丢掉，而是排在当前分钟立即待办。
+
+    这是**确定性**列表：同一 `actions` 两次重建结果全等（与插入顺序 / 获得顺序无关）；
+    行动因依赖被挡住的期间，也不占用堆位（§5.3 首条）。
+    """
+    entries = []
+    for action in _check_scheduler(state)["actions"].values():
+        if action["status"] not in ("scheduled", "running"):
+            continue
+        if not deps_satisfied(state, action):
+            continue
+        entries.append(list(_scheduling_key(action, state["world_minute"])))
+    return sorted(entries)
+
+
+# --------------------------------------------------------------------------
+# §5.5 冲突识别（只识别，不裁决）
+# --------------------------------------------------------------------------
+
+def conflict_key(action):
+    """行动的冲突键（§5.5）：同一 `place` 或同一 `resource` 即需协调。
+
+    返回规范化的键串（确定性、可在两次运行间比较 / 落盘）：
+
+    - `resource` 优先：`"resource:<id>"`；
+    - 其次 `place`：`"place:<id>"`；
+    - 两者都没有 → `None`（该行动**不参与**冲突识别）。
+
+    单一键（而不是给 place 与 resource 各开一个窗口）保证「同资源两行动」只命中**一个**
+    识别结论，下游便只会看到**一个** `window.opened`。
+
+    第三种情形「一方 `blocks` 另一方」（§5.5）由 §5.3 的依赖图表达：被依赖的一方未成终态
+    时不进队列（`rebuild_heap`），二者不会同时在场——所以不需要第二个窗口。
+    """
+    _check_action(action)
+    resource = action["resource"]
+    if resource is not None:
+        return "resource:%s" % resource
+    place = action["place"]
+    if place is not None:
+        return "place:%s" % place
+    return None
+
+
+def _open_windows_for(state, key):
+    """该冲突键上**仍开着**（`close_minute is None`）的窗口。"""
+    return [window for window in state["windows"]
+            if window["key"] == key and window["close_minute"] is None]
+
+
+def open_windows(state):
+    """当前开着的窗口（按 `window_id` 升序，确定性）。"""
+    _check_scheduler(state)
+    return sorted((window for window in state["windows"] if window["close_minute"] is None),
+                  key=lambda window: window["window_id"])
+
+
+def windows_at(state, action_id):
+    """`action_id` 参与的窗口 id（按 `window_id` 升序）。"""
+    _check_scheduler(state)
+    return sorted(window["window_id"] for window in state["windows"]
+                  if action_id in window["participants"])
+
+
+def _window_record(key, participants, actors, place, resource, minute):
+    """构造一个 `Window`（§5.4 的字段 + `key` / `actors` / `reason` 三个实现补充）。"""
+    return {
+        "window_id": "%d:%s" % (minute, key),
+        "key": key,
+        "participants": sorted(participants),
+        "actors": actors,
+        "place": place,
+        "resource": resource,
+        "open_minute": minute,
+        "close_minute": None,
+        "reason": key.split(":", 1)[0],
+    }
+
+
+def _window_event(window, world_minute):
+    """开窗事件的封套（GDD §19.5 最小字段 + STATE §5.3 `changes` 形状）。
+
+    `target` 留空：窗口**不属于任何一张行动卡**，参与者记在 `after` 里（§5.4
+    `Window.participants`）——所以开窗事件**不能**交给 `apply_event` 落卡，
+    它只作「识别结论」的凭据交给状态层提交。
+    """
+    return {
+        "event_id": "%s:%s" % (window["window_id"], WINDOW_OPEN_EVENT),
+        "world_time": _world_time(world_minute),
+        "type": WINDOW_OPEN_EVENT,
+        "actor": window["actors"][0],
+        "target": None,
+        "cause": None,
+        "changes": [{
+            "block": "chron",
+            "path": "/windows/%s" % window["window_id"],
+            "op": "set",
+            "before": None,
+            "after": dict(window),
+        }],
+        "source": "system",
+        "reason": window["reason"],
+        "idempotency_key": "%s:%s" % (WINDOW_OPEN_EVENT, window["window_id"]),
+    }
+
+
+def _spawn_window(state, action_id, minute):
+    """识别「该开窗口」：维护冲突窗口，并把「**该开窗**」的那一刻变成**恰好一个**事件。
+
+    三种情形（§5.4 / §5.5）：
+
+    - **没有冲突键**（`place` / `resource` 均为 `None`）→ 不参与识别，返回 `None`；
+    - **该键上已有开着的窗口** → 把本行动**并入**该窗口的参与者，返回 `None`；
+    - **该键上有其它进行中的行动** → 窗口到期即开，返回 `window.opened`（**恰好一次**）；
+    - **该键上只有自己** → 还谈不上「互相影响」，不开窗（§5.4 要求两个及以上行动）。
+
+    窗口写入 `state["windows"]`；本函数只在 `advance_to` 的**新状态**上被调用。
+    """
+    key = conflict_key(state["actions"][action_id])
+    if key is None:
+        return None
+    open_here = _open_windows_for(state, key)
+    if open_here:
+        _join_window(state, open_here[0], action_id)
+        return None
+    peers = sorted(other_id for other_id, other_key in state["running"].items()
+                   if other_key == key and other_id != action_id)
+    if not peers:
+        return None  # 只有自己：还谈不上「互相影响」，不开窗（§5.4）
+    new_action = state["actions"][action_id]
+    participants = peers + [action_id]
+    actors = sorted(state["actions"][other]["actor"] for other in participants)
+    window = _window_record(key, participants, actors,
+                            new_action["place"], new_action["resource"], minute)
+    state["windows"] = state["windows"] + [window]
+    return _window_event(window, minute)
+
+
+def _join_window(state, window, action_id):
+    """把 `action_id` 并入已开着的窗口（参与者 / 参与者 actor 升序，不变更 `open_minute`）。"""
+    if action_id in window["participants"]:
+        return
+    updated = dict(window,
+                   participants=sorted(window["participants"] + [action_id]),
+                   actors=sorted(window["actors"] + [state["actions"][action_id]["actor"]]))
+    state["windows"] = [updated if other["window_id"] == window["window_id"] else other
+                        for other in state["windows"]]
+
+
+def _due_event(action, world_minute):
+    """`action.due` 事件的草稿（§8.3 幂等键 `<action_id>:<due_minute>:<类型>`）。
+
+    调度器只宣告「结算点到了」；**判成功 / 失败归 PRISM**（§7 边界），所以这不是
+    `action.completed`。事件不落卡（行动仍是 `running`），只交给状态层提交。
+    """
+    return {
+        "event_id": "%s:due%06d" % (action["action_id"], action["due_minute"]),
+        "world_time": _world_time(world_minute),
+        "type": ACTION_DUE_EVENT,
+        "actor": action["actor"],
+        "target": action["action_id"],
+        "cause": action["events"][-1] if action["events"] else None,
+        "changes": [],
+        "source": "system",
+        "reason": None,
+        "idempotency_key": "%s:%d:%s" % (action["action_id"], action["due_minute"],
+                                         ACTION_DUE_EVENT),
+    }
+
+
+# --------------------------------------------------------------------------
+# §5.3–§5.5 调度入口与推进
+# --------------------------------------------------------------------------
+
+def _advance_apply(action, to, ctx):
+    """一次转换 = 产事件 + 落卡，返回 `(新卡, 事件)`（`transition` 的产物原样保留）。
+
+    这样调度器既能拿到**事件对象**（交给状态层提交），也不丢 `transition` 的封套
+    （`event_id` / `world_time` / `changes` / `cause` / `reason`）。
+    """
+    event = transition(action, to, ctx)
+    return apply_event(action, event), event
+
+
+class _MinuteTracker(object):
+    """把**单调不减**的世界分钟戳在事件上：同分钟取同一值，绝不回退（§3.2）。
+
+    调度器会在一次 `advance_to` 里补出多个事件，而动作转换的世界分钟与到期分钟可能不同
+    （例如 `start_minute` 排在未来）。`max(last, minute)` 保证事件封套里的时间不会倒退。
+    """
+
+    def __init__(self, minute):
+        self.minute = minute
+
+    def at(self, minute):
+        self.minute = max(self.minute, minute)
+        return self.minute
+
+
+def _tail_events(action, before):
+    """`before`（追加前的事件 id 列表）之后新追加的事件 id，按产出顺序返回。"""
+    return list(action["events"][len(before):])
+
+
+def schedule(state, draft, *, world_minute, start_minute=None,
+             place=None, resource=None):
+    """把一张草稿排入时间线（§5.3；对应 §4.3 的 `schedule(action) -> action_id`）。
+
+    返回**结果 dict**（拒 / 纳两条路都不抛异常，便于按事件归因）：
+
+    ```
+    {"status": "scheduled" | "rejected", "action_id": str,
+     "state": 新调度器状态, "events": [本次产出的事件, ...]}
+    ```
+
+    `status = "rejected"` 的**唯一**语义拒绝是**依赖有环**（§5.3 硬约束）：提案先正常
+    `proposed`（留下可追溯事件），再 `proposed → failed`，两条事件都在 `events` 里；
+    **被拒的卡不进 `actions`**（不留污染，同一 `action_id` 修正依赖后可重试）。
+
+    依赖**暂时未完成**的卡**不在此列**：它照常 `scheduled`，但**不进 `due_heap`**
+    ——到期排序只放行依赖已全部成终态的行动（§5.3 首条）。
+
+    入参：
+
+    - `draft`：`new_action` 构造的草稿（`status is None`）；
+    - `world_minute`（**必填**）：本次调度发生的世界分钟（§3.2 权威时间）；
+    - `start_minute`（可选）：安排开始（缺省 = `world_minute`，立即）；
+    - `place` / `resource`（可选）：冲突识别键（§5.5），**给了就覆盖**草稿里的值。
+
+    调用错误（**抛 `ScheduleError`**）：`action_id` 重复、行动不是草稿、依赖 id **不存在**
+    （应先提交依赖）、`start_minute` 早于 `world_minute`、自依赖。这些都是**提交顺序 /
+    入参**问题，不是「提案该失败」——不该被 `proposed → failed` 掩盖。
+    """
+    _check_scheduler(state)
+    _check_action(draft)
+    if draft["status"] is not None:
+        raise ScheduleError("schedule 只接草稿（status is None），Action %s 已是 %s"
+                            % (draft["action_id"], _status_label(draft["status"])))
+    action_id = draft["action_id"]
+    if action_id in state["actions"]:
+        raise ScheduleError("action_id 重复：%s 已在调度器里（status=%s）"
+                            % (action_id, state["actions"][action_id]["status"]))
+    now = _require_non_negative(world_minute, "world_minute")
+    if now < state["world_minute"]:
+        raise ScheduleError("调度时间不得早于调度器当前世界时间：world_minute=%d < %d"
+                            % (now, state["world_minute"]))
+    action = _copy_action(draft)
+    if place is not None:
+        action["place"] = _require_optional_str(place, "place")
+    if resource is not None:
+        action["resource"] = _require_optional_str(resource, "resource")
+    start = _require_non_negative(start_minute if start_minute is not None else now,
+                                  "start_minute")
+    if start < now:
+        raise ScheduleError("安排开始不得早于本次调度时间：start_minute=%d < world_minute=%d"
+                            % (start, now))
+
+    deps = list(action["depends_on"])
+    if action_id in deps:
+        raise ScheduleError("自依赖：Action %s 的 depends_on 含自己（§5.3 无环约束）"
+                            % action_id)
+    missing = _missing_dependencies(state, deps)
+    if missing:
+        raise ScheduleError("依赖不存在：Action %s 依赖 %s 不在调度器里（先提交依赖再排）"
+                            % (action_id, " / ".join(missing)))
+    cycle = _dependency_cycle(state, action_id, deps) if deps else None
+
+    # 1) 提议（`None → proposed`）。环判定在建图**之前**完成，所以拒单也能留下可追溯事件。
+    action, propose_event = _advance_apply(action, "proposed",
+                                           {"world_minute": now, "who": "P"})
+    events = [propose_event]
+    if cycle is not None:
+        action, fail_event = _advance_apply(action, "failed",
+                                            {"world_minute": now, "who": "R",
+                                             "reason": "dependency_cycle",
+                                             "cause": propose_event["event_id"]})
+        events.append(fail_event)
+        return {"status": "rejected", "action_id": action_id, "cycle": cycle,
+                "state": state, "events": events}
+
+    # 2) 排期（`proposed → scheduled`）：写下 start / due（§4.1）。
+    action, schedule_event = _advance_apply(action, "scheduled",
+                                            {"world_minute": now, "who": "S",
+                                             "start_minute": start})
+    events.append(schedule_event)
+
+    # 3) 纳图：写行动卡、维护反向索引（§4.1 `blocks` 是 `depends_on` 的冗余索引）。
+    actions = dict(state["actions"])
+    actions[action_id] = action
+    blocks = {key: list(value) for key, value in state["blocks"].items()}
+    for dep in deps:
+        dependents = blocks.setdefault(dep, [])
+        if action_id not in dependents:
+            dependents.append(action_id)
+        dep_card = actions[dep]
+        if action_id not in dep_card["blocks"]:
+            dep_card = dict(dep_card, blocks=list(dep_card["blocks"]) + [action_id])
+            actions[dep] = dep_card
+
+    # 4) 重建派生索引；依赖未成终态者留在 `actions` 但不进堆（§5.3 首条）。
+    new_state = dict(state, world_minute=now, actions=actions, blocks=blocks)
+    new_state["due_heap"] = rebuild_heap(new_state)
+    return {"status": "scheduled", "action_id": action_id, "state": new_state,
+            "events": events}
+
+    # 3) 纳图：写行动卡、维护反向索引（§4.1 `blocks` 是 `depends_on` 的冗余索引）。
+    actions = dict(state["actions"])
+    actions[action_id] = action
+    blocks = {key: list(value) for key, value in state["blocks"].items()}
+    for dep in deps:
+        dependents = blocks.setdefault(dep, [])
+        if action_id not in dependents:
+            dependents.append(action_id)
+        dep_card = actions[dep]
+        if action_id not in dep_card["blocks"]:
+            dep_card = dict(dep_card, blocks=list(dep_card["blocks"]) + [action_id])
+            actions[dep] = dep_card
+
+    # 4) 重建派生索引；依赖未成终态者留在 `actions` 但不进堆（§5.3 首条）。
+    new_state = dict(state, world_minute=now, actions=actions, blocks=blocks)
+    new_state["due_heap"] = rebuild_heap(new_state)
+    return {"status": "scheduled", "action_id": action_id, "state": new_state,
+            "events": events}
+
+
+def _cascade_dependents(state, minute, known_bad):
+    """§5.3 级联（`settle` / `advance_to` 内部用，见公开的 `cascade_dependents`）。"""
+    events = {}
+    known_bad = set(known_bad)
+    handled = set()
+    changed = True
+    while changed:
+        changed = False
+        for action_id in sorted(state["actions"]):
+            if action_id in handled:
+                continue
+            action = state["actions"][action_id]
+            if action["status"] not in ("scheduled", "blocked"):
+                continue
+            bad = [dep for dep in action["depends_on"] if dep in known_bad]
+            if not bad:
+                continue
+            target = "blocked" if action["on_dep_fail"] == "keep" else "cancelled"
+            ctx = {"world_minute": minute, "who": "S" if target == "blocked" else "T",
+                   "reason": "dependency_failed"}
+            handled.add(action_id)
+            if action["status"] == target:
+                # 已经是目标态（blocked → blocked 不在转换表里）：只登记，不产二次事件。
+                changed = True
+                continue
+            updated, event = _advance_apply(action, target, ctx)
+            state["actions"][action_id] = updated
+            state["running"].pop(action_id, None)
+            events.setdefault(action_id, []).append(event)
+            changed = True
+            if target == "cancelled":
+                known_bad.add(action_id)
+    return events
+
+
+def _settle_who(from_status, to):
+    """`settle` 该以谁的名义结算：从 §4.2 全转换表里取**该行允许**的触发者。
+
+    同一目标状态在不同起点下「谁」列不同（`running → cancelled` 只许 `P`，
+    `scheduled → cancelled` 也收 `T`；结算 `P` 优先——取消首先是**玩家意图**）。
+    表里一行都收不到 `who` 时返回 `None`（`transition` 不做「谁」校验）。
+    """
+    allowed = tuple(row["who"] for row in ACTION_TRANSITIONS
+                    if row["from"] == from_status and row["to"] == to)
+    if not allowed:
+        return None
+    for candidate in ("P", "R", "S", "T"):
+        if all(candidate in who for who in allowed):
+            return candidate
+    return None
+
+
+def cascade_dependents(state, minute, known_bad):
+    """§5.3 级联：依赖 `failed` / `cancelled` 的行动按 `on_dep_fail` 处理（公开入口）。
+
+    - 默认 `on_dep_fail = "cancel"`：转 `cancelled`，事件带 `reason: dependency_failed`
+      （机器可读，供上层归因）；
+    - 标了 `"keep"` 的卡改判 `blocked`（`scheduled → blocked`，可恢复；**不**继续往它的下游传）；
+    - 级联**传递**（B 依赖 A、C 依赖 B，A 失败则 B、C 一起取消）；
+    - 覆盖「依赖失败时这条依赖链上还没轮到自己进堆」的行动——它们省了整轮，但这一步照常处理。
+
+    返回 `{"state": 新状态, "events": {action_id: [事件, ...]}}`；**不改写入参 `state`**。
+    `known_bad` 是已知失败 / 被取消的行动 id 集合（`settle` 会把刚落终态的卡放进去）。
+    """
+    _check_scheduler(state)
+    minute = _require_non_negative(minute, "minute")
+    new_state = dict(state,
+                     actions=dict(state["actions"]),
+                     blocks=dict(state["blocks"]),
+                     running=dict(state["running"]))
+    new_state["world_minute"] = max(new_state["world_minute"], minute)
+    events = _cascade_dependents(new_state, minute, known_bad)
+    new_state["due_heap"] = rebuild_heap(new_state)
+    return {"state": new_state, "events": events}
+
+
+def settle(state, action_id, to, *, world_minute, reason=None):
+    """结算 / 取消一张行动卡，并**级联**处理它的下游（§5.3）。
+
+    `to` 是终态之一（`completed` / `failed` / `cancelled`）；`reason` 随事件带出
+    （如依赖失败时的 `dependency_failed`）。返回
+    `{"state": 新状态, "events": {action_id: [事件, ...]}}`——事件以**行动**为键，
+    因为一次结算可能牵动多张卡（级联取消）；同一行动的事件按产出顺序排列。
+
+    结算会让依赖成终态，于是原本卡在「依赖未完成」的行动可以进堆——本函数最后重建
+    `due_heap`，把这类行动放行（§5.3）。**不改写入参 `state`**。
+    """
+    _check_scheduler(state)
+    if to not in ACTION_TERMINAL_STATUSES:
+        raise ScheduleError("settle 的 to 必须是终态（%s），得到 %r"
+                            % (" / ".join(ACTION_TERMINAL_STATUSES), to))
+    if action_id not in state["actions"]:
+        raise ScheduleError("settle 的行动不在调度器里：%s" % action_id)
+    minute = _require_non_negative(world_minute, "world_minute")
+    new_state = dict(state,
+                     actions=dict(state["actions"]),
+                     blocks=dict(state["blocks"]),
+                     running=dict(state["running"]),
+                     windows=[dict(window) for window in state["windows"]])
+    new_state["world_minute"] = max(new_state["world_minute"], minute)
+    action = new_state["actions"][action_id]
+    ctx = {"world_minute": minute, "who": _settle_who(action["status"], to)}
+    if reason is not None:
+        ctx["reason"] = reason
+    updated, event = _advance_apply(action, to, ctx)
+    events = {action_id: [event]}
+    new_state["actions"][action_id] = updated
+    new_state["running"].pop(action_id, None)
+    if to in ("failed", "cancelled"):
+        cascade = _cascade_dependents(new_state, minute, {action_id})
+        for other_id, other_events in cascade.items():
+            events.setdefault(other_id, []).extend(other_events)
+    new_state["due_heap"] = rebuild_heap(new_state)
+    return {"state": new_state, "events": events}
+
+
+def advance_to(state, target_minute):
+    """推进世界时间到 `target_minute`，**按稳定顺序**触发途中到期（§5.2 / §5.3）。
+
+    返回 `{"state": 新状态, "world_minute": 实际到达分钟, "events": [途中事件]}`。
+    事件流按执行顺序排列：每个到期点先开始 / 开窗（`action.started`、`window.opened`），
+    再 `action.due`；同一分钟的多张卡严格按 §5.2 排序键。
+
+    **本切片不做屏障**（`next_barrier` 与 B1–B8 归 C4）：这里会**一直推进到**
+    `target_minute`，只在「最早到期 > 目标」时停。C4 在此之上插入「停在屏障之前」。
+
+    性质：**不改写入参 `state`**（`actions` / `blocks` / `running` / `windows` 都在新状态上
+    复制后再改），返回的新状态可以与入参安全共存。`target_minute` 早于当前世界时间 →
+    显式抛 `ScheduleError`（世界时间只增不减，§3.2）。
+    """
+    _check_scheduler(state)
+    target = _require_non_negative(target_minute, "target_minute")
+    if target < state["world_minute"]:
+        raise ScheduleError("世界时间只增不减：target_minute=%d < world_minute=%d"
+                            % (target, state["world_minute"]))
+    new_state = dict(state,
+                     actions=dict(state["actions"]),
+                     blocks=dict(state["blocks"]),
+                     running=dict(state["running"]),
+                     windows=[dict(window) for window in state["windows"]],
+                     due_heap=[list(entry) for entry in state["due_heap"]])
+    tracker = _MinuteTracker(new_state["world_minute"])
+    events = []
+    while new_state["due_heap"]:
+        due_minute = new_state["due_heap"][0][0]
+        if due_minute > target:
+            break
+        bad_before = {action_id for action_id, action in new_state["actions"].items()
+                      if action["status"] in ("failed", "cancelled")}
+        events.extend(_fire_one(new_state, due_minute, tracker))
+        bad_after = {action_id for action_id, action in new_state["actions"].items()
+                     if action["status"] in ("failed", "cancelled")}
+        if bad_after - bad_before:
+            # 这一步里有行动失败 / 被取消：立刻级联它的下游（§5.3），再继续推进。
+            cascade = _cascade_dependents(new_state, new_state["world_minute"], bad_after)
+            for action_id in sorted(cascade):
+                events.extend(cascade[action_id])
+    new_state["world_minute"] = max(new_state["world_minute"], target)
+    new_state["due_heap"] = rebuild_heap(new_state)
+    return {"state": new_state, "world_minute": new_state["world_minute"], "events": events}
+
+
+def _fire_one(state, due_minute, tracker):
+    """处理**最早一个到期点**（`due_minute`），返回途中事件（按执行顺序）。
+
+    - 到达 `due_minute` 仍 `scheduled` 的卡在此转 `running`（`action.started`）；
+    - 同分钟有多张卡时，严格按 `_scheduling_key` 的**堆序**逐张处理（不批量绕过校验）；
+    - 出现 §5.5 的冲突（同 `place` / 同 `resource`）→ 开窗（**恰好一个** `window.opened`）；
+    - 到期本身产出 `action.due`（结算点由 PRISM 判，调度器只说「到了」）。
+
+    `due_minute` 是堆上的**最早可办分钟**，可能晚于 `action.due_minute`（依赖放行时已过期）：
+    事件一律戳在**实际处理的那一分钟**上。
+    """
+    state["world_minute"] = max(state["world_minute"], due_minute)
+    events = []
+    while state["due_heap"] and state["due_heap"][0][0] == due_minute:
+        entry = list(state["due_heap"].pop(0))
+        action_id = entry[3]
+        action = state["actions"].get(action_id)
+        if action is None or action["status"] not in ("scheduled", "running"):
+            continue
+        if list(_scheduling_key(action, due_minute)) != entry:
+            continue  # 堆序已被改写，等重建（不用过期条目）
+        if action["status"] == "scheduled":
+            started, started_event = _advance_apply(
+                action, "running", {"world_minute": due_minute, "who": "S"})
+            state["actions"][action_id] = started
+            events.append(started_event)
+            key = conflict_key(started)
+            if key is not None:
+                state["running"][action_id] = key
+                window = _spawn_window(state, action_id, due_minute)
+                if window is not None:
+                    events.append(window)
+        events.append(_due_event(state["actions"][action_id], tracker.at(due_minute)))
+    return events
