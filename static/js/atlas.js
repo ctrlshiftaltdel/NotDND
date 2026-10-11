@@ -21,7 +21,11 @@ var ATLAS = {
   loading: false,        // 出口列表加载中
   fetching: false,       // 出口列表请求在途（防重复打）
   moveInFlight: false,   // 移动写请求在途（§2.0 单一在途）
-  reqId: 0               // 请求序号：只认最后一次响应，防迟到覆盖
+  // 两类读请求各自一个单调序号：只认自己这一类里最后发出的那次响应，
+  // 迟到的旧响应一律丢弃。**分开计数**是关键——共用同一个计数器时，
+  // 移动后的 /api/session 刷新会把在途的 exits 请求顶掉，出口列表卡在旧值。
+  exitsReqId: 0,
+  sessionReqId: 0
 };
 
 /* 只读快照，供测试 / 调试核对本片状态与后端视图（等价于 window.__ERRS 的用途）。 */
@@ -55,12 +59,19 @@ function bandInfo(exit) {
   };
 }
 
-/* ── 渲染：出口列表 ──────────────────────────────────────
+/* ── 渲染：出口列表（纯渲染，不发请求）───────────────────
+   applyState 每次都调它，所以它必须既快又只画当前状态；
+   拉取新数据是 loadExits() 的事（首次没有缓存时才由渲染顺带触发）。
    有真实会话（SID）时数据一律来自服务端；没有会话时用占位态演示，
    且**不允许真的移动**（服务端没有这一局，发请求只会 400）。 */
 function renderExits() {
   if (SID) {
     ATLAS.mode = 'server';
+    var first = !ATLAS.exits.length && !ATLAS.serverText;   // 还没有任何服务端数据
+    if (first && !ATLAS.loading && !ATLAS.fetching) {
+      ATLAS.loading = true;
+      loadExits();
+    }
     renderServerExits();
     return;
   }
@@ -99,10 +110,13 @@ function renderServerExits() {
     return;
   }
 
-  $('#exitList').innerHTML = '<div class="exit-list">' + exits.map(function (x) {
+  // 用**数组下标**而非 via 定位出口：via 不唯一（同一地点可有多扇「门」
+  // 通往不同目的地，实测 emberfall 起始地点有 3 条 via="门"）。点击回传的
+  // 仍是服务端给的 via（后端只认 via），下标只用来选中正确的那一条。
+  $('#exitList').innerHTML = '<div class="exit-list">' + exits.map(function (x, i) {
     var b = bandInfo(x);
     return '<button class="btn act-btn act-btn-exit' + (b.dangerous ? ' is-danger' : '') +
-      '" data-exit="' + esc(x.via) + '"' +
+      '" data-exit-index="' + i + '"' +
       ' aria-label="' + esc((x.name || '') + '（' + b.name + ' · ' + b.shifts + ' 时段）') + '">' +
       '<span class="act-label">' + esc(x.name || '') + '</span>' +
       '<span class="act-hint exit-band">' + esc(b.shifts + ' 时段') + '</span>' +
@@ -110,9 +124,9 @@ function renderServerExits() {
       '</button>';
   }).join('') + '</div>';
 
-  $$('#exitList [data-exit]').forEach(function (btn) {
+  $$('#exitList [data-exit-index]').forEach(function (btn) {
     if (ATLAS.moveInFlight) return;   // 移动在途：不接受新的点击（§2.0）
-    btn.addEventListener('click', function () { pickExit(btn.dataset.exit); });
+    btn.addEventListener('click', function () { pickExit(Number(btn.dataset.exitIndex)); });
   });
 }
 
@@ -123,26 +137,30 @@ function setExitsBusy(busy) {
   if (sec) sec.setAttribute('aria-busy', busy ? 'true' : 'false');
 }
 
-/* ── 拉取出口列表（只读接口）───────────────────────────── */
+/* ── 拉取出口列表（只读接口）─────────────────────────────
+   先落 loading=true 再渲染出加载态；拿到数据后**先落 loading=false
+   再渲染**，否则最后一次渲染会看到过期的 loading 又把加载态画回去。 */
 async function loadExits() {
   if (!SID || ATLAS.fetching) return;
-  var my = ++ATLAS.reqId;
+  var my = ++ATLAS.exitsReqId;
   ATLAS.fetching = true;
   ATLAS.loading = true;
   clearExitError();
   renderExits();
   try {
     var view = await api('/api/atlas/exits');
-    if (my !== ATLAS.reqId) return;        // 迟到的旧响应：丢弃
+    if (my !== ATLAS.exitsReqId) return;    // 迟到的旧响应：丢弃
     ATLAS.exits = Array.isArray(view.exits) ? view.exits : [];
     ATLAS.serverText = view.text || '';
+    ATLAS.loading = false;
     renderExits();
   } catch (e) {
-    if (my !== ATLAS.reqId) return;
+    if (my !== ATLAS.exitsReqId) return;
+    ATLAS.loading = false;
     renderExitError(e.message, '重试');
   } finally {
     ATLAS.fetching = false;
-    ATLAS.loading = false;
+    ATLAS.loading = false;                  // 兜底：任何路径都不把加载态留死
   }
 }
 
@@ -163,16 +181,15 @@ function renderExitError(message, actionLabel) {
 }
 
 /* ── 点出口：危险档先确认，其余直接走 ──────────────────── */
-function pickExit(via) {
-  via = String(via || '');
-  if (!via || ATLAS.moveInFlight) return;
-  var x = (ATLAS.exits || []).find(function (e) { return e.via === via; });
-  if (!x) return;
+function pickExit(index) {
+  if (ATLAS.moveInFlight) return;
+  var x = (ATLAS.exits || [])[index];
+  if (!x || !x.via) return;
   buzz(12);
   if (bandInfo(x).dangerous) {
     confirmExitMove(x);
   } else {
-    doMove(via, x);
+    doMove(x.via, x);
   }
 }
 
@@ -266,10 +283,10 @@ function applyMoveResult(view, x) {
    重复请求用 reqId 守卫，迟到的旧响应不覆盖新状态。 */
 async function refreshSession() {
   if (!SID) return;
-  var my = ++ATLAS.reqId;
+  var my = ++ATLAS.sessionReqId;
   try {
     var view = await api('/api/session');
-    if (my !== ATLAS.reqId) return;
+    if (my !== ATLAS.sessionReqId) return;
     applyState(view);
   } catch (e) {
     /* 刷新失败不影响已成功的移动：下一次成功操作或重进会话会再拉。 */
