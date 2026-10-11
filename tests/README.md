@@ -44,10 +44,32 @@ bash tests/run_all.sh        # 收集 tests/test_*.py，串行执行，汇总退
 ## 浏览器测试
 
 浏览器用例依赖**无头浏览器**和**WebSocket 客户端**，共用助手 `tests/_cdp.py`
-（CDP-over-WebSocket 最小封装）。**缺任何前置条件就优雅跳过**：打印一行
-`skip：…（退出码 0）` 并以 0 退出，绝不判失败——CI 机器常常没有图形环境，
-「跑不了」不该等于「坏了」。
+（CDP-over-WebSocket 最小封装）。三个前置条件：有 `static/index.html`、
+有 WebSocket 客户端、有可用浏览器（可用环境变量 `NOTDND_CHROME` 指定浏览器路径）。
+示例见 `tests/test_ui_smoke.py`。
 
-三个前置条件：有 `static/index.html`、有 WebSocket 客户端、有可用浏览器
-（可用环境变量 `NOTDND_CHROME` 指定浏览器路径）。示例见
-`tests/test_ui_smoke.py`。
+### 本地：缺前置优雅跳过
+
+**缺任何前置条件就优雅跳过**：打印一行 `skip：…（退出码 0）` 并以 0 退出，
+绝不判失败——开发机常常没有图形环境，「跑不了」不该等于「坏了」。
+
+### CI：强制真实执行
+
+CI 的**必需回归门**不能靠「跳过」蒙混过关——跳过会让浏览器这条路径悄悄脱离
+覆盖。所以 `tests/test_ui_smoke.py` 支持一个显式的强制模式：
+
+```bash
+NOTDND_UI_SMOKE_MANDATORY=1 python3 tests/test_ui_smoke.py   # 取值 1/true/yes/on 均可
+```
+
+- **未设**（默认，本地）：前置缺失 → `skip：…`，退出码 0；
+- **已设**（CI）：前置缺失 → `FAIL（强制模式…）：前置条件缺失：…`，**退出码 1**，
+  回归门随即变红；前置齐备时打印 `UI 冒烟（强制模式）：前置条件齐备，真实执行`
+  与末尾的 `UI 冒烟真实执行并通过`，日志据此区分「真跑了且通过」与「前置缺失」。
+
+`.github/workflows/ci.yml` 的回归门会安装无头浏览器与 `websocket-client`（装法见
+该文件），并置 `NOTDND_UI_SMOKE_MANDATORY=1`。
+
+`test_ui_smoke.py` 的 `main()` 还会先跑一段**自测**：用子进程重跑自己、注入
+「缺前置」，分别验证「强制 → 非零」「默认 → 零」两条处置路径——于是「前置缺失」
+这条路径本身也有针对性测试，且不依赖运行环境。

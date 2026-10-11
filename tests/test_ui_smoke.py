@@ -15,15 +15,30 @@
      （自己的 `/css/*` `/js/*` `/api/*`）不算，浏览器自动要的
      `/favicon.ico` 也是同源。
 
-前置条件任一缺失即**优雅跳过**并返回 0（CI 不红）：
-  · 没有 `static/index.html`（前端还没落地，或这份测试被单独拎出来跑）；
-  · 没有 WebSocket 客户端（websocket-client）；
-  · 机器上没有可用浏览器。
-「跑不了」不等于「坏了」，所以这里打印 `skip：…` 后以 0 退出。
+## 本地跳过 vs CI 强制执行
+
+前置条件（`static/index.html`、WebSocket 客户端、可用浏览器）任一缺失时：
+
+  · **默认（本地）**：打印 `skip：…` 并以 0 退出——开发机常常没有无头浏览器，
+    「跑不了」不等于「坏了」，不该因此判失败；
+  · **强制模式（CI）**：设 `NOTDND_UI_SMOKE_MANDATORY=1`（`1` / `true` / `yes` / `on`
+    均可），前置缺失即打印 `FAIL（强制模式…）` 并以**非零**退出。回归门要求 UI 冒烟
+    **真实执行**——静默跳过会把浏览器这条路径悄悄移出 CI 覆盖（见 Issue #172）。
+
+强制模式且前置齐备时，脚本会打印 `UI 冒烟（强制模式）：前置条件齐备，真实执行`
+与末尾的 `UI 冒烟真实执行并通过`，CI 日志据此区分「真跑了且通过」与「前置缺失」。
+
+## 自测
+
+`main()` 每次都先跑一段**自测**（`_selftest_missing_paths`）：用子进程把本脚本再跑
+一遍，注入「缺前置」，分别验证「强制 → 非零」「默认 → 零」两条处置路径——于是
+「前置条件缺失」这条路径本身也有针对性测试，且不依赖运行环境。子进程靠
+`NOTDND_UI_SMOKE_SKIP_SELFTEST=1` 跳过自测，避免无限递归。
 
 测试期依赖从简：只用标准库 + websocket-client（经 `_cdp` 使用）。
 
 直接运行：python3 tests/test_ui_smoke.py
+强制运行：NOTDND_UI_SMOKE_MANDATORY=1 python3 tests/test_ui_smoke.py
 """
 
 import os
@@ -43,6 +58,18 @@ import _cdp  # noqa: E402
 
 STATIC_INDEX = os.path.join(ROOT, "static", "index.html")
 
+# 强制模式开关（CI 置 1）：前置缺失时「跳过」还是「失败」。
+MANDATORY_ENV = "NOTDND_UI_SMOKE_MANDATORY"
+# 自测注入钩子：强制报告某一项前置缺失，让缺失路径可被确定性测试。
+MISSING_ENV = "NOTDND_UI_SMOKE_MISSING"
+# 自测子进程据此跳过自测，避免无限递归。
+SKIP_SELFTEST_ENV = "NOTDND_UI_SMOKE_SKIP_SELFTEST"
+
+_TRUTHY = ("1", "true", "yes", "on")
+
+MISSING_INDEX_REASON = "没有 static/index.html（前端尚未落地）"
+MISSING_CDP_REASON = "无 WebSocket 客户端或浏览器"
+
 _oks = []
 _fails = []
 
@@ -56,9 +83,43 @@ def check(name, cond, detail=""):
         print("  FAIL %s  %s" % (name, detail))
 
 
-def _skip(reason):
+def _truthy(raw):
+    return (raw or "").strip().lower() in _TRUTHY
+
+
+def _mandatory():
+    return _truthy(os.environ.get(MANDATORY_ENV))
+
+
+def _precondition_failure():
+    """返回唯一的前置缺失原因；前置齐备则返回 None。
+
+    自测可用 `NOTDND_UI_SMOKE_MISSING=index|cdp` 注入一个「缺失」，
+    从而在不依赖真实环境的前提下测试缺失路径。
+    """
+    forced = (os.environ.get(MISSING_ENV) or "").strip().lower()
+    if forced == "index":
+        return MISSING_INDEX_REASON
+    if forced == "cdp":
+        return MISSING_CDP_REASON
+    if not os.path.isfile(STATIC_INDEX):
+        return MISSING_INDEX_REASON
+    if not _cdp.available():
+        return MISSING_CDP_REASON
+    return None
+
+
+def _verdict_missing(reason, mandatory):
+    """前置缺失时的处置：返回进程退出码，并把区分性字样写进日志。
+
+    强制模式 → 非零（CI 必须红）；默认 → 零（本地优雅跳过）。
+    """
+    if mandatory:
+        print("FAIL（强制模式 %s=1）：UI 冒烟前置条件缺失：%s" % (MANDATORY_ENV, reason))
+        print("强制模式要求 UI 冒烟真实执行；缺前置即失败（退出码 1）。")
+        return 1
     print("skip：%s（退出码 0，不判失败）" % reason)
-    raise SystemExit(0)
+    return 0
 
 
 def _free_port():
@@ -139,19 +200,60 @@ class _Server:
             return "（无服务端日志）"
 
 
-def main():
-    if not os.path.isfile(STATIC_INDEX):
-        _skip("没有 static/index.html（前端尚未落地）")
-    if not _cdp.available():
-        _skip("无 WebSocket 客户端或浏览器")
+def _selftest_env(overrides):
+    """自测子进程的环境：清掉两个会干扰的开关，再叠加要注入的值。"""
+    env = dict(os.environ)
+    for key in (MANDATORY_ENV, MISSING_ENV):
+        env.pop(key, None)
+    env[SKIP_SELFTEST_ENV] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    env.update(overrides)
+    return env
 
+
+def _run_selftest_child(overrides):
+    """用子进程把本脚本再跑一遍（注入 overrides），返回 CompletedProcess。"""
+    return subprocess.run(
+        [sys.executable, os.path.abspath(__file__)],
+        cwd=ROOT, env=_selftest_env(overrides),
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        encoding="utf-8", errors="replace", timeout=180)
+
+
+def _selftest_missing_paths():
+    """针对「前置条件缺失」这条路径的自测，不依赖真实浏览器 / 服务。"""
+    print("自测：前置条件缺失时的处置（强制 vs 默认）")
+
+    strict = _run_selftest_child({MANDATORY_ENV: "1", MISSING_ENV: "cdp"})
+    check("强制模式 + 缺前置 → 退出码非零", strict.returncode != 0,
+          "rc=%s，输出尾=%r" % (strict.returncode, strict.stdout[-200:]))
+    check("强制模式日志点明强制失败",
+          "FAIL" in strict.stdout and MANDATORY_ENV in strict.stdout,
+          "输出尾=%r" % (strict.stdout[-200:],))
+
+    loose = _run_selftest_child({MISSING_ENV: "cdp"})
+    check("默认（未强制）+ 缺前置 → 退出码 0", loose.returncode == 0,
+          "rc=%s，输出尾=%r" % (loose.returncode, loose.stdout[-200:]))
+    check("默认缺前置日志是 skip", "skip" in loose.stdout,
+          "输出尾=%r" % (loose.stdout[-200:],))
+
+    strict_index = _run_selftest_child({MANDATORY_ENV: "1", MISSING_ENV: "index"})
+    check("强制模式 + 缺 index → 退出码非零", strict_index.returncode != 0,
+          "rc=%s" % (strict_index.returncode,))
+
+
+def _smoke():
+    """真实跑一遍冒烟（前置已确认齐备）；返回进程退出码。"""
+    if _mandatory():
+        print("UI 冒烟（强制模式）：前置条件齐备，真实执行")
     print("UI 冒烟：起服务 → CDP 打开首页")
     with _Server() as server:
         base = "http://127.0.0.1:%d" % server.port
         try:
             page = _cdp.Browser(base).__enter__()
         except _cdp.CDPUnavailable as exc:
-            _skip(str(exc))
+            # 前置检查说「齐备」了，起浏览器仍失败 → 按同一口径处置
+            return _verdict_missing(str(exc), _mandatory())
         try:
             page.navigate("/", settle=2.0)
             check("首页加载完成",
@@ -183,7 +285,26 @@ def main():
 
     print()
     print("通过 %d / 共 %d" % (len(_oks), len(_oks) + len(_fails)))
-    return 1 if _fails else 0
+    if _fails:
+        return 1
+    if _mandatory():
+        print("UI 冒烟真实执行并通过")
+    return 0
+
+
+def main():
+    if not _truthy(os.environ.get(SKIP_SELFTEST_ENV)):
+        _selftest_missing_paths()
+        print()
+        if _fails:
+            print("自测未通过：%d 项失败" % len(_fails))
+            print("通过 %d / 共 %d" % (len(_oks), len(_oks) + len(_fails)))
+            return 1
+
+    reason = _precondition_failure()
+    if reason is not None:
+        return _verdict_missing(reason, _mandatory())
+    return _smoke()
 
 
 if __name__ == "__main__":
