@@ -522,6 +522,15 @@ def _restore_rules(raw: object, sid: str) -> dict:
 # --------------------------------------------------------------------------
 
 
+def _new_sid() -> str:
+    """新存档的 sid：`s-` + 16 位十六进制。
+
+    过 `SID_RE`（`[A-Za-z0-9_-]{1,64}`）——它既是内存缓存的键，也是磁盘文件名，
+    白名单保证不含路径分隔符（杜绝 `../` 拼接）。
+    """
+    return "s-" + secrets.token_hex(8)
+
+
 class SaveError(Exception):
     """存档落盘失败（目录创建 / 临时写 / `os.replace`）。
 
@@ -1126,6 +1135,11 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/room/kick":
                 return self._room_kick(b)
 
+            if path == "/api/session/create":
+                # 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）：还没有会话时要能开一局，
+                # 所以**不**调 _sess()——本路由不读 X-Session，只回一个新 sid。
+                return self._session_create()
+
             if path == "/api/save/rename":
                 # 目标 sid 来自请求体，不是 X-Session 头（头里是当前打开那局）。
                 sid = str(b.get("sid") or "").strip()
@@ -1468,6 +1482,49 @@ class Handler(BaseHTTPRequestHandler):
             self._sse_close()       # 零长度块收尾：空合成也是一条完整的流
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # ── 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）──────────
+    def _session_create(self):
+        """`POST /api/session/create`：开一局——建一份新存档并返回新 `sid`。
+
+        §2.1 的第一步（大厅「开始新的一局」）今天没有路由（`_sess()` 找不到会话
+        即 400）；本路由补上它：**不带** `X-Session`，服务端生成一个新 `sid`，
+        落盘成功后返回 `sid` 与**新局最小视图**（与 `GET /api/session` 同一份
+        `rules_view()`，只是多一个 `status: "ok"`，客户端可直接当整局视图用；
+        也可以只取 `sid` 存进 `localStorage('prism.sid')` 再拉一次）。
+
+        体可以为空（没有任何必填参数）；畸形 JSON / 超过 2MB → 400（沿用
+        `_body()` 的统一语义）。落盘失败（`SaveError`）→ 500「保存失败，请重试」，
+        且**不**把半成品塞进缓存——与 #170 的结论一致：建局失败绝不返回误导性成功。
+
+        新局是**未绑定**态（`guide.scenario_id == ""`）：世界 / 剧本由
+        `POST /api/guide/bind` 显式绑定，本路由不猜、不扫 `data/scenarios/`，
+        也不返回可选战役列表（那是需要产品级决策的另一单，见 PR 说明）。
+        全程不碰导引者模块，故无 AI 配置（离线）时照常可用。
+        """
+        with _sessions_lock:
+            # sid 自己生成：和已有的内存会话 / 磁盘存档都不能撞（撞了会覆盖别人的档）。
+            for _ in range(8):
+                sid = _new_sid()
+                if (sid not in _sessions
+                        and not (SAVE_DIR / f"{sid}.json").is_file()):
+                    break
+            else:
+                # 8 次都撞（实际不可能）：如实报失败，不返回一个没落盘的 sid。
+                return self._err("建局失败，请重试", 500)
+            # 建局必须**原子**：save() 落盘成功之后才进缓存，客户端拿到 sid 时
+            # 磁盘上已经有这份存档（随后 GET /api/session 必然 200）。
+            session = Session(sid)
+            try:
+                session.save()
+            except SaveError:
+                # 没落盘：不把半成品塞进缓存，客户端拿到 500 可重试。
+                return self._err("保存失败，请重试", 500)
+            _sessions[sid] = session
+        with session.lock:
+            view = rules_view(session)
+        view["status"] = "ok"
+        return self._json(view)
 
     # ── 多人房间（M10-S1，§4）────────────────────────────────
     def _bearer_token(self) -> str:
