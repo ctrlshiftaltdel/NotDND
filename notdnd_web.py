@@ -41,6 +41,9 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     `join` / `leave` / `kick` 走 `Authorization: Bearer` + `X-Room` / `X-Member`
     鉴权链（§4.1）；房间级角色矩阵（§4.2）与 6 人上限（容量满 → `409 room_full`）；
     令牌只存 `sha256`，明文仅在创建 / 加入时回一次，永不落盘 / 写日志
+  · CHRON 存档块（M9-C5）：`chron` 是又一块**不透明块**（CHRON-DESIGN §8.1）——
+    本文件只提供它的默认值工厂（老档迁移时补空块）；块的加载 / 重放 / 重建 `due_heap` /
+    幂等表全归 `chron.py`（C5），排程驱动与网页接口归后续切片（C6），本文件不解析这块
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -74,6 +77,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import atlas as atlas_kernel
 import atlas_compile
+import chron
 import prism_core
 import state
 
@@ -457,6 +461,16 @@ def _empty_rules_snapshot(sid: str = "") -> dict:
     return prism_core.RuleSession(str(sid or "")).snapshot()
 
 
+def _empty_chron_block() -> dict:
+    """空 CHRON 存档块（`chron`，CHRON-DESIGN §8.1）；零参调用即默认值工厂。
+
+    块的形状归 `chron` 定义（`state.py` 只把它当**不透明块**原样存取，STATE §6.1 /
+    S8），本文件只调用它的工厂，不另写一份字段名——与 `_empty_rules_snapshot`
+    同款口径。世界时钟 / 行动卡 / 幂等表都由 CHRON 自己填（C5 / C6）。
+    """
+    return chron.new_block()
+
+
 # 老档字段默认值表：**迁移层**（`_legacy_parts`）按此补缺——「只补不覆盖」。
 # 新档（`campaigns/<sid>/snapshot.json`）走 `state` 的加载路径（缺块即创世块），
 # 不再经过这里：这条表只服务「旧单文件 `<sid>.json` → 新档」的一次性映射。
@@ -474,6 +488,11 @@ _LEGACY_DEFAULTS: dict[str, object] = {
     "guide": _empty_guide,              # 导引者状态块（工厂：现造，salt 新掷）
     "room": _empty_room,                # 多人房间块（§3.2）；工厂：现造最小房间，
                                         # 老档缺失即迁移成「单人房」（M-16）
+    "chron": _empty_chron_block,        # CHRON 存档块（CHRON-DESIGN §8.1）；工厂：现造
+                                        # 空块（world_minute=0、无行动、无幂等键）。
+                                        # M7 之前的老档都没有这块，本该由 CHRON（C5）
+                                        # 惰性补默认；这里顺手在迁移时补上，新档一起步
+                                        # 就有形状正确的不透明块（STATE §6.1）。
 }
 
 
@@ -689,6 +708,10 @@ def _legacy_parts(sid: str, d: dict) -> tuple[dict, dict, str, int]:
         "atlas": copy.deepcopy(atlas) if isinstance(atlas, dict) else None,
         "guide": copy.deepcopy(d.get("guide")),
         "room": _room_from(d.get("room"), sid),
+        # CHRON 块（§8.1）：老档没有 → 已由上面的默认值工厂补成空块；有则逐字搬。
+        # 块的**语义**归 CHRON（脏值降级 / 版本迁移在 `chron.migrate_block`，
+        # 由 C5 的加载路径负责），本文件只当一个不透明块搬运（STATE §6.1 / S8）。
+        "chron": copy.deepcopy(d.get("chron")),
     }
     log = d.get("log") if isinstance(d.get("log"), list) else []
     return (
