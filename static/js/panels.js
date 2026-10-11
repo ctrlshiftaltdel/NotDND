@@ -39,19 +39,16 @@ var PANELS = {
 
 /* ══════════════ 小工具 ══════════════ */
 
-/* 名义分钟 → 时段数。1 时段 = 360 名义分钟（与 §2.6 / U3 口径一致）；
-   前端只显示、不参与判定。minutes 为 0（门内）时不显示时段。 */
-function panelShifts(minutes) {
-  return Math.max(1, Math.round((minutes || 0) / 360));
-}
-
-/* 行程档文案：BAND_NAMES 的中文（不自己造词），危险档单独标记。 */
+/* 行程档文案：BAND_NAMES 的中文（不自己造词）+ 名义分钟（§2.6 定稿口径：
+   中文 + `minutes` +（不稳）），危险档单独标记；minutes 为 0（门内）时不显示
+   时长。前端只显示、不参与判定，与服务端 `text` 的「· N 分钟」同口径。 */
 function panelBand(exit) {
   var names = { short: '短程', medium: '中程', long: '远程', dangerous: '危险穿越' };
-  var minutes = exit && exit.minutes;
+  var minutes = (exit && exit.minutes) || 0;
   return {
     name: names[exit && exit.band] || '门内',
-    shifts: minutes > 0 ? panelShifts(minutes) : 0,
+    minutes: minutes,
+    duration: minutes > 0 ? minutes + ' 分钟' : '',
     dangerous: (exit && exit.band) === 'dangerous'
   };
 }
@@ -218,7 +215,7 @@ function renderScenePanel() {
   if (exits.length) {
     html += '<div class="exit-list">' + exits.map(function (x, i) {
       var b = panelBand(x);
-      var hint = b.name + (b.shifts ? ' · ' + b.shifts + ' 时段' : '') + (x.unstable ? ' · 不稳' : '');
+      var hint = b.name + (b.duration ? ' · ' + b.duration : '') + (x.unstable ? ' · 不稳' : '');
       return '<button type="button" class="btn act-btn world-exit' + (b.dangerous ? ' is-danger' : '') +
         '" data-world-exit="' + i + '">' +
         '<span class="act-label">' + esc(x.name || x.via || '') + '</span>' +
@@ -282,7 +279,7 @@ function renderWorldConfirm() {
   var b = panelBand(x);
   box.innerHTML = '<div class="world-confirm">' +
     '<p class="confirm-line">前往「' + esc(x.name || x.via || '未知地点') + '」？</p>' +
-    '<p class="confirm-sub">' + esc(b.name + (b.shifts ? ' · ' + b.shifts + ' 时段' : '')) + '</p>' +
+    '<p class="confirm-sub">' + esc(b.name + (b.duration ? ' · ' + b.duration : '')) + '</p>' +
     '<div class="confirm-actions">' +
       '<button type="button" class="btn" data-world-cancel="1">取消</button>' +
       '<button type="button" class="btn btn-primary" data-world-go="1">继续穿越</button>' +
