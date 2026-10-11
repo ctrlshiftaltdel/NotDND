@@ -41,6 +41,11 @@
      原文且**不发**场外请求；离线时不留痕、回合照常；`rules.scene.id` 变化时
      为**当前焦点**记一轮。
 
+ 10. 多人房间（M10-S1，MPI §3.2 / §4）：`room` 顶层块随存档落盘、旧单人档惰性迁移
+     （T11）；`POST /api/room/create|join|leave|kick` 与 `Authorization: Bearer` +
+     `X-Room`/`X-Member` 鉴权链；容量满员 `409 room_full`（T7）、非房主踢人 `403`（T8）、
+     坏令牌 / 缺成员头 `401`（T12）；令牌只存 `sha256`、明文不入存档。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -197,27 +202,35 @@ class _Server:
         except OSError:
             return "（无服务端日志）"
 
-    def get(self, path: str, sid: str = ""):
-        """发一次 GET，返回 (状态码, 解析后的 JSON)。"""
+    def get(self, path: str, sid: str = "", headers: dict | None = None):
+        """发一次 GET，返回 (状态码, 解析后的 JSON)。
+
+        `headers` 用来附加房间鉴权头（`X-Room` / `X-Member` /
+        `Authorization`，§4.1）；`sid` 仍写 `X-Session`。
+        """
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        headers = {"X-Session": sid} if sid else {}
+        request_headers = dict(headers or {})
+        if sid:
+            request_headers["X-Session"] = sid
         try:
-            conn.request("GET", path, headers=headers)
+            conn.request("GET", path, headers=request_headers)
             response = conn.getresponse()
             body = response.read()
             return response.status, _load_json(body)
         finally:
             conn.close()
 
-    def post(self, path: str, payload: dict, sid: str = ""):
+    def post(self, path: str, payload: dict, sid: str = "",
+             headers: dict | None = None):
         """发一次 POST，返回 (状态码, 解析后的 JSON)。"""
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        headers = {"Content-Type": "application/json; charset=utf-8"}
+        request_headers = {"Content-Type": "application/json; charset=utf-8"}
+        request_headers.update(headers or {})
         if sid:
-            headers["X-Session"] = sid
+            request_headers["X-Session"] = sid
         try:
             body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-            conn.request("POST", path, body=body, headers=headers)
+            conn.request("POST", path, body=body, headers=request_headers)
             response = conn.getresponse()
             return response.status, _load_json(response.read())
         finally:
@@ -274,29 +287,34 @@ class _LocalServer:
         self.thread.join(timeout=5)
         return False
 
-    def get(self, path: str, sid: str = ""):
+    def get(self, path: str, sid: str = "", headers: dict | None = None):
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
-        headers = {"X-Session": sid} if sid else {}
+        request_headers = dict(headers or {})
+        if sid:
+            request_headers["X-Session"] = sid
         try:
-            conn.request("GET", path, headers=headers)
+            conn.request("GET", path, headers=request_headers)
             response = conn.getresponse()
             return response.status, _load_json(response.read())
         finally:
             conn.close()
 
-    def post(self, path: str, body: dict, sid: str = ""):
+    def post(self, path: str, body: dict, sid: str = "",
+             headers: dict | None = None):
         """POST 一次，返回 (状态码, JSON, **已解块**的响应体, 响应头字典)。
 
         `http.client` 会自己把分块体还原，所以这里拿到的 `raw` 直接交给
         `_parse_sse`；只有裸 socket 的 `_raw_http` 才需要 `_dechunk`。
+        `headers` 用来附加房间鉴权头（§4.1）。
         """
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=15)
-        headers = {"Content-Type": "application/json"}
+        request_headers = {"Content-Type": "application/json"}
+        request_headers.update(headers or {})
         if sid:
-            headers["X-Session"] = sid
+            request_headers["X-Session"] = sid
         payload = json.dumps(body, ensure_ascii=False).encode("utf-8")
         try:
-            conn.request("POST", path, body=payload, headers=headers)
+            conn.request("POST", path, body=payload, headers=request_headers)
             response = conn.getresponse()
             raw = response.read()
             heads = {key.lower(): value for key, value in response.getheaders()}
@@ -1815,6 +1833,221 @@ def check_guide_turn_scene_change_traces():
         assert notdnd_web.get_session(sid).guide["l2_scene_id"] == "sc-2"
 
 
+# --------------------------------------------------------------------------
+# 多人房间（M10-S1，MPI §3.2 / §4）
+# --------------------------------------------------------------------------
+
+
+def _room_headers(room_id: str, member_id: str, token: str) -> dict:
+    """房间鉴权头（§4.1）：`X-Room` + `X-Member` + `Authorization: Bearer`。"""
+    return {"X-Room": room_id, "X-Member": member_id,
+            "Authorization": "Bearer %s" % token}
+
+
+def _read_room_block(save_dir: str, room_id: str) -> dict:
+    """直接读服务端写出的存档，取顶层 `room` 块（绕开响应，验证**磁盘**事实）。"""
+    with open(os.path.join(save_dir, "%s.json" % room_id), encoding="utf-8") as handle:
+        return json.load(handle)["room"]
+
+
+def check_room_create_join_leave():
+    """建房 → 加入 → 离开：令牌只存 hash、明文不入存档（§4.1）。"""
+    rid = "room-party-1"
+    with _Server() as server:
+        status, body = server.post("/api/room/create",
+                                   {"room_id": rid, "display_name": "阿雅"})
+        assert status == 200, "建房应 200，实际 %s / %s" % (status, body)
+        assert body["room_id"] == rid and body["role"] == "host", body
+        host_id, host_tok = body["member_id"], body["token"]
+        assert notdnd_web.MEMBER_ID_RE.fullmatch(host_id), host_id
+        assert notdnd_web.ROOM_ID_RE.fullmatch(rid)
+
+        # 存档里只有 hash：明文令牌不得出现在文件任何一个字节里。
+        with open(os.path.join(server.dir, "%s.json" % rid), encoding="utf-8") as handle:
+            raw = handle.read()
+        assert host_tok not in raw, "明文令牌绝不得落盘"
+        member = json.loads(raw)["room"]["members"][host_id]
+        assert member["token_hash"] == notdnd_web._hash_token(host_tok)
+        assert "token" not in member, "成员记录只存 token_hash"
+
+        # 第二名加入 → player。
+        status, second = server.post("/api/room/join", {"display_name": "柏舟"},
+                                     headers={"X-Room": rid})
+        assert status == 200, "%s / %s" % (status, second)
+        assert second["role"] == "player", second
+        player_id, player_tok = second["member_id"], second["token"]
+
+        # 玩家离开：200；此后同令牌请求被拒（403，令牌已不生效）。
+        status, left = server.post("/api/room/leave", {},
+                                   headers=_room_headers(rid, player_id, player_tok))
+        assert status == 200, "%s / %s" % (status, left)
+        assert left["member_id"] == player_id
+        status, denied = server.post("/api/room/leave", {},
+                                     headers=_room_headers(rid, player_id, player_tok))
+        assert status == 403, "离开后同令牌应 403，实际 %s / %s" % (status, denied)
+        assert denied.get("reason") == "member_left"
+
+        # 磁盘上成员已是 left；房主仍在、房主位不变。
+        block = _read_room_block(server.dir, rid)
+        assert block["members"][player_id]["state"] == "left"
+        assert block["members"][host_id]["state"] == "active"
+        assert block["host_member_id"] == host_id
+
+
+def check_room_legacy_lazy_migration():
+    """T11：旧单人档载入 → 惰性迁移出最小 `room` 块；原 rules/guide 不变；往返一致。"""
+    sid = "room-legacy-1"
+    legacy = {
+        "sid": sid, "created": 1700000000.0,
+        "log": [{"seq": 1, "kind": "narrative", "text": "旧档旁白",
+                 "speaker": "", "ts": 1700000000000}],
+        "seq": 1, "save_name": "旧档",
+        "rules": _sample_rules(sid),
+        "guide": {"salt": "0123456789abcdef0123456789abcdef", "realizations": {}},
+    }
+    _write_save(_save_path(sid), legacy)
+
+    s = notdnd_web.Session.load(sid)
+    assert s is not None, "老档必须能载入"
+    room = s.room
+    assert room["room_id"] == sid, "room_id == sid（M-11）"
+    assert room["schema_version"] == notdnd_web.ROOM_SCHEMA_VERSION == 1
+    assert room["host_member_id"] == "", "迁移出的房间尚无房主（M-16）"
+    assert room["members"] == {}, "迁移出的房间没有成员"
+    assert room["capacity"] == 6 == notdnd_web.ROOM_MAX_MEMBERS
+    assert room["settings"]["offline_advance"] == "never", "默认不推进（A5）"
+
+    # 原 rules / guide 不变（迁移只碰 room 块）。
+    assert s.rules == legacy["rules"], "迁移不得动 rules"
+    assert s.guide["salt"] == legacy["guide"]["salt"], "迁移不得动 guide"
+
+    # 磁盘上的老档没被就地改写（惰性迁移只发生在内存）。
+    with open(_save_path(sid), encoding="utf-8") as handle:
+        assert json.load(handle) == legacy, "惰性迁移不得就地改写老档"
+
+    # 往返一致：save() 之后重新载入，room 块与 rules 逐字段相等。
+    s.save()
+    again = notdnd_web.Session.load(sid)
+    assert again is not None
+    assert again.to_dict()["room"] == room, "room 块往返必须一致"
+    assert again.rules == legacy["rules"]
+    assert again.guide["salt"] == legacy["guide"]["salt"]
+
+    # 默认房间块必须是**工厂**：两个存档不共享同一个可变对象。
+    other = notdnd_web.Session("room-legacy-2")
+    assert other.room is not s.room
+    other.room["members"]["m-00000000"] = {}
+    assert "m-00000000" not in s.room["members"], "不同存档不得共享同一份房间块"
+
+
+def check_room_capacity_full():
+    """T7：第 7 名玩家 → 409 room_full；已用座位不被动摇。"""
+    rid = "room-full-1"
+    with _Server() as server:
+        status, host = server.post("/api/room/create", {"room_id": rid})
+        assert status == 200, "%s / %s" % (status, host)
+        seating = [host["member_id"]]
+
+        # 房主占 1 座，再加入 5 名玩家 = 满员 6。
+        for i in range(5):
+            status, joined = server.post("/api/room/join", {"display_name": "P%d" % i},
+                                         headers={"X-Room": rid})
+            assert status == 200, "第 %d 名应能加入：%s / %s" % (i + 2, status, joined)
+            seating.append(joined["member_id"])
+        assert len(notdnd_web._room_seats(_read_room_block(server.dir, rid))) == 6
+
+        # 第 7 名 → room_full；房间人数不变。
+        status, full = server.post("/api/room/join", {"display_name": "P6"},
+                                   headers={"X-Room": rid})
+        assert status == 409, "满员应 409，实际 %s / %s" % (status, full)
+        assert full.get("reason") == "room_full"
+        block = _read_room_block(server.dir, rid)
+        assert len(notdnd_web._room_seats(block)) == 6, "已用座位不得被动摇"
+        assert set(block["members"]) == set(seating)
+
+
+def check_room_kick_authorization():
+    """T8：非房主踢人 → 403 且房间不变；房主踢人 → 生效，被踢者后续 403。"""
+    rid = "room-kick-1"
+    with _Server() as server:
+        status, host = server.post("/api/room/create", {"room_id": rid})
+        assert status == 200, "%s / %s" % (status, host)
+        host_id, host_tok = host["member_id"], host["token"]
+        status, p1 = server.post("/api/room/join", {"display_name": "甲"},
+                                 headers={"X-Room": rid})
+        assert status == 200, "%s / %s" % (status, p1)
+        status, p2 = server.post("/api/room/join", {"display_name": "乙"},
+                                 headers={"X-Room": rid})
+        assert status == 200, "%s / %s" % (status, p2)
+        p1_id, p1_tok = p1["member_id"], p1["token"]
+        p2_id, p2_tok = p2["member_id"], p2["token"]
+
+        # 玩家甲踢玩家乙 → 403 not_authorized；乙仍在座，房主不变。
+        status, denied = server.post("/api/room/kick", {"member_id": p2_id},
+                                     headers=_room_headers(rid, p1_id, p1_tok))
+        assert status == 403, "非房主应 403，实际 %s / %s" % (status, denied)
+        assert denied.get("reason") == "not_authorized"
+        block = _read_room_block(server.dir, rid)
+        assert block["members"][p2_id]["state"] == "active", "403 不得改动房间"
+        assert block["host_member_id"] == host_id
+
+        # 房主踢乙 → 200；被踢者后续请求 403（§4.4）。
+        status, kicked = server.post("/api/room/kick", {"member_id": p2_id},
+                                     headers=_room_headers(rid, host_id, host_tok))
+        assert status == 200, "房主应能踢人，实际 %s / %s" % (status, kicked)
+        assert kicked["member_id"] == p2_id
+        assert _read_room_block(server.dir, rid)["members"][p2_id]["state"] == "left"
+        status, after = server.post("/api/room/leave", {},
+                                    headers=_room_headers(rid, p2_id, p2_tok))
+        assert status == 403, "被踢者应 403，实际 %s / %s" % (status, after)
+        assert after.get("reason") == "member_left"
+
+        # 房主踢自己 → 400（不改变房间）。
+        status, self_kick = server.post("/api/room/kick", {"member_id": host_id},
+                                        headers=_room_headers(rid, host_id, host_tok))
+        assert status == 400, "%s / %s" % (status, self_kick)
+
+
+def check_room_auth_chain():
+    """T12：坏令牌 / 缺成员头 / 无凭据 → 401；响应体不泄露成员是否存在。"""
+    rid = "room-auth-1"
+    with _Server() as server:
+        status, host = server.post("/api/room/create", {"room_id": rid})
+        assert status == 200, "%s / %s" % (status, host)
+        host_id, host_tok = host["member_id"], host["token"]
+
+        status, nothing = server.post("/api/room/leave", {})
+        assert status == 401, "无凭据应 401，实际 %s / %s" % (status, nothing)
+        status, no_member = server.post("/api/room/leave", {}, headers={
+            "X-Room": rid, "Authorization": "Bearer %s" % host_tok})
+        assert status == 401, "缺 X-Member 应 401，实际 %s / %s" % (status, no_member)
+        status, bad_token = server.post("/api/room/leave", {},
+                                        headers=_room_headers(rid, host_id, "0" * 64))
+        assert status == 401, "坏令牌应 401，实际 %s / %s" % (status, bad_token)
+        status, no_such = server.post("/api/room/leave", {},
+                                      headers=_room_headers(rid, "m-deadbeef", host_tok))
+        assert status == 401, "成员不存在应 401，实际 %s / %s" % (status, no_such)
+
+        # 先确认响应体真的是「固定 JSON」（不是解析失败回落成的空 dict，
+        # 否则下面那条「几份响应体一致」会变成空断言）。
+        assert nothing.get("error") and nothing.get("reason") == "token_invalid", nothing
+        # 不泄露成员是否存在：几种 401 的响应体必须**完全一致**。
+        shapes = {json.dumps(b, sort_keys=True, ensure_ascii=False)
+                  for b in (nothing, no_member, bad_token, no_such)}
+        assert len(shapes) == 1, "401 不得区分失败缘由：%s" % shapes
+
+        # 房间不存在：形态合法但没建过 → 同样 401、同一响应体。
+        status, absent = server.post("/api/room/leave", {},
+                                     headers=_room_headers("room-nope-1", host_id, host_tok))
+        assert status == 401, "%s / %s" % (status, absent)
+        assert json.dumps(absent, sort_keys=True, ensure_ascii=False) in shapes
+
+        # 失败请求不得改动房间：房主仍在座、房主位不变。
+        block = _read_room_block(server.dir, rid)
+        assert block["members"][host_id]["state"] == "active"
+        assert block["host_member_id"] == host_id
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -1849,6 +2082,11 @@ CHECKS = (
     check_guide_turn_traces_betrayed,
     check_guide_turn_traces_offline,
     check_guide_turn_scene_change_traces,
+    check_room_create_join_leave,
+    check_room_legacy_lazy_migration,
+    check_room_capacity_full,
+    check_room_kick_authorization,
+    check_room_auth_chain,
 )
 
 
