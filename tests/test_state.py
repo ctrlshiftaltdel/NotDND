@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""状态层内核回归测试（M7-1，Issue #163）。
+"""状态层内核回归测试（M7-1，Issue #163；M7-2，Issue #267）。
 
 对照 STATE-DESIGN.md §14 的用例，覆盖：
 
@@ -10,9 +10,15 @@
   `seq_from == seq_to`、`len(event_ids) == 1`；一次提交内多项 `changes`
   （跨块、含 set/unset/delta/append）整体生效；行中崩（半行）整体不生效；
   重放区间内 `commit_id` 唯一。
-- **崩溃恢复**组：追加中途崩（半行）丢弃末行；追加完成、检查点未写 → 重启重放 +
-  幂等索引由日志重建（§7.4）；检查点损坏 + `.bak` 有效 → 回退；两者都坏 → 退创世态；
-  日志中间断裂 → 拒载；`.tmp` 残留 → 清理。
+- **快照重建 == 存活态**组（M7-2）：创世 + 全量事件回放、检查点 + 尾部回放（检查点滞后）、
+  只有检查点无事件——三者与存活态在**规范化 JSON** 下逐字节相等；`replay(upto_seq=…)` 历史时点。
+- **崩溃恢复**组：追加中途崩（半行）丢弃末行且**落盘截除**（后续提交可追加）；
+  追加完成、检查点未写 → 重启重放 + 幂等索引由日志重建（§7.4）；检查点损坏 + `.bak` 有效 →
+  回退；两者都坏 → 退创世态；日志中间断裂 → 拒载；归档重叠段（`seq ≤ 检查点 seq`）→ 不拒载、
+  重放区间内重复 → 拒载；`.tmp` 残留 → 清理。
+- **归档段与检查点调度**组（M7-2）：超阈值归档（`events.<n>.ndjson`，整体改名搬迁、
+  归档不删事实、重放仍可拼回）；改名失败不丢事实；§6.3 三个触发条件（事件数 / 时间 /
+  日志体积）与 `flush()` 优雅退出。
 - **结构**断言：`import state` 不触碰磁盘；源码无业务模块 import；`seq` 无空洞。
 
 零依赖：仅 Python 3 标准库。临时存档目录一律落 `tempfile.mkdtemp()`，退出前收摊。
@@ -59,6 +65,33 @@ def _event_lines(tmp, cid=CAMPAIGN):
         return [json.loads(line) for line in handle.read().splitlines() if line.strip()]
 
 
+def _lines_at(path):
+    """读任意 NDJSON 段（活动日志 / 归档段）为事件列表。"""
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle.read().splitlines() if line.strip()]
+
+
+def _archive_path(tmp, index=1, cid=CAMPAIGN):
+    """归档段路径：`events.<n>.ndjson`（§4.1）。"""
+    return os.path.join(_camp_dir(tmp, cid), "events.%d.ndjson" % index)
+
+
+def _snapshot_on_disk(tmp, cid=CAMPAIGN):
+    """读盘上的检查点（不写盘）；不存在返回 None。"""
+    path = os.path.join(_camp_dir(tmp, cid), state.SNAPSHOT_NAME)
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _snapshot_seq(tmp, cid=CAMPAIGN):
+    payload = _snapshot_on_disk(tmp, cid)
+    return None if payload is None else payload["seq"]
+
+
 def _canon(value):
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -75,19 +108,36 @@ def _commit(handle, *, key="k-1", type="core.commit", actor="pc-1", changes=(),
         world_time=world_time, source=source)
 
 
-class _NoCheckpoint:
-    """临时关掉自动检查点，精确控制「检查点未写」的崩溃场景。"""
+def _append_party(pid):
+    """往 `rules.party` 追加一名成员（append 对折入次数敏感，能抓出重复折入）。"""
+    return [{"block": "rules", "path": "/party", "op": "append", "before": None,
+             "after": {"id": pid}}]
+
+
+class _Thresholds:
+    """按用例改写模块常量（检查点 / 归档阈值），退出时逐项还原。"""
+
+    def __init__(self, **overrides):
+        self._overrides = overrides
+        self._saved = {}
 
     def __enter__(self):
-        self._every = state.CHECKPOINT_EVERY
-        self._age = state.CHECKPOINT_MAX_AGE_S
-        state.CHECKPOINT_EVERY = 10 ** 9
-        state.CHECKPOINT_MAX_AGE_S = 1e9
+        for name, value in self._overrides.items():
+            self._saved[name] = getattr(state, name)
+            setattr(state, name, value)
 
     def __exit__(self, *exc):
-        state.CHECKPOINT_EVERY = self._every
-        state.CHECKPOINT_MAX_AGE_S = self._age
+        for name, value in self._saved.items():
+            setattr(state, name, value)
         return False
+
+
+class _NoCheckpoint(_Thresholds):
+    """临时关掉自动检查点，精确控制「检查点未写」的崩溃场景。"""
+
+    def __init__(self):
+        super().__init__(CHECKPOINT_EVERY=10 ** 9, CHECKPOINT_MAX_AGE_S=1e9,
+                         CHECKPOINT_MAX_LOG_BYTES=10 ** 18)
 
 
 def _set_block_after(value):
@@ -469,23 +519,473 @@ def check_midlog_break_rejected():
 
 
 def check_tmp_residue_cleaned():
-    """.tmp 残留：加载时清理，不影响结果。"""
+    """.tmp 残留（含归档段残留）：加载时清理，不影响结果。"""
     tmp = tempfile.mkdtemp()
     try:
         handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
         _commit(handle, key="k-1", changes=_set_block_after([{"id": "pc-1"}]))
         camp = _camp_dir(tmp)
-        for name in (state.SNAPSHOT_TMP_NAME, state.EVENTS_NAME + ".tmp"):
+        residues = (state.SNAPSHOT_TMP_NAME, state.EVENTS_NAME + ".tmp",
+                    "events.1.ndjson.tmp")
+        for name in residues:
             with open(os.path.join(camp, name), "w", encoding="utf-8") as stray:
                 stray.write("residue")
+        # 归档段本体不是残留：不得被清理
+        with open(_archive_path(tmp), "w", encoding="utf-8") as keeper:
+            keeper.write("")
 
         reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
         assert reloaded.view()["seq"] == 1
         assert reloaded.view()["blocks"]["rules"]["party"] == [{"id": "pc-1"}]
-        for name in (state.SNAPSHOT_TMP_NAME, state.EVENTS_NAME + ".tmp"):
+        for name in residues:
             assert not os.path.exists(os.path.join(camp, name)), name
+        assert os.path.exists(_archive_path(tmp)), "归档段不应被当作 .tmp 清理"
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 快照重建 == 存活态（§14 / §6.2，M7-2）
+# ════════════════════════════════════════════════════════════════════════════
+
+def _mixed_changes(index):
+    """跨块、多 op 的变更（append / delta），折入次序与次数都敏感。"""
+    return [
+        {"block": "rules", "path": "/party", "op": "append", "before": None,
+         "after": {"id": "pc-%d" % index}},
+        {"block": "rules", "path": "/tick", "op": "delta",
+         "before": max(index - 1, 0), "after": index},
+        {"block": "atlas", "path": "/deltas", "op": "append", "before": None,
+         "after": {"x": index}},
+    ]
+
+
+def check_replay_genesis_equals_live():
+    """创世 + 全量事件回放 == 存活态（规范化 JSON 逐字节相等，§6.2 不变量）。"""
+    tmp = tempfile.mkdtemp()
+    with _NoCheckpoint():          # 检查点完全滞后：重建只能靠日志
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(6):
+                result = _commit(handle, key="k-%d" % index,
+                                 changes=_mixed_changes(index))
+                assert result["status"] == "committed", result
+            live = handle.view()
+
+            rebuilt = handle.replay()
+            assert rebuilt["seq"] == live["seq"] == 6
+            assert _canon(rebuilt["blocks"]) == _canon(live["blocks"])
+            assert rebuilt["world_time"] == live["world_time"]
+            assert rebuilt["campaign_id"] == live["campaign_id"]
+
+            reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert _canon(reloaded.view()["blocks"]) == _canon(live["blocks"])
+            assert _canon(reloaded.replay()["blocks"]) == _canon(reloaded.view()["blocks"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_replay_only_checkpoint_no_events():
+    """只有检查点、没有事件 → 与创世态相等（§14「空检查点」）。"""
+    tmp = tempfile.mkdtemp()
+    try:
+        handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        handle.flush()
+        assert _event_lines(tmp) == []
+        assert _snapshot_seq(tmp) == 0
+
+        reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        assert reloaded.view()["seq"] == 0
+        assert reloaded.view()["blocks"] == {"rules": None, "atlas": None, "guide": None}
+        assert reloaded.view()["world_time"] is None
+        rebuilt = reloaded.replay()
+        assert rebuilt["seq"] == 0
+        assert _canon(rebuilt["blocks"]) == _canon(reloaded.view()["blocks"])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_checkpoint_lag_tail_replay():
+    """检查点滞后于日志：重载 = 检查点 + 尾部回放，结果 == 存活态（§6.3 / §9）。"""
+    tmp = tempfile.mkdtemp()
+    try:
+        handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        with _NoCheckpoint():
+            for index in range(3):
+                _commit(handle, key="a-%d" % index,
+                        changes=_append_party("pc-%d" % index))
+        handle.flush()                                       # 检查点停在 seq 3
+        assert _snapshot_seq(tmp) == 3
+
+        with _NoCheckpoint():
+            for index in range(3, 6):
+                _commit(handle, key="a-%d" % index,
+                        changes=_append_party("pc-%d" % index))
+        assert _snapshot_seq(tmp) == 3                       # 滞后：盘上仍是 3
+        assert len(_event_lines(tmp)) == 6                   # 日志已有 6 行
+        live = handle.view()
+
+        reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        assert reloaded.view()["seq"] == 6
+        assert _canon(reloaded.view()["blocks"]) == _canon(live["blocks"])
+        assert _canon(reloaded.replay()["blocks"]) == _canon(live["blocks"])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_replay_upto_seq():
+    """`replay(upto_seq=…)` 只折入 ≤ 该序号的事件；非法入参报错（§12.1）。"""
+    tmp = tempfile.mkdtemp()
+    with _NoCheckpoint():
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(4):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+
+            at_two = handle.replay(upto_seq=2)
+            assert at_two["seq"] == 2
+            assert at_two["blocks"]["rules"]["party"] == [{"id": "pc-0"}, {"id": "pc-1"}]
+            genesis = handle.replay(upto_seq=0)
+            assert genesis["seq"] == 0
+            assert genesis["blocks"] == {"rules": None, "atlas": None, "guide": None}
+            try:
+                handle.replay(upto_seq="2")
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("非整数 upto_seq 应报错")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 归档段（§4.1）与检查点调度（§6.3）（M7-2）
+# ════════════════════════════════════════════════════════════════════════════
+
+def check_archive_segments_reassemble():
+    """超阈值：前缀搬进 events.<n>.ndjson、活动日志去前缀；重放仍从归档拼回（§4.1）。"""
+    tmp = tempfile.mkdtemp()
+    with _Thresholds(CHECKPOINT_EVERY=10 ** 9, CHECKPOINT_MAX_AGE_S=1e9,
+                     CHECKPOINT_MAX_LOG_BYTES=10 ** 18,
+                     EVENT_ARCHIVE_THRESHOLD=4):
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(6):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            assert len(_event_lines(tmp)) == 6
+
+            handle.flush()                                   # 检查点 + 归档
+            assert os.path.exists(_archive_path(tmp)), os.listdir(_camp_dir(tmp))
+            assert [ev["seq"] for ev in _lines_at(_archive_path(tmp))] == [1, 2, 3, 4, 5, 6]
+            assert _event_lines(tmp) == []                   # 活动日志已去前缀
+            assert _snapshot_seq(tmp) == 6
+            assert _snapshot_on_disk(tmp)["indexes"]["archived_upto"] == 6
+
+            live = handle.view()
+            reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert reloaded.view()["seq"] == 6
+            assert _canon(reloaded.view()["blocks"]) == _canon(live["blocks"])
+            assert _canon(reloaded.replay()["blocks"]) == _canon(live["blocks"])
+
+            # 归档后新提交照常追加、再次加载不丢
+            appended = _commit(reloaded, key="k-6", changes=_append_party("pc-6"))
+            assert appended["status"] == "committed", appended
+            again = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert again.view()["seq"] == 7
+            assert [item["id"] for item in again.view()["blocks"]["rules"]["party"]] == [
+                "pc-%d" % index for index in range(7)]
+            assert _canon(again.replay()["blocks"]) == _canon(again.view()["blocks"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_archive_overlap_ignored_below_checkpoint():
+    """归档段与活动日志重叠、且重叠部分 `seq ≤ 检查点 seq` → 不拒载（§9 唯一允许的重复）。
+
+    写入侧用「整体改名」搬迁（不会产生重叠），所以这里手工造一份重叠档，
+    验证加载器对 §9 规定的唯一重复仍然容忍：忽略重叠行、不重复折入。
+    """
+    tmp = tempfile.mkdtemp()
+    try:
+        handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        for index in range(3):
+            _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+        handle.flush()                                       # 检查点 seq = 3
+        assert _snapshot_seq(tmp) == 3
+        live = handle.view()
+
+        # 手工造「搬迁完成、截断未做」式的重叠：活动日志整体复制成归档段。
+        with open(_archive_path(tmp), "w", encoding="utf-8") as out:
+            for ev in _event_lines(tmp):
+                out.write(json.dumps(ev, ensure_ascii=False) + "\n")
+        assert [ev["seq"] for ev in _lines_at(_archive_path(tmp))] == [1, 2, 3]
+        assert [ev["seq"] for ev in _event_lines(tmp)] == [1, 2, 3]      # 仍在
+
+        reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)           # 不拒载
+        assert reloaded.view()["seq"] == 3
+        assert _canon(reloaded.view()["blocks"]) == _canon(live["blocks"])
+        assert [item["id"] for item in reloaded.view()["blocks"]["rules"]["party"]] == [
+            "pc-0", "pc-1", "pc-2"]                    # 重叠行只折入一次
+
+        # 重叠档存在时，后续提交照常追加、再次加载不丢也不重复
+        result = _commit(reloaded, key="k-3", changes=_append_party("pc-3"))
+        assert result["status"] == "committed", result
+        again = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        assert again.view()["seq"] == 4
+        assert [item["id"] for item in again.view()["blocks"]["rules"]["party"]] == [
+            "pc-%d" % index for index in range(4)]
+
+        # `replay()` 是**从创世的纯日志折叠**，没有检查点可依据：重叠段在它眼里就是
+        # 「重放区间内重复」→ 拒载（加载路径仍按 §9 容忍 `seq ≤ 检查点 seq` 的重叠）。
+        try:
+            again.replay()
+        except state.StateError:
+            pass
+        else:
+            raise AssertionError("重叠档的纯日志折叠应拒载（无检查点可依据）")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_replay_range_duplicate_rejected():
+    """重放区间（`seq > 检查点 seq`）内出现重复 → 拒载（§9：唯一允许的重复在检查点之下）。
+
+    检查点停在创世时，重叠档整体落进重放区间——同一事实出现两次即日志被外部改坏，
+    按 §9 拒载；不自动跳过、不猜内容。
+    """
+    tmp = tempfile.mkdtemp()
+    with _NoCheckpoint():
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(3):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            assert _snapshot_seq(tmp) == 0                   # 创世检查点：全在重放区间
+
+            with open(_archive_path(tmp), "w", encoding="utf-8") as out:
+                for ev in _event_lines(tmp):
+                    out.write(json.dumps(ev, ensure_ascii=False) + "\n")
+            try:
+                state.open_campaign(CAMPAIGN, base_dir=tmp)
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("重放区间内重复（跳号 / 回退）应拒载")
+
+            # `replay()` 是从创世的纯日志折叠，同样拒载（无检查点可依据的重叠）
+            try:
+                handle.replay()
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("重放区间内重复时 replay() 应拒载")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_archive_rename_failure_keeps_facts():
+    """归档改名失败（②）：活动日志原样保留、事实不丢；下次检查点再试即归档成功。"""
+    tmp = tempfile.mkdtemp()
+    with _Thresholds(CHECKPOINT_EVERY=10 ** 9, CHECKPOINT_MAX_AGE_S=1e9,
+                     CHECKPOINT_MAX_LOG_BYTES=10 ** 18,
+                     EVENT_ARCHIVE_THRESHOLD=2):
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(3):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            live = handle.view()
+
+            real_replace = state.os.replace
+
+            def flaky_replace(src, dst):
+                if state.ARCHIVE_RE.match(os.path.basename(dst)):
+                    raise OSError("模拟：归档改名失败")
+                return real_replace(src, dst)
+
+            state.os.replace = flaky_replace
+            try:
+                handle.flush()                               # 检查点写成功、归档改名失败
+            finally:
+                state.os.replace = real_replace
+
+            assert any("改名失败" in note for note in handle.notes), handle.notes
+            assert not os.path.exists(_archive_path(tmp))
+            assert [ev["seq"] for ev in _event_lines(tmp)] == [1, 2, 3]
+            assert _snapshot_seq(tmp) == 3                   # 检查点已覆盖事实
+
+            reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert _canon(reloaded.view()["blocks"]) == _canon(live["blocks"])
+            assert _canon(reloaded.replay()["blocks"]) == _canon(live["blocks"])
+
+            # 下一次检查点重试：归档成功，且事实一份不少
+            reloaded.flush()
+            assert os.path.exists(_archive_path(tmp)), os.listdir(_camp_dir(tmp))
+            assert [ev["seq"] for ev in _lines_at(_archive_path(tmp))] == [1, 2, 3]
+            assert _event_lines(tmp) == []
+            assert _canon(reloaded.replay()["blocks"]) == _canon(reloaded.view()["blocks"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_archive_gap_rejected():
+    """归档段与活动日志拼起来跳号 / 归档末行残缺 → 拒载（§9 中间断裂）。"""
+    tmp = tempfile.mkdtemp()
+    with _NoCheckpoint():
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(3):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            events = _event_lines(tmp)
+
+            # ① 归档段 [1] + 活动日志 [3] → 缺 seq 2 → 拒载
+            with open(_archive_path(tmp), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[0], ensure_ascii=False) + "\n")
+            with open(_events_path(tmp), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[2], ensure_ascii=False) + "\n")
+            try:
+                state.open_campaign(CAMPAIGN, base_dir=tmp)
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("归档段与活动日志跳号应拒载")
+
+            # ② 归档段末行残缺（缺结尾 \n）→ 后面还有事件 → 拒载
+            with open(_archive_path(tmp), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[0], ensure_ascii=False) + "\n")
+                out.write(json.dumps(events[1], ensure_ascii=False))     # 无 \n
+            with open(_events_path(tmp), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[2], ensure_ascii=False) + "\n")
+            try:
+                state.open_campaign(CAMPAIGN, base_dir=tmp)
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("归档段末行残缺应拒载")
+
+            # ③ 归档段序号不连续（events.1 + events.3 → 缺 2）→ 拒载
+            with open(_archive_path(tmp, 1), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[0], ensure_ascii=False) + "\n")
+            with open(_archive_path(tmp, 3), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[1], ensure_ascii=False) + "\n")
+            with open(_events_path(tmp), "w", encoding="utf-8") as out:
+                out.write(json.dumps(events[2], ensure_ascii=False) + "\n")
+            try:
+                state.open_campaign(CAMPAIGN, base_dir=tmp)
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("归档段序号不连续应拒载")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _partial_tail_scenario(payload):
+    """末行崩（`payload` 为盘上残留的半行字节）：丢弃 + **落盘截除** + 可继续提交。"""
+    tmp = tempfile.mkdtemp()
+    with _NoCheckpoint():
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            _commit(handle, key="k-1", changes=_append_party("pc-1"))
+            with open(_events_path(tmp), "ab") as raw:
+                raw.write(payload)
+
+            reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert reloaded.view()["seq"] == 1
+            with open(_events_path(tmp), "rb") as raw:
+                assert raw.read().endswith(b"\n"), "半写末行应从盘上截除"
+
+            result = _commit(reloaded, key="k-2", changes=_append_party("pc-2"))
+            assert result["status"] == "committed", result
+            assert len(_event_lines(tmp)) == 2
+
+            again = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert again.view()["seq"] == 2
+            assert [item["id"] for item in again.view()["blocks"]["rules"]["party"]] == [
+                "pc-1", "pc-2"]
+            assert _canon(again.replay()["blocks"]) == _canon(again.view()["blocks"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_partial_tail_then_commit_durable():
+    """行中崩：截断的半行（无 \\n）**落盘截除**，后续提交可追加且再次加载不丢（§8.3）。"""
+    _partial_tail_scenario(b'{"event_id":"camp-01:e000000000002"')
+
+
+def check_partial_tail_bad_complete_line():
+    """行中崩的另一种落盘形态：末行以 \\n 收尾但 JSON 解析失败 → 同样丢弃并截除。"""
+    _partial_tail_scenario(b'{"event_id":"camp-01:e000000000002","seq":2\n')
+
+
+def check_checkpoint_every_n_events():
+    """§6.3 事件数触发：每 CHECKPOINT_EVERY 个事件写一次检查点。"""
+    tmp = tempfile.mkdtemp()
+    with _Thresholds(CHECKPOINT_EVERY=3, CHECKPOINT_MAX_AGE_S=1e9,
+                     CHECKPOINT_MAX_LOG_BYTES=10 ** 18):
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert _snapshot_seq(tmp) == 0                   # 创世检查点
+            _commit(handle, key="k-1", changes=_append_party("pc-1"))
+            _commit(handle, key="k-2", changes=_append_party("pc-2"))
+            assert _snapshot_seq(tmp) == 0                   # 未到阈值：检查点滞后
+            _commit(handle, key="k-3", changes=_append_party("pc-3"))
+            assert _snapshot_seq(tmp) == 3
+            assert len(_event_lines(tmp)) == 3
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_checkpoint_age_trigger():
+    """§6.3 时间触发：距上次检查点超过 CHECKPOINT_MAX_AGE_S 也写。"""
+    tmp = tempfile.mkdtemp()
+    saved_now = state._now_ms
+    clock = [1_000_000_000_000]
+    state._now_ms = lambda: clock[0]
+    try:
+        with _Thresholds(CHECKPOINT_EVERY=10 ** 9, CHECKPOINT_MAX_AGE_S=5.0,
+                         CHECKPOINT_MAX_LOG_BYTES=10 ** 18):
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            _commit(handle, key="k-1", changes=_append_party("pc-1"))
+            assert _snapshot_seq(tmp) == 0                   # 同龄 → 不写
+            clock[0] += 6_000                                # +6 秒 > 5.0
+            _commit(handle, key="k-2", changes=_append_party("pc-2"))
+            assert _snapshot_seq(tmp) == 2
+    finally:
+        state._now_ms = saved_now
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_checkpoint_log_bytes_trigger():
+    """§6.3 日志体积触发：events.ndjson 增长越过 CHECKPOINT_MAX_LOG_BYTES 也写。"""
+    tmp = tempfile.mkdtemp()
+    with _Thresholds(CHECKPOINT_EVERY=10 ** 9, CHECKPOINT_MAX_AGE_S=1e9,
+                     CHECKPOINT_MAX_LOG_BYTES=64):
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            result = _commit(handle, key="k-1", changes=_append_party("pc-1"))
+            assert result["status"] == "committed", result
+            assert os.path.getsize(_events_path(tmp)) > 64
+            assert _snapshot_seq(tmp) == 1
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_flush_forces_checkpoint():
+    """§6.3 优雅退出：`flush()` 强制写检查点把滞后归零；重载与存活态一致。"""
+    tmp = tempfile.mkdtemp()
+    with _NoCheckpoint():
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(3):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            assert _snapshot_seq(tmp) == 0                   # 全靠偷懒：滞后
+            assert handle.flush() is None
+            assert _snapshot_seq(tmp) == 3                   # flush 补齐
+            reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert reloaded.view()["seq"] == 3
+            assert _canon(reloaded.view()["blocks"]) == _canon(handle.view()["blocks"])
+            assert _canon(reloaded.replay()["blocks"]) == _canon(reloaded.view()["blocks"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -561,6 +1061,21 @@ CHECKS = (
     check_checkpoint_both_corrupt_genesis,
     check_midlog_break_rejected,
     check_tmp_residue_cleaned,
+    check_replay_genesis_equals_live,
+    check_replay_only_checkpoint_no_events,
+    check_checkpoint_lag_tail_replay,
+    check_replay_upto_seq,
+    check_archive_segments_reassemble,
+    check_archive_overlap_ignored_below_checkpoint,
+    check_replay_range_duplicate_rejected,
+    check_archive_rename_failure_keeps_facts,
+    check_archive_gap_rejected,
+    check_partial_tail_then_commit_durable,
+    check_partial_tail_bad_complete_line,
+    check_checkpoint_every_n_events,
+    check_checkpoint_age_trigger,
+    check_checkpoint_log_bytes_trigger,
+    check_flush_forces_checkpoint,
     check_seq_no_gaps,
     check_view_is_deep_copy,
     check_r7_requires_idempotency_key,

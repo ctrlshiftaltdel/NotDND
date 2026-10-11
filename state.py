@@ -1,27 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""状态与事件层内核（STATE-DESIGN 的 M7-1 切片）。
+"""状态与事件层内核（STATE-DESIGN 的 M7-1 + M7-2 切片）。
 
 只做库：不碰 HTTP，也不 import 任何业务模块（依赖方向硬约束，STATE-DESIGN §3 S4 /
 `GDD-BASELINE.md` §4.2）——本模块只搬运**不透明块** + 结构化 `changes`，
 语义解释归调用方；它不认识六维、地点或 NPC。
 
 覆盖 STATE-DESIGN 的：
-- 存储布局（§4.1）：每战役一个目录，检查点 + 追加式 NDJSON 事件日志 + 幂等索引；
+- 存储布局（§4.1）：每战役一个目录，检查点 + 追加式 NDJSON 事件日志（含归档段）+ 幂等索引；
 - 事件封套（§5，含 A0「一次提交 = 一条事件 = 一行追加」）；
 - 幂等（§7，含 7.4「索引可由事件日志重建」）；
 - 提交时序（§8，含 8.3 崩溃点）；
-- 检查点字段（§6.1）、加载顺序与重放（§9）；
+- 检查点字段（§6.1）与写入时机（§6.3：事件数 / 时间 / 日志体积 / 优雅退出）；
+- 加载顺序与重放（§9，含 `.bak` 回退、末行丢弃、中间断裂拒载、`.tmp` 清理）；
+- 重建规则（§6.2：`replay == live` 在规范化 JSON 下逐字节相等）；
 - 零依赖校验器（§5.4 `validate_event`）；
-- 接口骨架（§12.1 `open_campaign` / `Handle`）。
+- 接口（§12.1 `open_campaign` / `Handle`，含 `replay()` / `flush()`）。
 
 **`import state` 不触碰磁盘**（沿用 no-side-effects-on-import 口径，
 `GDD-BASELINE.md` §6.5）：本模块顶层只做常量与函数定义。
 
-M7-1 / M7-2 边界：本文件落 M7-1 的「事件封套 + 原子提交 + 幂等 + 版本 + 骨架」。
-因为本单验收要求覆盖 §14 的**崩溃恢复**组（其判据是「加载 + 重放」），
-所以 §9 的加载顺序与 §6.2 的重放规则也在此落了一版最小实现；
-归档段（§4.1 `events.<n>.ndjson`）与检查点调度调优留待 M7-2 扩展。
+M7-1 / M7-2 边界：M7-1 落「事件封套 + 原子提交 + 幂等 + 版本 + 骨架」，
+M7-2（Issue #267）在既有实现上补齐 §6.3 检查点调度、§4.1 归档段与 §9 加载顺序——
+归档段可被重放拼回（归档不删事实；整体改名搬迁，写入侧不产生重叠段）、
+加载时按 §9 忽略 `seq ≤ 检查点 seq` 的重叠行、半写末行**落盘**截除
+（否则下一次提交会与半行粘成一行，加载时把新事件一起丢掉）。
 
 存储布局（§4.1）::
 
@@ -29,6 +32,7 @@ M7-1 / M7-2 边界：本文件落 M7-1 的「事件封套 + 原子提交 + 幂�
         snapshot.json          检查点（§6.1 字段）
         snapshot.json.bak      上一次成功检查点（崩溃回退用）
         events.ndjson          追加式事件日志：一行一个事件（A0）
+        events.<n>.ndjson      归档段（超过阈值时把活动日志整体改名搬入）
         idempotency.json       幂等索引的独立可读副本
 """
 
@@ -69,13 +73,16 @@ SNAPSHOT_TMP_NAME = "snapshot.json.tmp"
 EVENTS_NAME = "events.ndjson"
 IDEMPOTENCY_NAME = "idempotency.json"
 
+# 归档段（§4.1）：`events.<n>.ndjson`，序号升序即时间顺序（不删事实）。
+ARCHIVE_RE = re.compile(r"^events\.(\d+)\.ndjson$")
+
 # ── 常量（§6.3 / §7 / §4.1）─────────────────────────────────────────────────
 CHECKPOINT_EVERY = 32                       # 每 N 个事件写一次检查点
 CHECKPOINT_MAX_AGE_S = 5.0                   # 距上次检查点超过该秒数也写
 CHECKPOINT_MAX_LOG_BYTES = 1024 * 1024       # 日志增长越过该字节数也写
 IDEM_TTL_DAYS = 90                           # 幂等记录默认存活天数
 IDEM_KEEP = 4096                             # 幂等记录保留下限（条）
-EVENT_ARCHIVE_THRESHOLD = 100000             # 归档阈值（M7-2 用；此处仅登记）
+EVENT_ARCHIVE_THRESHOLD = 100000             # 活动日志超过该行数时归档（§4.1）
 
 # ── 枚举（§5.1，初始可扩展）────────────────────────────────────────────────
 _VISIBILITY_SCOPES = ("public", "team", "private", "gm")
@@ -455,14 +462,19 @@ def _read_json(path):
         return json.load(handle)
 
 
-def _write_atomic(path, text):
-    """写 `<path>.tmp` → flush + fsync → os.replace（§3 S5）。"""
+def _write_atomic_bytes(path, data):
+    """写 `<path>.tmp` → flush + fsync → os.replace（§3 S5；二进制载荷）。"""
     tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as handle:
-        handle.write(text)
+    with open(tmp, "wb") as handle:
+        handle.write(data)
         handle.flush()
         os.fsync(handle.fileno())
     os.replace(tmp, path)
+
+
+def _write_atomic(path, text):
+    """写 `<path>.tmp` → flush + fsync → os.replace（§3 S5）。"""
+    _write_atomic_bytes(path, text.encode("utf-8"))
 
 
 def _genesis_blocks():
@@ -538,34 +550,113 @@ def _load_snapshot(campaign_dir, campaign_id, notes):
     return None
 
 
-def _read_events(events_path, notes):
-    """§9 步骤 2：逐行解析 NDJSON；末行半写 / 解析失败 → 丢弃。"""
-    if not os.path.exists(events_path):
-        return []
-    with open(events_path, "rb") as handle:
+def _read_segment(path, notes, label, allow_partial_tail):
+    """逐行解析一个 NDJSON 段；返回 `(events, cut)`（§9 步骤 2）。
+
+    `cut` 非 `None` = 盘上末行应被截除的字节偏移。半写末行留在盘上时，下一次
+    `commit()` 追加的行会与它粘成一行，再次加载就会连**新事件**一起丢掉——
+    所以「丢弃末行」必须是**落盘**的（§8.3「行中」）。
+
+    `allow_partial_tail` 只对**活动日志**为真：末行无 `\\n` / 解析失败 → 丢弃并给出
+    截除点。归档段后面还有事件，末行残缺即「重放区间中间断裂」→ 拒载（不自动跳过）。
+    """
+    if not os.path.exists(path):
+        return [], None
+    with open(path, "rb") as handle:
         raw = handle.read()
     if not raw:
-        return []
+        return [], None
 
     lines = raw.split(b"\n")
     complete = lines[:-1]     # 以 \n 收尾的完整行
     tail = lines[-1]          # 最后一个 \n 之后的内容（不完整即使非空）
 
     events = []
+    cut = None
+    start = 0                 # 当前行的字节起点
     for index, bline in enumerate(complete):
-        if not bline.strip():
-            continue
-        try:
-            events.append(json.loads(bline.decode("utf-8")))
-        except (ValueError, UnicodeDecodeError) as exc:
-            if index == len(complete) - 1:
-                notes.append("事件日志末行解析失败，已丢弃（半写）")
-                break
-            raise StateError("事件日志中间行解析失败（第 %d 行）：%s"
-                             % (index + 1, exc))
-    if tail.strip():
-        notes.append("事件日志末行不完整，已丢弃（半写）")
-    return events
+        if bline.strip():
+            try:
+                events.append(json.loads(bline.decode("utf-8")))
+            except (ValueError, UnicodeDecodeError) as exc:
+                if allow_partial_tail and index == len(complete) - 1:
+                    notes.append("事件日志末行解析失败，已丢弃（半写）")
+                    cut = start
+                    break
+                raise StateError("%s 中间行解析失败（第 %d 行）：%s"
+                                 % (label, index + 1, exc))
+        start += len(bline) + 1
+    if cut is None and tail.strip():
+        if allow_partial_tail:
+            notes.append("事件日志末行不完整，已丢弃（半写）")
+            cut = start
+        else:
+            raise StateError("%s 末行不完整（缺结尾 \\n）：%s" % (label, path))
+    return events, cut
+
+
+def _read_events(events_path, notes):
+    """§9 步骤 2：活动日志逐行解析；末行半写 → 丢弃并给出截除点。"""
+    return _read_segment(events_path, notes, "事件日志", allow_partial_tail=True)
+
+
+def _archive_paths(campaign_dir):
+    """归档段（`events.<n>.ndjson`）按序号升序——序号即时间顺序。
+
+    序号必须自 `1` 起连续：缺号意味一段事实拼不回（§4.1「归档不删事实」）→ 拒载。
+    """
+    numbered = []
+    try:
+        names = os.listdir(campaign_dir)
+    except OSError:
+        return []
+    for name in names:
+        match = ARCHIVE_RE.match(name)
+        if match:
+            numbered.append((int(match.group(1)), os.path.join(campaign_dir, name)))
+    numbered.sort()
+    numbers = [number for number, _ in numbered]
+    if numbers and numbers != list(range(1, len(numbers) + 1)):
+        raise StateError("归档段序号不连续（缺段）：%r" % (numbers,))
+    return numbered
+
+
+def _read_all_events(campaign_dir, notes):
+    """按「归档段（升序）→ 活动日志」拼出完整事件序列（§9 步骤 2）。
+
+    返回 `(events, archived_hint, live_cut)`：`archived_hint` 为归档段里的最大 `seq`
+    （0 = 无归档）；`live_cut` 为活动日志应截除的字节偏移（`None` = 无需截除）。
+    """
+    events = []
+    archived_hint = 0
+    archives = _archive_paths(campaign_dir)
+    for _, path in archives:
+        segment, _ = _read_segment(path, notes,
+                                   "归档段 %s" % os.path.basename(path),
+                                   allow_partial_tail=False)
+        events.extend(segment)
+        for ev in segment:
+            seq = ev.get("seq") if isinstance(ev, dict) else None
+            if _is_int(seq) and seq > archived_hint:
+                archived_hint = seq
+    if archives:
+        notes.append("已读取归档段 %d 个（归档不删事实）" % len(archives))
+    live, live_cut = _read_events(os.path.join(campaign_dir, EVENTS_NAME), notes)
+    events.extend(live)
+    return events, archived_hint, live_cut
+
+
+def _truncate_to(path, size):
+    """把活动日志截到 `size` 字节；返回是否真的截除（§9 步骤 2 的「丢弃末行」落盘）。"""
+    try:
+        with open(path, "rb") as handle:
+            raw = handle.read()
+        if size >= len(raw):
+            return False
+        _write_atomic_bytes(path, raw[:size])
+        return True
+    except OSError:
+        return False
 
 
 def _validate_chain(events, base_seq):
@@ -638,7 +729,10 @@ class Handle:
         self._save_name = snapshot.get("save_name") or campaign_id
         indexes = snapshot.get("indexes") or {}
         self._idem = copy.deepcopy(indexes.get("idempotency") or {})
-        self._archived_upto = indexes.get("archived_upto", 0)
+        archived_upto = indexes.get("archived_upto")
+        self._archived_upto = (archived_upto
+                               if _is_int(archived_upto) and archived_upto >= 0
+                               else 0)
 
         self._events_since_checkpoint = 0
         self._last_checkpoint_ms = _now_ms()
@@ -657,10 +751,24 @@ class Handle:
             }
 
     def replay(self, upto_seq=None):
-        """从创世（seq 0）按事件日志重放出完整状态（§6.2）。"""
+        """从创世（seq 0）按事件日志重放出完整状态（§6.2 / §12.1）。
+
+        - 读「归档段 + 活动日志」拼出的完整历史（归档不删事实）；
+        - `replay()` 是**从创世的纯日志折叠**：日志自身必须无重复——重放区间内的
+          跳号 / 回退一律按 §9 拒载（「按检查点忽略重叠」是加载路径的规则，
+          由 `_validate_chain(events, 检查点 seq)` 承担）；
+        - `upto_seq` 只折入 `seq ≤ upto_seq` 的事件（历史时点重放；`None` = 到最新）；
+        - 重放**只应用 `changes`**，不重掷骰（§6.2）；`stream` 非事件溯源（§11），
+          重放结果恒为空流。
+
+        不变量（§6.2）：在写入侧产出的（无重叠）日志上，`replay()` 与 `view()` 的
+        `seq` / `blocks` 在**规范化 JSON** 下逐字节相等。
+        """
+        if upto_seq is not None and (not _is_int(upto_seq) or upto_seq < 0):
+            raise StateError("upto_seq 必须是 ≥ 0 的整数或 null：%r" % (upto_seq,))
         with self._lock:
             notes = []
-            events = _read_events(self._events_path, notes)
+            events, _archived_hint, _live_cut = _read_all_events(self._dir, notes)
             _validate_chain(events, 0)
             blocks = _genesis_blocks()
             seq = 0
@@ -792,7 +900,7 @@ class Handle:
             }
 
     def flush(self):
-        """强制写检查点（优雅退出用，§6.3）。"""
+        """强制写检查点（优雅退出用，§6.3）：把滞后归零，可重复调用。"""
         with self._lock:
             self._write_checkpoint()
 
@@ -866,9 +974,20 @@ class Handle:
         self._idem = live
 
     def _write_checkpoint(self):
-        """备份现有检查点 → 写 .tmp → os.replace；并写幂等独立副本（§6.3）。"""
+        """备份现有检查点 → 写 .tmp → os.replace；并写幂等独立副本（§6.3）。
+
+        归档（§4.1）按崩溃安全顺序：① 先写检查点（其 `seq` 已覆盖待归档区间，并记
+        `archived_upto`）→ ② 活动日志整体原子改名为归档段。崩溃在 ① 与 ② 之间 = 事实
+        仍在活动日志；崩溃在 ② 之后 = 事实在归档段——**两边都不会有重叠段**，于是
+        §9「唯一允许的重复」只在加载既有的重叠档时才被用到，写入侧从不制造它。
+        """
         self._evict_idempotency()
-        payload = self._snapshot_payload()
+        plan = self._archive_plan()                    # 只读：定阈值、算归档内容
+        if plan is not None:
+            # 先记「承诺」：本检查点的 seq 已 ≥ 归档区间，故 ② 即便失败也自洽
+            # （下一轮归档以实际文件为准，不看这个值）。
+            self._archived_upto = max(self._archived_upto, plan["seq"])
+        payload = self._snapshot_payload()             # ①（含 archived_upto）
         text = _canonical(payload)
         primary = os.path.join(self._dir, SNAPSHOT_NAME)
         backup = os.path.join(self._dir, SNAPSHOT_BAK_NAME)
@@ -889,9 +1008,79 @@ class Handle:
         })
         _write_atomic(os.path.join(self._dir, IDEMPOTENCY_NAME), idem_text)
 
+        if plan is not None:                           # ②（失败只记说明，下次再试）
+            self._archive_apply(plan)
+
         self._last_checkpoint_ms = _now_ms()
         self._last_checkpoint_bytes = self._log_size()
         self._events_since_checkpoint = 0
+
+    # ── 内部：归档段（§4.1）────────────────────────────────────────────────
+    def _archive_plan(self):
+        """活动日志超过 `EVENT_ARCHIVE_THRESHOLD` 行时给出归档计划（只读，不落盘）。
+
+        计划 = `{"path": 新归档段路径, "count": 完整行数, "seq": 末行 seq}`；未达阈值 /
+        读不了 / 行不完整或不可解析 = `None`——归档失败不影响正确性。
+        """
+        try:
+            with open(self._events_path, "rb") as handle:
+                raw = handle.read()
+        except OSError as exc:
+            self.notes.append("归档读取活动日志失败（不影响正确性）：%s" % exc)
+            return None
+        if raw and not raw.endswith(b"\n"):
+            # 半写末行只可能来自上次崩溃；加载时已截除，这里保守跳过（不改动它）。
+            self.notes.append("归档跳过：活动日志末行不完整（不影响正确性）")
+            return None
+        lines = raw.split(b"\n")[:-1] if raw else []
+        if len(lines) <= EVENT_ARCHIVE_THRESHOLD:
+            return None
+        seq = self._seq
+        for index, bline in enumerate(lines):
+            try:
+                event = json.loads(bline.decode("utf-8"))
+                line_seq = event["seq"]
+            except (ValueError, UnicodeDecodeError, KeyError, TypeError):
+                self.notes.append("归档跳过：活动日志第 %d 行不可解析（不影响正确性）"
+                                  % (index + 1))
+                return None
+            if _is_int(line_seq) and line_seq >= 0:
+                seq = line_seq
+        try:
+            path = self._next_archive_path()
+        except OSError as exc:
+            self.notes.append("归档跳过：无法确定段序号（不影响正确性）：%s" % exc)
+            return None
+        return {"path": path, "count": len(lines), "seq": seq}
+
+    def _next_archive_path(self):
+        """下一个归档段：`events.<n>.ndjson`，`n` 取现有最大序号 + 1。"""
+        highest = 0
+        for name in os.listdir(self._dir):
+            match = ARCHIVE_RE.match(name)
+            if match:
+                highest = max(highest, int(match.group(1)))
+        return os.path.join(self._dir, "events.%d.ndjson" % (highest + 1))
+
+    def _archive_apply(self, plan):
+        """② 活动日志**整体原子改名**为归档段（§4.1「搬」；归档不删事实）。
+
+        一次 `os.replace` 同时完成「归档段出现」与「活动日志去前缀」，不存在
+        「段已写、前缀未去」的中间态——于是任何崩溃点都不会留下重叠段：
+        崩溃在改名之前 = 事实仍在活动日志（检查点已覆盖）；之后 = 事实在归档段。
+        失败只记说明、**不**动活动日志（下一次检查点再试）。
+        """
+        target = plan["path"]
+        if os.path.exists(target):
+            self.notes.append("归档跳过：目标段已存在 %s" % os.path.basename(target))
+            return
+        try:
+            os.replace(self._events_path, target)
+        except OSError as exc:
+            self.notes.append("归档改名失败（不影响正确性）：%s" % exc)
+            return
+        self.notes.append("已归档 %d 行到 %s（归档不删事实）"
+                          % (plan["count"], os.path.basename(target)))
 
     def _maybe_checkpoint(self):
         """§6.3：按事件数 / 日志体积 / 时间任一触发；失败只记说明（可滞后）。"""
@@ -948,8 +1137,14 @@ def open_campaign(campaign_id, *, base_dir=None, save_name=None):
         snapshot = _genesis_snapshot(campaign_id, save_name=save_name)
 
     events_path = os.path.join(campaign_dir, EVENTS_NAME)
-    events = _read_events(events_path, notes)
+    events, archived_hint, live_cut = _read_all_events(campaign_dir, notes)
     _validate_chain(events, snapshot.get("seq", 0))
+    if live_cut is not None:
+        # §9 步骤 2：「丢弃末行」必须落盘，否则下次提交会与半行粘成一行。
+        if _truncate_to(events_path, live_cut):
+            notes.append("活动日志半写末行已从盘上截除（下次提交可正常追加）")
+        else:
+            notes.append("活动日志半写末行截除失败；继续提交前须人工检查该日志")
 
     blocks = copy.deepcopy(snapshot.get("blocks") or _genesis_blocks())
     seq, world_time, rebuilt = _replay_events(
@@ -961,9 +1156,13 @@ def open_campaign(campaign_id, *, base_dir=None, save_name=None):
     indexes = snapshot.get("indexes") or {}
     merged = copy.deepcopy(indexes.get("idempotency") or {})
     merged.update(rebuilt)
+    prior_archived = indexes.get("archived_upto")
+    if not _is_int(prior_archived) or prior_archived < 0:
+        prior_archived = 0
     snapshot["indexes"] = {
         "idempotency": merged,
-        "archived_upto": indexes.get("archived_upto", 0),
+        # 归档段仍在盘上（归档不删事实）：以归档实际覆盖的 seq 兜底。
+        "archived_upto": max(prior_archived, archived_hint),
     }
 
     handle = Handle(campaign_id, campaign_dir, snapshot)
