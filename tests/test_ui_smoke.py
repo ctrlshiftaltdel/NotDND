@@ -396,6 +396,9 @@ def _check_offline_actions(page, server):
     """①②④：无 AI 时 R1 直通 / R3 先确认 / NL 明确提示离线。"""
     sid = "a4-ui-offline"
     _seed_action_session(_get_json(server.port, "/api/saves")["save_dir"], sid, [
+        # R0：只读、无副作用（§6.1）——纯叙述行动，直通、不确认。
+        {"id": "a-look", "label": "查看锁孔", "kind": "narrate",
+         "text": "锁孔边缘有新划痕。", "risk": "R0"},
         {"id": "a-lock", "label": "撬锁", "kind": "check", "df": 12,
          "auto_pass": True, "on_pass": "锁簧弹开。", "risk": "R1",
          "time_cost": {"value": 5, "unit": "minute"}},
@@ -406,27 +409,37 @@ def _check_offline_actions(page, server):
     _enter_session(page, sid)
     ready = page.wait_for(
         "return !!(window.__TURN && !window.__TURN().sessionError"
-        " && document.querySelectorAll('#actList [data-act]').length === 2);",
+        " && document.querySelectorAll('#actList [data-act]').length === 3);",
         timeout=15)
-    check("A4：主画面进得去、行动区有两条行动", ready,
+    check("A4：主画面进得去、行动区有三条行动", ready,
           "snapshot=%r" % (page.js("return window.__TURN ? window.__TURN() : null;"),))
     if not ready:
         return
 
-    # 风险角标来自 `GET /api/action/catalog`：R3 有「需确认」，R1 没有。
+    # 风险角标来自 `GET /api/action/catalog`：R3 有「需确认」，R0 / R1 都没有。
     chip = page.wait_for(
         "const b = document.querySelectorAll('#actList [data-act]');"
-        "let risk = false, plain = false;"
+        "let risk = false, plain = true;"
         "b.forEach(function (x) {"
         "  if (x.dataset.act === 'a-force') risk = !!x.querySelector('.act-risk');"
-        "  if (x.dataset.act === 'a-lock') plain = !!x.querySelector('.act-risk');"
+        "  if (x.dataset.act !== 'a-force' && x.querySelector('.act-risk')) plain = false;"
         "});"
-        "return risk && !plain;", timeout=10)
+        "return risk && plain;", timeout=10)
     check("A4：行动单只给 R2+ 标「需确认」（R0/R1 直通）", chip,
           "buttons=%r" % (page.js(
               "return Array.prototype.map.call("
               "document.querySelectorAll('#actList [data-act]'),"
               "function (b) { return b.textContent; });"),))
+
+    # ① R0 直通：只读行动也不弹确认（R0 / R1 都是「无确认」这条分支）。
+    before = _results(page)
+    _click(page, '#actList [data-act="a-look"]')
+    got = page.wait_for(
+        "const r = document.querySelectorAll('#stream .msg-result');"
+        "return r.length === %d && r[r.length - 1].dataset.outcome === 'success';"
+        % (before["count"] + 1), timeout=20)
+    check("A4①：R0 直通出判定卡（成功、无确认）",
+          got and not _sheet(page)["present"], "results=%r sheet=%r" % (_results(page), _sheet(page)))
 
     # ① R1 直通：点一下直接出判定卡，全程没有确认模态。
     before = _results(page)
