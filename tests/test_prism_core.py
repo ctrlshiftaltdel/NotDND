@@ -1737,6 +1737,181 @@ def check_build_die_rate_derived():
         pass
 
 
+# ── 十一、行动提案 / 结果契约（M8-A1，Issue #202）────────────────────
+
+def check_action_contract_construct_and_validate():
+    actor = {"kind": "player", "id": "unit_01"}
+    intent = {"verb": "persuade", "target": {"kind": "npc", "id": "guard_gate"},
+              "desired": "让守卫放行", "means": "口头交涉"}
+    proposal = pc.new_proposal(
+        proposal_id=pc.new_proposal_id(), actor=actor, intent=intent,
+        source="nl", risk="R2", time_cost={"value": 5, "unit": "minute"},
+        interruptible=True, raw_text="我想说服守卫让我进去",
+        created_at=1710000000)
+    # 构造出的结构恰好是目标版本字段集，且通过校验。
+    assert set(proposal.keys()) == set(pc.PROPOSAL_FIELDS), proposal.keys()
+    assert pc.validate_proposal(proposal) == [], pc.validate_proposal(proposal)
+    assert pc._PROPOSAL_ID_RE.match(proposal["proposal_id"])
+    # 构造深拷贝：改结果不回写调用方的入参（纯函数的形状保证）。
+    proposal["actor"]["id"] = "mutated"
+    assert actor["id"] == "unit_01", actor
+    # 坏提案被逐项拒绝：坏 ID / 坏 source / 坏 risk / 缺 intent.verb。
+    bad = pc.new_proposal(proposal_id="not-an-id",
+                          intent={"desired": "x"})
+    errors = pc.validate_proposal(bad)
+    assert any("proposal_id" in e for e in errors), errors
+    assert any("source" in e for e in errors) is False  # source 默认 nl 合法
+    bad["source"] = "telepathy"
+    bad["risk"] = "R9"
+    errors = pc.validate_proposal(bad)
+    assert any("source" in e for e in errors), errors
+    assert any("risk" in e for e in errors), errors
+    assert any("verb" in e for e in errors), errors
+    assert pc.validate_proposal([]) == ["提案必须是 dict"]
+
+    # 结果契约同样过构造 + 校验。
+    result = pc.new_result(
+        action_id=pc.new_action_id(), proposal_id=proposal["proposal_id"],
+        actor=actor, status="success",
+        costs=[{"kind": "time", "value": 5, "unit": "minute"}],
+        time_cost={"value": 5, "unit": "minute"}, committed=True)
+    assert set(result.keys()) == set(pc.RESULT_FIELDS), result.keys()
+    assert pc.validate_result(result) == [], pc.validate_result(result)
+    assert pc._ACTION_ID_RE.match(result["action_id"])
+    # commit_ref 结构校验。
+    result["commit_ref"] = {"commit_id": "c1"}
+    errors = pc.validate_result(result)
+    assert any("commit_ref" in e for e in errors), errors
+    result["status"] = "bogus"
+    assert any("status" in e for e in pc.validate_result(result))
+
+
+def check_action_status_mapping():
+    # §5.2 的六种映射：每条一个真实断言（都从真的 perform_action 产出）。
+    # success：d20=12 vs DF 12 → R=0 → 达成且非险成。
+    session, _ = _scene_session()
+    success = pc.perform_action(session, "a1", rng=SeqRandom(12))
+    assert success["outcome"] == "success", success
+    assert pc.action_status(success) == "success"
+    # partial：d20=11 → R=-1 → 险成（narrow）。
+    session, _ = _scene_session()
+    partial = pc.perform_action(session, "a1", rng=SeqRandom(11))
+    assert partial["outcome"] == "narrow" and partial["passed"] is True, partial
+    assert pc.action_status(partial) == "partial"
+    # failure：d20=8 → R=-4 → 未达成。
+    session, _ = _scene_session()
+    failure = pc.perform_action(session, "a1", rng=SeqRandom(8))
+    assert failure["passed"] is False, failure
+    assert pc.action_status(failure) == "failure"
+    # exhausted：机会耗尽后短路，无掷骰。
+    session, _ = _scene_session()
+    session.action_fails["a1"] = 2
+    exhausted = pc.perform_action(session, "a1")
+    assert exhausted["status"] == "exhausted", exhausted
+    assert pc.action_status(exhausted) == "failure"
+    # blocked：战斗锁抛 CombatLocked（ValueError 子类）。
+    assert issubclass(pc.CombatLocked, ValueError)
+    session, _ = _scene_session()
+    session.combat = {"over": False}
+    try:
+        pc.perform_action(session, "a1")
+        raise AssertionError("战斗进行中执行场景行动应抛 CombatLocked")
+    except pc.CombatLocked as locked:
+        assert pc.action_status(error=locked) == "blocked"
+    # 未知行动抛普通 ValueError（§5.2「—」→ 404，不产出结果）。
+    session, _ = _scene_session()
+    try:
+        pc.perform_action(session, "nope")
+        raise AssertionError("未知行动应抛 ValueError")
+    except pc.CombatLocked:
+        raise AssertionError("未知行动不应是 CombatLocked")
+    except ValueError:
+        pass
+    # 无法映射的状态与非法错误一律原样失败，不猜测。
+    try:
+        pc.action_status({"status": "bogus"})
+        raise AssertionError("未知状态应报错")
+    except ValueError:
+        pass
+
+
+def check_action_already_done_no_double_reward():
+    # already_done 回放：映射为 success，且**不重复发奖**。
+    session, _ = _scene_session()
+    grants = []
+    original = pc._grant_rewards
+
+    def spy(sess, action, unit):
+        grants.append(action.get("id"))
+        return [{"name": "钥匙"}]
+
+    pc._grant_rewards = spy
+    try:
+        first = pc.perform_action(session, "a1", rng=SeqRandom(12))
+        assert first["status"] == "resolved" and first["passed"] is True, first
+        assert grants == ["a1"], grants
+        assert session.done_actions["a1"]["reward"] == ["钥匙"]
+        replay = pc.perform_action(session, "a1")
+        assert replay["status"] == "already_done" and replay["already"] is True
+        assert grants == ["a1"], "回放不得再次发奖：%r" % grants
+        assert replay["reward"] == ["钥匙"], replay
+        assert pc.action_status(replay) == "success"
+    finally:
+        pc._grant_rewards = original
+
+
+def check_action_contract_migration_roundtrip():
+    # 缺 schema_version 的旧结构补默认；已有合法值不被覆盖。
+    old_proposal = {
+        "proposal_id": "p_" + "a" * 32,
+        "actor": {"kind": "player", "id": "unit_01"},
+        "intent": {"verb": "persuade", "desired": "让守卫放行"},
+        "source": "nl", "risk": "R2", "raw_text": "原文保留",
+        "created_at": 1710000000,
+    }
+    migrated = pc.migrate_proposal(old_proposal)
+    assert migrated["schema_version"] == pc.PROPOSAL_SCHEMA_VERSION
+    assert migrated["raw_text"] == "原文保留", migrated
+    # 往返：迁移后再序列化，字段集 == 目标版本字段集。
+    serialized = json.loads(json.dumps(migrated))
+    assert set(serialized.keys()) == set(pc.PROPOSAL_FIELDS), serialized.keys()
+    assert set(serialized.keys()) == set(pc.new_proposal().keys())
+    # 未知更高版本被拒。
+    for bad_version in (pc.PROPOSAL_SCHEMA_VERSION + 1, 99):
+        try:
+            pc.migrate_proposal(dict(old_proposal, schema_version=bad_version))
+            raise AssertionError("未知更高版本应被拒：%r" % bad_version)
+        except ValueError:
+            pass
+    try:
+        pc.migrate_proposal(dict(old_proposal, schema_version="one"))
+        raise AssertionError("非法 schema_version 应被拒")
+    except ValueError:
+        pass
+
+    # 结果契约同口径。
+    old_result = {
+        "action_id": "act_p_" + "b" * 32,
+        "proposal_id": "p_" + "a" * 32,
+        "actor": {"kind": "player", "id": "unit_01"},
+        "status": "success", "costs": [], "effects": [], "committed": True,
+    }
+    migrated = pc.migrate_result(old_result)
+    assert migrated["schema_version"] == pc.RESULT_SCHEMA_VERSION
+    assert migrated["committed"] is True
+    serialized = json.loads(json.dumps(migrated))
+    assert set(serialized.keys()) == set(pc.RESULT_FIELDS), serialized.keys()
+    assert set(serialized.keys()) == set(pc.new_result().keys())
+    for bad_version in (pc.RESULT_SCHEMA_VERSION + 1, 99):
+        try:
+            pc.migrate_result(dict(old_result, schema_version=bad_version))
+            raise AssertionError("未知更高版本应被拒：%r" % bad_version)
+        except ValueError:
+            pass
+    # migration 不改调用方的入参（深拷贝语义）。
+    assert "schema_version" not in old_proposal, old_proposal
+
+
 def main():
     checks = (
         check_roll_whitelist,
@@ -1791,6 +1966,11 @@ def main():
         check_tactical_projection_bands,
         check_tactical_high_ground_and_attack,
         check_tactical_move_zones_abstract,
+        # 十一、行动提案 / 结果契约（M8-A1，Issue #202）
+        check_action_contract_construct_and_validate,
+        check_action_status_mapping,
+        check_action_already_done_no_double_reward,
+        check_action_contract_migration_roundtrip,
     )
     failures = 0
     for check in checks:
