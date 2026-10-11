@@ -15,6 +15,10 @@
      （自己的 `/css/*` `/js/*` `/api/*`）不算，浏览器自动要的
      `/favicon.ico` 也是同源。
 
+在以上整页级不变量之外，另加一组针对「跨片写动作单一在途」（§2.0）的
+断言：用 fetch 桩制造一个可断言的写请求在途窗口，验证 core 统一守卫在
+在途时**拒绝第二次写**、不扰动在途状态，且第一次写完成后守卫恢复。
+
 ## 本地跳过 vs CI 强制执行
 
 前置条件（`static/index.html`、WebSocket 客户端、可用浏览器）任一缺失时：
@@ -274,6 +278,47 @@ def _smoke():
                 "  .filter(u => /^https?:/i.test(u) && new URL(u).origin !== o);")
             check("页面不发起外部资源请求", not ext,
                   "外部请求：%r" % (ext,))
+            # 跨片写动作「单一在途」（§2.0）：在途时第二次写被 core 统一守卫拒绝。
+            # 用 fetch 桩把第一次写（/api/session/create）拖慢，制造一个可断言的
+            # 在途窗口；随后第二次写必须在**发往网络之前**被拒，且不扰动在途状态；
+            # 第一次写完成后守卫必须恢复（可再次写）。
+            guard = page.js(
+                "const orig = window.fetch;"
+                "window.fetch = function (url, o) {"
+                "  if (String(url).indexOf('/api/session/create') >= 0) {"
+                "    return new Promise(function (resolve) {"
+                "      setTimeout(function () {"
+                "        resolve(new Response(JSON.stringify({ sid: 'guard-probe' }),"
+                "          { status: 200, headers: { 'Content-Type': 'application/json' } }));"
+                "      }, 400);"
+                "    });"
+                "  }"
+                "  return orig.apply(this, arguments);"
+                "};"
+                "const first = window.api('/api/session/create', { method: 'POST', body: {} });"
+                "await new Promise(function (r) { setTimeout(r, 30); });"
+                "const inflight = window.__WRITE().inflight;"
+                "let rejected = false, message = '';"
+                "try { await window.api('/api/save/delete', { method: 'POST', body: { sid: 'x' } }); }"
+                "catch (e) { rejected = true; message = String((e && e.message) || e); }"
+                "const stillInflight = window.__WRITE().inflight;"
+                "try { await first; } catch (e) {}"
+                "window.fetch = orig;"
+                "const recovered = !window.__WRITE().inflight;"
+                "return { inflight: inflight, rejected: rejected, message: message,"
+                "         stillInflight: stillInflight, recovered: recovered };")
+            check("写请求在途：统一守卫登记为在途",
+                  bool(guard) and guard.get("inflight") is True,
+                  "guard=%r" % (guard,))
+            check("写请求在途：第二次写被统一守卫拒绝",
+                  bool(guard) and guard.get("rejected") is True,
+                  "guard=%r" % (guard,))
+            check("写请求在途：被拒的第二次写不扰动在途状态",
+                  bool(guard) and guard.get("stillInflight") is True,
+                  "guard=%r" % (guard,))
+            check("写请求完成后：统一守卫恢复（可再次写）",
+                  bool(guard) and guard.get("recovered") is True,
+                  "guard=%r" % (guard,))
             if not _fails:
                 try:
                     saved = page.screenshot("ui-smoke.png")
