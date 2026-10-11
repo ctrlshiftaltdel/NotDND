@@ -279,11 +279,30 @@ Action {
   interrupt_conditions: []  # 中断条件（见 5.4）
   idempotency_key: str      # 幂等键（见 8.3；提交时传给状态层的 idempotency_key）
   events:        [event_id] # 该行动产出的可追溯事件（GDD §6.4 每次转换都产事件）
+  # ↓ 以下五个是【实现补充】（C2 / C3）：上面 15 个字段之外的**最小**增补，语义均已在本文有落点
+  interrupt_minute: int|None# 开始后被打断的世界分钟（见 4.4；未开始即 None）
+  progress_kept: bool|None  # 中断时进度是否保留（见 4.4；None = 尚未中断过）
+  on_dep_fail:   str        # 依赖未成时本卡怎么办（见 5.3；cancel = 默认级联取消 / keep = 转 blocked）
+  place:         str|None   # 行动发生的地点（见 5.5 冲突识别键；None = 与该维度无关）
+  resource:      str|None   # 行动占用的资源（见 5.5 冲突识别键；None = 与该维度无关）
 }
 ```
 
 与 GDD §8.4「行动结果契约」的关系：`time_cost` 字段同源（`{"value": 20, "unit": "minute"}`），
 CHRON 只读其中的**分钟数**；`status` 词表见 4.2；`interrupt_conditions` 由 CHRON 解释。
+
+**与实现的对应（C2 / C3 已合并，2026-10-12 回填）**：`chron.py` 的 `ACTION_FIELDS` 共
+**20** 个键 = 上表 15 个 + 上述 5 个实现补充，**逐字一一对应、无额外字段**（`new_action()`
+是唯一构造入口，`_check_action()` 按同一键集合校验，`apply_event()` 只接受
+`ACTION_FIELDS` 内的字段）。五个补充字段的落点与依据：
+
+| 字段 | 落点（本文） | 依据 / 语义（与实现一致） |
+|---|---|---|
+| `interrupt_minute` | §4.4「进度是否保留」 | `running → interrupted` 时记停点；恢复时据它算剩余耗时 `time_cost − (interrupt_minute − start_minute)`（夹在 `[0, time_cost]`）。`scheduled → interrupted`（开始前）留空 |
+| `progress_kept` | §4.4「进度是否保留」 | 由 PRISM / 规则包给；为 `False` 时恢复用**整份** `time_cost` 重排。`None` = 尚未中断过 |
+| `on_dep_fail` | §5.3 依赖失败 | 默认 `cancel` = 级联取消（事件带 `reason: dependency_failed`）；`keep` = 改判 `blocked` |
+| `place` | §5.5 冲突识别键 | 同一 `place` 的两张卡需协调；`None` = 与该维度无关 |
+| `resource` | §5.5 冲突识别键 | 同一 `resource` 的两张卡需协调（识别时**优先于** `place`）；`None` = 与该维度无关 |
 
 ### 4.2 状态与全转换表（GDD §6.4）
 
@@ -319,6 +338,20 @@ GDD §6.4 的八个状态：
 - M8 的同步路径只走 `proposed → running → completed/failed`（基线 §4.3 第 2 条），
   **不需要** `scheduled`/`blocked`/`interrupted`；M9 在同一份契约上补齐异步路径——
   两次实现**不改状态词表**，只增加可达转换。
+
+**与实现（`chron.py` 的 `ACTION_TRANSITIONS`）的对应（C2 已合并，2026-10-12 回填）**：
+实现把上表落成一张显式表，`transition()` **只查表 + 校验 + 产事件**（转换规则不散在 `if` 里）。
+两边**逐行一一对应**，实现表共 **19 行** = 上表 17 行转换里 `interrupted → completed / failed`
+一行按两个目标拆成 2 行（18 行）+ **1 行「M8 同步补充行」**：
+
+| 实现多出的那一行 | 触发条件 | 谁 | 产出事件 | 依据 |
+|---|---|---|---|---|
+| `proposed → running` | M8 同步路径：校验通过后立即结算（不排程） | R+S | `action.started` | 上表 `proposed → scheduled` 行末列注记「⛔（M8 直接 running）」+ 本节不变式第 3 条 + 基线 §4.3 第 2 条 + Key Decision 5 |
+
+该补充行**不是新口径**：它把本节不变式里已写明的 M8 同步路径落成一条**机读行**
+（实现里 `m8_sync = True`），使「M8 不经 `scheduled` 也能走通」可被查表覆盖。
+**上表不因此增删任何一行**：八状态词表与全部转换仍以本节上表为准；实现表里以终态为
+`from` 的行数为 **0**（终态不可逆由模块加载时自检 + 测试逐状态钉死）。
 
 ### 4.3 与 M8 排程钩子的对接（**两层**：管线钩子 ↔ 调度器入口）
 
@@ -376,6 +409,12 @@ GDD §8.5 要求中断必须有明确规则：**已消耗的时间与资源是�
 | 进度是否保留 | `progress_kept: bool`；为真时 `interrupted → scheduled` 用剩余耗时重排 | PRISM 给，CHRON 执行 |
 | 角色是否承担风险 | `interrupt_risk: [...]`（触发即交给 PRISM 结算） | PRISM |
 | 如何恢复 | `interrupted → scheduled`（重排）或 `→ cancelled` | 玩家 / 规则包 |
+
+> **实现补充（C2 已合并，2026-10-12 回填）**：上表已落进 §4.1 字段表的是 `progress_kept`——
+> 它与同批新增的 `interrupt_minute` 配对：前者说「要不要保留进度」，后者给恢复重排所需的
+> 停点（两者都只在 `interrupted` 相关转换里写）。`interrupt_refund` / `interrupt_risk`
+> 仍是**规则包口径**：C2 未把它们落为行动卡字段，`chron.py` 也不读这两个名字；资源返还与
+> 恢复路径本来就归 PRISM / 玩家，不涉及 CHRON 字段。
 
 ---
 
@@ -582,6 +621,29 @@ chron: {
   `idempotency_key = f"{action_id}:{due_minute}:{kind}"`（确定性，重放得同键）。
 - 收到已存在的 `idempotency_key` → **no-op**，不重复扣费 / 发奖 / 伤害（GDD §6.9、§24.1）。
 - `idempotency` 表随 `blocks.chron` 落盘；长期可由事件日志重建并裁剪。
+
+**事件类型词表（CHRON 产出的 `type`；对 `STATE-DESIGN.md` §5.1「初始登记」的 M9 增补，
+2026-10-12 回填）**
+
+`STATE-DESIGN.md` §5.1 的 `type` 初始登记（`core.commit` / `map.move` / `clock.advance` /
+`resource.spend` / `combat.damage` / `knowledge.gain`）写明「其余由 M8 / M9 增补」；CHRON
+增补的类型如下（常量名 ↔ 取值，逐项与 `chron.py` 对应）：
+
+| 常量（`chron.py`） | `type` 取值 | 产出方 | 语义 |
+|---|---|---|---|
+| `ACTION_DUE_EVENT` | `action.due` | 调度器（到期点，§5.2 / §6.2 B8） | **只说「结算点到了」**：判成功 / 失败归 PRISM（§7 边界），故**不叫** `action.completed`；也不落卡（行动仍是 `running`） |
+| `WINDOW_OPEN_EVENT` | `window.opened` | 调度器（§5.5 冲突识别命中） | **只识别**「这两张卡在时序上需要协调」并开窗，**不裁决**胜负（§5.5、Key Decision 7）；同一冲突键恰好一条 |
+| `WINDOW_CLOSE_EVENT` | `window.closed` | —（**已登记、尚未产出**） | 关窗归后续切片：C3 只开不关（§5.4） |
+| `CLOCK_ADVANCE_EVENT` | `clock.advance` | 调度器（纯压缩留痕，§8.2 第 2 步） | 压缩区间内没有到期 / 转换时的「时间前进过」事实（`STATE-DESIGN.md` §5.1 已登记；`reason: time_compression`） |
+| （转换表的 `event` 列） | `action.proposed` / `action.scheduled` / `action.started` / `action.blocked` / `action.unblocked` / `action.interrupted` / `action.resumed` / `action.completed` / `action.failed` / `action.cancelled` | `transition()`（§4.2） | 每次转换**恰好一条**（§4.2 不变式）；逐行取值见 §4.2 表「产出事件」列 |
+
+幂等键的**形状分三类**（上文的 `f"{action_id}:{due_minute}:{kind}"` 是**到期事件**的形状）：
+
+- **到期事件**：`<action_id>:<due_minute>:action.due`（`chron.py` 的 `DUE_IDEMPOTENCY_RE_TEXT`
+  钉死这一形状，中段是**分钟数**）；
+- **调度器自产的其他事件**：开窗 `window.opened:<window_id>`、压缩留痕 `clock:<分钟>:clock.advance`；
+- **转换事件**（`transition()` 产）：`<action_id>:<事件序号>:<type>`（中段是**序号**；
+  其 `event_id` 另为 `<action_id>:e<序号>`，与上两类靠末段 `type` 相区分）。
 
 ### 8.4 迁移与兼容（基线 §6 第 6 条、GDD §19.4）
 
