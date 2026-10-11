@@ -168,7 +168,7 @@ Issue 编号与登记评论链接、以及「只扫开放 Issue 会漏掉该项�
       与标签索引**取并集去重**；其状态**以原登记为准**（§2.1.1 / §3.3）。
 - [ ] **幂等与不盲试**：分支**已不存在**按**幂等成功**处理（`cleanup_complete`）；**权限 / 保护规则**
       阻止删除时**显式报告并阻塞**（`cleanup_blocked`），**不**反复盲试。
-- [ ] 未完成的清理项（`cleanup_pending` / `cleanup_blocked`）在阶段汇报中**显式列出**，未被隐瞒。
+- [ ] 未完成的清理项（`cleanup_watch` / `cleanup_pending` / `cleanup_blocked`）在阶段汇报中**显式列出**，未被隐瞒。
 
 **证据**：`git diff --name-only origin/master...HEAD`、`gh pr checks <n>`（对应 head SHA）、
 各闸门勾选、合并命令与**合并 SHA**、合并后验证命令与结果；
@@ -691,12 +691,14 @@ $ git -C <repo> ls-remote --heads origin refs/heads/master
 6. **证据类型标注**：H 节为 **[真实执行]**（命令与输出）；B/C 的 spawn 为 **[真实执行]**；
    F/I 为 **[静态检查 / 设计推断]**；其余**未验证**项已就地标注。
 
-### 6.3 复审补录：2026-10-11 合并前预置窗口、跟踪项兜底与「结果不明」处置演练（Issue #257 复审项 A/B/C）
+### 6.3 复审补录：2026-10-11 合并前预置窗口、跟踪项兜底、「结果不明」处置与汇报枚举同步（Issue #257 复审项 A/B/C/D）
 
-> 本小节回应 **PR #260（Issue #257）** 的**两轮复审**，补录新增机制的**真实演练证据**：
+> 本小节回应 **PR #260（Issue #257）** 的**三轮复审**，补录新增机制的**真实演练证据**：
 > **A** 覆盖「合并成功与建立索引之间」的中断窗口；**B** 把「标签不可用 → `[清理跟踪]` 跟踪项兜底」
 > 落到运行提示词并演练；**C** 同步登记模板枚举（`APPROVED` / `cleanup_watch`）并验证
-> 「**merge 结果不明时不得撤销预置**」。权威定义引用 `AGENT-ORCHESTRATION.md` §2.1.1（`cleanup_watch`、
+> 「**merge 结果不明时不得撤销预置**」；**D** 把两条运行提示词与验收文档的**通用未完成清理项枚举**
+> 统一为 `cleanup_watch / cleanup_pending / cleanup_blocked`（与各文件硬规则及 `AGENT-ORCHESTRATION.md`
+> §6.2 第 3 项一致）。权威定义引用 `AGENT-ORCHESTRATION.md` §2.1.1（`cleanup_watch`、
 > 合并前预置、「固定动作」的**先核验合并事实**与**结果不明**处置）与 §3.3 / §3.4。
 > 证据类型标注同 §6.2（**[真实执行] / [静态检查] / [设计推断] / [未验证]**）。
 
@@ -784,6 +786,32 @@ $ git -C <repo> ls-remote --heads origin refs/heads/master
   + 移除标签；远端 `master` 前后一致（`f10a9060…`）。
   子代理**明确声明**：在核验合并事实**之前未撤销预置**，符合 §2.1.1「结果不明 → 保留索引并先核验」。[真实执行]
 
+#### H. 复审项 D：通用「未完成清理项」枚举同步（第三轮复审）
+
+- **缺口**（第三轮复审）：两条运行提示词的**阶段汇报模板**第 3 项与 `AGENT-ORCHESTRATION-ACCEPTANCE.md`
+  §3.5 的通用汇报验收项仍只列 `cleanup_pending / cleanup_blocked`，与各自下方的**硬规则**
+  （`cleanup_watch / cleanup_pending / cleanup_blocked` 必须列出）及 `AGENT-ORCHESTRATION.md` §6.2 第 3 项
+  （`cleanup_watch` / `cleanup_blocked` / `cleanup_pending`）不一致；而 §2.1.1 已把 `cleanup_watch` 定义为
+  **不可隐瞒、需跨会话恢复**的未完成项，模板可能诱导 Master 在合并前监视状态仍在途时漏报。
+- **修正**（仅**通用未完成清理项**枚举；「已合并事项」等**仅适用于合并后**的示例保持不变）[静态检查]：
+  ```text
+  $ grep -n '含未完成的清理项' prompts/master-single-session.md prompts/master-multi-session.md
+  prompts/master-single-session.md:201:3. 仍阻塞事项（状态/原因/恢复条件，含未完成的清理项 cleanup_watch / cleanup_pending / cleanup_blocked）
+  prompts/master-multi-session.md:188:3. 仍阻塞事项：<逐条 状态 / 原因 / 恢复条件，含未完成的清理项 cleanup_watch / cleanup_pending / cleanup_blocked；无则写“无”>
+
+  $ grep -n '未完成的清理项（`cleanup' AGENT-ORCHESTRATION-ACCEPTANCE.md
+  171:- [ ] 未完成的清理项（`cleanup_watch` / `cleanup_pending` / `cleanup_blocked`）在阶段汇报中**显式列出**，未被隐瞒。
+  ```
+- **未改动**（**仅合并后**语境，按复审要求保持）[静态检查]：`AGENT-ORCHESTRATION.md` §6.2 第 2 项
+  「**已合并事项**」（保持 `cleanup_complete` / `cleanup_pending` / `cleanup_blocked`）与 §6.2 第 3 项
+  「仍阻塞事项」（原本已含 `cleanup_watch`）：
+  ```text
+  $ grep -n '已合并事项' AGENT-ORCHESTRATION.md
+  502:2. **已合并事项**：逐条列 `PR #N（Issue #M）`，并标注其 `cleanup` 状态（§2.1.1，如
+  ```
+- 结论：通用枚举已统一为 `cleanup_watch / cleanup_pending / cleanup_blocked`，与硬规则 / §6.2 / 登记模板
+  一致；无机制改动，仅文案一致性。
+
 #### J. 最终结论
 
 - **复审项 A 闭合**：合并前预置 + 「先核验合并事实」的固定动作，使「merge 已成功、登记未确认」的中断
@@ -793,6 +821,10 @@ $ git -C <repo> ls-remote --heads origin refs/heads/master
 - **复审项 C 闭合**：① §3.4 登记模板枚举已补入 `APPROVED` / `cleanup_watch`，与流程实际写入值一致
   （规范一致性）；② 「merge 结果不明 → 保留索引并先核验、不得撤销预置」经探针 #265 验证（未撤销即核验，
   实为已合并 → 恢复清理）。[静态检查 + 真实执行]
+- **复审项 D 闭合**：两条运行提示词（single / multi）的阶段汇报模板第 3 项与 `AGENT-ORCHESTRATION-ACCEPTANCE.md`
+  §3.5 通用汇报验收项的**未完成清理项枚举**已统一为 `cleanup_watch / cleanup_pending / cleanup_blocked`，
+  与硬规则及 `AGENT-ORCHESTRATION.md` §6.2 第 3 项一致；「已合并事项」等**仅合并后**示例保持不变（§6.3 D）。
+  [静态检查]
 - 演练资源**已清理**：#261 / #262 / #263 / #264 / #265 全部 `CLOSED`、索引标签全部移除、本地 bare 仓库
   （`drill257b` / `drill257c`）删除；真实 `origin` 无任何 `drill/*` 分支，`master` 仍为 `220e230`。[真实执行]
 

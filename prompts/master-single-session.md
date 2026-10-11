@@ -198,7 +198,7 @@ Subagent 的自述仅是线索，不是审查结论**（`AGENT-ORCHESTRATION.md`
 
 ```text
 1. 本阶段范围与状态  2. 已合并事项：PR #N（Issue #M）（并标注 cleanup 状态，§2.1.1）
-3. 仍阻塞事项（状态/原因/恢复条件，含未完成的清理项 cleanup_pending / cleanup_blocked）
+3. 仍阻塞事项（状态/原因/恢复条件，含未完成的清理项 cleanup_watch / cleanup_pending / cleanup_blocked）
 4. 验证证据（命令 + 结果）
 5. 未解决风险（含清理阻塞所需的权限 / 保护规则处置）
 6. 下一阶段 / 人类需要处理的动作（是否已降级为多会话交接）
