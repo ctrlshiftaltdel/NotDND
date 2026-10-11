@@ -57,6 +57,12 @@ ATLAS I5（Issue #67）已接线：战术投影——规则核心在需要距离
   七、派生值与明细          八、成长
   九、构建引擎（M2c，02B 第一至五节）
   十、构建引擎收尾（M2d，02B 第六至十一节）
+  十一、行动提案 / 结果契约（M8-A1，ACTION-DESIGN 第 4 / 5 节）
+
+M8-A1（Issue #202）已落地：行动**提案**与**结果**两种结构的构造 /
+校验 / 惰性迁移（纯函数，无第三方依赖），以及 `perform_action` 返回
+到 ACTION-DESIGN §8.4 `status` 的映射；战斗锁改用 `CombatLocked`
+（`ValueError` 子类）以便写接口层区分 409 / 404。
 """
 
 from __future__ import annotations
@@ -64,6 +70,7 @@ from __future__ import annotations
 import copy
 import random
 import re
+import secrets
 
 # ════════════════════════════════════════════════════════════════════════
 # 【权限边界】玩家意图 vs 服务端结算
@@ -1014,7 +1021,7 @@ def perform_action(session: RuleSession, action_id: str, unit_id: str = "",
     # 战斗进行中不放行普通场景行动：否则玩家能在战斗界面外把场景清空、
     # 把该做的先做完，回合制的约束整个失效。
     if session.combat and not session.combat.get("over"):
-        raise ValueError("战斗还没结束，先打完这场")
+        raise CombatLocked("战斗还没结束，先打完这场")
 
     kind = str(action.get("kind") or "check")
     if kind not in ACTION_KINDS:
@@ -3842,6 +3849,326 @@ def build_engine_switch_advice(situation: str) -> str:
     raise ValueError(f"未记录的换引擎情形：{situation}")
 
 
+# ════════════════════════════════════════════════════════════════════════
+# 十一、行动提案 / 结果契约（M8-A1，ACTION-DESIGN 第 4 / 5 节）
+#
+# 只做契约：构造 / 校验 / 迁移，以及把 perform_action 的返回映射成
+# §8.4 的 status。**不接 HTTP、不碰会话**（第 9 节的写接口归 A3）。
+# 全部是纯函数：不读文件、不改会话、`import` 无副作用。
+#
+# 契约是**封闭集合**：每个版本有一个固定的字段集（PROPOSAL_FIELDS /
+# RESULT_FIELDS）。迁移只补缺键、不覆盖已有值，并丢弃集合外的未知键，
+# 从而保证「迁移后序列化的字段集 == 目标版本字段集」（往返不变量）。
+# 未知的更高版本一律**拒绝**，不猜（由状态层翻成 409 版本不支持）。
+# ════════════════════════════════════════════════════════════════════════
+
+PROPOSAL_SCHEMA_VERSION = 1
+RESULT_SCHEMA_VERSION = 1
+
+# 提案来源：nl = 自然语言经导引者解析；action = 客户端直接给 action_id（无需 AI）。
+PROPOSAL_SOURCES = ("nl", "action")
+# 五级风险（§6.1）。
+ACTION_RISKS = ("R0", "R1", "R2", "R3", "R4")
+# §8.4 的结果状态枚举。
+ACTION_STATUSES = ("success", "partial", "failure", "blocked")
+# time_cost.unit 枚举（§8.1），不做世界时间换算（归 CHRON / M9）。
+TIME_COST_UNITS = ("round", "turn", "minute", "hour", "watch", "day")
+# 中断条件 kind 枚举（§8.4，GDD §8.5）。
+INTERRUPT_KINDS = ("enemy_appears", "weather_change", "target_leaves",
+                   "resource_short", "hazard", "player_cancel",
+                   "higher_priority")
+
+# 各版本的封闭字段集（顺序即迁移后的键顺序）。
+PROPOSAL_FIELDS = (
+    "schema_version", "proposal_id", "actor", "intent", "params", "source",
+    "risk", "time_cost", "schedule_hint", "interruptible",
+    "interrupt_conditions", "expected_changes", "raw_text", "created_at",
+)
+RESULT_FIELDS = (
+    "schema_version", "action_id", "proposal_id", "actor", "status", "costs",
+    "effects", "consequences", "discovered_facts", "event_ids", "commit_ref",
+    "time_cost", "interrupt_conditions", "rule_ref", "committed",
+)
+
+_PROPOSAL_ID_RE = re.compile(r"^p_[0-9a-f]{32}$")
+_ACTION_ID_RE = re.compile(r"^act_p_[0-9a-f]{32}$")
+
+
+class CombatLocked(ValueError):
+    """战斗未结束时执行普通场景行动——映射为 §8.4 的 `blocked`。
+
+    继承 `ValueError`，所以既有的 `except ValueError` 调用方行为不变；
+    新增它是为了让写接口层（A3）**不必靠匹配报错文案**区分
+    「战斗锁 → 409」与「未知行动 → 404」。
+    """
+
+
+def new_proposal_id() -> str:
+    """服务端生成提案 ID（`^p_[0-9a-f]{32}$`）。"""
+    return "p_" + secrets.token_hex(16)
+
+
+def new_action_id() -> str:
+    """服务端生成结果 ID（`^act_p_[0-9a-f]{32}$`）。"""
+    return "act_p_" + secrets.token_hex(16)
+
+
+def _is_int(value) -> bool:
+    """严格整数判定（`bool` 是 `int` 子类，但不算整数）。"""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _empty_time_cost() -> dict:
+    return {"value": 0, "unit": "minute"}
+
+
+def _empty_schedule_hint() -> dict:
+    return {"can_defer": False, "depends_on": [], "priority": 0}
+
+
+def _empty_actor() -> dict:
+    return {"kind": "player", "id": ""}
+
+
+def _empty_intent() -> dict:
+    return {"verb": "", "target": None, "desired": "", "means": ""}
+
+
+def _empty_rule_ref() -> dict:
+    return {"version": "prism-core@0.1", "df": 0, "roll_ref": ""}
+
+
+def new_proposal(*, proposal_id: str = "", actor: dict | None = None,
+                 intent: dict | None = None, params: dict | None = None,
+                 source: str = "nl", risk: str = "R2",
+                 time_cost: dict | None = None, schedule_hint: dict | None = None,
+                 interruptible: bool = True,
+                 interrupt_conditions: list | None = None,
+                 expected_changes: list | None = None, raw_text: str = "",
+                 created_at: int = 0) -> dict:
+    """构造一份提案（§4.2）。缺省字段按 schema 默认值补齐；ID 缺省时生成。
+
+    只做「形状」不做「验证」——语义合法性用 `validate_proposal`。
+    """
+    return {
+        "schema_version": PROPOSAL_SCHEMA_VERSION,
+        "proposal_id": str(proposal_id or new_proposal_id()),
+        "actor": copy.deepcopy(actor) if actor is not None else _empty_actor(),
+        "intent": copy.deepcopy(intent) if intent is not None else _empty_intent(),
+        "params": copy.deepcopy(params) if params is not None
+        else {"dc_override": None, "items_used": []},
+        "source": str(source),
+        "risk": str(risk),
+        "time_cost": copy.deepcopy(time_cost) if time_cost is not None
+        else _empty_time_cost(),
+        "schedule_hint": copy.deepcopy(schedule_hint)
+        if schedule_hint is not None else _empty_schedule_hint(),
+        "interruptible": bool(interruptible),
+        "interrupt_conditions": list(interrupt_conditions or []),
+        "expected_changes": list(expected_changes or []),
+        "raw_text": str(raw_text),
+        "created_at": int(created_at),
+    }
+
+
+def new_result(*, action_id: str = "", proposal_id: str = "",
+               actor: dict | None = None, status: str = "success",
+               costs: list | None = None, effects: list | None = None,
+               consequences: list | None = None,
+               discovered_facts: list | None = None,
+               event_ids: list | None = None, commit_ref: dict | None = None,
+               time_cost: dict | None = None,
+               interrupt_conditions: list | None = None,
+               rule_ref: dict | None = None, committed: bool = False) -> dict:
+    """构造一份结果（§5.1）。缺省字段按 schema 默认值补齐；ID 缺省时生成。"""
+    return {
+        "schema_version": RESULT_SCHEMA_VERSION,
+        "action_id": str(action_id or new_action_id()),
+        "proposal_id": str(proposal_id),
+        "actor": copy.deepcopy(actor) if actor is not None else _empty_actor(),
+        "status": str(status),
+        "costs": list(costs or []),
+        "effects": list(effects or []),
+        "consequences": list(consequences or []),
+        "discovered_facts": list(discovered_facts or []),
+        "event_ids": list(event_ids or []),
+        "commit_ref": copy.deepcopy(commit_ref) if commit_ref is not None
+        else None,
+        "time_cost": copy.deepcopy(time_cost) if time_cost is not None
+        else _empty_time_cost(),
+        "interrupt_conditions": list(interrupt_conditions or []),
+        "rule_ref": copy.deepcopy(rule_ref) if rule_ref is not None
+        else _empty_rule_ref(),
+        "committed": bool(committed),
+    }
+
+
+def validate_proposal(raw) -> list[str]:
+    """校验提案（§4.2）。返回**错误清单**：空列表 = 合法。
+
+    返回清单而不是抛异常，方便上层一次报出全部问题；拒绝与澄清的
+    处置（§6.1）由调用方决定。
+    """
+    if not isinstance(raw, dict):
+        return ["提案必须是 dict"]
+    errors: list[str] = []
+    if raw.get("schema_version") != PROPOSAL_SCHEMA_VERSION:
+        errors.append(f"schema_version 必须为 {PROPOSAL_SCHEMA_VERSION}")
+    if not _PROPOSAL_ID_RE.match(str(raw.get("proposal_id") or "")):
+        errors.append("proposal_id 必须匹配 ^p_[0-9a-f]{32}$")
+    actor = raw.get("actor")
+    if not isinstance(actor, dict) or not str(actor.get("id") or ""):
+        errors.append("actor 必须是非空 id 的 dict")
+    intent = raw.get("intent")
+    if not isinstance(intent, dict):
+        errors.append("intent 必须是 dict")
+    else:
+        if not str(intent.get("verb") or ""):
+            errors.append("intent.verb 必填")
+        if not str(intent.get("desired") or ""):
+            errors.append("intent.desired 必填")
+        target = intent.get("target")
+        if target is not None and not isinstance(target, dict):
+            errors.append("intent.target 必须是 dict 或 null")
+    if str(raw.get("source") or "") not in PROPOSAL_SOURCES:
+        errors.append("source 必须是 " + " / ".join(PROPOSAL_SOURCES))
+    if str(raw.get("risk") or "") not in ACTION_RISKS:
+        errors.append("risk 必须是 " + " / ".join(ACTION_RISKS))
+    if not _valid_time_cost(raw.get("time_cost")):
+        errors.append("time_cost 必须是 {value: int>=0, unit: 枚举}")
+    if not isinstance(raw.get("interruptible"), bool):
+        errors.append("interruptible 必须是 bool")
+    for key in ("interrupt_conditions", "expected_changes"):
+        if not isinstance(raw.get(key), list):
+            errors.append(f"{key} 必须是数组")
+    if not _is_int(raw.get("created_at")):
+        errors.append("created_at 必须是 int")
+    return errors
+
+
+def validate_result(raw) -> list[str]:
+    """校验结果（§5.1）。返回**错误清单**：空列表 = 合法。"""
+    if not isinstance(raw, dict):
+        return ["结果必须是 dict"]
+    errors: list[str] = []
+    if raw.get("schema_version") != RESULT_SCHEMA_VERSION:
+        errors.append(f"schema_version 必须为 {RESULT_SCHEMA_VERSION}")
+    if not _ACTION_ID_RE.match(str(raw.get("action_id") or "")):
+        errors.append("action_id 必须匹配 ^act_p_[0-9a-f]{32}$")
+    if not _PROPOSAL_ID_RE.match(str(raw.get("proposal_id") or "")):
+        errors.append("proposal_id 必须匹配 ^p_[0-9a-f]{32}$")
+    actor = raw.get("actor")
+    if not isinstance(actor, dict) or not str(actor.get("id") or ""):
+        errors.append("actor 必须是非空 id 的 dict")
+    if str(raw.get("status") or "") not in ACTION_STATUSES:
+        errors.append("status 必须是 " + " / ".join(ACTION_STATUSES))
+    for key in ("costs", "effects", "consequences", "discovered_facts",
+                "event_ids", "interrupt_conditions"):
+        if not isinstance(raw.get(key), list):
+            errors.append(f"{key} 必须是数组")
+    commit_ref = raw.get("commit_ref")
+    if commit_ref is not None:
+        if not isinstance(commit_ref, dict):
+            errors.append("commit_ref 必须是 dict 或 null")
+        else:
+            for key in ("commit_id", "seq_from", "seq_to", "state_digest"):
+                if key not in commit_ref:
+                    errors.append(f"commit_ref 缺 {key}")
+    if not _valid_time_cost(raw.get("time_cost")):
+        errors.append("time_cost 必须是 {value: int>=0, unit: 枚举}")
+    if not isinstance(raw.get("rule_ref"), dict):
+        errors.append("rule_ref 必须是 dict")
+    if not isinstance(raw.get("committed"), bool):
+        errors.append("committed 必须是 bool")
+    return errors
+
+
+def _valid_time_cost(value) -> bool:
+    if not isinstance(value, dict):
+        return False
+    if not _is_int(value.get("value")) or value["value"] < 0:
+        return False
+    return str(value.get("unit") or "") in TIME_COST_UNITS
+
+
+def _migrate_contract(raw, *, version: int, fields: tuple, make_empty) -> dict:
+    """契约迁移的共用实现（§4.3 / §5.3）。
+
+    惰性：只补缺键、不覆盖已有值，不跑磁盘脚本。缺失 `schema_version`
+    补成 `version`；**未知的更高版本拒绝**（不猜）。返回的字典恰好含
+    `fields` 的键——集合外的未知键丢弃，保证往返字段集不变。
+    """
+    if not isinstance(raw, dict):
+        raise ValueError("契约对象必须是 dict")
+    declared = raw.get("schema_version")
+    if declared is None:
+        resolved = version
+    else:
+        if not _is_int(declared):
+            raise ValueError(f"schema_version 非法：{declared!r}")
+        resolved = declared
+        if resolved > version:
+            raise ValueError(
+                f"schema_version {resolved} 高于本实现支持的 {version}；拒绝加载")
+        if resolved < 0:
+            raise ValueError(f"schema_version 非法：{declared!r}")
+    out = make_empty()
+    for key in fields:
+        if key != "schema_version" and key in raw:
+            out[key] = copy.deepcopy(raw[key])
+    out["schema_version"] = version
+    return out
+
+
+def migrate_proposal(raw) -> dict:
+    """把旧结构的提案迁到当前版本（§4.3）。未知更高版本 → `ValueError`。"""
+    return _migrate_contract(raw, version=PROPOSAL_SCHEMA_VERSION,
+                             fields=PROPOSAL_FIELDS,
+                             make_empty=lambda: new_proposal(proposal_id=""))
+
+
+def migrate_result(raw) -> dict:
+    """把旧结构的结果迁到当前版本（§5.3）。未知更高版本 → `ValueError`。"""
+    return _migrate_contract(raw, version=RESULT_SCHEMA_VERSION,
+                             fields=RESULT_FIELDS,
+                             make_empty=lambda: new_result(action_id=""))
+
+
+def action_status(perf_result: dict | None = None, *,
+                  error: Exception | None = None) -> str:
+    """把 perform_action 的产出映射成 §8.4 的 `status`（§5.2）。
+
+    - `resolved` + 达成（非险成）→ `success`
+    - `resolved` + 险成（`narrow`）→ `partial`
+    - `resolved` + 未达成 → `failure`
+    - `exhausted` → `failure`（机会耗尽，代价已真结算）
+    - `already_done` → `success`（幂等回放：不重复掷骰 / 不重复发奖）
+    - 战斗锁（`CombatLocked`）→ `blocked`
+    - `narrate`（纯叙述，没有成败）→ `success`
+
+    未知行动抛的是普通 `ValueError`——按 §5.2 它**不产出结果**（404），
+    所以这里原样抛出，不映射成任何 `status`。
+    """
+    if error is not None:
+        if isinstance(error, CombatLocked):
+            return "blocked"
+        raise error
+    result = perf_result if isinstance(perf_result, dict) else {}
+    status = str(result.get("status") or "")
+    if status == "already_done":
+        return "success"
+    if status == "exhausted":
+        return "failure"
+    if status == "resolved":
+        if str(result.get("kind") or "") == "narrate":
+            return "success"
+        if not result.get("passed"):
+            return "failure"
+        return "partial" if str(result.get("outcome") or "") == "narrow" \
+            else "success"
+    raise ValueError(f"无法映射的行动结果状态：{status or '<空>'}")
+
+
 __all__ = [
     # 一、术语与白名单
     "ATTRIBUTES", "ATTRIBUTE_IDS", "ATTRIBUTE_MIN", "ATTRIBUTE_MAX",
@@ -3932,4 +4259,11 @@ __all__ = [
     "BUILD_ENEMY_DEFENSE_CONVERSION", "BUILD_DAMAGE_CONVERSION",
     "BUILD_MIGRATION_STEPS", "BUILD_MIXING_LIMITS",
     "build_df_to_need", "build_guard_to_dodge", "build_engine_switch_advice",
+    # 十一、行动提案 / 结果契约（M8-A1）
+    "PROPOSAL_SCHEMA_VERSION", "RESULT_SCHEMA_VERSION", "PROPOSAL_SOURCES",
+    "ACTION_RISKS", "ACTION_STATUSES", "TIME_COST_UNITS", "INTERRUPT_KINDS",
+    "PROPOSAL_FIELDS", "RESULT_FIELDS", "CombatLocked",
+    "new_proposal_id", "new_action_id", "new_proposal", "new_result",
+    "validate_proposal", "validate_result",
+    "migrate_proposal", "migrate_result", "action_status",
 ]
