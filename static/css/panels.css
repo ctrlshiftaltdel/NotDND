@@ -1,0 +1,156 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 片 U4：状态与记录面板（队伍 / 世界 / 记录）
+   本片专属样式；令牌见 css/tokens.css，跨片共用件（.btn / .sheet /
+   .stream-empty / .msg …）见 css/base.css 与 css/stream.css。
+   记录条目刻意复用叙事流的 `.msg` 样式族（§1.3.5「同一套样式族」）。
+
+   硬规则（UI-DESIGN §3.2）：--text-3 只允许出现在 --bg-0 / --bg-1 上；
+   放在 --bg-2 的卡片里一律改用 --text-2。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ══════════════ 队伍 · 战斗带 ══════════════ */
+.combat-band {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-1) var(--sp-3);
+  margin-bottom: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--line));
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg-2));
+}
+.combat-tag {
+  font-size: var(--fs-xs); font-weight: 600; letter-spacing: .1em;
+  color: var(--danger);
+}
+.combat-item { font-size: var(--fs-sm); color: var(--text-1); }
+.combat-item b { color: var(--text-2); font-weight: 400; margin-right: var(--sp-1); }
+
+/* ══════════════ 队伍 · 单位卡 ══════════════ */
+.unit-card {
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-1);
+}
+.unit-card + .unit-card { margin-top: var(--sp-3); }
+.unit-card.is-downed { border-left: 3px solid var(--danger); }
+.unit-card.is-dead { border-left: 3px solid var(--line-strong); opacity: .72; }
+
+.unit-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.unit-name {
+  margin: 0;
+  font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600;
+  color: var(--text-1); min-width: 0;
+  overflow-wrap: anywhere;
+}
+.unit-level {
+  margin-left: var(--sp-2);
+  font-family: var(--font-mono); font-size: var(--fs-xs); font-weight: 400;
+  color: var(--text-2);
+}
+.unit-badge {
+  display: inline-block; margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--accent); border-radius: var(--r-pill);
+  color: var(--accent);
+  font-family: var(--font-sans); font-size: var(--fs-xs); font-weight: 400;
+}
+.unit-flags { flex: 0 0 auto; display: flex; gap: var(--sp-1); }
+.unit-flag {
+  padding: 0 var(--sp-2);
+  border: 1px solid currentColor; border-radius: var(--r-pill);
+  font-size: var(--fs-xs); font-weight: 600;
+}
+.unit-flag.is-downed { color: var(--danger); }
+.unit-flag.is-dead { color: var(--text-2); }
+
+.unit-meta {
+  display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3);
+  margin-top: var(--sp-2);
+  font-size: var(--fs-sm); color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.unit-dims {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-1); margin-top: var(--sp-3);
+}
+.unit-dim {
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+}
+.unit-dim b { display: block; font-family: var(--font-mono); font-size: var(--fs-ui); color: var(--text-1); }
+.unit-dim span { font-size: var(--fs-xs); color: var(--text-2); }
+.unit-cond {
+  display: flex; gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-sm);
+}
+.unit-cond b { flex: 0 0 auto; color: var(--text-3); font-weight: 400; }
+.unit-cond span { color: var(--text-1); overflow-wrap: anywhere; }
+
+/* ══════════════ 世界 ══════════════ */
+.world-here { padding-bottom: var(--sp-2); }
+.world-name {
+  font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600;
+  color: var(--text-1);
+}
+.world-meta {
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.exit-list { display: flex; flex-direction: column; gap: var(--sp-2); }
+.world-exit { justify-content: flex-start; text-align: left; width: 100%; }
+.world-exit.is-danger { border-color: color-mix(in srgb, var(--danger) 60%, var(--line-strong)); }
+.world-exit.is-danger .act-hint { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.world-empty { white-space: pre-wrap; text-align: left; }
+
+.world-text {
+  margin-top: var(--sp-4);
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--bg-1);
+}
+.world-text > summary {
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text-2); font-size: var(--fs-sm);
+  cursor: pointer; list-style: none;
+}
+.world-text > summary::-webkit-details-marker { display: none; }
+.world-text > summary::before { content: '▸ '; color: var(--text-3); }
+.world-text[open] > summary::before { content: '▾ '; }
+.world-text-body {
+  margin: 0; padding: 0 var(--sp-3) var(--sp-3);
+  font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-2);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
+.world-confirm {
+  display: flex; flex-direction: column; gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+.confirm-line { font-family: var(--font-serif); font-size: var(--fs-lg); color: var(--text-1); }
+.confirm-sub { font-size: var(--fs-sm); color: var(--text-2); }
+.confirm-actions { display: flex; gap: var(--sp-2); }
+.confirm-actions .btn { flex: 1 1 0; }
+
+/* ══════════════ 记录 ══════════════ */
+.log-stream { display: flex; flex-direction: column; gap: var(--sp-2); padding: 0; }
+.log-item { max-width: 100%; }
+.log-head {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+  font-size: var(--fs-xs); color: var(--text-2);
+}
+.log-seq { font-family: var(--font-mono); color: var(--text-3); }
+.log-src { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-copy {
+  flex: 0 0 auto;
+  padding: 0 var(--sp-2); min-height: 24px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+  color: var(--text-2); font-size: var(--fs-xs);
+}
+.log-copy:hover:not(:disabled) { border-color: var(--accent); color: var(--text-1); }
+.log-text { overflow-wrap: anywhere; white-space: pre-wrap; }
+.log-foot { margin-top: var(--sp-3); text-align: center; font-size: var(--fs-xs); color: var(--text-3); }
