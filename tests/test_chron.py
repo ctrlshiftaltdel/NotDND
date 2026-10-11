@@ -27,6 +27,13 @@
 - 同资源 / 同 place 的两行动触发**一个** `window.opened`（只识别、不裁决）；无键不开窗；
 - 调度器纯函数：入参不被改写、同一输入两次结果全等、`due_heap` 可重建且幂等。
 
+覆盖切片 C4 的验收标准（§6 时间压缩与事件屏障）：
+
+- §6.5 的**五条**：穿屏障停在前、无屏障可压缩、不删因果、到期总停（B8）、同分钟屏障优先；
+- §6.2 的 **B1–B8 判据逐条**可机读（`BARRIERS` 表 + `next_barrier` / `barriers_at` 各一条用例）；
+- 压缩**不产生**「被跳过的模拟」事件：压缩日志（`compression_log`）只引用真实事件；
+- `offline_advance` **只作入参**（默认 `False`，§3.4）——不判「谁在线」，也不改变推进结果。
+
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_chron.py` 运行。
 """
 
@@ -1029,52 +1036,78 @@ def check_window_identification_rules():
 
 
 def meter_events(state):
-    """`advance_to` 到「全部到期」后的事件流（测试便利函数）。"""
+    """`advance_to` 到「堆上最远到期」的**一次**推进所得事件流（测试便利函数）。
+
+    C4 起一次调用最多推进到**第一个**停点：堆上同分钟多卡时即该分钟的全部到期；
+    堆上还有更晚的分钟时，需要按停点逐次推进（先结算上一个到期点，B8 才会放行）。
+    """
     farthest = max(entry[0] for entry in state["due_heap"])
     return chron.advance_to(state, farthest)["events"]
 
 
 def check_advance_to_fires_in_order():
-    """`advance_to` 的推进语义：到期即触发、同分钟按堆序、窗口先于到期。"""
+    """`advance_to` 的推进语义：到期即触发、同分钟按堆序、窗口先于到期。
+
+    C4 起还要**停在停点**（§6.3 / §6.5 第 4 条）：一次调用最多推进到**第一个**屏障或
+    结算点；越过结算点要**逐停点**推进（先结算上一个到期，B8 才放行）——下例即该调用模式。
+    """
     state = chron.new_scheduler(SCHED_MINUTE)
     state = _schedule(state, _draft_action("first", time_cost=10, priority=0,
                                            resource="rope"))
     state = _schedule(state, _draft_action("second", time_cost=20, priority=0,
                                            resource="rope"))
-    # 目标早于最早到期 → 不触发，但世界时间前进。
+    state = _schedule(state, _draft_action("peer", actor="pc-3", time_cost=20,
+                                           resource="rope"))
+    # 目标早于最早到期 → 不触发，但世界时间前进（没有屏障 = 可以压缩）。
     early = chron.advance_to(state, SCHED_MINUTE + 5)
     assert early["events"] == [] and early["world_minute"] == SCHED_MINUTE + 5
+    assert early["stopped_at"] is None and early["barriers"] == []
     assert early["state"]["world_minute"] == SCHED_MINUTE + 5
-    # 目标落在第二个到期点之前 → 只触发第一个（此时还只有一个行动，不开窗）。
+    # 目标跨过第一个到期（+10）→ 停在**结算点**：该分钟的到期已触发（B8），不越过。
     middle = chron.advance_to(state, SCHED_MINUTE + 15)
     assert [(event["type"], event["target"]) for event in middle["events"]] == \
         [("action.started", "first"), ("action.due", "first")]
-    assert middle["world_minute"] == SCHED_MINUTE + 15
+    assert middle["world_minute"] == SCHED_MINUTE + 10
+    assert middle["stopped_at"] == SCHED_MINUTE + 10
+    assert [record["id"] for record in middle["barriers"]] == ["B8"]
     assert middle["state"]["windows"] == [], "只有一个行动时不开窗（§5.4）"
-    # 全量推进：窗口只开一次，第二个到期的卡复用同一个窗口。
-    full = chron.advance_to(state, SCHED_MINUTE + 20)
+    # 结算未完成前压缩不再前进（§6.5 第 4 条：到期总停）——只重播同一结算点（幂等键相同）。
+    stuck = chron.advance_to(middle["state"], SCHED_MINUTE + 15)
+    assert stuck["world_minute"] == SCHED_MINUTE + 10
+    assert stuck["stopped_at"] == SCHED_MINUTE + 10
+    assert [record["id"] for record in stuck["barriers"]] == ["B8"]
+    assert [(event["type"], event["target"]) for event in stuck["events"]] == \
+        [("action.due", "first")]
+    assert stuck["events"][0]["idempotency_key"] == \
+        middle["events"][-1]["idempotency_key"], "重播必须同键（§8.3 幂等）"
+    # 结算 first 后继续推进：+20 那一分钟的到期触发，窗口**恰好一个**（同资源）。
+    settled = chron.settle(middle["state"], "first", "completed",
+                           world_minute=SCHED_MINUTE + 10)["state"]
+    full = chron.advance_to(settled, SCHED_MINUTE + 100)
+    assert full["world_minute"] == SCHED_MINUTE + 20, "越过下一个到期即停（B8）"
+    assert full["stopped_at"] == SCHED_MINUTE + 20
     assert [event["target"] for event in _window_opens(full["events"])] == [None]
     assert len(_window_opens(full["events"])) == 1
-    assert chron.open_windows(full["state"])[0]["participants"] == ["first", "second"]
+    assert chron.open_windows(full["state"])[0]["participants"] == ["peer", "second"]
     # 世界时间只增不减：目标早于当前 → 《ScheduleError》；类型 / 负值 → TypeError / ValueError。
     try:
-        chron.advance_to(middle["state"], SCHED_MINUTE - 1)
+        chron.advance_to(full["state"], SCHED_MINUTE + 10)
     except chron.ScheduleError:
         pass
     else:
         raise AssertionError("回拨世界时间应抛 ScheduleError")
     for bad in (-1, 1.5, True, "x"):
         try:
-            chron.advance_to(middle["state"], bad)
+            chron.advance_to(full["state"], bad)
         except (TypeError, ValueError):
             continue
         raise AssertionError("advance_to(%r) 应被拒绝" % (bad,))
     # 到期事件带确定性幂等键（§8.3）：`<action_id>:<due_minute>:<type>`。
-    due = [event for event in meter_events(state) if event["type"] == "action.due"]
+    due = [event for event in full["events"] if event["type"] == chron.ACTION_DUE_EVENT]
     assert due, "应有到期事件"
     for event in due:
         assert event["idempotency_key"] == "%s:%d:%s" % (
-            event["target"], state["actions"][event["target"]]["due_minute"],
+            event["target"], settled["actions"][event["target"]]["due_minute"],
             chron.ACTION_DUE_EVENT)
 
 
@@ -1231,6 +1264,393 @@ def check_blocked_policy_roundtrip():
 
 
 # --------------------------------------------------------------------------
+# §6 时间压缩与事件屏障（C4）
+# --------------------------------------------------------------------------
+
+# C4 用例的基准世界分钟（与 C2 / C3 同轴，但**独立一份**避免互相牵动）。
+COMPRESS_MINUTE = 5000
+
+# `compression_log` 的字段（压缩日志只记真实事件，形状固定）。
+COMPRESSION_LOG_FIELDS = ("from_minute", "to_minute", "target_minute", "stopped_at",
+                          "offline_advance", "fired_minutes", "event_ids")
+
+# 已知事件词表：压缩**只**产出这些真实事件——没有任何「被跳过 / 模拟」类事件。
+KNOWN_EVENT_TYPES = ({row["event"] for row in chron.ACTION_TRANSITIONS}
+                     | {chron.ACTION_DUE_EVENT, chron.WINDOW_OPEN_EVENT,
+                        chron.WINDOW_CLOSE_EVENT})
+
+BARRIER_NAMES = {row["id"]: row["name"] for row in chron.BARRIERS}
+
+
+def _scheduled(state, draft, *, minute=COMPRESS_MINUTE, **kwargs):
+    """在指定分钟排一张卡，返回**新**调度器状态（`_schedule` 的显式分钟版本）。"""
+    return _schedule(state, draft, minute=minute, **kwargs)
+
+
+def _check_barrier_record(record, minute=None):
+    """屏障记录逐字段（§6.2）：形状固定、编号受词表约束、名称一致。"""
+    assert set(record) == set(chron.BARRIER_FIELDS), record
+    assert record["id"] in chron.BARRIER_IDS, record
+    assert record["name"] == BARRIER_NAMES[record["id"]], record
+    assert isinstance(record["reason"], str) and record["reason"], record
+    assert record["subject"] is None or isinstance(record["subject"], str), record
+    if minute is not None:
+        assert record["minute"] == minute, record
+    return record
+
+
+def _barrier_ids(records):
+    """记录里的判据编号（按出现顺序；确定性）。"""
+    return [record["id"] for record in records]
+
+
+def check_barrier_table_is_complete():
+    """§6.2 的 **B1–B8 判据表**：八条齐备、字段非空、编号 / 词表自洽（机读判据可审查）。"""
+    assert chron.BARRIER_IDS == ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8")
+    assert tuple(row["id"] for row in chron.BARRIERS) == chron.BARRIER_IDS
+    for row in chron.BARRIERS:
+        assert set(row) == {"id", "name", "criterion", "machine"}, row
+        assert row["name"] and row["criterion"] and row["machine"], row
+    assert BARRIER_NAMES == {
+        "B1": "进入战斗", "B2": "发现关键线索", "B3": "玩家角色安全受威胁", "B4": "角色遭遇",
+        "B5": "世界状态冲突", "B6": "玩家有未决决策", "B7": "行动转 blocked / interrupted",
+        "B8": "有行动到期",
+    }
+    assert chron.BARRIER_FIELDS[0] == "id"
+    assert set(chron.BARRIER_FIELDS) == {"id", "name", "minute", "reason", "subject"}
+    for ids in (chron.NOW_BARRIER_IDS, chron.PAUSING_BARRIER_IDS):
+        assert set(ids) <= set(chron.BARRIER_IDS), ids
+    for table in (chron.KIND_BARRIERS, chron.INTERRUPT_BARRIERS):
+        assert set(table.values()) <= set(chron.BARRIER_IDS), table
+    assert chron.KIND_BARRIERS["combat"] == "B1"
+    assert chron.KIND_BARRIERS["discover"] == "B2"
+    assert chron.INTERRUPT_BARRIERS["enemy_appears"] == "B1"
+
+
+def check_every_barrier_criterion_has_a_case():
+    """§6.2 **B1–B8 逐条**各一条用例：判据能在状态上机读命中（`next_barrier` / `barriers_at`）。"""
+    # B1 进入战斗：战斗行动安排在 +180 开始 → 停点 = 它的开始分钟（还没开始，停在之前）。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE), _draft_action("trip", time_cost=600))
+    state = _scheduled(state, _draft_action("fight", kind="combat", time_cost=60),
+                       start_minute=COMPRESS_MINUTE + 180)
+    assert chron.next_barrier(state) == COMPRESS_MINUTE + 180
+    hit = [record for record in chron.barriers_at(state, COMPRESS_MINUTE + 180)
+           if record["id"] == "B1"]
+    assert len(hit) == 1 and hit[0]["reason"] == "kind:combat" and hit[0]["subject"] == "fight"
+    _check_barrier_record(hit[0], COMPRESS_MINUTE + 180)
+    # B1（进行中）：战斗一旦开始，就在「现在」拦（不能快进战斗）。
+    paused = chron.advance_to(state, COMPRESS_MINUTE + 360)
+    assert paused["world_minute"] == COMPRESS_MINUTE + 180
+    running = chron.advance_to(paused["state"], COMPRESS_MINUTE + 360)
+    assert running["state"]["actions"]["fight"]["status"] == "running"
+    assert chron.next_barrier(running["state"]) == running["world_minute"]
+    now_hit = [record for record in chron.barriers_at(running["state"], running["world_minute"])
+               if record["id"] == "B1"]
+    assert [record["reason"] for record in now_hit] == ["running:combat"]
+    # B2 发现关键线索：发现类行动的**到期**分钟（「到达时发现」）。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE),
+                       _draft_action("clue", kind="discover", time_cost=200))
+    assert chron.next_barrier(state) == COMPRESS_MINUTE + 200
+    hit = [record for record in chron.barriers_at(state, COMPRESS_MINUTE + 200)
+           if record["id"] == "B2"]
+    assert len(hit) == 1 and hit[0]["reason"] == "kind:discover" and hit[0]["subject"] == "clue"
+    # B3 玩家角色安全受威胁：危险类行动的开始；带 `hazard` 中断条件同样命中。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE),
+                       _draft_action("risk", kind="hazard", time_cost=90),
+                       start_minute=COMPRESS_MINUTE + 90)
+    assert chron.next_barrier(state) == COMPRESS_MINUTE + 90
+    assert [record["reason"] for record in chron.barriers_at(state, COMPRESS_MINUTE + 90)
+            if record["id"] == "B3"] == ["kind:hazard"]
+    guarded = chron.new_action("guarded", "pc-2", "travel", 90,
+                              interrupt_conditions=[{"kind": "hazard", "expr": "storm"}])
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE), guarded,
+                       start_minute=COMPRESS_MINUTE + 90)
+    assert [record["reason"] for record in chron.barriers_at(state, COMPRESS_MINUTE + 90)
+            if record["id"] == "B3"] == ["interrupt:hazard"]
+    # B4 角色遭遇：遭遇类行动的开始。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE),
+                       _draft_action("meet", kind="encounter", time_cost=120),
+                       start_minute=COMPRESS_MINUTE + 120)
+    assert chron.next_barrier(state) == COMPRESS_MINUTE + 120
+    assert [record["reason"] for record in chron.barriers_at(state, COMPRESS_MINUTE + 120)
+            if record["id"] == "B4"] == ["kind:encounter"]
+    # B5 世界状态冲突：两个同资源 / 同地点的行动 → 识别命中在**较晚的到期分钟**。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE),
+                       _draft_action("loot-a", time_cost=30, resource="idol"))
+    state = _scheduled(state, _draft_action("loot-b", time_cost=30, resource="idol"),
+                       minute=COMPRESS_MINUTE)
+    hit = [record for record in chron.barriers_at(state, COMPRESS_MINUTE + 30)
+           if record["id"] == "B5"]
+    assert [record["reason"] for record in hit] == ["conflict:resource:idol"]
+    assert hit[0]["subject"] == "resource:idol"
+    # B5（窗口开着且参与者仍在飞）→ 在「现在」拦；参与者全部落定后不再拦（可压缩）。
+    opened = chron.advance_to(state, COMPRESS_MINUTE + 30)
+    assert len(chron.open_windows(opened["state"])) == 1
+    assert chron.next_barrier(opened["state"]) == opened["world_minute"]
+    assert [record["reason"] for record in
+            chron.barriers_at(opened["state"], opened["world_minute"])
+            if record["reason"] == "window_open"]
+    left = chron.settle(opened["state"], "loot-a", "completed", world_minute=opened["world_minute"])
+    assert chron.next_barrier(left["state"]) == opened["world_minute"], "另一个参与者还在飞"
+    done = chron.settle(left["state"], "loot-b", "completed", world_minute=opened["world_minute"])
+    assert chron.next_barrier(done["state"]) is None, "参与者都落定后窗口不再拦压缩"
+    # B6 玩家有未决决策：停在 `proposed` 的卡；显式 `needs_confirmation = False` 时不拦。
+    draft = chron.new_action("idea", "pc-1", "travel", 30)
+    proposed = chron.apply_event(draft, chron.transition(draft, "proposed",
+                                                         {"world_minute": COMPRESS_MINUTE}))
+    state = chron.new_scheduler(COMPRESS_MINUTE)
+    state["actions"]["idea"] = proposed
+    assert chron.next_barrier(state) == COMPRESS_MINUTE
+    assert [record["reason"] for record in chron.barriers_at(state, COMPRESS_MINUTE)
+            if record["id"] == "B6"] == ["proposal_pending"]
+    state["actions"]["idea"] = dict(proposed, needs_confirmation=False)
+    assert chron.next_barrier(state) is None, "规则包显式声明无需确认时不拦"
+    # B7 行动转 blocked / interrupted：状态机产生这两类转换 → 现在就拦。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE), _draft_action("wait", time_cost=30))
+    for status in ("blocked", "interrupted"):
+        card = _to_state(status, start_minute=COMPRESS_MINUTE, minute=COMPRESS_MINUTE)
+        broken = chron.new_scheduler(COMPRESS_MINUTE)
+        broken["actions"]["wait"] = card
+        broken["due_heap"] = []
+        assert chron.next_barrier(broken) == COMPRESS_MINUTE
+        assert [record["reason"] for record in chron.barriers_at(broken, COMPRESS_MINUTE)
+                if record["id"] == "B7"] == ["status:%s" % status]
+    # B8 有行动到期：只要有到期就是停点（逐条列出）。
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE), _draft_action("mend", time_cost=30))
+    assert chron.next_barrier(state) == COMPRESS_MINUTE + 30
+    due = [record for record in chron.barriers_at(state, COMPRESS_MINUTE + 30)
+           if record["id"] == "B8"]
+    assert len(due) == 1 and due[0]["reason"] == "action_due" and due[0]["subject"] == "mend"
+    # `next_barrier` 空状态 → 无屏障；`barriers_at` 空分钟 → 无记录。
+    assert chron.next_barrier(chron.new_scheduler(COMPRESS_MINUTE)) is None
+    assert chron.barriers_at(state, COMPRESS_MINUTE + 1) == []
+
+
+def check_compression_stops_before_barrier():
+    """§6.5 第 1 条：行程穿屏障 —— 停在屏障**之前**，之前的到期全部已触发。
+
+    一段 6 小时（360 分钟）的短程，途中第 180 分钟开始战斗：`advance_to(360)` 必须
+    停在 180，且 180 之前的到期事件全部已触发；180 那一刻的内容（战斗开始）**不执行**。
+    """
+    state = chron.new_scheduler(COMPRESS_MINUTE)
+    state = _scheduled(state, _draft_action("scout", time_cost=60))           # 180 之前到期
+    state = _scheduled(state, _draft_action("trip", time_cost=360))           # 6 小时短程
+    state = _scheduled(state, _draft_action("fight", kind="combat", time_cost=60),
+                       start_minute=COMPRESS_MINUTE + 180)
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 360)
+    assert fired["world_minute"] == COMPRESS_MINUTE + 180, "应停在屏障之前，不是目标 360"
+    assert fired["stopped_at"] == COMPRESS_MINUTE + 180
+    assert fired["target"] == COMPRESS_MINUTE + 360
+    assert _barrier_ids(fired["barriers"]) == ["B1"]
+    assert fired["barriers"][0]["subject"] == "fight"
+    # 180 之前的到期事件全部已触发（scout 在自己的到期分钟）。
+    due = [event for event in fired["events"] if event["type"] == chron.ACTION_DUE_EVENT]
+    assert [event["target"] for event in due] == ["scout"]
+    assert [event["world_time"]["world_minute"] for event in due] == [COMPRESS_MINUTE + 60]
+    # 屏障那一分钟的内容**不执行**：战斗还没开始，也没有它的到期事件。
+    assert fired["state"]["actions"]["fight"]["status"] == "scheduled"
+    assert [event["target"] for event in fired["events"] if event["target"] == "fight"] == []
+    # 6 小时行程的到期（+360）没有被提前触发。
+    assert fired["state"]["actions"]["trip"]["status"] == "scheduled"
+
+
+def check_compression_without_barrier():
+    """§6.5 第 2 条：无屏障可压缩 —— 抵达目标，途中事件按序触发。"""
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE), _draft_action("trip", time_cost=360))
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 360)
+    assert fired["world_minute"] == COMPRESS_MINUTE + 360
+    assert fired["stopped_at"] is None and fired["barriers"] == []
+    assert [(event["type"], event["target"]) for event in fired["events"]] == \
+        [("action.started", "trip"), (chron.ACTION_DUE_EVENT, "trip")]
+    # 纯压缩（没有到期的长段）：到达目标但不产生任何事件（不编造「被跳过」的步骤）。
+    quiet = chron.advance_to(state, COMPRESS_MINUTE + 120)
+    assert quiet["world_minute"] == COMPRESS_MINUTE + 120
+    assert quiet["events"] == [] and quiet["stopped_at"] is None
+    assert quiet["compression_log"]["fired_minutes"] == []
+
+
+def check_compression_keeps_causality():
+    """§6.5 第 3 条：屏障不删因果 —— 线索没有被**提前**触发，也没有被**丢弃**。"""
+    state = chron.new_scheduler(COMPRESS_MINUTE)
+    state = _scheduled(state, _draft_action("trip", time_cost=360))
+    state = _scheduled(state, _draft_action("clue", kind="discover", time_cost=200))
+    state = _scheduled(state, _draft_action("fight", kind="combat", time_cost=60),
+                       start_minute=COMPRESS_MINUTE + 180)
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 360)
+    assert fired["world_minute"] == COMPRESS_MINUTE + 180
+    assert [event["target"] for event in fired["events"]] == []
+    # 线索动作仍在时间线上（未被丢弃、状态未变），只是还**没**到它自己的分钟。
+    assert fired["state"]["actions"]["clue"]["status"] == "scheduled"
+    assert "clue" in [entry[3] for entry in fired["state"]["due_heap"]]
+    # 继续推进（玩家处理完屏障后）：线索恰好在**自己的到期分钟**触发——没有提前。
+    resumed = chron.advance_to(fired["state"], COMPRESS_MINUTE + 360)
+    assert resumed["stopped_at"] == COMPRESS_MINUTE + 200
+    assert [(event["type"], event["target"]) for event in resumed["events"]] == \
+        [("action.started", "clue"), (chron.ACTION_DUE_EVENT, "clue")]
+    assert [event["world_time"]["world_minute"] for event in resumed["events"]] == \
+        [COMPRESS_MINUTE + 200, COMPRESS_MINUTE + 200]
+    # 屏障（B1）仍在：停在 +200 之后，战斗仍在它自己的开始分钟等着。
+    assert resumed["state"]["actions"]["fight"]["status"] == "scheduled"
+
+
+def check_due_always_stops():
+    """§6.5 第 4 条：到期总停（B8）—— 没有任何 B1–B7，只要有到期也必须停。"""
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE),
+                       _draft_action("mend", kind="rest", time_cost=200))
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 360)
+    assert fired["world_minute"] == COMPRESS_MINUTE + 200, "到期即停，不是目标 360"
+    assert fired["stopped_at"] == COMPRESS_MINUTE + 200
+    assert _barrier_ids(fired["barriers"]) == ["B8"]
+    assert [(event["type"], event["target"]) for event in fired["events"]] == \
+        [("action.started", "mend"), (chron.ACTION_DUE_EVENT, "mend")]
+    # 结算点未处理完 → 压缩原地停住（只重播同一结算点，幂等键不变）。
+    stuck = chron.advance_to(fired["state"], COMPRESS_MINUTE + 360)
+    assert stuck["world_minute"] == COMPRESS_MINUTE + 200 and stuck["stopped_at"] == \
+        COMPRESS_MINUTE + 200
+    assert [event["idempotency_key"] for event in stuck["events"]] == \
+        [event["idempotency_key"] for event in fired["events"]][-1:]
+    # 结算完成后放行：压缩继续到目标（没有下一个屏障）。
+    settled = chron.settle(fired["state"], "mend", "completed",
+                           world_minute=COMPRESS_MINUTE + 200)
+    after = chron.advance_to(settled["state"], COMPRESS_MINUTE + 360)
+    assert after["world_minute"] == COMPRESS_MINUTE + 360 and after["stopped_at"] is None
+
+
+def check_barrier_wins_same_minute():
+    """§6.5 第 5 条：屏障优先 —— 同一分钟既有到期又有屏障 → 屏障优先（停）。"""
+    state = chron.new_scheduler(COMPRESS_MINUTE)
+    state = _scheduled(state, _draft_action("scout", time_cost=60))            # 到期 +60
+    state = _scheduled(state, _draft_action("fight", kind="combat", time_cost=60),
+                       start_minute=COMPRESS_MINUTE + 60)                     # B1 在 +60
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 120)
+    assert fired["world_minute"] == COMPRESS_MINUTE + 60
+    assert fired["stopped_at"] == COMPRESS_MINUTE + 60
+    assert _barrier_ids(fired["barriers"]) == ["B1", "B8"], "同分钟的到期也要如实列出"
+    # 屏障优先：该分钟的到期**不执行**（scout 还没开始），也没有任何事件产出。
+    assert fired["events"] == []
+    assert fired["state"]["actions"]["scout"]["status"] == "scheduled"
+    assert fired["state"]["actions"]["fight"]["status"] == "scheduled"
+    # 到达屏障后再次推进 = 玩家已处理、继续：该分钟的到期照常触发（不删因果）。
+    resumed = chron.advance_to(fired["state"], COMPRESS_MINUTE + 120)
+    assert [(event["type"], event["target"]) for event in resumed["events"]] == \
+        [("action.started", "scout"), (chron.ACTION_DUE_EVENT, "scout")]
+    assert resumed["world_minute"] == COMPRESS_MINUTE + 60
+    assert resumed["stopped_at"] == COMPRESS_MINUTE + 60
+
+
+def check_compression_log_records_only_real_events():
+    """§6.3 末条：压缩**只记真实事件**，不产生「被跳过的模拟」事件。"""
+    state = _scheduled(chron.new_scheduler(COMPRESS_MINUTE),
+                       _draft_action("trip", time_cost=10000))
+    # 5000 分钟的压缩里没有任何到期：**不产出任何事件**，日志也没有凭空条目。
+    quiet = chron.advance_to(state, COMPRESS_MINUTE + 5000)
+    assert quiet["events"] == [], "被压缩掉的时段不得产生事件"
+    assert quiet["world_minute"] == COMPRESS_MINUTE + 5000
+    assert set(quiet["compression_log"]) == set(COMPRESSION_LOG_FIELDS)
+    log = quiet["compression_log"]
+    assert log["from_minute"] == COMPRESS_MINUTE
+    assert log["to_minute"] == COMPRESS_MINUTE + 5000
+    assert log["target_minute"] == COMPRESS_MINUTE + 5000
+    assert log["stopped_at"] is None
+    assert log["fired_minutes"] == [] and log["event_ids"] == []
+    # 有真实事件时，日志的 `event_ids` 与 `events` **一一对应**（不多不少、顺序相同）。
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 10000)
+    log = fired["compression_log"]
+    assert log["event_ids"] == [event["event_id"] for event in fired["events"]]
+    assert log["fired_minutes"] == [COMPRESS_MINUTE + 10000]
+    assert log["stopped_at"] is None and log["to_minute"] == COMPRESS_MINUTE + 10000
+    # 事件词表固定：整个推进里没有任何「跳过 / 模拟」类事件。
+    assert fired["events"], "到期必须被触发"
+    for event in fired["events"]:
+        assert event["type"] in KNOWN_EVENT_TYPES, "压缩产出了词表外的事件：%r" % event["type"]
+        assert "skip" not in event["type"] and "sim" not in event["type"], event["type"]
+    # 同一份状态再推进一次：全等（确定性、日志亦然）。
+    assert chron.advance_to(state, COMPRESS_MINUTE + 10000) == fired
+
+
+def check_offline_advance_is_input_only():
+    """`offline_advance` **只作入参**（默认 `False`，§3.4）——不判「谁在线」，也不改结果。"""
+    def build():
+        state = chron.new_scheduler(COMPRESS_MINUTE)
+        return _scheduled(state, _draft_action("trip", time_cost=60))
+
+    off = chron.advance_to(build(), COMPRESS_MINUTE + 60)
+    on = chron.advance_to(build(), COMPRESS_MINUTE + 60, offline_advance=True)
+    assert off["events"] == on["events"] and off["state"] == on["state"]
+    assert off["compression_log"]["offline_advance"] is False, "默认 False（§3.4）"
+    assert on["compression_log"]["offline_advance"] is True
+    for bad in (0, 1, "false", None, "true"):
+        try:
+            chron.advance_to(build(), COMPRESS_MINUTE + 60, offline_advance=bad)
+        except TypeError:
+            continue
+        raise AssertionError("offline_advance=%r 应被拒绝（只收 bool）" % (bad,))
+
+
+def check_compression_is_pure_and_validates_input():
+    """C4 纯函数性质：入参不被改写、两次运行全等、非法输入**显式拒绝**。"""
+    def build():
+        state = chron.new_scheduler(COMPRESS_MINUTE)
+        state = _scheduled(state, _draft_action("trip", time_cost=360))
+        state = _scheduled(state, _draft_action("fight", kind="combat", time_cost=60),
+                           start_minute=COMPRESS_MINUTE + 180)
+        return state
+
+    state = build()
+    snapshot = {key: (list(value) if isinstance(value, list) else dict(value)
+                      if isinstance(value, dict) else value) for key, value in state.items()}
+    deep = {action_id: dict(action, blocks=list(action["blocks"]), events=list(action["events"]))
+            for action_id, action in state["actions"].items()}
+    before = chron.next_barrier(state)
+    at = chron.barriers_at(state, COMPRESS_MINUTE + 180)
+    fired = chron.advance_to(state, COMPRESS_MINUTE + 360)
+    assert state == snapshot, "advance_to / next_barrier / barriers_at 不得改写入参状态"
+    assert state["actions"] == deep, "advance_to 不得改写行动卡"
+    assert chron.next_barrier(state) == before, "只读判断不得改状态"
+    assert chron.barriers_at(state, COMPRESS_MINUTE + 180) == at
+    # 同一输入两次运行：事件流、末态、屏障记录、压缩日志全等。
+    again = chron.advance_to(build(), COMPRESS_MINUTE + 360)
+    assert again == fired, "两次运行应全等（确定性）"
+    assert again is not fired and again["state"] is not fired["state"]
+    # 入参校验：起点 / 目标 / 分钟的类型与范围。
+    for bad in (-1, 1.5, True, "x", None):
+        for call in (lambda value=bad: chron.advance_to(build(), value),
+                     lambda value=bad: chron.barriers_at(build(), value)):
+            try:
+                call()
+            except (TypeError, ValueError):
+                continue
+            raise AssertionError("非法分钟 %r 应被拒绝" % (bad,))
+    for bad in (-1, 1.5, True, "x"):
+        try:
+            chron.next_barrier(build(), bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("非法起点 %r 应被拒绝" % (bad,))
+    # 起点省略 = 当前世界分钟（`None` 是合法缺省，不是非法值）。
+    assert chron.next_barrier(build(), None) == chron.next_barrier(build())
+    for bad_state in (None, "state", {}, {"world_minute": 0}):
+        for call in (lambda value=bad_state: chron.next_barrier(value),
+                     lambda value=bad_state: chron.barriers_at(value, 0),
+                     lambda value=bad_state: chron.advance_to(value, 0)):
+            try:
+                call()
+            except (TypeError, ValueError):
+                continue
+            raise AssertionError("非法调度器状态 %r 应被拒绝" % (bad_state,))
+    # `next_barrier` 的起点不得早于当前世界时间（时间只增不减，§3.2）。
+    try:
+        chron.next_barrier(state, COMPRESS_MINUTE - 1)
+    except chron.ScheduleError:
+        pass
+    else:
+        raise AssertionError("next_barrier 起点回拨应抛 ScheduleError")
+    # 停点之后继续推进：世界时间单调不减、堆可重建且幂等。
+    assert fired["state"]["world_minute"] >= state["world_minute"]
+    assert chron.rebuild_heap(fired["state"]) == fired["state"]["due_heap"]
+
+
+# --------------------------------------------------------------------------
 # 纯函数（无依赖、无 IO）
 # --------------------------------------------------------------------------
 
@@ -1284,6 +1704,17 @@ def main():
         check_scheduler_is_pure_and_deterministic,
         check_schedule_input_errors,
         check_blocked_policy_roundtrip,
+        # §6 时间压缩与事件屏障（C4）
+        check_barrier_table_is_complete,
+        check_every_barrier_criterion_has_a_case,
+        check_compression_stops_before_barrier,
+        check_compression_without_barrier,
+        check_compression_keeps_causality,
+        check_due_always_stops,
+        check_barrier_wins_same_minute,
+        check_compression_log_records_only_real_events,
+        check_offline_advance_is_input_only,
+        check_compression_is_pure_and_validates_input,
         check_module_is_pure,
     )
     failures = 0
