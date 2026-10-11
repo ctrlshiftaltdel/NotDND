@@ -209,11 +209,13 @@ watch = watch_of(tod)                # 由 WATCH_SPANS 的边界判定（不是�
 定为**不透明字段**、状态层只搬运不改写（§12.3）；其**规范形状由本文钉死**，CHRON **在提交时传入**：
 
 ```json
-{ "world_minute": 17310, "day": 12, "tod": 30 }
+{ "world_minute": 17310, "day": 13, "tod": 30 }
 ```
 
 - `world_minute`：**权威值**（§3.1 的整数分钟，≥ 0）。
 - `day` / `tod`：**派生只读**（§3.1 的公式现算），仅为人类可读与审计便利；**任何判断只认 `world_minute`**。
+- 上例推导：`day = 17310 // 1440 + 1 = 13`，`tod = 17310 % 1440 = 30`（即第 13 天 00:30）。
+  **公式是权威规则**；`day` / `tod` 一律由 `world_minute` 推导，**不得为迁就任何示例而改动公式**。
 - 创世 / 尚未接入 CHRON 时 `world_time` 允许 `null`（`STATE-DESIGN.md` §5.1 / S8）。
 - 该对象是**提交入参**（`state.Handle.commit(..., world_time=…)`），不是 CHRON 的存档块字段；CHRON 存档块只存
   `world_minute`（§8.1）。
