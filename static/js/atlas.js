@@ -176,6 +176,7 @@ function renderExitError(message, actionLabel) {
   box.hidden = false;
   box.innerHTML = '<p class="alert-msg">' + esc(message || '移动失败，请重试') + '</p>' +
     '<button type="button" class="btn btn-sm" data-exit-retry="1">' + esc(actionLabel || '重试') + '</button>';
+  // 监听在这里统一挂；不在 HTML 里写内联 onclick，避免 CSP 与「一次动作多入口」。
   var retry = $('[data-exit-retry]', box);
   if (retry) retry.addEventListener('click', function () { retryMove(); });
 }
