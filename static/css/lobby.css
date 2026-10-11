@@ -33,3 +33,76 @@
   border: 1px solid var(--line-strong); border-radius: var(--r-pill); color: var(--text-3);
 }
 .tag-on { color: var(--accent); border-color: var(--accent); }
+
+/* ── 行尾「⋯」与存档操作菜单（改名 / 删除）────────────── */
+.save-menu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: var(--r-sm);
+  color: var(--text-2); font-size: var(--fs-lg); line-height: 1;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.save-menu-btn:hover:not(:disabled) { background: var(--bg-2); color: var(--text-1); }
+.save-menu-btn[aria-expanded="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.save-menu-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 菜单展开时用网格排版：名字与「⋯」同占第一行（可收缩，不因长名字换行），
+   操作条整行压在第二行——视觉上仍是一张卡。 */
+.save-row.has-menu { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.save-menu {
+  grid-column: 1 / -1; display: flex; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+  border-top: 1px solid var(--line);
+}
+.save-menu .btn { flex: 1 1 auto; min-height: 38px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+.save-menu .btn-danger,
+.save-confirm .btn-danger {
+  background: var(--danger); color: var(--on-accent); border-color: var(--danger); font-weight: 600;
+}
+.save-menu .btn-danger:hover:not(:disabled):not([aria-busy="true"]),
+.save-confirm .btn-danger:hover:not(:disabled):not([aria-busy="true"]) {
+  background: color-mix(in srgb, var(--danger) 86%, var(--text-1));
+}
+
+/* ── 内联改名（§2.7）────────────────────────────────── */
+.save-row.is-editing { display: grid; grid-template-columns: minmax(0, 1fr); }
+.save-edit { padding: var(--sp-3); }
+.save-name-input { font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600; }
+.save-edit-hint { margin-top: var(--sp-1); color: var(--text-3); font-size: var(--fs-xs); }
+.save-edit-error { margin-top: var(--sp-1); color: var(--danger); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.save-edit-actions {
+  display: flex; gap: var(--sp-2); justify-content: flex-end;
+  padding: 0 var(--sp-3) var(--sp-3);
+}
+.save-edit-actions .btn { min-height: 38px; padding: 0 var(--sp-4); font-size: var(--fs-sm); }
+
+/* ── 空态 / 建局 / 错误卡 ───────────────────────────── */
+.save-empty p { margin: 0; }
+.save-empty .save-empty-sub { margin-top: var(--sp-1); color: var(--text-3); font-size: var(--fs-xs); }
+.save-empty .save-empty-error {
+  margin-top: var(--sp-2);
+  color: var(--danger); font-size: var(--fs-sm); overflow-wrap: anywhere;
+}
+.save-empty .lobby-new-btn { margin-top: var(--sp-4); }
+.lobby-new { margin-top: var(--sp-3); }
+.lobby-new .lobby-new-btn { color: var(--text-2); }
+.lobby-new .lobby-new-btn:hover:not(:disabled) { color: var(--text-1); }
+
+.lobby-error { margin: var(--sp-3) 0; text-align: left; }
+.lobby-error p { color: var(--text-1); }
+.lobby-error .btn { margin-top: var(--sp-1); }
+
+/* ── 删除确认框（L2，§1.3.7）──────────────────────────
+   复用 .sheet / .scrim-top（base.css）的同层视觉与 z-index；
+   confirm-* 与各片口径一致，作用域限定在本框内以免与其它片互扰。 */
+.save-confirm .sheet-head { padding-bottom: var(--sp-2); }
+.save-confirm .confirm-line {
+  margin: 0;
+  font-family: var(--font-serif); font-size: var(--fs-lg); color: var(--text-1);
+}
+.save-confirm .confirm-sub { margin: var(--sp-2) 0 0; color: var(--text-2); font-size: var(--fs-ui); }
+.save-confirm .confirm-error { margin: var(--sp-2) 0 0; color: var(--danger); font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.save-confirm .confirm-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); }
+.save-confirm .confirm-actions .btn { flex: 1 1 auto; }
