@@ -37,6 +37,9 @@ var TURN = {
   lastText: '',       // 失败重试用：上一回合的正文与行动
   lastActionId: '',
   usage: null,        // usage 事件只喂调试面板，**不渲染给玩家**（§2.3）
+  sessionError: '',   // 会话加载失败（§2.2 / §2.8）：错误卡 + 输入区/行动区禁用
+  sessionRetry: null, // 错误卡「重试」要做的事（由发起加载的那一片给）
+  guide: { chat: false, tts: false, configured: false },   // 导引者能力探测（§1.3.8）
   rendered: ''        // 已渲染的签名：状态没变就不重画（避免 live 区重播整段）
 };
 
@@ -66,6 +69,8 @@ function turnSnapshot() {
     inputError: TURN.inputError,
     note: TURN.note,
     loadError: TURN.loadError,
+    sessionError: TURN.sessionError,
+    guide: { chat: TURN.guide.chat, tts: TURN.guide.tts, configured: TURN.guide.configured },
     cooldown: TURN.cooldownUntil > Date.now(),
     text: turnText().length
   };
@@ -102,7 +107,9 @@ function resetTurnStream() {
 /* 渲染签名：状态没变就不重画 `#stream`——`#stream` 是 aria-live 区，
    整块重画会让读屏软件把整段叙事再播一遍（§5.3）。 */
 function streamSig() {
-  if (!streamServerMode()) return 'demo:' + ((ST && ST.log) || []).length;
+  if (!streamServerMode() || TURN.sessionError) {
+    return 'demo:' + TURN.sessionError + ':' + ((ST && ST.log) || []).length;
+  }
   return 'server:' + TURN.log.length + '|' + TURN.note + '|' + TURN.loadError +
     '|' + (TURN.loaded ? 1 : 0);
 }
@@ -312,8 +319,16 @@ function dropStreamEntry(entry) {
 function renderStream() {
   var box = turnEl('stream');
   if (!box) return;
+  if (TURN.sessionError) {
+    // 会话都没加载出来：既不拉流、也不画任何一局的内容（§2.2 禁演示数据）。
+    TURN.log = [];
+    box.innerHTML = '';
+    TURN.rendered = streamSig();
+    return;
+  }
   if (streamServerMode()) {
     if (TURN.sid !== SID) resetTurnStream();   // 换了一局：上一局的流不能留下
+    clearSessionError();                       // 有真实会话快照：错误态到此为止
     if (streamSig() !== TURN.rendered || !box.childNodes.length) renderServerStream();
   } else {
     renderPlaceholderStream();
@@ -474,7 +489,7 @@ function renderActions() {
 /* 行动按钮也是回合入口：带 `action_id` 走同一回合管线。输入区里已经写了话
    就一起带上——服务端以正文为准记 `act`（`_turn_act_text`），两边同口径。 */
 function pickAction(id) {
-  if (TURN.busy || writeInFlight()) return;    // §2.0 单一在途
+  if (turnBlocked()) return;
   buzz(12);
   runTurn({ text: turnText(), action_id: id });
 }
@@ -555,7 +570,8 @@ function syncPlayDock() {
 
 /* 输入区三态（§2.0 / §3.5.5）：进行中（aria-busy + 按钮三点 + disabled）/
    成功（清空，正文进流）/ 失败（就地提示 + 可重试）。
-   回合中输入框**保持可编辑**，但一律不许二次提交（§1.3.2）。 */
+   回合中输入框**保持可编辑**，但一律不许二次提交（§1.3.2）；
+   会话加载失败时整块禁用（§2.8：这一态下没有可发的回合）。 */
 function renderComposer() {
   var box = turnEl('turnComposer');
   var ta = turnEl('turnInput');
@@ -563,8 +579,11 @@ function renderComposer() {
   if (!box || !ta || !btn) return;
   var busy = TURN.busy;
   var cooling = TURN.cooldownUntil > Date.now();
+  var dead = !!TURN.sessionError;
   box.setAttribute('aria-busy', busy ? 'true' : 'false');
-  btn.disabled = busy || cooling;
+  box.classList.toggle('is-disabled', dead);
+  btn.disabled = busy || cooling || dead;
+  ta.disabled = dead;
   btn.setAttribute('aria-busy', busy ? 'true' : 'false');
   ta.setAttribute('aria-invalid', TURN.inputError ? 'true' : 'false');
   renderTurnCount();
@@ -585,11 +604,137 @@ function startCooldown() {
   renderComposer();
 }
 
+/* ══════════════ 导引者状态（§1.3.8 / §2.8 第一行）══════════════
+   数据是 `GET /api/guide/status` 的三个布尔（无需会话）：`chat` 要
+   BASE_URL + MODEL + API_KEY，`tts` 只要 BASE_URL + API_KEY，`configured`
+   是二者之或（见 prism_guide.status）。**这是能力探测，不是故障告警**：
+   离线可玩是设计假设，所以只在顶栏角落与抽屉里安静地说，不弹提示、
+   不盖横幅（§1.2 决定 4）。 */
+function renderGuideStatus() {
+  var dot = turnEl('guideDot');
+  var tag = turnEl('guideTag');
+  var note = turnEl('guideNote');
+  var g = TURN.guide;
+  var state = 'off';                    // 灰 = 未配置
+  var label = '导引者未配置';
+  var noteText = '导引者未配置：本地规则照常，叙事用兜底句';   // §1.3.8 原文
+  if (g.chat && g.tts) {
+    state = 'on';                       // 亮 = 文字与语音都在
+    label = '导引者已配置：文字与语音都可用';
+    noteText = '';                      // 全能力时抽屉不写字（设计单只点名两个非满态）
+  } else if (g.configured) {
+    // 半配置：今天的 status() 只会给出「语音有、文字无」（缺 MODEL）这一种；
+    // 「文字有、语音无」在契约上存在（§1.3.8），文案一并留着，按实际布尔选。
+    state = 'partial';
+    label = g.chat ? '导引者：文字有，语音无' : '导引者：语音有，文字无';
+    noteText = label;
+  }
+  if (dot) {
+    dot.setAttribute('data-state', state);
+    dot.setAttribute('aria-label', '导引者状态：' + label);
+  }
+  if (tag) tag.hidden = !!g.configured;          //「本地模式」只在未配置时出现
+  if (note) {
+    note.hidden = !noteText;
+    note.textContent = noteText;
+  }
+}
+
+async function loadGuideStatus() {
+  try {
+    var d = await api('/api/guide/status');
+    TURN.guide = {
+      chat: !!(d && d.chat),
+      tts: !!(d && d.tts),
+      configured: !!(d && d.configured)
+    };
+  } catch (e) {
+    // 探测拿不到就按「未配置」显示：本地规则照常可玩，说法也不夸大。
+    TURN.guide = { chat: false, tts: false, configured: false };
+  }
+  renderGuideStatus();
+}
+
+/* ══════════════ 会话加载失败态（§2.2 / §2.8 最后一行）══════════════
+   会话拉不出来时**不**退回演示数据（placeholderState）——那会让玩家以为
+   「这一局还在」，是目前明确禁止的一种误导。目标态：主画面上一张错误卡
+   （标题 + 服务端原文原因 + 返回列表 / 重试），输入区与行动区一并禁用。
+   会话的加载由大厅片（js/lobby.js）发起，错误卡与禁用由本片渲染——
+   本片是主画面回合态的持有者（输入区 / 行动区 / 叙事流都在这里）。 */
+function showSessionError(message, retry) {
+  TURN.sessionError = String(message || '该会话暂不可用');
+  TURN.sessionRetry = (typeof retry === 'function') ? retry : null;
+  // 不复用**上一局**的画面：留着一张别的局的场景卡 / 叙事流，比空着更容易误导。
+  var card = turnEl('sceneCard');
+  if (card) card.innerHTML = '';
+  TURN.log = [];
+  TURN.rendered = '';
+  disableActZone(true);
+  renderSessionError();
+  renderStream();          // 这一态下只留空位，不拉流、不画演示数据
+  renderComposer();
+}
+
+function clearSessionError() {
+  if (!TURN.sessionError) return;
+  TURN.sessionError = '';
+  TURN.sessionRetry = null;
+  disableActZone(false);
+  renderSessionError();
+  renderComposer();
+}
+
+/* 错误卡：--danger 左细边 + 一行原因 + 两个动作（§3.5.6 的就地错误卡口径，
+   原因文本用服务端 `error` 原文，不自己编话术）。 */
+function renderSessionError() {
+  var box = turnEl('playError');
+  if (!box) return;
+  if (!TURN.sessionError) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML =
+    '<p class="play-error-title">该会话暂不可用</p>' +
+    '<p class="play-error-reason">' + esc(TURN.sessionError) + '</p>' +
+    '<div class="play-error-actions">' +
+      '<button type="button" class="btn" data-play-back="1">返回列表</button>' +
+      '<button type="button" class="btn btn-primary" data-play-retry="1">重试</button>' +
+    '</div>';
+  var back = box.querySelector('[data-play-back]');
+  var retry = box.querySelector('[data-play-retry]');
+  if (back) back.addEventListener('click', function () {
+    clearSessionError();
+    showView('v-lobby');
+    // 大厅片的列表刷新：片之间只在运行时按需取用，加载期互不依赖。
+    if (typeof refreshSaves === 'function') refreshSaves();
+  });
+  if (retry) retry.addEventListener('click', function () {
+    if (TURN.busy || writeInFlight()) return;
+    var again = TURN.sessionRetry;
+    clearSessionError();
+    if (again) again();
+  });
+}
+
+/* 行动区（含「前往」出口）整体禁用：不去改别的片的绑定，只把区块内的按钮
+   一律 `disabled` 并加一个类把视觉一起收掉；`1–5` 快捷键走的是这些按钮的
+   `click()`，禁用的按钮不会被触发（§2.8 的「行动区禁用」）。 */
+function disableActZone(on) {
+  var zone = turnEl('actZone');
+  if (!zone) return;
+  zone.classList.toggle('is-disabled', !!on);
+  $$('#actZone button').forEach(function (b) { b.disabled = !!on; });
+}
+
 /* ══════════════ 一个回合 ══════════════ */
+
+/* 回合入口的统一闸门：本片在途 / core 的统一写守卫（§2.0）/ 会话加载失败态
+   （§2.8：这一态下没有可发的回合）。三处入口共用，避免各写一遍。 */
+function turnBlocked() {
+  return TURN.busy || writeInFlight() || !!TURN.sessionError;
+}
 
 /* 提交前先本地校验（§1.3.2）：空输入不发、超长**不发请求**就地提示。 */
 function submitTurn() {
-  if (TURN.busy || writeInFlight()) return;      // §2.0 单一在途
+  if (turnBlocked()) return;
   var text = turnText();
   if (!text.trim()) return;
   if (text.length > TURN_TEXT_LIMIT) {
@@ -603,7 +748,7 @@ function submitTurn() {
 }
 
 function retryTurn() {
-  if (TURN.busy || writeInFlight()) return;
+  if (turnBlocked()) return;
   TURN.error = '';
   TURN.retryable = false;
   renderComposer();
@@ -858,6 +1003,9 @@ function bindTurn() {
   window.addEventListener('resize', syncPlayDock);
 
   renderComposer();
+  renderSessionError();
+  renderGuideStatus();
+  loadGuideStatus();      // 能力探测：一次只读请求，拿不到就按「未配置」显示
   window.__TURN = turnSnapshot;
 }
 

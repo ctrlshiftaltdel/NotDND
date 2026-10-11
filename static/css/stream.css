@@ -173,6 +173,42 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
 }
 .composer-error .turn-error-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .turn-retry { min-height: 32px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+/* 会话加载失败（§2.8）：整块禁用，视觉上也要看得出不能发回合 */
+.composer.is-disabled { opacity: .6; }
+
+/* ── 顶栏的导引者状态（U2，§1.3.8 / §2.8）───────────────
+   点本身复用 base.css 的 .status-dot（灰 / 蓝 / 亮 / 危险）；这里只补
+   它右边的「本地模式」小标与抽屉里的说明行。位置是顶栏角落，安静显示。 */
+.top-guide { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; }
+.guide-tag {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  /* 顶栏是 --bg-1：--text-3 在这上面 4.8:1 达标，但字号小、还带字距，
+     按 §3.2 的硬规则一律用 --text-2 更稳。 */
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.guide-note {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* ── 会话不可用的就地错误卡（U2，§2.2 / §2.8 最后一行）────
+   框体与危险色左细边复用 base.css 的 .alert；这里补标题层级与两个动作。 */
+.play-error { margin: var(--sp-3) 0; }
+.play-error-title { font-size: var(--fs-lg); color: var(--text-1); }
+.play-error-reason { color: var(--text-2); overflow-wrap: anywhere; }
+.play-error-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.play-error-actions .btn { flex: 1 1 auto; min-width: 0; }
+/* 行动区整体禁用（含「前往」出口）：视觉与交互一起收掉 */
+.act-zone.is-disabled { opacity: .5; }
+.act-zone.is-disabled .btn { cursor: not-allowed; }
 
 /* ── 紧凑排版（设置项）：收窄叙事行距 ─────────────────── */
 html[data-dense="on"] .stream { gap: 4px; }

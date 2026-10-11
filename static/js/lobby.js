@@ -276,9 +276,16 @@ async function enterSession(sid) {
     var view = await api('/api/session');
     applyState(view);
   } catch (e) {
-    // 服务端没有这一局时退回占位态：骨架在没有真实会话时也要能用。
-    toast('该会话暂不可用，已进入占位画面');
-    applyState(placeholderState());
+    // §2.2：**不**退回 placeholderState() 演示数据——拿假画面冒充「这局还在」，
+    // 玩家会以为进度没丢。目标态是主画面上的错误卡 +「返回列表 / 重试」两个动作，
+    // 并禁用输入区与行动区（§2.8）。错误卡与禁用归片 U2（js/turn.js，主画面
+    // 回合态的持有者）渲染，本片只发起加载并把「重试」指回同一个 sid；
+    // 该函数在加载期可能尚未就绪（本片先于 turn.js 加载），故按需取用。
+    if (typeof showSessionError === 'function') {
+      showSessionError(e.message, function () { enterSession(sid); });
+    } else {
+      toast(e.message);
+    }
   }
 }
 

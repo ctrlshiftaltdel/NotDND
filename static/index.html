@@ -71,10 +71,23 @@
       <div id="playSave" class="top-line1">—</div>
       <div id="playScene" class="top-line2">—</div>
     </div>
+    <!-- 导引者状态（U2，UI-DESIGN.md §1.3.8）：顶栏右端、设置按钮旁。
+         点由 js/turn.js 按 GET /api/guide/status 的三个布尔点亮（灰 / 蓝 / 亮），
+         「本地模式」小标只在没配置导引者时出现（§2.8 第一行）。
+         状态是「能力探测」不是故障告警，所以只做安静的角标、不做横幅（§1.2 决定 4）。 -->
+    <div class="top-guide">
+      <span id="guideTag" class="guide-tag" hidden>本地模式</span>
+      <span id="guideDot" class="status-dot" data-state="off" role="img"
+        aria-label="导引者状态：未配置"></span>
+    </div>
     <button id="btnPlaySettings" class="ic" aria-label="设置"><svg class="i" aria-hidden="true"><use href="#i-tune"/></svg></button>
   </header>
 
   <main id="playScroll" class="play-scroll">
+    <!-- 会话加载失败的就地错误卡（U2，§2.2 / §2.8）：标题 + 服务端原文原因 +
+         「返回列表 / 重试」两个动作。这一态**不**退回演示数据，
+         输入区与行动区一并禁用（由 js/turn.js 切换）。 -->
+    <div id="playError" class="play-error alert" role="alert" hidden></div>
     <div id="sceneCard" class="scene-card"></div>
     <div id="stream" class="stream" aria-live="polite"></div>
     <section id="actZone" class="act-zone" aria-label="当前场景行动">
@@ -150,6 +163,9 @@
       <button class="menu-item" data-menu="help"><svg class="i" aria-hidden="true"><use href="#i-scroll"/></svg> 帮助</button>
       <button class="menu-item" data-menu="about"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg> 关于</button>
     </nav>
+    <!-- 导引者状态的说明文字（U2，§1.3.8）：点只表「能力探测」，到底怎么影响玩法
+         在这里说清楚；没配置时才出现，文案是设计单原文。 -->
+    <p id="guideNote" class="guide-note" hidden></p>
   </div>
   <div class="drawer-foot">
     <button id="btnBackToLobby" class="btn btn-block">返回会话列表</button>
