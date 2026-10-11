@@ -18,6 +18,15 @@
 - 产出事件含 GDD §19.5 的最小字段（id / 世界时间 / 类型 / 主体 / 原因 / 状态变化）；
 - 每次转换**恰好一条**事件、非法转换**显式抛错**、入参不被改写（纯函数）。
 
+覆盖切片 C3 的验收标准（§5 调度器）：
+
+- 同 `due_minute` 多卡**两次运行顺序全等**（§5.2 稳定排序键，插入顺序故意打乱）；
+- 依赖**未完成不放行**（不进 `due_heap`，到点不触发）、成终态后放行并**立即**办；
+- 有环提案被拒（`proposed → failed`，`reason = dependency_cycle`），不污染状态；
+- 依赖失败**默认级联取消**（事件带 `reason`，传递到下游）；`keep` 策略改判 `blocked`；
+- 同资源 / 同 place 的两行动触发**一个** `window.opened`（只识别、不裁决）；无键不开窗；
+- 调度器纯函数：入参不被改写、同一输入两次结果全等、`due_heap` 可重建且幂等。
+
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_chron.py` 运行。
 """
 
@@ -700,6 +709,528 @@ def check_new_action_validation():
 
 
 # --------------------------------------------------------------------------
+# §5 调度器（C3）
+# --------------------------------------------------------------------------
+
+# 调度器用例的基准世界分钟；与 C2 的 BASE_MINUTE 同轴，但**独立一份**避免互相牵动。
+SCHED_MINUTE = 1000
+
+# 每个用例都要真实跑一遍的最小/典型 ctx。
+SCHED_CTX = {"world_minute": SCHED_MINUTE}
+
+
+def _draft_action(action_id, *, actor=None, kind="travel", time_cost=60, priority=0,
+                  depends_on=(), on_dep_fail=chron.DEFAULT_ON_DEP_FAIL,
+                  place=None, resource=None):
+    """一张**未提议**的调度草稿（§4.1）：调度器会自己走 `proposed → scheduled`。"""
+    return chron.new_action(action_id, actor or ("pc-%s" % action_id), kind, time_cost,
+                            priority=priority, depends_on=depends_on,
+                            on_dep_fail=on_dep_fail, place=place, resource=resource)
+
+
+def _schedule(state, draft, *, start_minute=None, minute=SCHED_MINUTE,
+              expect="scheduled", **keys):
+    """排一张卡并断言结果状态；返回排期后的**新**调度器状态。"""
+    result = chron.schedule(state, draft, world_minute=minute, start_minute=start_minute,
+                            **keys)
+    assert result["status"] == expect, "schedule(%s) 期望 %s，得到 %r（事件 %r）" % (
+        draft["action_id"], expect, result["status"], result["events"])
+    return result["state"]
+
+
+def _window_opens(events):
+    """事件流里的 `window.opened`（按出现顺序）。"""
+    return [event for event in events if event["type"] == chron.WINDOW_OPEN_EVENT]
+
+
+def _check_window_shape(window):
+    """`Window` 逐字段（§5.4 的四字段 + 实现补充）与类型。"""
+    missing = [field for field in chron.WINDOW_FIELDS if field not in window]
+    assert not missing, "Window 缺少字段：%r" % missing
+    assert isinstance(window["window_id"], str) and window["window_id"]
+    assert isinstance(window["key"], str) and window["key"]
+    assert window["reason"] in ("place", "resource")
+    assert window["key"].startswith(window["reason"] + ":")
+    assert window["participants"] == sorted(window["participants"]), "参与者应升序（确定性）"
+    assert len(window["participants"]) >= 2, "窗口至少要两个参与者"
+    assert isinstance(window["actors"], list) and len(window["actors"]) == len(
+        window["participants"])
+    assert window["place"] is None or isinstance(window["place"], str)
+    assert window["resource"] is None or isinstance(window["resource"], str)
+    assert window["open_minute"] >= 0
+    assert window["close_minute"] is None, "未结算的窗口仍开着（关窗归 C4）"
+
+
+def check_scheduler_state_shape():
+    """§5.1 状态形状：`new_scheduler` 的键集合 / 默认值，非法状态显式拒绝。"""
+    state = chron.new_scheduler()
+    assert state == {"world_minute": 0, "actions": {}, "due_heap": [], "windows": [],
+                     "blocks": {}, "running": {}, "seq": 0, "keys": {}}
+    assert set(chron.SCHEDULER_FIELDS) == set(state)
+    assert chron.new_scheduler(1440)["world_minute"] == 1440
+    for bad in (-1, 1.5, True, "0"):
+        try:
+            chron.new_scheduler(bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("new_scheduler(%r) 应被拒绝" % (bad,))
+    # 形状不对 / 缺字段 → 显式拒绝；`due_heap` / `deps` 是派生索引，缺了就重建的入口。
+    for bad in (None, "state", {}, {"world_minute": 0}):
+        try:
+            chron.rebuild_heap(bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("非法调度器状态 %r 应被拒绝" % (bad,))
+    for bad in (None, "state", [], 7):
+        try:
+            chron.open_windows(bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("open_windows(%r) 应被拒绝" % (bad,))
+
+
+def check_due_order_is_stable():
+    """验收 1：同 `due_minute` 多卡**两次运行顺序全等**（§5.2 稳定排序）。
+
+    插入顺序**故意打乱**：若键里少一段（只剩 `due_minute`），结果就会随插入 / 哈希漂移。
+    """
+    def build(order):
+        state = chron.new_scheduler(SCHED_MINUTE)
+        drafts = {
+            "a": _draft_action("a", time_cost=60, priority=1),
+            "b": _draft_action("b", time_cost=60, priority=1),
+            "c": _draft_action("c", time_cost=60, priority=5),
+            "d": _draft_action("d", time_cost=60, priority=-1),
+        }
+        for key in order:
+            state = _schedule(state, drafts[key])
+        return state
+
+    forward = build(("a", "b", "c", "d"))
+    backward = build(("d", "c", "b", "a"))
+    shuffled = build(("c", "a", "d", "b"))
+    assert forward["due_heap"] == backward["due_heap"] == shuffled["due_heap"], \
+        "同 due_minute 的堆序必须与插入顺序无关：%r / %r / %r" % (
+            forward["due_heap"], backward["due_heap"], shuffled["due_heap"])
+    # 排序键四段逐段核对：priority 降序 → created_seq 升序 → action_id 升序。
+    assert [entry[3] for entry in forward["due_heap"]] == ["c", "a", "b", "d"]
+    # `-priority` 在**负数 priority** 下是正数——所以只断言「堆是升序列表（-priority 越大越先）」。
+    assert sorted(forward["due_heap"]) == forward["due_heap"], "堆必须是升序列表"
+    assert [entry[1] for entry in forward["due_heap"]] == [-5, -1, -1, 1], \
+        "priority 段应为 -priority：%r" % ([entry[1] for entry in forward["due_heap"]],)
+    # 两次 `advance_to` 的事件流**全等**（顺序全等的可观测形式）。
+    first = chron.advance_to(forward, SCHED_MINUTE + 60)["events"]
+    second = chron.advance_to(backward, SCHED_MINUTE + 60)["events"]
+    assert first == second, "两次运行的到期事件流应全等"
+    assert [event["target"] for event in first
+            if event["type"] == "action.due"] == ["c", "a", "b", "d"]
+
+
+def check_sort_key_segments():
+    """§5.2 排序键逐段可核对：`(due_minute, -priority, created_seq, action_id)`。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("early", actor="pc-1", time_cost=10))
+    state = _schedule(state, _draft_action("late", actor="pc-2", time_cost=20))
+    early = state["actions"]["early"]
+    late = state["actions"]["late"]
+    assert chron.sort_key(early) == (SCHED_MINUTE + 10, 0, 1, "early")
+    assert chron.sort_key(late) == (SCHED_MINUTE + 20, 0, 1, "late")
+    # priority 降序（取负）与 action_id 末位 tie-break。
+    high = _schedule(state, _draft_action("zz", actor="pc-3", time_cost=10, priority=7))
+    assert chron.sort_key(high["actions"]["zz"]) == (SCHED_MINUTE + 10, -7, 1, "zz")
+    assert chron.sort_key(high["actions"]["zz"]) < chron.sort_key(high["actions"]["early"])
+    # created_seq 升序：后提议的卡排后（同一 `due_minute`、同 priority）。
+    later = _schedule(high, _draft_action("aa", actor="pc-4", time_cost=10))
+    assert later["actions"]["aa"]["events"][0] == "aa:e000001"
+    assert sorted(later["due_heap"]) == later["due_heap"], "堆必须是升序列表（确定性）"
+    assert chron.ACTION_DUE_EVENT == "action.due"
+
+
+def check_dependency_gates_release():
+    """验收 2（前半）：依赖**未完成不放行**——不进 `due_heap`，到点也不 triggered。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("dep", actor="pc-1", time_cost=30))
+    state = _schedule(state, _draft_action("child", actor="pc-2", time_cost=30,
+                                           depends_on=("dep",)))
+    assert state["actions"]["child"]["status"] == "scheduled", "依赖未成也要先排期（§5.3）"
+    assert [entry[3] for entry in state["due_heap"]] == ["dep"], \
+        "依赖未完成的卡不得进入 due_heap"
+    # 反向索引 `blocks`（§4.1）由调度器维护，行动卡上也同步。
+    assert state["actions"]["dep"]["blocks"] == ["child"]
+    assert chron.dependents_of(state, "dep") == ["child"]
+    assert chron.blocks_of(state, "dep") == chron.dependents_of(state, "dep")
+    assert chron.blocked_by(state["actions"]["child"]) == ["dep"]
+    # 世界时间越过 child 的 due_minute，但依赖没结算：child **不得**触发。
+    passed = chron.advance_to(state, SCHED_MINUTE + 60)
+    assert [event["target"] for event in passed["events"]
+            if event["type"] == "action.due"] == ["dep"], \
+        "依赖未完成时 child 不得触发：%r" % (passed["events"],)
+    assert [entry[3] for entry in passed["state"]["due_heap"]] == ["dep"]
+    assert passed["state"]["actions"]["child"]["status"] == "scheduled"
+    assert chron.deps_satisfied(passed["state"], passed["state"]["actions"]["child"]) is False
+    # 依赖结算（completed）→ 放行：进入堆，并在下一次推进触发。
+    settled = chron.settle(passed["state"], "dep", "completed",
+                           world_minute=SCHED_MINUTE + 60)
+    released = settled["state"]
+    assert [entry[3] for entry in released["due_heap"]] == ["child"], \
+        "依赖成终态后下游应放行：%r" % (released["due_heap"],)
+    assert chron.deps_satisfied(released, released["actions"]["child"]) is True
+    assert settled["events"]["dep"][0]["type"] == "action.completed"
+    # 放行时 child 的 due 已经过去：仍要**立即**办（不静默丢掉）。
+    fired = chron.advance_to(released, SCHED_MINUTE + 90)
+    assert [(event["type"], event["target"]) for event in fired["events"]] == \
+        [("action.started", "child"), ("action.due", "child")], fired["events"]
+    # 依赖成终态后放行的卡**不是**「事件顺序漂移」：两次重建结果全等。
+    assert chron.rebuild_heap(released) == chron.rebuild_heap(dict(released))
+
+
+def check_dependency_cycle_rejected():
+    """验收 2（后半）：有环提案被拒（`proposed → failed`），且不污染状态。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("b", actor="pc-1", time_cost=30))
+    # 造环：让既有的 b 依赖（未来的）c —— 只有脏图 / 半成品恢复能造出这种边。
+    dirty = dict(state, actions=dict(state["actions"]))
+    dirty["actions"]["b"] = dict(dirty["actions"]["b"], depends_on=["c"])
+    before = {key: (list(value) if isinstance(value, list) else dict(value)
+                    if isinstance(value, dict) else value) for key, value in dirty.items()}
+    result = chron.schedule(dirty, _draft_action("c", depends_on=("b",)),
+                            world_minute=SCHED_MINUTE)
+    assert result["status"] == "rejected", "有环提案应被拒：%r" % (result,)
+    assert result["cycle"] == ["c", "b", "c"], "应指出环上的 id：%r" % (result["cycle"],)
+    types = [event["type"] for event in result["events"]]
+    assert types == ["action.proposed", "action.failed"], "拒单也留下可追溯事件：%r" % types
+    failed = result["events"][1]
+    assert failed["reason"] == "dependency_cycle"
+    assert failed["cause"] == result["events"][0]["event_id"], "failed 应指回 proposed"
+    status_change = _change_for(failed, "status", "set")
+    assert status_change["before"] == "proposed" and status_change["after"] == "failed"
+    # 被拒的卡**不进** actions；入参状态原封不动（无部分生效）。
+    assert "c" not in result["state"]["actions"], "被拒的卡不得留在调度器里"
+    assert result["state"] is dirty, "拒单不得替换状态"
+    assert dirty == before, "拒单不得改写入参状态"
+    assert len(dirty["actions"]["b"]["events"]) == 2, "b 的事件数不该变"
+
+
+def check_dependency_failure_cascades():
+    """验收 3：依赖失败**默认级联取消**（事件带 `reason`）；`keep` 策略改判 `blocked`。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("dep", actor="pc-1", time_cost=30))
+    state = _schedule(state, _draft_action("mid", actor="pc-2", time_cost=30,
+                                           depends_on=("dep",)))
+    state = _schedule(state, _draft_action("leaf", actor="pc-3", time_cost=30,
+                                           depends_on=("mid",)))
+    state = _schedule(state, _draft_action("keep", actor="pc-4", time_cost=30,
+                                           depends_on=("dep",), on_dep_fail="keep"))
+    advanced = chron.advance_to(state, SCHED_MINUTE + 30)
+    settled = chron.settle(advanced["state"], "dep", "failed",
+                           world_minute=SCHED_MINUTE + 31, reason="rule_failed")
+    events = settled["events"]
+    assert events["dep"][0]["type"] == "action.failed" and \
+        events["dep"][0]["reason"] == "rule_failed", "结算原因应透传"
+    for action_id in ("mid", "leaf"):
+        assert events[action_id][0]["type"] == "action.cancelled", \
+            "%s 应被级联取消：%r" % (action_id, events[action_id])
+        assert events[action_id][0]["reason"] == "dependency_failed", \
+            "级联事件必须带 reason"
+    assert events["keep"][0]["type"] == "action.blocked", "keep 策略应改判 blocked"
+    assert events["keep"][0]["reason"] == "dependency_failed"
+    statuses = {key: settled["state"]["actions"][key]["status"]
+                for key in ("dep", "mid", "leaf", "keep")}
+    assert statuses == {"dep": "failed", "mid": "cancelled", "leaf": "cancelled",
+                        "keep": "blocked"}, statuses
+    assert settled["state"]["due_heap"] == [], "级联后不得留下可办条目"
+    # 级联是**传递**的：mid 取消后 leaf 也取消（不是因为 dep 直接挡它）。
+    assert settled["state"]["actions"]["leaf"]["action_id"] == "leaf"
+    # 依赖被取消同样级联（`cancelled` 也是「依赖没成」）。
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("dep2", actor="pc-1", time_cost=30))
+    state = _schedule(state, _draft_action("wait2", actor="pc-2", time_cost=30,
+                                           depends_on=("dep2",)))
+    state = chron.advance_to(state, SCHED_MINUTE + 30)["state"]
+    cancelled = chron.settle(state, "dep2", "cancelled", world_minute=SCHED_MINUTE + 31)
+    assert cancelled["events"]["wait2"][0]["type"] == "action.cancelled"
+    assert cancelled["events"]["wait2"][0]["reason"] == "dependency_failed"
+
+
+def check_resource_conflict_opens_one_window():
+    """验收 4：同资源两行动触发**一个** `window.opened`（§5.4 / §5.5 只识别、不裁决）。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("loot-a", actor="pc-1", time_cost=30,
+                                           resource="silver-idol"))
+    state = _schedule(state, _draft_action("loot-b", actor="pc-2", time_cost=30,
+                                           resource="silver-idol"))
+    fired = chron.advance_to(state, SCHED_MINUTE + 30)
+    opened = _window_opens(fired["events"])
+    assert len(opened) == 1, "同资源两行动应恰好开一个窗：%r" % (opened,)
+    assert opened[0]["reason"] == "resource"
+    assert opened[0]["type"] == chron.WINDOW_OPEN_EVENT
+    # 事件的窗口快照 = 两个参与者。
+    snapshot = opened[0]["changes"][0]["after"]
+    _check_window_shape(snapshot)
+    assert snapshot["participants"] == ["loot-a", "loot-b"]
+    assert snapshot["actors"] == ["pc-1", "pc-2"]
+    assert snapshot["resource"] == "silver-idol" and snapshot["place"] is None
+    # 开窗分钟 = 触发识别的**第二个**行动开始的那一分钟（此刻冲突才成立）。
+    assert snapshot["open_minute"] == SCHED_MINUTE + 30 == fired["world_minute"]
+    assert opened[0]["idempotency_key"] == "window.opened:%s" % snapshot["window_id"]
+    # CHRON 只产出「该开窗口」的判断：事件里**没有**任何「谁赢」的字段。
+    assert "winner" not in opened[0] and "outcome" not in opened[0]
+    # 状态里的窗口与事件快照一致（同一份结构）。
+    windows = chron.open_windows(fired["state"])
+    assert len(windows) == 1 and windows[0] == snapshot
+    assert chron.windows_at(fired["state"], "loot-a") == [snapshot["window_id"]]
+    assert chron.windows_at(fired["state"], "loot-b") == [snapshot["window_id"]]
+
+
+def check_window_identification_rules():
+    """§5.5 三条识别依据：同 place / 同 resource / 无键不开窗；重复冲突不重复开窗。"""
+    # 1) 同一 place（无 resource）→ 开窗，reason = place。
+    state = chron.new_scheduler(SCHED_MINUTE)
+    for index, action_id in enumerate(("p1", "p2", "p3")):
+        state = _schedule(state, _draft_action(action_id, actor="pc-%d" % (index + 1),
+                                               time_cost=30, place="broken-bridge"))
+    fired = chron.advance_to(state, SCHED_MINUTE + 30)
+    opened = _window_opens(fired["events"])
+    assert len(opened) == 1, "同 place 的三个行动只开一个窗：%r" % (opened,)
+    window = chron.open_windows(fired["state"])[0]
+    _check_window_shape(window)
+    assert window["reason"] == "place" and window["place"] == "broken-bridge"
+    assert window["participants"] == ["p1", "p2", "p3"], \
+        "同键的后来者应并入已开的窗口：%r" % (window["participants"],)
+    # 2) 无 place / 无 resource → 不参与识别，不开窗。
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("n1", time_cost=30))
+    state = _schedule(state, _draft_action("n2", time_cost=30))
+    fired = chron.advance_to(state, SCHED_MINUTE + 30)
+    assert _window_opens(fired["events"]) == []
+    assert chron.open_windows(fired["state"]) == []
+    assert chron.conflict_key(fired["state"]["actions"]["n1"]) is None
+    # 3) 不同冲突键 → 各自开窗（互不影响）。
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("x1", time_cost=30, resource="rope"))
+    state = _schedule(state, _draft_action("x2", time_cost=30, resource="rope"))
+    state = _schedule(state, _draft_action("y1", time_cost=30, place="cellar"))
+    state = _schedule(state, _draft_action("y2", time_cost=30, place="cellar"))
+    # resource 优先于 place：x1 同时带 place 时按 resource 识别。
+    state = _schedule(state, _draft_action("z1", time_cost=30, place="cellar",
+                                           resource="rope"))
+    fired = chron.advance_to(state, SCHED_MINUTE + 30)
+    opened = _window_opens(fired["events"])
+    assert len(opened) == 2, "两个键各开一个窗：%r" % (opened,)
+    windows = {window["key"]: window for window in chron.open_windows(fired["state"])}
+    assert set(windows) == {"resource:rope", "place:cellar"}, windows
+    assert windows["resource:rope"]["participants"] == ["x1", "x2", "z1"]
+    assert windows["place:cellar"]["participants"] == ["y1", "y2"]
+    # 4) 窗口快照里的 actor 与 participants 一一对应。
+    for window in windows.values():
+        _check_window_shape(window)
+        assert window["actors"] == sorted(fired["state"]["actions"][action_id]["actor"]
+                                          for action_id in window["participants"])
+
+
+def meter_events(state):
+    """`advance_to` 到「全部到期」后的事件流（测试便利函数）。"""
+    farthest = max(entry[0] for entry in state["due_heap"])
+    return chron.advance_to(state, farthest)["events"]
+
+
+def check_advance_to_fires_in_order():
+    """`advance_to` 的推进语义：到期即触发、同分钟按堆序、窗口先于到期。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("first", time_cost=10, priority=0,
+                                           resource="rope"))
+    state = _schedule(state, _draft_action("second", time_cost=20, priority=0,
+                                           resource="rope"))
+    # 目标早于最早到期 → 不触发，但世界时间前进。
+    early = chron.advance_to(state, SCHED_MINUTE + 5)
+    assert early["events"] == [] and early["world_minute"] == SCHED_MINUTE + 5
+    assert early["state"]["world_minute"] == SCHED_MINUTE + 5
+    # 目标落在第二个到期点之前 → 只触发第一个（此时还只有一个行动，不开窗）。
+    middle = chron.advance_to(state, SCHED_MINUTE + 15)
+    assert [(event["type"], event["target"]) for event in middle["events"]] == \
+        [("action.started", "first"), ("action.due", "first")]
+    assert middle["world_minute"] == SCHED_MINUTE + 15
+    assert middle["state"]["windows"] == [], "只有一个行动时不开窗（§5.4）"
+    # 全量推进：窗口只开一次，第二个到期的卡复用同一个窗口。
+    full = chron.advance_to(state, SCHED_MINUTE + 20)
+    assert [event["target"] for event in _window_opens(full["events"])] == [None]
+    assert len(_window_opens(full["events"])) == 1
+    assert chron.open_windows(full["state"])[0]["participants"] == ["first", "second"]
+    # 世界时间只增不减：目标早于当前 → 《ScheduleError》；类型 / 负值 → TypeError / ValueError。
+    try:
+        chron.advance_to(middle["state"], SCHED_MINUTE - 1)
+    except chron.ScheduleError:
+        pass
+    else:
+        raise AssertionError("回拨世界时间应抛 ScheduleError")
+    for bad in (-1, 1.5, True, "x"):
+        try:
+            chron.advance_to(middle["state"], bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("advance_to(%r) 应被拒绝" % (bad,))
+    # 到期事件带确定性幂等键（§8.3）：`<action_id>:<due_minute>:<type>`。
+    due = [event for event in meter_events(state) if event["type"] == "action.due"]
+    assert due, "应有到期事件"
+    for event in due:
+        assert event["idempotency_key"] == "%s:%d:%s" % (
+            event["target"], state["actions"][event["target"]]["due_minute"],
+            chron.ACTION_DUE_EVENT)
+
+
+def check_scheduler_events_shape():
+    """调度器产出的事件形状：GDD §19.5 最小字段 + 同一行动的事件序号连续。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("a1", time_cost=10, resource="rope"))
+    state = _schedule(state, _draft_action("a2", time_cost=10, resource="rope"))
+    events = meter_events(state)
+    assert events, "应有事件"
+    for event in events:
+        for field in ("event_id", "world_time", "type", "actor", "target", "cause",
+                      "changes", "source", "reason", "idempotency_key"):
+            assert field in event, "事件缺少字段 %s：%r" % (field, event)
+        assert isinstance(event["event_id"], str) and event["event_id"]
+        assert EVENT_TYPE_RE.match(event["type"]), "type 不是 <domain>.<verb>：%r" % event["type"]
+        assert set(event["world_time"]) == {"world_minute", "day", "tod"}
+        assert event["world_time"]["world_minute"] >= SCHED_MINUTE
+        assert isinstance(event["changes"], list), event
+        if event["type"] != "action.due":
+            # 到期事件只作「结算点到了」的宣告，没有字段更新；其余事件必须带变更。
+            assert event["changes"], event
+        for change in event["changes"]:
+            assert change["block"] == "chron", change
+            assert change["op"] in ("set", "append"), change
+            assert "before" in change and "after" in change
+    # 同一个行动的转换事件序号连续（e000003 起，因为 proposed/scheduled 各占一条）。
+    started = [event for event in events if event["type"] == "action.started"]
+    due = [event for event in events if event["type"] == "action.due"]
+    assert len(started) == len(due) == 2
+    for event in started + due:
+        assert event["target"] in ("a1", "a2")
+        assert event["actor"] in ("pc-a1", "pc-a2")
+    assert [event["event_id"] for event in started] == ["a1:e000003", "a2:e000003"]
+    assert [event["event_id"] for event in due] == ["a1:due001010", "a2:due001010"]
+    # 窗口事件不指向任何行动卡（它不属于单个 action）：不能交给 apply_event。
+    opened = [event for event in events if event["type"] == chron.WINDOW_OPEN_EVENT]
+    assert len(opened) == 1
+    assert opened[0]["target"] is None and opened[0]["actor"] in ("pc-a1", "pc-a2")
+    assert opened[0]["changes"][0]["path"].startswith("/windows/")
+
+
+def check_scheduler_is_pure_and_deterministic():
+    """调度器纯函数：入参不被改写、同一输入两次结果全等。"""
+    def build():
+        state = chron.new_scheduler(SCHED_MINUTE)
+        state = _schedule(state, _draft_action("a1", time_cost=10, resource="rope"))
+        state = _schedule(state, _draft_action("a2", time_cost=10, resource="rope"))
+        return state
+
+    state = build()
+    snapshot = {key: (list(value) if isinstance(value, list) else dict(value)
+                      if isinstance(value, dict) else value) for key, value in state.items()}
+    deep = {action_id: dict(action, blocks=list(action["blocks"]), events=list(action["events"]))
+            for action_id, action in state["actions"].items()}
+    fired = chron.advance_to(state, SCHED_MINUTE + 10)
+    assert state == snapshot, "advance_to 不得改写入参状态"
+    assert state["actions"] == deep, "advance_to 不得改写行动卡"
+    assert state["windows"] == [] and fired["state"]["windows"], "窗口应写在新状态上"
+    settled = chron.settle(fired["state"], "a1", "completed", world_minute=SCHED_MINUTE + 10)
+    assert fired["state"]["actions"]["a1"]["status"] == "running", "settle 不得改写入参"
+    assert settled["state"]["actions"]["a1"]["status"] == "completed"
+    # 全等：同一输入两次运行产出全等的事件流与全等的末态。
+    again = chron.advance_to(build(), SCHED_MINUTE + 10)
+    assert again["events"] == fired["events"], "两次运行事件流应全等"
+    assert again["state"] == fired["state"], "两次运行末态应全等"
+    settled_again = chron.settle(again["state"], "a1", "completed",
+                                 world_minute=SCHED_MINUTE + 10)
+    assert settled_again["state"] == settled["state"]
+    assert settled_again["events"] == settled["events"]
+    # 重建 due_heap 是幂等的（§8.2 第 4 步：重启恢复按同一 actions 重建）。
+    assert chron.rebuild_heap(fired["state"]) == fired["state"]["due_heap"]
+
+
+def check_schedule_input_errors():
+    """调度入参错误**显式抛 `ScheduleError`**（不静默、不部分生效）。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("a1", time_cost=10))
+    cases = (
+        ("重复 id", _draft_action("a1"), {"world_minute": SCHED_MINUTE}),
+        ("依赖不存在", _draft_action("a9", depends_on=("nope",)),
+         {"world_minute": SCHED_MINUTE}),
+        ("自依赖", _draft_action("a9", depends_on=("a9",)), {"world_minute": SCHED_MINUTE}),
+        ("时间倒流", _draft_action("a9"), {"world_minute": SCHED_MINUTE - 1}),
+        ("start 在过去", _draft_action("a9"),
+         {"world_minute": SCHED_MINUTE, "start_minute": SCHED_MINUTE - 1}),
+    )
+    for label, draft, kwargs in cases:
+        for target_state in (state,):
+            try:
+                chron.schedule(target_state, draft, **kwargs)
+            except chron.ScheduleError:
+                continue
+            raise AssertionError("%s 应抛 ScheduleError" % label)
+    # 已排期的卡不能再排（schedule 只接草稿）。
+    try:
+        chron.schedule(state, state["actions"]["a1"], world_minute=SCHED_MINUTE)
+    except chron.ScheduleError:
+        pass
+    else:
+        raise AssertionError("非草稿应抛 ScheduleError")
+    # 非法 `on_dep_fail` / 空的 place / resource 在构造或排期时显式拒绝。
+    for kwargs in ({"on_dep_fail": "ignore"}, {"on_dep_fail": None}):
+        try:
+            chron.new_action("x", "pc", "k", 5, **kwargs)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("new_action(%r) 应被拒绝" % (kwargs,))
+    for kwargs in ({"place": ""}, {"resource": ""}):
+        try:
+            chron.new_action("x", "pc", "k", 5, **kwargs)
+        except ValueError:
+            continue
+        raise AssertionError("new_action(%r) 应被拒绝" % (kwargs,))
+    # `settle` 只接终态、只接已知行动。
+    for args in (("a1", "scheduled"), ("a1", "running")):
+        try:
+            chron.settle(state, *args, world_minute=SCHED_MINUTE)
+        except chron.ScheduleError:
+            continue
+        raise AssertionError("settle%r 应被拒绝" % (args,))
+    try:
+        chron.settle(state, "nope", "completed", world_minute=SCHED_MINUTE)
+    except chron.ScheduleError:
+        pass
+    else:
+        raise AssertionError("settle 未知行动应被拒绝")
+
+
+def check_blocked_policy_roundtrip():
+    """`keep` 策略的卡停在 `blocked`；依赖恢复后重排 → 再次进堆（§5.3）。"""
+    state = chron.new_scheduler(SCHED_MINUTE)
+    state = _schedule(state, _draft_action("dep", time_cost=10))
+    state = _schedule(state, _draft_action("keep", time_cost=10, depends_on=("dep",),
+                                           on_dep_fail="keep"))
+    fired = chron.advance_to(state, SCHED_MINUTE + 10)
+    blocked = chron.settle(fired["state"], "dep", "failed", world_minute=SCHED_MINUTE + 10)
+    assert blocked["state"]["actions"]["keep"]["status"] == "blocked"
+    # 再级联一次是幂等的：已经在 blocked 的卡不产二次事件。
+    again = chron.cascade_dependents(blocked["state"], SCHED_MINUTE + 11, {"dep"})
+    assert "keep" not in again["events"], "已在目标态不得重复产事件"
+    # 依赖恢复（PRISM 重排）→ blocked → scheduled，重新进堆。
+    resumed = chron.apply_event(blocked["state"]["actions"]["keep"],
+                                chron.transition(blocked["state"]["actions"]["keep"],
+                                                 "scheduled",
+                                                 {"world_minute": SCHED_MINUTE + 20,
+                                                  "who": "S"}))
+    assert resumed["status"] == "scheduled"
+    # 把恢复后的卡放回状态后重建堆 → 重新可办。
+    restored = dict(blocked["state"], actions=dict(blocked["state"]["actions"]))
+    restored["actions"]["keep"] = resumed
+    restored["due_heap"] = chron.rebuild_heap(restored)
+    assert [entry[3] for entry in restored["due_heap"]] == ["keep"], restored["due_heap"]
+
+
+# --------------------------------------------------------------------------
 # 纯函数（无依赖、无 IO）
 # --------------------------------------------------------------------------
 
@@ -739,6 +1270,20 @@ def main():
         check_event_fields_follow_ctx_and_are_deterministic,
         check_apply_event_rejects_foreign_changes,
         check_new_action_validation,
+        # §5 调度器（C3）
+        check_scheduler_state_shape,
+        check_due_order_is_stable,
+        check_sort_key_segments,
+        check_dependency_gates_release,
+        check_dependency_cycle_rejected,
+        check_dependency_failure_cascades,
+        check_resource_conflict_opens_one_window,
+        check_window_identification_rules,
+        check_advance_to_fires_in_order,
+        check_scheduler_events_shape,
+        check_scheduler_is_pure_and_deterministic,
+        check_schedule_input_errors,
+        check_blocked_policy_roundtrip,
         check_module_is_pure,
     )
     failures = 0
@@ -746,7 +1291,7 @@ def main():
         try:
             check()
         except AssertionError as error:
-            print("  断言失败: %s" % error)
+            print("  断言失败 [%s]: %s" % (check.__name__, error))
             failures += 1
     if failures:
         print("%d/%d 项通过，%d 项失败" % (len(checks) - failures, len(checks), failures))
