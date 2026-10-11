@@ -7,7 +7,10 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
   · HTTP 响应 helper 与单类路径链路由（GET 只读 / POST 写入，无框架）
   · 静态资源服务（目录穿越防护 + MIME）
   · 监听与端口约定（NOTDND_HOST / NOTDND_PORT，回退通用 PORT）
-  · 存档骨架：原子写 + 惰性迁移 + 缓存锁 + 列表 + 改名 / 删除边界
+  · 存档骨架：落盘 / 加载**委托 `state`**（STATE-DESIGN §11）——`Session` 仍是网页层
+    的**内存门面**（工程字段 + 不透明块），落盘走 `state` 的检查点（原子写 + checksum），
+    老档（旧单文件 `<sid>.json`）在第一次保存时按 §10 惰性迁移成新档文件族并留 `.bak`；
+    列表 / 改名 / 删除边界两种布局都认
   · 规则会话接线：持有 prism_core.RuleSession 的快照（规则态的唯一真相在
     prism_core），老档惰性迁移出空规则会话，GET /api/session 只读拉取
   · ATLAS 自动地图接线（切片 I4）：Session 顶层 atlas 存档块（§3.4，与
@@ -62,6 +65,7 @@ import pathlib
 import random
 import re
 import secrets
+import shutil
 import socket
 import threading
 import time
@@ -71,6 +75,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import atlas as atlas_kernel
 import atlas_compile
 import prism_core
+import state
 
 # 导引者是**可选模块**（GUIDE-DESIGN.md §5.1）：依赖方向只允许
 # notdnd_web → prism_guide → prism_core。import 失败（缺文件 / 语法错 / 缺依赖）
@@ -379,7 +384,7 @@ def _rate_ok(sid: str, kind: str, limit: int) -> bool:
 
 
 def _empty_rules_snapshot(sid: str = "") -> dict:
-    """空规则会话的落盘快照；零参调用即 `_SESSION_DEFAULTS` 的默认值工厂。
+    """空规则会话的落盘快照；零参调用即 `_LEGACY_DEFAULTS` 的默认值工厂。
 
     规则态的形状归 prism_core 定义，本文件只调用它的快照 / 还原接口，
     不另写一份字段名——两边各维护一套必然漂移。
@@ -390,12 +395,13 @@ def _empty_rules_snapshot(sid: str = "") -> dict:
     return prism_core.RuleSession(str(sid or "")).snapshot()
 
 
-# 会话字段默认值表：load() 的惰性迁移按此补缺。M3 新增 PRISM 字段时
-# 在这里加一行并同步 Session.to_dict，老存档即自动获得默认值。
+# 老档字段默认值表：**迁移层**（`_legacy_parts`）按此补缺——「只补不覆盖」。
+# 新档（`campaigns/<sid>/snapshot.json`）走 `state` 的加载路径（缺块即创世块），
+# 不再经过这里：这条表只服务「旧单文件 `<sid>.json` → 新档」的一次性映射。
 # 值 = 字面量（不可变）或**零参工厂**（可变）：工厂每次现造一个**新**对象，
 # 绝不把同一个 list / dict 借给多个存档——否则一个存档的改动会顺着默认值
-# 漏进另一个老存档，且这种串档在单存档测试里看不出来。
-_SESSION_DEFAULTS: dict[str, object] = {
+# 漏进另一个老档，且这种串档在单存档测试里看不出来。
+_LEGACY_DEFAULTS: dict[str, object] = {
     "created": 0.0,                     # 建局时间戳；老档缺失按 0（未知）
     "log": list,                        # 叙事流条目（工厂：现造空列表）
     "seq": 0,                           # 日志序号游标（增量拉取用）
@@ -405,7 +411,7 @@ _SESSION_DEFAULTS: dict[str, object] = {
                                         # 第一次用到地图时按当前世界懒编译
     "guide": _empty_guide,              # 导引者状态块（工厂：现造，salt 新掷）
     "room": _empty_room,                # 多人房间块（§3.2）；工厂：现造最小房间，
-                                        # 老档缺失即惰性迁移成「单人房」（M-16）
+                                        # 老档缺失即迁移成「单人房」（M-16）
 }
 
 
@@ -561,12 +567,13 @@ def _new_sid() -> str:
 
 
 class SaveError(Exception):
-    """存档落盘失败（目录创建 / 临时写 / `os.replace`）。
+    """存档落盘失败（目录创建 / 临时写 / `os.replace` / 状态层拒载）。
 
     取代旧的「无条件吞异常」：`Session.save()` 失败时**抛这个异常**，调用方
     **必须显式处理**——要么回滚内存态到写入前，要么如实回报失败；不得把
     未持久化的状态当作已成功。
-    只带 `sid` 与底层 `OSError`（`__cause__`），**不**携带存档内容或密钥。
+    只带 `sid` 与底层异常（`OSError` / `state.StateError`，见 `__cause__`），
+    **不**携带存档内容或密钥。
     """
 
     def __init__(self, sid: str, cause: BaseException | None = None):
@@ -577,15 +584,73 @@ class SaveError(Exception):
             self.__cause__ = cause
 
 
-class Session:
-    """一局游戏的持久化骨架（**存档容器**，不是规则运行时）。
+def _campaign_dir(sid: str) -> pathlib.Path:
+    """新档目录（`state` 的 §4.1 布局）：`<存档目录>/campaigns/<sid>/`。"""
+    return SAVE_DIR / state.CAMP_DIRNAME / sid
 
-    本类只定义**工程字段**（标识 / 日志 / 展示名）与 `rules` 快照。
-    规则态没有第二套字段：角色卡六维、场景、战斗、压力……全都收在
-    `rules` 里，形状由 prism_core.RuleSession 定义（规则运行时真相在那边，
-    本类只负责把它原子落盘、惰性迁移、按请求透出）。
-    新增字段时必须同时给出默认值（同步 _SESSION_DEFAULTS），load() 的
-    惰性迁移会自动为老存档补齐。
+
+def _campaign_state_path(sid: str) -> pathlib.Path | None:
+    """新档里**可加载的检查点**路径（主 → `.bak`），没有就返回 None。
+
+    只认「有检查点」：建局中途失败可能留下一个只有空事件日志 / `.tmp` 的目录，
+    它不是一档存档（不被列表、撞击检测与加载认作已存在）。
+    """
+    for name in (state.SNAPSHOT_NAME, state.SNAPSHOT_BAK_NAME):
+        path = _campaign_dir(sid) / name
+        if path.is_file():
+            return path
+    return None
+
+
+def _save_exists(sid: str) -> bool:
+    """磁盘上是否已有这一档：**老档文件 / 新档检查点都算**。"""
+    return ((SAVE_DIR / f"{sid}.json").is_file()
+            or _campaign_state_path(sid) is not None)
+
+
+def _legacy_parts(sid: str, d: dict) -> tuple[dict, dict, str, int]:
+    """§10.1 的字段映射：老档（单文件 JSON）→ `(blocks, stream, save_name, created_ms)`。
+
+    这里是「**只补不覆盖**」的落点：缺的键按 `_LEGACY_DEFAULTS` 补（可变默认值用
+    零参工厂现造），已有的值一律**逐字搬**——脏值降级只发生在内存门面
+    （`Session._apply_state`），迁移不在这里改写磁盘内容。
+
+    `room` 不在 §10.1 的表内（该表成文于多人房间之前），按既有加载合同
+    `_room_from` 规范化成最小房间——它的契约常量（`room_id` == sid 等）在盘上也必须成立。
+    """
+    for key, default in _LEGACY_DEFAULTS.items():
+        if key not in d:
+            d[key] = default() if callable(default) else default
+    atlas = d.get("atlas")
+    blocks = {
+        "rules": copy.deepcopy(d.get("rules")),
+        "atlas": copy.deepcopy(atlas) if isinstance(atlas, dict) else None,
+        "guide": copy.deepcopy(d.get("guide")),
+        "room": _room_from(d.get("room"), sid),
+    }
+    log = d.get("log") if isinstance(d.get("log"), list) else []
+    return (
+        blocks,
+        {"log": copy.deepcopy(log), "cursor": max(0, _int_or(d.get("seq"), 0))},
+        _text_or(d.get("save_name"), 40),
+        int(round(_float_or(d.get("created"), 0.0) * 1000)),
+    )
+
+
+class Session:
+    """一局游戏的**网页层内存门面**（不是规则运行时，也不是状态层）。
+
+    门面持有：工程字段（标识 / 展示名 / 叙事流 + 游标）与四个**不透明块**
+    （`rules` / `atlas` / `guide` / `room`）。块的形状各归其权威模块
+    （prism_core / atlas / prism_guide / 多人房间），本类只负责按请求透出、
+    并在 `save()` 时整块交给 `state`——语义一律不改。
+
+    落盘 / 加载**委托 `state`**（STATE-DESIGN §11）：新档是每个战役一个目录的
+    检查点 + 事件日志（`<存档目录>/campaigns/<sid>/`）；老档（旧单文件
+    `<sid>.json`）在**第一次保存时**按 §10 惰性迁移成新档并留 `.bak`，
+    只读加载不改写磁盘。门面与句柄的内存态在 `save()` / `load()` 两个方向上对齐，
+    但两者**不是**同一份：句柄另有一层事件 `seq`（与展示流游标 `self.seq` 无关，
+    §11：两条独立序列，禁止互相赋值）。
     """
 
     def __init__(self, sid: str):
@@ -599,11 +664,11 @@ class Session:
         # sid 是内存缓存的键、也是请求头里的值，动它会让在途请求全部失败。
         self.save_name = ""
         # 规则会话快照（JSON 可序列化）：新建即空规则会话，落盘 / 载入由
-        # load() 与 to_dict() 负责，本类不解释其中的规则语义。
+        # load() 与 save() 负责，本类不解释其中的规则语义。
         self.rules: dict = _empty_rules_snapshot(sid)
         # ATLAS 存档块（§3.4，与 rules 平级）：落盘的是「种子 + 增量 + 队伍
         # 位置」；运行时地图（self._atlas / self._locus）由 ensure_atlas()
-        # 懒编译 / 还原，不直接落盘。to_dict() 把运行时折回存档块。
+        # 懒编译 / 还原，不直接落盘。_blocks_view() 把运行时折回存档块。
         self.atlas_block: dict | None = None
         self._atlas: dict | None = None      # 运行时地图（atlas.py 纯数据）
         self._locus: dict | None = None      # 队伍位置 {frame_id, place_id, ...}
@@ -614,10 +679,21 @@ class Session:
         # 多人房间块（§3.2，与 rules / atlas / guide 平级）：新存档起最小房间
         # （无房主、无成员）；成员由 /api/room/* 写入。老档迁移路径见 load()。
         self.room: dict = _empty_room(sid)
+        # 状态层句柄（惰性打开：import / 建对象不碰磁盘，第一次 save 才开）。
+        self._handle = None
+        # 老档路径 + §10.1 映射结果：加载老档时记下，第一次 save 时落成新档
+        # （§10.1：迁移在内存里完成，随后在下一次正常提交 / 检查点时落成新档）。
+        self._legacy: pathlib.Path | None = None
+        self._legacy_parts: tuple[dict, dict, str, int] | None = None
 
     # ── 持久化 ────────────────────────────────────────────
     def to_dict(self) -> dict:
-        """白名单序列化：**显式**列出落盘字段，防止内部属性被顺手写盘。"""
+        """门面视图（白名单，**老档形状**）：只读消费与老档测试夹具用。
+
+        新档落盘由 `state` 负责（`save()` 写检查点）；这里保留老档的字段名
+        （`sid` / `seq` / `atlas`）是为了让老档夹具与既有调用方不必认识 §4.1
+        的新布局。字段与 `_LEGACY_DEFAULTS` 一一对应。
+        """
         return {
             "sid": self.sid,
             "created": self.created,
@@ -640,83 +716,140 @@ class Session:
             self.atlas_block = atlas_kernel.export_state(self._atlas, self._locus)
         return copy.deepcopy(self.atlas_block)
 
-    def save(self) -> None:
-        """原子写：先写同目录 .tmp，再 os.replace 换名——中断不会留下半个 JSON。
+    def _blocks_view(self) -> dict:
+        """当前内存态的不透明块（逐块交给 `state`，语义不改）。"""
+        return {
+            "rules": copy.deepcopy(self.rules),
+            "atlas": self._export_atlas_block(),
+            "guide": copy.deepcopy(self.guide),
+            "room": copy.deepcopy(self.room),
+        }
 
-        落盘失败**抛 `SaveError`**（不再是 best-effort 静默吞掉）：调用方据此
-        回滚内存态或如实回报失败，绝不把未持久化的状态当作已成功。`to_dict()`
-        的序列化错误是编程错误，**照原样抛**，不伪装成磁盘故障。
+    def _stream_view(self) -> dict:
+        """展示流（§11）：`cursor` 承接门面的 `seq`（老字段名），日志逐条带着走。
 
-        失败时磁盘维持写入前的旧档（`os.replace` 未执行）；同目录可能残留一个
-        `.{sid}.tmp`，不影响后续保存（下次写会被覆盖，列表也不扫它）。
+        ⚠️ 与事件 `seq` 是**两条独立序列**：这里给的是叙事流的游标，
+        `/api/log?since=` 读的也是它，禁止拿状态层的事件 `seq` 赋值（§11）。
         """
-        f = SAVE_DIR / f"{self.sid}.json"
-        tmp = SAVE_DIR / f".{self.sid}.tmp"
+        return {"log": copy.deepcopy(self.log), "cursor": max(0, _int_or(self.seq, 0))}
+
+    def _created_ms(self) -> int:
+        """门面的 `created` 是秒（float）；新档里是毫秒（int，§10.1）。"""
+        return int(round(_float_or(self.created, 0.0) * 1000))
+
+    def _open_handle(self):
+        """打开本局的状态层句柄：老档在这一步落成新档（§10.2），否则直接开。
+
+        失败（磁盘 / 状态层拒载）转成 `SaveError`，并**保持** `_legacy` 未清——
+        下一次 save 重试迁移（老档仍在磁盘上，不丢数据）。
+        """
+        legacy = self._legacy
+        try:
+            if legacy is not None:
+                blocks, stream, save_name, created = self._legacy_parts
+                handle = state.migrate_legacy(
+                    self.sid, str(legacy), blocks=blocks, stream=stream,
+                    save_name=save_name, created=created, base_dir=str(SAVE_DIR))
+                self._legacy = None            # 迁移成功才清（失败可重试）
+                self._legacy_parts = None
+            else:
+                handle = state.open_campaign(self.sid, base_dir=str(SAVE_DIR))
+        except (OSError, state.StateError) as exc:
+            raise SaveError(self.sid, exc) from exc
+        self._handle = handle
+        return handle
+
+    def save(self) -> None:
+        """落盘：把门面态交给 `state` 写成**检查点**（§11）。
+
+        - 不透明块（`rules` / `atlas` / `guide` / `room`）与展示流（`log` / `cursor`）
+          **不进事件溯源**（§11：它们不是事实，两条序列禁止互相赋值），只随检查点
+          落盘——落盘由 `state._write_checkpoint` 用「`.tmp` + fsync + `os.replace`」
+          完成，并带 `checksum` 与 `snapshot.json.bak` 回退；
+        - 老档（旧单文件）在**第一次 save 时**才落成新档：先留 `.bak`、再写检查点、
+          再删老档（§10.2）——只读加载不改写磁盘；
+        - 落盘失败**抛 `SaveError`**（与改动前同一契约）：调用方据此回滚内存态或
+          如实回报失败，绝不把未持久化的状态当作已成功。失败时磁盘维持写入前的
+          旧档（`os.replace` 未执行；老档也还在）。
+        """
         with self.lock:
-            # 序列化在锁内、try 外：它不该失败（to_dict 是白名单且 JSON 可序列化），
-            # 真失败就是代码缺陷，不该被吞掉当成「磁盘问题」。
-            payload = json.dumps(self.to_dict(), ensure_ascii=False, indent=1)
+            handle = self._handle or self._open_handle()
+            handle.stage(blocks=self._blocks_view(), stream=self._stream_view(),
+                         save_name=self.save_name, created=self._created_ms())
             try:
-                _ensure_save_dir()
-                tmp.write_text(payload, encoding="utf-8")
-                os.replace(tmp, f)
+                handle.flush()
             except OSError as exc:
                 raise SaveError(self.sid, exc) from exc
 
+    def _apply_state(self, blocks: dict, stream: dict, save_name, created_ms) -> None:
+        """把 `state` 的视图 / 元信息抄进内存门面——**逐字段清洗，脏值降级**。
+
+        与老档加载走同一条路（`load()` 的两个分支都汇到这里），因此新档 / 老档
+        的加载口径一致：类型不对就退回默认值，一个坏键不换掉整块。
+        """
+        blocks = blocks if isinstance(blocks, dict) else {}
+        stream = stream if isinstance(stream, dict) else {}
+        self.created = _float_or(created_ms, 0.0) / 1000.0
+        raw_log = stream.get("log")
+        if isinstance(raw_log, list):
+            self.log = [e for e in raw_log if isinstance(e, dict)]
+        self.seq = max(0, _int_or(stream.get("cursor"), 0))
+        # seq 是增量拉取游标：脏数据里若 seq 落后于日志本身，取二者最大值，
+        # 否则客户端重连后会把已读过的条目再推一遍。
+        if self.log:
+            self.seq = max(self.seq, max((_int_or(e.get("seq"), 0) for e in self.log),
+                                         default=0))
+        self.save_name = _text_or(save_name, 40)
+        # 规则会话：缺块 / 脏值的老档在这一刻拿到空规则会话，形状按 prism_core
+        # 的契约还原（未知键剔掉、脏值降级），不就地改写磁盘上的块。
+        self.rules = _restore_rules(blocks.get("rules"), self.sid)
+        # ATLAS 存档块：缺块 / 脏值按 None 处理，第一次用到地图时由
+        # ensure_atlas() 按当前世界懒编译，不报错、不改写磁盘上的块。
+        block = blocks.get("atlas")
+        self.atlas_block = copy.deepcopy(block) if isinstance(block, dict) else None
+        # 导引者块：**显式**在 rules 旁边还原（§7 加载合同，G2 就要做）。
+        # 按键处理——旁边一个键脏了不会把整块换成空块（否则会删掉 realizations）。
+        self.guide = _guide_from(blocks.get("guide"))
+        # 多人房间块（§3.2 / M-16）：缺块 / 脏值按最小「单人房」处理
+        # （host 空、members 空），只补不覆盖。
+        self.room = _room_from(blocks.get("room"), self.sid)
+
     @classmethod
     def load(cls, sid: str) -> "Session | None":
-        """加载 + 惰性迁移（缺字段补默认、脏值降级），不写迁移脚本。
+        """加载（新档走 `state`，老档按 §10.1 在内存里映射）。
 
-        原则：**只补不存在的，不动已有的合法值**——玩家或更新版本写过的
-        字段不会被旧代码覆盖；老存档缺的字段在这一刻获得默认值。
+        老档的**落盘**推迟到下一次 `save()`（§10.1：迁移在内存里完成，随后在
+        下一次正常提交 / 检查点时落成新档），因此只读接口不改写磁盘上的老档。
+        读不了（坏档 / 状态层拒载）→ 返回 `None`，沿用既有 400 语义。
         """
         # sid 先过白名单再碰文件系统：即使请求头被伪造，也无法用 ../ 探测路径。
         if not SID_RE.fullmatch(sid or ""):
             return None
-        f = SAVE_DIR / f"{sid}.json"
-        if not f.is_file():
+        s = cls(sid)
+        if _campaign_state_path(sid) is not None:     # 新档：委托 state 加载
+            try:
+                handle = state.open_campaign(sid, base_dir=str(SAVE_DIR))
+            except (OSError, state.StateError):
+                return None
+            s._handle = handle
+            view = handle.view()
+            meta = handle.meta()
+            s._apply_state(view.get("blocks") or {}, view.get("stream") or {},
+                           meta.get("save_name"), meta.get("created"))
+            return s
+        legacy = SAVE_DIR / f"{sid}.json"        # 老档：内存里映射，save() 时落成新档
+        if not legacy.is_file():
             return None
         try:
-            d = json.loads(f.read_text(encoding="utf-8"))
+            d = json.loads(legacy.read_text(encoding="utf-8"))
         except Exception:
             return None
         if not isinstance(d, dict):
             return None
-
-        # 惰性迁移：原始 JSON 缺字段时在内存里补默认值（setdefault 语义：
-        # 只补缺、不覆盖），无需在磁盘上跑迁移脚本。
-        # 默认值是**工厂**时现造一个（可变默认值不共享，见 _SESSION_DEFAULTS）。
-        for key, default in _SESSION_DEFAULTS.items():
-            if key not in d:
-                d[key] = default() if callable(default) else default
-
-        s = cls(sid)
-        # —— 逐字段清洗：类型不对就退回默认值（脏值降级）——
-        s.created = _float_or(d.get("created"), 0.0)
-        if isinstance(d.get("log"), list):
-            s.log = [e for e in d["log"] if isinstance(e, dict)]
-        s.seq = max(0, _int_or(d.get("seq"), 0))
-        # seq 是增量拉取游标：脏数据里若 seq 落后于日志本身，取二者最大值，
-        # 否则客户端重连后会把已读过的条目再推一遍。
-        if s.log:
-            s.seq = max(s.seq, max((_int_or(e.get("seq"), 0) for e in s.log), default=0))
-        s.save_name = _text_or(d.get("save_name"), 40)
-        # 规则会话：老档（缺 rules）在这一刻拿到空规则会话，形状按 prism_core
-        # 的契约还原（未知键剔掉、脏值降级），不就地改写磁盘上的老档。
-        s.rules = _restore_rules(d.get("rules"), sid)
-        # ATLAS 存档块：老档（缺块 / 脏值）按 None 处理，第一次用到地图时
-        # 由 ensure_atlas() 按当前世界懒编译，不报错、不改写磁盘老档。
-        block = d.get("atlas")
-        s.atlas_block = copy.deepcopy(block) if isinstance(block, dict) else None
-        # 导引者块：**显式**在 rules 旁边还原（§7 加载合同，G2 就要做）。
-        # 按键处理——旁边一个键脏了不会把整块换成空块（否则会删掉 realizations）。
-        s.guide = _guide_from(d.get("guide"))
-        # 多人房间块（§3.2 / M-16）：缺块的老档在这一刻惰性迁移成「单人房」
-        # （host 空、members 空），只补不覆盖；磁盘上的老档不被就地改写。
-        s.room = _room_from(d.get("room"), sid)
-        # TODO(M3)：PRISM 存档层字段（世界 id / 进度索引等**索引 / 展示**用途的
-        # 派生字段）的迁移规则加在这里（同样：只补不覆盖）；规则态本身不进这里，
-        # 统一放 s.rules。
+        blocks, stream, save_name, created_ms = _legacy_parts(sid, d)
+        s._legacy = legacy
+        s._legacy_parts = (blocks, stream, save_name, created_ms)
+        s._apply_state(blocks, stream, save_name, created_ms)
         return s
 
     # ── 日志 ──────────────────────────────────────────────
@@ -875,37 +1008,38 @@ def default_display_name(sid: str) -> str:
     return f"存档 {sid}"
 
 
-def list_saves() -> tuple[list[dict], int]:
-    """扫描存档目录，返回 (摘要列表, 实际总条数)。
+def _save_summary(sid: str) -> dict | None:
+    """一条存档摘要（**新档 / 老档两种布局都认**）；没有可读的存档返回 None。
 
-    列表只返回最近 SAVE_LIST_LIMIT 条（按 mtime 倒序），但总条数照实返回，
-    前端才能提示「还有更多旧存档未显示」，而不是假装只有这些。
-    磁盘文件一律不删——只截断返回给前端的部分。
+    新档读检查点 `campaigns/<sid>/snapshot.json`，缺失 / 读不了再退
+    `snapshot.json.bak`（与 `state` 的加载顺序一致），最后才是老档
+    `<sid>.json`；两者都在时以新档为准（迁移中途的老档残留不再多出一行）。
+    日志条数取「展示流」的 `log`（老档在顶层、新档在 `stream.log`）。
     """
-    rows: list[dict] = []
-    try:
-        files = sorted(SAVE_DIR.glob("*.json"))
-    except Exception:
-        return [], 0
-    for f in files:
-        if f.name.startswith("."):
-            continue            # 原子写留下的 .tmp 等临时文件
-        sid = f.stem
-        if not SID_RE.fullmatch(sid):
+    candidates = (
+        _campaign_dir(sid) / state.SNAPSHOT_NAME,
+        _campaign_dir(sid) / state.SNAPSHOT_BAK_NAME,
+        SAVE_DIR / f"{sid}.json",
+    )
+    for path in candidates:
+        if not path.is_file():
             continue
         try:
-            d = json.loads(f.read_text(encoding="utf-8"))
+            d = json.loads(path.read_text(encoding="utf-8"))
         except Exception:
             continue            # 半个 / 手改坏的 JSON 不进列表，也不让整次扫描失败
         if not isinstance(d, dict):
             continue
+        stream = d.get("stream") if isinstance(d.get("stream"), dict) else {}
+        log = stream.get("log") if isinstance(stream.get("log"), list) else None
+        if log is None:
+            log = d.get("log") if isinstance(d.get("log"), list) else []
         try:
-            mt = f.stat().st_mtime
+            mt = path.stat().st_mtime
         except OSError:
             mt = 0.0
-        log = d.get("log") if isinstance(d.get("log"), list) else []
         save_name = _text_or(d.get("save_name"), 40)
-        rows.append({
+        return {
             "id": sid,
             "name": save_name or default_display_name(sid),
             "named": bool(save_name),
@@ -913,7 +1047,29 @@ def list_saves() -> tuple[list[dict], int]:
             "mtime_text": time.strftime("%m-%d %H:%M", time.localtime(mt)) if mt else "—",
             "log_count": len(log),
             # TODO(M3)：PRISM 摘要字段（世界 / 角色 / 进度……）在此追加。
-        })
+        }
+    return None
+
+
+def list_saves() -> tuple[list[dict], int]:
+    """扫描存档目录，返回 (摘要列表, 实际总条数)——**新档与老档都列**。
+
+    列表只返回最近 SAVE_LIST_LIMIT 条（按 mtime 倒序），但总条数照实返回，
+    前端才能提示「还有更多旧存档未显示」，而不是假装只有这些。
+    磁盘文件一律不删——只截断返回给前端的部分。
+    """
+    sids: set[str] = set()
+    try:
+        for f in SAVE_DIR.glob("*.json"):
+            if not f.name.startswith("."):      # 原子写留下的临时文件
+                if SID_RE.fullmatch(f.stem):
+                    sids.add(f.stem)
+        for entry in (SAVE_DIR / state.CAMP_DIRNAME).iterdir():
+            if entry.is_dir() and SID_RE.fullmatch(entry.name):
+                sids.add(entry.name)
+    except Exception:
+        return [], 0
+    rows = [row for row in (_save_summary(sid) for sid in sorted(sids)) if row]
     rows.sort(key=lambda r: -r["mtime"])
     total = len(rows)
     return rows[:SAVE_LIST_LIMIT], total
@@ -1200,14 +1356,18 @@ class Handler(BaseHTTPRequestHandler):
                 # 界线：不能删掉当前正在使用的存档（前端用 X-Session 表明自己那局）。
                 if sid == (self.headers.get("X-Session") or "").strip():
                     return self._err("不能删除正在进行的存档", 400)
-                f = SAVE_DIR / f"{sid}.json"
-                if not f.is_file():
+                legacy = SAVE_DIR / f"{sid}.json"
+                camp = _campaign_dir(sid)
+                if not legacy.is_file() and not camp.is_dir():
                     return self._err("存档不存在", 404)
                 with _sessions_lock:
                     _sessions.pop(sid, None)    # 先摘缓存，再删磁盘，避免脏读
                 try:
-                    f.unlink(missing_ok=True)
+                    legacy.unlink(missing_ok=True)      # 老档（尚未迁移 / 残留）
                     (SAVE_DIR / f".{sid}.tmp").unlink(missing_ok=True)
+                    if camp.is_dir():
+                        # 新档：整目录一起删（检查点 + `.bak` + 事件日志 + 幂等副本）
+                        shutil.rmtree(camp)
                 except OSError:
                     return self._err("删除失败", 500)
                 return self._json({"status": "ok", "sid": sid})
@@ -1583,8 +1743,7 @@ class Handler(BaseHTTPRequestHandler):
             # sid 自己生成：和已有的内存会话 / 磁盘存档都不能撞（撞了会覆盖别人的档）。
             for _ in range(8):
                 sid = _new_sid()
-                if (sid not in _sessions
-                        and not (SAVE_DIR / f"{sid}.json").is_file()):
+                if sid not in _sessions and not _save_exists(sid):
                     break
             else:
                 # 8 次都撞（实际不可能）：如实报失败，不返回一个没落盘的 sid。
@@ -1660,7 +1819,7 @@ class Handler(BaseHTTPRequestHandler):
         display_name = _text_or(body.get("display_name"), 40).strip()
         # 建房必须**原子**：同一房间号不能既命中缓存又落到磁盘上两份。
         with _sessions_lock:
-            if room_id in _sessions or (SAVE_DIR / f"{room_id}.json").is_file():
+            if room_id in _sessions or _save_exists(room_id):
                 return self._err("房间已存在", 409, "room_exists")
             # 新会话此刻还不对外可见（尚未进 _sessions），构造成员记录不与他人竞争。
             session = Session(room_id)

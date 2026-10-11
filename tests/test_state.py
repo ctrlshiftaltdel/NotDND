@@ -989,6 +989,171 @@ def check_flush_forces_checkpoint():
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# 门面态同步与老档迁移（M7-3，§10 / §11）
+# ════════════════════════════════════════════════════════════════════════════
+
+def check_stage_state_and_meta_roundtrip():
+    """§11 门面态同步：`stage()` 推入的块 / 展示流 / 展示字段随检查点落盘、可重载。
+
+    展示流（`stream`）与不透明块**不进事件溯源**——`stage()` 不写事件、不动事件
+    `seq`（§11：两条独立序列，禁止互相赋值），落盘只走检查点。
+    """
+    tmp = tempfile.mkdtemp()
+    try:
+        handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        blocks = {"rules": {"party": [{"id": "pc-1"}]}, "atlas": None,
+                  "guide": {"salt": "a" * 32}, "room": {"host_member_id": ""}}
+        stream = {"log": [{"seq": 1, "text": "旁白"}], "cursor": 1}
+        handle.stage(blocks=blocks, stream=stream, save_name="", created=0)
+        assert handle.flush() is None
+        assert _canon(handle.view()["blocks"]) == _canon(blocks)
+        assert handle.view()["stream"] == stream
+        assert handle.meta()["save_name"] == "" and handle.meta()["created"] == 0
+        # 不走事件：日志为空、事件 seq 仍是 0
+        assert _event_lines(tmp) == []
+        assert handle.view()["seq"] == 0
+
+        # 未提到的块原样保留（逐块覆盖，不清空别的块）
+        handle.stage(blocks={"rules": {"party": []}})
+        assert handle.view()["blocks"]["guide"] == {"salt": "a" * 32}
+        handle.flush()                    # 把合并后的状态落盘，供下面的重载对照
+
+        reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        assert _canon(reloaded.view()["blocks"]) == _canon(handle.view()["blocks"])
+        assert reloaded.view()["stream"] == stream
+        # 空串 save_name / 0 created 是合法值：不得被换成 campaign_id / 当前时间
+        assert reloaded.meta()["save_name"] == ""
+        assert reloaded.meta()["created"] == 0
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _write_legacy(path, text):
+    with open(path, "w", encoding="utf-8") as out:
+        out.write(text)
+
+
+def check_migrate_legacy_writes_new_layout():
+    """§10.2：老档 → 新档文件族（`.bak` 逐字 + 检查点 seq=0 + 空日志 + 迁移事件）。"""
+    tmp = tempfile.mkdtemp()
+    cid = "s-1"
+    try:
+        legacy_path = os.path.join(tmp, "%s.json" % cid)
+        legacy_raw = ('{"created":1700000000.0,"log":[{"seq":1,'
+                      '"kind":"narrative","text":"旧档旁白"}],"save_name":"旧档",'
+                      '"seq":1,"sid":"s-1"}')
+        _write_legacy(legacy_path, legacy_raw)
+        blocks = {"rules": {"party": [{"id": "pc-1"}]}, "atlas": None,
+                  "guide": {"salt": "b" * 32}, "room": {"host_member_id": ""}}
+        stream = {"log": [{"seq": 1, "kind": "narrative", "text": "旧档旁白"}],
+                  "cursor": 1}
+        handle = state.migrate_legacy(cid, legacy_path, blocks=blocks, stream=stream,
+                                      save_name="旧档", created=1700000000000,
+                                      base_dir=tmp)
+        camp = _camp_dir(tmp, cid)
+        # ② 备份是**原文逐字**（不做任何再序列化）
+        with open(os.path.join(camp, state.LEGACY_BAK_NAME), encoding="utf-8") as fh:
+            assert fh.read() == legacy_raw, "老档备份必须逐字"
+        # ③ 检查点：事件 seq = 0，块与展示流逐字搬（state 不认识块的语义）
+        snap = _snapshot_on_disk(tmp, cid)
+        assert snap["seq"] == 0 and snap["created"] == 1700000000000, snap
+        assert snap["save_name"] == "旧档"
+        assert _canon(snap["blocks"]) == _canon(blocks)
+        assert _canon(snap["stream"]) == _canon(stream)
+        # ④ 空日志 → ⑥ 迁移事件（A0：恰好一条，source=system）
+        lines = _event_lines(tmp, cid)
+        assert [ev["type"] for ev in lines] == ["system.migration"], lines
+        assert lines[0]["source"] == "system" and lines[0]["seq"] == 1
+        assert lines[0]["changes"] == [], "迁移事件只作溯源锚点，不改状态"
+        # ⑤ 老档已删；句柄状态就是搬过来的那份
+        assert not os.path.exists(legacy_path), "迁移成功后老档应被删掉"
+        assert _canon(handle.view()["blocks"]) == _canon(blocks)
+        assert handle.view()["stream"] == stream
+        assert handle.meta()["save_name"] == "旧档"
+
+        # 重开：状态不变（检查点 + 迁移事件都还在）
+        reloaded = state.open_campaign(cid, base_dir=tmp)
+        assert _canon(reloaded.view()["blocks"]) == _canon(blocks)
+        assert reloaded.view()["stream"] == stream
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_migrate_legacy_idempotent():
+    """迁移幂等：检查点已在盘上时**不覆盖**新档，只清掉残留老档（§10.2 崩溃窗口）。"""
+    tmp = tempfile.mkdtemp()
+    cid = "s-2"
+    try:
+        legacy_path = os.path.join(tmp, "%s.json" % cid)
+        _write_legacy(legacy_path, '{"sid":"s-2"}')
+        handle = state.migrate_legacy(cid, legacy_path, blocks={"rules": {"v": 1}},
+                                      stream={"log": [], "cursor": 0}, base_dir=tmp)
+        handle.stage(blocks={"rules": {"v": 2}})
+        handle.flush()
+        with open(os.path.join(_camp_dir(tmp, cid), state.LEGACY_BAK_NAME),
+                  "r", encoding="utf-8") as fh:
+            bak = fh.read()
+
+        _write_legacy(legacy_path, '{"sid":"s-2","residual":true}')   # 残留老档
+        again = state.migrate_legacy(cid, legacy_path, blocks={"rules": {"v": 99}},
+                                     stream={"log": [], "cursor": 0}, base_dir=tmp)
+        assert again.view()["blocks"]["rules"] == {"v": 2}, "已落盘的新档不得被覆盖"
+        assert not os.path.exists(legacy_path), "残留老档应被清掉"
+        with open(os.path.join(_camp_dir(tmp, cid), state.LEGACY_BAK_NAME),
+                  "r", encoding="utf-8") as fh:
+            assert fh.read() == bak, "已有备份不得被后来的残留老档覆盖"
+        assert [ev["type"] for ev in _event_lines(tmp, cid)] == ["system.migration"], \
+            "幂等路径不得再记一条迁移事件"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_migrate_legacy_missing_source_rejected():
+    """老档读不到 → `StateError`，且**不建检查点**（半成品会挡住重试，必须没有）。"""
+    tmp = tempfile.mkdtemp()
+    try:
+        try:
+            state.migrate_legacy(CAMPAIGN, os.path.join(tmp, "nope.json"),
+                                 blocks={"rules": {}}, base_dir=tmp)
+        except state.StateError as exc:
+            assert "老档" in str(exc), exc
+        else:
+            raise AssertionError("老档读不到时必须抛 StateError")
+        assert _snapshot_on_disk(tmp, CAMPAIGN) is None, "失败不得留下检查点"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_migrate_legacy_delete_failure_keeps_new():
+    """§10.2 步骤 5：老档删不掉只记说明——新档已可用，**不滚回**。"""
+    tmp = tempfile.mkdtemp()
+    cid = "s-3"
+    try:
+        legacy_path = os.path.join(tmp, "%s.json" % cid)
+        _write_legacy(legacy_path, '{"sid":"s-3"}')
+        real_unlink = state.os.unlink
+
+        def stubborn(path, *args, **kwargs):
+            if os.path.abspath(path) == os.path.abspath(legacy_path):
+                raise OSError("模拟：删不掉老档")
+            return real_unlink(path, *args, **kwargs)
+
+        state.os.unlink = stubborn
+        try:
+            handle = state.migrate_legacy(cid, legacy_path, blocks={"rules": {}},
+                                          base_dir=tmp)
+        finally:
+            state.os.unlink = real_unlink
+        assert os.path.exists(legacy_path), "删不掉就留着（老档是兜底备份）"
+        assert any("删除失败" in note for note in handle.notes), handle.notes
+        assert _snapshot_on_disk(tmp, cid) is not None, "新档必须已可用"
+        assert [ev["type"] for ev in _event_lines(tmp, cid)] == ["system.migration"]
+        assert state.open_campaign(cid, base_dir=tmp).view()["seq"] == 1
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # 其它不变量
 # ════════════════════════════════════════════════════════════════════════════
 
@@ -1079,6 +1244,11 @@ CHECKS = (
     check_seq_no_gaps,
     check_view_is_deep_copy,
     check_r7_requires_idempotency_key,
+    check_stage_state_and_meta_roundtrip,
+    check_migrate_legacy_writes_new_layout,
+    check_migrate_legacy_idempotent,
+    check_migrate_legacy_missing_source_rejected,
+    check_migrate_legacy_delete_failure_keeps_new,
 )
 
 

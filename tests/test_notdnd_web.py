@@ -62,12 +62,20 @@
      `result` 先于 `narration` 的既有事件顺序不变；离线 / 模块缺失 / 淡出 / 跳过
      这些短路回合同样落 `act` + `narrate`（真子进程覆盖启动路径）。
 
+ 13. 存档接线与老档迁移（M7-3，STATE-DESIGN §10 / §11）：`Session` 仍是网页层
+     内存门面，`save()` / `load()` 委托 `state`——新档落在
+     `campaigns/<sid>/snapshot.json`（检查点），展示流走 `stream.cursor`；
+     老档（旧单文件 `<sid>.json`）在**第一次 save 时**才落成新档并留
+     `snapshot.json.pre-v0.bak`（只读接口不改写它）；各块逐字搬、salt 不变；
+     `?since=` / `/api/session` 的既有语义与用例保持通过。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
 """
 
 import base64
+import builtins
 import contextlib
 import http.client
 import json
@@ -94,6 +102,7 @@ sys.path.insert(0, ROOT)                     # 让 tests/ 直接跑时也能 imp
 import notdnd_web   # noqa: E402
 import prism_core   # noqa: E402
 import prism_guide  # noqa: E402
+import state        # noqa: E402
 
 _SALT_RE = re.compile(r"^[0-9a-f]{32}$")
 
@@ -116,7 +125,13 @@ def _free_port() -> int:
 
 
 def _save_path(sid: str) -> str:
+    """老档（旧**单文件**布局）路径：写老档夹具 / 断言老档没被改动用。"""
     return os.path.join(notdnd_web.SAVE_DIR, "%s.json" % sid)
+
+
+def _campaign_file(sid: str, name: str, save_dir: str = "") -> str:
+    """新档（`campaigns/<sid>/`，M7-3 起）里某个文件的路径。"""
+    return os.path.join(save_dir or notdnd_web.SAVE_DIR, "campaigns", sid, name)
 
 
 def _write_save(path: str, payload: dict) -> None:
@@ -125,28 +140,84 @@ def _write_save(path: str, payload: dict) -> None:
         json.dump(payload, handle, ensure_ascii=False)
 
 
+def _read_save(sid: str, save_dir: str = "") -> dict:
+    """读磁盘上的存档，**翻成门面（老档）字段名**——新档优先、老档兜底。
+
+    新档是 `state` 的检查点：块在 `blocks`、展示流在 `stream`（游标 `cursor`）、
+    建局时间毫秒。断言因此不必认识两套布局（迁移插件 / 落盘口径的差异由本函数吸收）。
+    """
+    snap = _campaign_file(sid, "snapshot.json", save_dir)
+    if os.path.isfile(snap):
+        with open(snap, encoding="utf-8") as handle:
+            d = json.load(handle)
+        blocks = d.get("blocks") if isinstance(d.get("blocks"), dict) else {}
+        stream = d.get("stream") if isinstance(d.get("stream"), dict) else {}
+        return {
+            "sid": d.get("campaign_id"),
+            "created": (d.get("created") or 0) / 1000.0,
+            "log": stream.get("log") or [],
+            "seq": stream.get("cursor"),
+            "save_name": d.get("save_name"),
+            "rules": blocks.get("rules"),
+            "atlas": blocks.get("atlas"),
+            "guide": blocks.get("guide"),
+            "room": blocks.get("room"),
+        }
+    with open(os.path.join(save_dir or notdnd_web.SAVE_DIR, "%s.json" % sid),
+              encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _save_ids(save_dir: str = "") -> set:
+    """磁盘上「真的有一档」的 sid 集合——新档要有检查点，建局中途的残留不算。"""
+    base = save_dir or notdnd_web.SAVE_DIR
+    ids = {name[:-5] for name in os.listdir(base) if name.endswith(".json")}
+    camp = os.path.join(base, "campaigns")
+    if os.path.isdir(camp):
+        ids |= {name for name in os.listdir(camp)
+                if os.path.isfile(os.path.join(camp, name, "snapshot.json"))}
+    return ids
+
+
+def _canon_session(session) -> str:
+    """门面视图的**规范化 JSON**：比对「落盘 → 重载」是否逐字段一致（§6.1 口径）。"""
+    return json.dumps(session.to_dict(), ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"))
+
+
 @contextlib.contextmanager
 def _storage_fault(*, write: bool = False, replace: bool = False):
     """往存档落盘路径注入故障（只在**本进程**生效，用完即还原）。
 
-    `write=True` → `pathlib.Path.write_text` 抛 `OSError`（临时写失败）；
+    `write=True` → 写**临时文件**失败：`pathlib.Path.write_text` 与
+    `builtins.open` 的写模式都抛 `OSError`（M7-3 起落盘走 `state` 的
+    `.tmp` + `os.replace`，不再经过 `write_text`，两条路径都要堵上）；
     `replace=True` → `os.replace` 抛 `OSError`（原子换名失败）。
-    `notdnd_web` 与测试进程共享同一个 `os` / `pathlib` 模块，直接换属性即可
-    命中服务端（`_LocalServer` 就在本进程里处理请求）。
+    `notdnd_web` / `state` 与测试进程共享同一批模块对象，直接换属性即可
+    命中服务端（`_LocalServer` 就在本进程里处理请求）；读模式放行，故障
+    只影响写盘。
     """
     def boom(*_args, **_kwargs):
         raise OSError("注入的落盘故障")
 
+    def fake_open(file, mode="r", *args, **kwargs):
+        if "w" in mode:
+            boom()
+        return saved_open(file, mode, *args, **kwargs)
+
     saved_write = pathlib.Path.write_text
+    saved_open = builtins.open
     saved_replace = os.replace
     if write:
         pathlib.Path.write_text = boom
+        builtins.open = fake_open
     if replace:
         os.replace = boom
     try:
         yield
     finally:
         pathlib.Path.write_text = saved_write
+        builtins.open = saved_open
         os.replace = saved_replace
 
 
@@ -584,7 +655,7 @@ def check_import_has_no_side_effects():
 
 
 def check_roundtrip_snapshot():
-    """建规则会话 → 落盘 → 重新载入 → 快照一致（含磁盘上那份字节）。"""
+    """建规则会话 → 落盘（新档检查点）→ 重新载入 → 快照一致。"""
     sid = "roundtrip-1"
     snapshot = _sample_rules(sid)
 
@@ -593,8 +664,7 @@ def check_roundtrip_snapshot():
     before.add_log("narrative", "开场旁白")
     before.save()
 
-    with open(_save_path(sid), encoding="utf-8") as handle:
-        on_disk = json.load(handle)
+    on_disk = _read_save(sid)                  # campaigns/<sid>/snapshot.json
     assert on_disk["rules"] == snapshot, "规则快照必须真的落盘"
     assert on_disk["rules"]["party"], "落盘的快照不能是空壳"
 
@@ -638,6 +708,146 @@ def check_legacy_save_lazy_migration():
     # 「只补不覆盖」的另一半：迁移只发生在内存，磁盘上的老档保持原样。
     with open(_save_path("legacy-1"), encoding="utf-8") as handle:
         assert json.load(handle) == legacy, "惰性迁移不得就地改写磁盘上的老档"
+
+
+def check_state_wiring_new_layout():
+    """M7-3：`save()` 委托 `state`——新档是检查点，展示流走 `stream.cursor`。
+
+    断言落盘真的换成了新档（`campaigns/<sid>/snapshot.json`）、`save()` **不**伪造
+    事件（展示流不是事实，§11 两条独立序列）、重载后门面逐字段一致（规范化 JSON），
+    以及 `state.open_campaign` 能独立打开同一档（是「委托」，不是另起一套格式）。
+    """
+    sid = "wiring-1"
+    session = notdnd_web.Session(sid)
+    session.rules = _sample_rules(sid)
+    session.save_name = "接线局"
+    session.created = 1700000000.0          # 固定建局时间：毫秒化后仍可逐字段比对
+    session.add_log("narrative", "开场旁白")
+    session.add_log("act", "我推开门")
+    session.guide["salt"] = "f" * 32
+    session.save()
+
+    snapshot_path = _campaign_file(sid, "snapshot.json")
+    assert os.path.isfile(snapshot_path), "新档必须落成 campaigns/<sid>/snapshot.json"
+    assert not os.path.exists(_save_path(sid)), "新档不该再写老单文件"
+    with open(snapshot_path, encoding="utf-8") as handle:
+        snap = json.load(handle)
+    assert snap["campaign_id"] == sid and snap["kind"] == "state.snapshot"
+    assert snap["stream"]["cursor"] == session.seq == 2, snap["stream"]
+    assert [e["text"] for e in snap["stream"]["log"]] == ["开场旁白", "我推开门"]
+    assert snap["blocks"]["rules"] == _sample_rules(sid)
+    assert snap["blocks"]["guide"]["salt"] == "f" * 32
+    assert snap["created"] == 1700000000000, "门面的秒 → 新档的毫秒（§10.1）"
+    # 展示流不进事件溯源：save() 不写事件（老档迁移才有一条 system.migration）
+    with open(_campaign_file(sid, state.EVENTS_NAME), encoding="utf-8") as handle:
+        assert handle.read().strip() == "", "save() 不得为展示流伪造事件"
+
+    # 重载：门面逐字段一致；state 也能独立打开同一档
+    notdnd_web._sessions.pop(sid, None)
+    again = notdnd_web.Session.load(sid)
+    assert again is not None, "新档必须能载入"
+    assert _canon_session(again) == _canon_session(session), "往返必须逐字段一致"
+    assert again.seq == 2 and again.log[1]["text"] == "我推开门"
+    handle = state.open_campaign(sid, base_dir=str(notdnd_web.SAVE_DIR))
+    assert handle.view()["stream"]["cursor"] == 2
+    assert handle.view()["blocks"]["guide"]["salt"] == "f" * 32
+    assert handle.view()["seq"] == 0, "没有事实事件时事件 seq 保持 0"
+    assert handle.meta()["save_name"] == "接线局"
+
+
+def check_legacy_migration_on_first_save():
+    """M7-3 / §10：老档在**第一次 save** 时落成新档并留 `.bak`；此前只读不改写磁盘。
+
+    断言：只读加载不动磁盘 → 各块逐字无损（rules / atlas / guide / log，salt 不变）
+    → save 后 `.bak` 与老档**逐字相同**、老档被删、往返规范化 JSON 相等。
+    """
+    sid = "legacy-migrate-1"
+    guide = {"salt": "0123456789abcdef0123456789abcdef",
+             "realizations": {"l1": {"key": "v"}}}
+    legacy = {
+        "sid": sid, "created": 1700000000.0,
+        "log": [{"seq": 1, "kind": "narrative", "text": "旧档旁白",
+                 "speaker": "旁白", "ts": 1700000000000}],
+        "seq": 1, "save_name": "旧档",
+        "rules": _sample_rules(sid),
+        "atlas": {"version": 1, "world_key": "yunji", "seed": 7, "setting_rev": "r1",
+                  "party_locus": {"frame_id": "yunji/surface",
+                                  "place_id": "yunji/loc-01"},
+                  "frames": {}},
+        "guide": guide,
+    }
+    path = _save_path(sid)
+    _write_save(path, legacy)
+    with open(path, "rb") as handle:
+        legacy_bytes = handle.read()
+
+    session = notdnd_web.Session.load(sid)
+    assert session is not None, "老档必须能载入"
+    # 只读加载：磁盘不动（迁移推迟到第一次 save，§10.1）
+    with open(path, "rb") as handle:
+        assert handle.read() == legacy_bytes, "只读加载不得改写老档"
+    assert not os.path.exists(_campaign_file(sid, "snapshot.json")), \
+        "老档 save 之前不该出现新档"
+    # 各块逐字无损、salt 不变
+    assert session.rules == legacy["rules"], "rules 必须逐字无损"
+    assert session.atlas_block == legacy["atlas"], "atlas 必须逐字无损"
+    assert session.guide["salt"] == guide["salt"], "salt 必须保留"
+    assert session.guide["realizations"] == guide["realizations"]
+    assert session.log == legacy["log"], "展示流必须逐条无损"
+    assert session.seq == 1 and session.save_name == "旧档"
+    assert session.created == 1700000000.0
+
+    session.add_log("narrate", "新的旁白")      # 迁移与落盘在同一次 save 里发生
+    session.save()
+
+    with open(_campaign_file(sid, state.LEGACY_BAK_NAME), "rb") as handle:
+        assert handle.read() == legacy_bytes, ".bak 必须是老档原文（逐字）"
+    assert not os.path.exists(path), "迁移成功后老档应被删掉"
+    snap = _read_save(sid)
+    assert snap["sid"] == sid and snap["seq"] == 2
+    assert snap["rules"] == legacy["rules"], "落盘的 rules 不得被迁移改写"
+    assert snap["atlas"] == legacy["atlas"], "落盘的 atlas 不得被迁移改写"
+    assert snap["guide"]["salt"] == guide["salt"], "落盘的 salt 必须不变"
+    assert [e["text"] for e in snap["log"]] == ["旧档旁白", "新的旁白"]
+
+    # 往返：重新载入后与保存前的门面态**规范化 JSON** 相等
+    notdnd_web._sessions.pop(sid, None)
+    again = notdnd_web.Session.load(sid)
+    assert again is not None, "迁移后的新档必须能载入"
+    assert _canon_session(again) == _canon_session(session), \
+        "迁移往返必须逐字段一致（规范化 JSON）"
+
+
+def check_save_list_and_delete_new_layout():
+    """M7-3：列表与删除**两种布局都认**——新档按检查点列，删除收走整个目录。"""
+    new_sid, legacy_sid = "list-new-1", "list-legacy-1"
+    session = notdnd_web.Session(new_sid)
+    session.save_name = "新档"
+    session.add_log("narrative", "一")
+    session.save()
+    _write_save(_save_path(legacy_sid), {"sid": legacy_sid, "save_name": "老档",
+                                         "log": [{"seq": 1, "text": "旧"}], "seq": 1})
+
+    rows, total = notdnd_web.list_saves()
+    by_id = {row["id"]: row for row in rows}
+    assert by_id[new_sid]["name"] == "新档" and by_id[new_sid]["log_count"] == 1, \
+        by_id.get(new_sid)
+    assert by_id[legacy_sid]["name"] == "老档" and by_id[legacy_sid]["log_count"] == 1, \
+        by_id.get(legacy_sid)
+    assert total >= 2
+
+    with _LocalServer() as server:
+        status, body, _raw, _heads = server.post("/api/save/delete", {"sid": new_sid})
+        assert status == 200 and body.get("status") == "ok", (status, body)
+        # 老档删除同样成立（未迁移的档也能删）
+        status, body, _raw, _heads = server.post("/api/save/delete",
+                                                 {"sid": legacy_sid})
+        assert status == 200 and body.get("status") == "ok", (status, body)
+    camp = os.path.dirname(_campaign_file(new_sid, "snapshot.json"))
+    assert not os.path.isdir(camp), "新档应整目录收走（检查点 / 日志 / 幂等副本）"
+    assert not os.path.exists(_save_path(legacy_sid)), "老档文件应被删掉"
+    assert notdnd_web.Session.load(new_sid) is None
+    assert new_sid not in {row["id"] for row in notdnd_web.list_saves()[0]}
 
 
 def check_api_session_view():
@@ -840,8 +1050,7 @@ def check_api_atlas_exits_and_move():
         assert moved["here"]["place_id"] == target["place_id"]
 
         # 移动结果要随存档块落盘（服务端目录）：重新读取后位置仍在
-        with open(srv_path, encoding="utf-8") as handle:
-            on_disk = json.load(handle)
+        on_disk = _read_save(sid, info["save_dir"])
         assert on_disk["atlas"]["party_locus"]["place_id"] == target["place_id"], \
             "移动后位置应随 atlas 块落盘"
 
@@ -863,8 +1072,7 @@ def check_guide_block_wiring():
     assert first.guide["realizations"] == {}
     first.save()
 
-    with open(_save_path(sid), encoding="utf-8") as handle:
-        on_disk = json.load(handle)
+    on_disk = _read_save(sid)                  # 新档检查点（campaigns/<sid>/）
     assert on_disk["guide"]["salt"] == salt, "guide 必须真的落盘"
 
     again = notdnd_web.Session.load(sid)      # 绕过缓存，走真实读盘路径
@@ -1893,8 +2101,17 @@ def _room_headers(room_id: str, member_id: str, token: str) -> dict:
 
 def _read_room_block(save_dir: str, room_id: str) -> dict:
     """直接读服务端写出的存档，取顶层 `room` 块（绕开响应，验证**磁盘**事实）。"""
-    with open(os.path.join(save_dir, "%s.json" % room_id), encoding="utf-8") as handle:
-        return json.load(handle)["room"]
+    return _read_save(room_id, save_dir)["room"]
+
+
+def _save_bytes(save_dir: str, sid: str) -> str:
+    """新档目录里**所有文件**的字节（解码后拼接）：查「明文令牌不得落盘」用。"""
+    camp = os.path.join(save_dir, "campaigns", sid)
+    out = []
+    for name in sorted(os.listdir(camp)):
+        with open(os.path.join(camp, name), "rb") as handle:
+            out.append(handle.read().decode("utf-8", "replace"))
+    return "".join(out)
 
 
 class _InterleavingLock:
@@ -1936,11 +2153,10 @@ def check_room_create_join_leave():
         assert notdnd_web.MEMBER_ID_RE.fullmatch(host_id), host_id
         assert notdnd_web.ROOM_ID_RE.fullmatch(rid)
 
-        # 存档里只有 hash：明文令牌不得出现在文件任何一个字节里。
-        with open(os.path.join(server.dir, "%s.json" % rid), encoding="utf-8") as handle:
-            raw = handle.read()
+        # 存档里只有 hash：明文令牌不得出现在新档的**任何**字节里。
+        raw = _save_bytes(server.dir, rid)
         assert host_tok not in raw, "明文令牌绝不得落盘"
-        member = json.loads(raw)["room"]["members"][host_id]
+        member = _read_save(rid, server.dir)["room"]["members"][host_id]
         assert member["token_hash"] == notdnd_web._hash_token(host_tok)
         assert "token" not in member, "成员记录只存 token_hash"
 
@@ -2186,10 +2402,9 @@ def check_session_save_reports_failure():
     session = notdnd_web.Session(sid)
     session.save_name = "甲"
 
-    # 正常保存：不抛、返回 None，磁盘就是刚写的内容。
+    # 正常保存：不抛、返回 None，磁盘就是刚写的内容（新档检查点）。
     session.save()
-    with open(_save_path(sid), encoding="utf-8") as handle:
-        assert json.load(handle)["save_name"] == "甲"
+    assert _read_save(sid)["save_name"] == "甲"
 
     # 临时写失败：抛 SaveError（带 sid 与底层 OSError），磁盘维持上一份。
     with _storage_fault(write=True):
@@ -2201,8 +2416,7 @@ def check_session_save_reports_failure():
             assert exc.sid == sid, exc.sid
             assert isinstance(exc.cause, OSError), exc.cause
         assert raised, "临时写失败必须抛 SaveError，不得静默"
-    with open(_save_path(sid), encoding="utf-8") as handle:
-        assert json.load(handle)["save_name"] == "甲"
+    assert _read_save(sid)["save_name"] == "甲"
 
     # os.replace 失败：同样抛 SaveError，换名未发生、磁盘不变。
     session.save_name = "乙"
@@ -2213,8 +2427,7 @@ def check_session_save_reports_failure():
         except notdnd_web.SaveError:
             raised = True
         assert raised, "os.replace 失败必须抛 SaveError，不得静默"
-    with open(_save_path(sid), encoding="utf-8") as handle:
-        assert json.load(handle)["save_name"] == "甲", "换名失败不得改写磁盘"
+    assert _read_save(sid)["save_name"] == "甲", "换名失败不得改写磁盘"
 
 
 def check_save_rename_failure_rolls_back():
@@ -2230,8 +2443,7 @@ def check_save_rename_failure_rolls_back():
         status, body, _raw, _heads = server.post(
             "/api/save/rename", {"sid": sid, "name": "正常名"})
         assert status == 200 and body.get("name") == "正常名", (status, body)
-        with open(_save_path(sid), encoding="utf-8") as handle:
-            assert json.load(handle)["save_name"] == "正常名"
+        assert _read_save(sid)["save_name"] == "正常名"
 
         for label, kwargs in (("临时写失败", {"write": True}),
                               ("os.replace 失败", {"replace": True})):
@@ -2241,8 +2453,7 @@ def check_save_rename_failure_rolls_back():
             assert status == 500, "%s 应回 500，实际 %s / %s" % (label, status, body)
             assert body.get("error"), (label, body)
             # 磁盘维持故障前那一份（未落盘）。
-            with open(_save_path(sid), encoding="utf-8") as handle:
-                assert json.load(handle)["save_name"] == "正常名", label
+            assert _read_save(sid)["save_name"] == "正常名", label
             # 内存也回滚：不留「内存已改名、磁盘没改」的错位。
             cached = notdnd_web._sessions.get(sid)
             assert cached is not None and cached.save_name == "正常名", (label, cached)
@@ -2251,8 +2462,7 @@ def check_save_rename_failure_rolls_back():
         status, body, _raw, _heads = server.post(
             "/api/save/rename", {"sid": sid, "name": "重试名"})
         assert status == 200 and body.get("name") == "重试名", (status, body)
-        with open(_save_path(sid), encoding="utf-8") as handle:
-            assert json.load(handle)["save_name"] == "重试名"
+        assert _read_save(sid)["save_name"] == "重试名"
 
     notdnd_web._sessions.pop(sid, None)
 
@@ -2275,9 +2485,8 @@ def check_atlas_move_save_failure_rolls_back():
                 "/api/atlas/move", {"via": target["via"]}, sid=sid)
         assert status == 500, (status, body)
         assert body.get("error"), body
-        # 磁盘维持原位置。
-        with open(_save_path(sid), encoding="utf-8") as handle:
-            on_disk = json.load(handle)
+        # 磁盘维持原位置（移动 / 迁移都没落成）。
+        on_disk = _read_save(sid)
         assert on_disk["atlas"]["party_locus"]["place_id"] == origin, on_disk["atlas"]
         # 内存也回滚：队伍没有移动。
         cached = notdnd_web._sessions.get(sid)
@@ -2288,8 +2497,7 @@ def check_atlas_move_save_failure_rolls_back():
         status, moved, _raw, _heads = server.post(
             "/api/atlas/move", {"via": target["via"]}, sid=sid)
         assert status == 200 and moved["status"] == "ok", (status, moved)
-        with open(_save_path(sid), encoding="utf-8") as handle:
-            on_disk = json.load(handle)
+        on_disk = _read_save(sid)
         assert on_disk["atlas"]["party_locus"]["place_id"] == target["place_id"]
 
     notdnd_web._sessions.pop(sid, None)
@@ -2373,7 +2581,7 @@ def check_guide_tool_settle_save_failure():
 
 
 def check_room_create_save_failure():
-    """建房落盘失败：500、不进缓存、磁盘无档；恢复后能建房。"""
+    """建房落盘失败：500、不进缓存、磁盘上没有可载入的档；恢复后能建房。"""
     rid = "room-save-fault"
     with _LocalServer() as server:
         with _storage_fault(replace=True):
@@ -2382,14 +2590,15 @@ def check_room_create_save_failure():
         assert status == 500, (status, body)
         assert body.get("error"), body
         assert rid not in notdnd_web._sessions, "半成品不得进缓存"
-        assert not os.path.exists(_save_path(rid)), "磁盘不得留下半成品"
+        assert not notdnd_web._save_exists(rid), "磁盘不得留下半成品存档"
+        assert notdnd_web.Session.load(rid) is None, "半成品不得可载入"
 
         # 故障解除后重试：建房成功并落盘。
         status, body, _raw, _heads = server.post(
             "/api/room/create", {"room_id": rid, "display_name": "甲"})
         assert status == 200, (status, body)
         assert body.get("token") and body.get("role") == "host", body
-        assert os.path.exists(_save_path(rid))
+        assert notdnd_web._save_exists(rid)
     notdnd_web._sessions.pop(rid, None)
 
 
@@ -2420,8 +2629,9 @@ def check_session_create_endpoint():
         assert view["save"]["name"] and view["save"]["named"] is False
         assert view["log"] == []
 
-        # 磁盘上真有这一局（不是只在内存里）。
-        assert os.path.isfile(os.path.join(save_dir, "%s.json" % sid))
+        # 磁盘上真有这一局（不是只在内存里）：新档检查点。
+        assert os.path.isfile(os.path.join(save_dir, "campaigns", sid,
+                                           "snapshot.json"))
 
         # 建局成功后：GET /api/session 200、GET /api/log 可用。
         status, got = server.get("/api/session", sid=sid)
@@ -2501,25 +2711,22 @@ def check_session_create_reload():
 
 
 def check_session_create_save_failure():
-    """建局落盘失败：500、不进缓存、磁盘无档；恢复后能建局（#170 语义）。"""
-    def _save_files():
-        return {name for name in os.listdir(_TMP) if name.endswith(".json")}
-
+    """建局落盘失败：500、不进缓存、磁盘无可载入的档；恢复后能建局（#170 语义）。"""
     with _LocalServer() as server:
         before_sessions = set(notdnd_web._sessions)
-        before_files = _save_files()
+        before_ids = _save_ids()
         with _storage_fault(replace=True):
             status, body, _raw, _heads = server.post("/api/session/create", {})
         assert status == 500, "落盘失败应 500，实际 %s / %s" % (status, body)
         assert body.get("error"), body
         assert set(notdnd_web._sessions) == before_sessions, "半成品不得进缓存"
-        assert _save_files() == before_files, "磁盘不得留下半成品存档"
+        assert _save_ids() == before_ids, "磁盘不得留下半成品存档"
 
         # 故障解除后重试：建局成功并落盘。
         status, view, _raw, _heads = server.post("/api/session/create", {})
         assert status == 200, (status, view)
         sid = view["sid"]
-        assert os.path.exists(_save_path(sid))
+        assert sid in _save_ids(), "建局后磁盘上必须真有一档"
         notdnd_web._sessions.pop(sid, None)
 
 
@@ -2720,9 +2927,7 @@ def check_turn_log_subprocess():
         assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs), seqs
 
         # 落盘：直接读服务端写出的存档（不是内存缓存）。
-        with open(os.path.join(save_dir, "%s.json" % sid),
-                  encoding="utf-8") as handle:
-            saved = json.load(handle)
+        saved = _read_save(sid, save_dir)
         assert [e["kind"] for e in saved["log"]] == kinds, saved["log"]
         assert saved["log"][0]["text"] == "我看看四周", saved["log"][0]
 
@@ -2733,6 +2938,9 @@ CHECKS = (
     check_session_save_reports_failure,
     check_save_rename_failure_rolls_back,
     check_legacy_save_lazy_migration,
+    check_state_wiring_new_layout,
+    check_legacy_migration_on_first_save,
+    check_save_list_and_delete_new_layout,
     check_api_session_view,
     check_api_session_without_session_400,
     check_atlas_snapshot_roundtrip,
