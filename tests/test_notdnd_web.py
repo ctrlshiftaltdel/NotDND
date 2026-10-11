@@ -45,6 +45,8 @@
      （T11）；`POST /api/room/create|join|leave|kick` 与 `Authorization: Bearer` +
      `X-Room`/`X-Member` 鉴权链；容量满员 `409 room_full`（T7）、非房主踢人 `403`（T8）、
      坏令牌 / 缺成员头 `401`（T12）；令牌只存 `sha256`、明文不入存档。
+     另有一条**确定性并发回归**：房主在「鉴权通过后、踢人变更前」离房时，踢人必须
+     被拒（用锁代理插入交错，不靠 sleep 赌时序）。
 
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
@@ -1850,6 +1852,33 @@ def _read_room_block(save_dir: str, room_id: str) -> dict:
         return json.load(handle)["room"]
 
 
+class _InterleavingLock:
+    """测试用锁代理：在第 N 次 `with` **取到锁之前**插入一次确定性交错。
+
+    用来复现「请求 A 鉴权通过 → 请求 B 改变房间 → A 的变更仍执行」这类竞态，
+    不靠 `sleep` / 多线程时序赌博，故每次都跑在同一条交错上。只实现房间代码
+    用到的 `with`（`__enter__` / `__exit__`），不冒充完整锁。
+    """
+
+    def __init__(self, real, at_acquire: int, hook):
+        self._real = real
+        self._at = at_acquire
+        self._count = 0
+        self._hook = hook
+
+    def __enter__(self):
+        self._count += 1
+        if self._count == self._at and self._hook is not None:
+            hook, self._hook = self._hook, None
+            hook()                      # 在真正拿走锁之前制造交错
+        self._real.acquire()
+        return self
+
+    def __exit__(self, *_exc):
+        self._real.release()
+        return False
+
+
 def check_room_create_join_leave():
     """建房 → 加入 → 离开：令牌只存 hash、明文不入存档（§4.1）。"""
     rid = "room-party-1"
@@ -2008,6 +2037,59 @@ def check_room_kick_authorization():
         assert status == 400, "%s / %s" % (status, self_kick)
 
 
+def check_room_kick_host_check_is_atomic():
+    """并发回归：房主在「鉴权通过之后、踢人变更之前」离房 → 踢人必须被拒。
+
+    竞态用锁代理**确定性**复现：在踢人请求取走房间锁（第 2 次 `with`）之前，
+    让房主离房。旧实现把房主校验留在锁外 → 这里会漏过并以 200 执行踢人；
+    修好后校验与变更同处一个临界区 → 403，且目标成员不受影响。
+
+    走**本进程**服务（`_LocalServer`）才能在测试进程里替换 `session.lock`。
+    """
+    rid = "room-kick-race-1"
+    with _LocalServer() as server:
+        status, _body, _raw, _heads = server.post("/api/room/create", {"room_id": rid})
+        assert status == 200, "建房失败：%s" % status
+        host_id = _body["member_id"]
+        host_tok = _body["token"]
+        status, victim, _raw, _heads = server.post("/api/room/join", {"display_name": "目标"},
+                                                   headers={"X-Room": rid})
+        assert status == 200, "加入失败：%s" % status
+        victim_id = victim["member_id"]
+
+        session = notdnd_web.get_session(rid)
+        assert session is not None, "本进程服务应把会话留在缓存里"
+
+        # 正对照：不插交错时房主踢人 200 —— 证明装置本身不坏。
+        status, ok, _raw, _heads = server.post("/api/room/kick", {"member_id": victim_id},
+                                               headers=_room_headers(rid, host_id, host_tok))
+        assert status == 200, "正对照应 200，实际 %s / %s" % (status, ok)
+        with session.lock:      # 复原被踢者，只为继续复现竞态
+            session.room["members"][victim_id]["state"] = "active"
+
+        # 竞态：踢人请求进入临界区之前，房主离房（同一次交错，确定性）。
+        def host_leaves():
+            session.room["host_member_id"] = ""
+            session.room["members"][host_id]["state"] = "left"
+
+        real_lock = session.lock
+        session.lock = _InterleavingLock(real_lock, at_acquire=2, hook=host_leaves)
+        try:
+            status, denied, _raw, _heads = server.post(
+                "/api/room/kick", {"member_id": victim_id},
+                headers=_room_headers(rid, host_id, host_tok))
+        finally:
+            session.lock = real_lock
+        assert status == 403, "房主已离房后不得再踢人，实际 %s / %s" % (status, denied)
+        assert denied.get("reason") == "not_authorized"
+
+        room = notdnd_web.get_session(rid).room
+        assert room["members"][victim_id]["state"] == "active", "被拒的踢人不得改动目标"
+        assert room["host_member_id"] == "", "房主位应保持为空"
+
+        notdnd_web._sessions.pop(rid, None)     # 收摊：别把换过锁的会话留给后面的用例
+
+
 def check_room_auth_chain():
     """T12：坏令牌 / 缺成员头 / 无凭据 → 401；响应体不泄露成员是否存在。"""
     rid = "room-auth-1"
@@ -2086,6 +2168,7 @@ CHECKS = (
     check_room_legacy_lazy_migration,
     check_room_capacity_full,
     check_room_kick_authorization,
+    check_room_kick_host_check_is_atomic,
     check_room_auth_chain,
 )
 

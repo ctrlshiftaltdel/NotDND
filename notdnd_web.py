@@ -1563,17 +1563,23 @@ class Handler(BaseHTTPRequestHandler):
 
         体：`{member_id}`。非房主 → `403 not_authorized`（T8，房间状态不变）；
         被踢者 `state=left`、其请求此后得 `403 member_left`（§4.4）。
+
+        ⚠️ **房主授权检查与变更必须同处一个 `session.lock` 临界区**：`_room_auth`
+        返回时锁已释放，若把「房主仍为当前 active host」的检查留在锁外，并发的
+        离房请求可在检查通过之后、变更之前落地 —— 踢人仍会执行（越权）。
         """
         room_id = self._header_room()
         try:
             session, member = self._room_auth(room_id)
         except _RoomAuthError as exc:
             return self._err(exc.msg, exc.code, exc.reason)
-        if (member.get("role") != "host"
-                or session.room.get("host_member_id") != member["member_id"]):
-            return self._err("只有房主能踢人", 403, "not_authorized")
         target_id = str(body.get("member_id") or "").strip()
         with session.lock:
+            # 授权判定读的是**锁内**的房间 / 成员当前值，与下面的变更原子。
+            if (member.get("role") != "host"
+                    or member.get("state") != "active"
+                    or session.room.get("host_member_id") != member["member_id"]):
+                return self._err("只有房主能踢人", 403, "not_authorized")
             target = (session.room.get("members") or {}).get(target_id)
             if not isinstance(target, dict):
                 return self._err("成员不存在", 404, "member_not_found")
