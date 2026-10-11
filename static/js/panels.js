@@ -7,23 +7,9 @@
    出口「前往」与主画面同端点、同一动作（危险档同一确认口径，§2.6）；
    本片只改本文件与 css/panels.css，跨片共用件（esc / toast / api / openAux /
    openSheet / ST / SID / onInit …）在 js/core.js。
-
-   本单按 Issue #201 的要求**不改** static/index.html，因此样式在加载期
-   注入 `<link>`（见下方 ensurePanelCss）——它幂等、同源，不进 index.html。
+   本片样式 css/panels.css 与其它片一致，由 static/index.html 声明 `<link>` 加载。
    ═══════════════════════════════════════════════════════════ */
 'use strict';
-
-/* ── 样式注入（本单不改 index.html 的唯一落点）──────────────
-   index.html 是禁改路径，三个面板的样式只能在加载期挂上去。幂等：
-   已存在则不再插；同源，不触发「零外链」约定。 */
-(function ensurePanelCss() {
-  if (document.querySelector('link[data-slice="panels"]')) return;
-  var link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = '/css/panels.css';
-  link.setAttribute('data-slice', 'panels');
-  document.head.appendChild(link);
-})();
 
 /* ══════════════ 面板注册表 ══════════════
    UI-DESIGN §1.3.7：`openAux(kind)` 应是一张「kind → 标题 + 渲染」的注册表。
