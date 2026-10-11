@@ -7,6 +7,11 @@
 > 仓库实况只读审查：`notdnd_web.py`（`Session`）、`prism_core.py`（`RuleSession`）、
 > `atlas.py`（`export_state` / `restore_state`）、`prism_guide.py`（`guide` 块），
 > 均以 `master @ fa5366c` 为准。默认分支是 `master`。
+>
+> **本版修订（Issue #169）**：§5 / §7 / §8 / §9 / §13 / §14 / §16 已按「**一次提交 = 一条事件**」
+> （下称 **A0**）收口，封堵「多事件提交逐行落盘 → 崩溃后可能重放**部分**提交」的原子性漏洞。
+> 文中原「一次提交写入一个或多个事件」的表述**作废**，一律以 A0 为准；
+> **下游两份文档（`ACTION-DESIGN.md` §7.4、`MULTIPLAYER-DESIGN.md` §7.5）的修订顺序与阻塞见 §5.0「冲突收口安排」。**
 
 本文件不是规则正文，不替代 `docs/`。它描述的是「世界事实的唯一落库口」——
 所有系统把**已验证**的变更交给它，它负责排号、留痕、原子落盘、可重放、可迁移。
@@ -22,7 +27,8 @@
 4. `M8-a`（`ACTION-DESIGN.md`）引用本文§12 的提交接口；`M9-a`（`CHRON-DESIGN.md`）的持久化契约跟随本文§12；
    `M10-a`（`MULTIPLAYER-DESIGN.md`）的并发口径跟随本文§8。
    （**注意**：这三份已于 2026-10-10 按本文 §12 的提交 / 读事件 / `world_time` 口径完成接口对齐，
-   见各自文首的「接口对齐（2026-10-10）」标注。）
+   见各自文首的「接口对齐（2026-10-10）」标注。**另：本文 §5.0 的 A0 把提交收紧为「一次提交 = 一条事件」；
+   若这三份里出现「一次提交可写多条事件」的表述（如 `MULTIPLAYER-DESIGN.md` §7.5、`ACTION-DESIGN.md` §7.4），一律以本文为准；**修订顺序与阻塞见 §5.0「冲突收口安排」。**）
 5. Execution Agent **不合并**。审查用四行建议。
 
 > 未推送到远端的本文按 `AGENTS.md` 不能当作交接。它必须先送进 GitHub 才能被拆单。
@@ -37,7 +43,8 @@
 - **事件日志**：变更可追溯（谁、何时、因何、改了哪条事实、可见范围），满足 GDD §19.2 / §24.1「可溯源」。
 - **快照与重建**：定期检查点加速恢复；「检查点 + 事件尾部回放」必须等于存活态（第 6 节）。
 - **幂等**：重复提交同一意图不产生第二次副作用（GDD §19.3 / §24.1，风险 R2「物品复制」）。
-- **原子提交**：一次提交要么整体落库、要么整体不落；中断只可能留下「可安全丢弃」的尾巴（第 8、9 节）。
+- **原子提交**：一次提交要么整体落库、要么整体不落；**一次提交 = 一条事件 = 一行追加**（A0，第 5 节），
+  中断只可能留下「可安全丢弃」的半行尾巴（第 8、9 节）。
 - **存档迁移**：旧单文件 JSON 档惰性迁移到新档，往返无损，保留备份（GDD §19.4；`GDD-BASELINE.md` §6.6）。
 - **可被 M8 / M9 / M10 直接依赖的接口**：提案携带 `base_seq` 与幂等键；世界时间是不透明对象；
   并发靠「战役级串行 + 乐观版本校验」（第 12 节）。
@@ -109,6 +116,8 @@ web-saves/                          # 已 gitignore；本地运行物
 - 目录名 `campaign_id` 必须过 `SID_RE`（`^[A-Za-z0-9_-]{1,64}$`）**再拼路径**——与 `Session.load`（L456）同一条边界，
   杜绝 `../` 探测。
 - `events.ndjson` 用 **JSON Lines**（每行一个完整 JSON 对象 + `\n`）：追加是 O(1)，崩溃只需丢弃不完整末行（第 9 节）。
+  **一行 = 一条事件 = 一次提交**（A0，第 5 节）：追加一行即完成一次原子提交，故**不存在**「同一次提交里
+  前几条事件已落盘、后几条未落盘」的中间态——崩溃点只可能在整行之前 / 行中 / 行后（第 8.3 节）。
 - 归档：事件超过 `EVENT_ARCHIVE_THRESHOLD`（建议 100 000 行）时，把 `≤ archived_upto` 的行搬到
   `events.<n>.ndjson` 并只在检查点里记 `archived_upto`；**归档不删事实**，重放仍可从归档拼回。
 
@@ -143,8 +152,61 @@ web-saves/                          # 已 gitignore；本地运行物
 
 ## 5. 事件封套（字段级 Schema）
 
-一次提交写入**一个或多个**事件。同一提交写入的事件共享 `commit_id`、`seq` 连续。
-GDD §19.5 点名的字段**全部覆盖**。
+### 5.0 A0：一次提交恰好一条事件（本层原子性的地基）
+
+**`commit()` 一次调用只写入一条事件**；该事件用 `changes[]` 承载本次提交的**全部**状态变更。
+`commit_id` 与事件 **1:1**（由 `seq` 派生），`seq` 每次提交 **+1**。事件日志里因此**不存在**
+「一个 `commit_id` 对应多条事件」的形态。
+
+这条约束把「逻辑提交」与「物理写入」重新对齐成**一一对应**：一次提交 = 一条事件 = `events.ndjson`
+的**一行**，而「追加一行 + `fsync`」本身就是原子的（S5）。于是**恢复算法对每个崩溃点都有唯一结果**，
+且不新增任何持久化协议（第 8.3、9 节）。
+
+> **为什么不是多事件**：多事件提交把一次逻辑提交切成多行，而追加是**逐行**落盘的，恢复只能丢弃
+> **不完整末行**——「第一条已落盘、后续未落盘」的中间态与「一次完整提交」在日志上无法区分，
+> 恢复会**重放部分提交**，违反「要么整体发生、要么整体不发生」（Issue #169 报告的正是这个洞）。
+>
+> **契约约束（多事件为何无法发生）**：
+> 1. `Handle.commit()` 的签名（第 12.1 节）只有 `changes=()`，**没有** `events` 参数，调用方
+>    **无法**在一次提交里声明多条事件；
+> 2. `commit_id = "{campaign_id}:c{seq:08d}"` **由 `seq` 派生**，而 `seq` 每次提交只 +1，
+>    故一条事件天然对应一个 `commit_id`；同一 `commit_id` 出现两条事件即 `seq` 重复（非法）；
+> 3. `CommitResult` 的不变量 `seq_from == seq_to`、`len(event_ids) == 1`（第 8.1 节），
+>    以及「日志中同一 `commit_id` 只出现一次」的扫描断言（第 14 节），把这三点机械地钉死。
+>
+> **表达能力不受损**：一次提交的**全部事实变更**都由 `changes[]` 承载（可跨块、多路径、多 `op`，
+> 见 5.3）。若某次操作确实需要不同的 `type` / `actor` / `visibility`，它本就**不是一次**提交，
+> 应拆成多次 `commit()`（各带自己的 `idempotency_key`）——每次提交各自原子、各自可幂等重试。
+>
+> **将来若要放宽**（例如引入「一次逻辑事务产出多条异种事件」）：**不得**直接改实现。必须先在本文写出
+> **持久化的提交组边界与完整性判定**（如提交组首尾标记、组内计数 + 组序号），使恢复能区分
+> 「整组完整」与「组内残缺」，并同步修订第 8.3 / 9 / 14 节。在此之前，A0 是**不可协商**的格式不变量。
+> 注意：放宽后 `commit_id` 必须与 `seq` **解耦**（本文暂不预留）。
+
+**下游引用（本单不改其文档，仅在此声明口径）**：另有两处「一次提交写多条事件」的表述，
+与 A0 相反，**必须由后续修订单改正**（见下方「冲突收口安排」）：
+
+- `MULTIPLAYER-DESIGN.md` §7.5：「STATE §5.1：一次提交可写多个事件，`seq` 连续、共享 `commit_id`」；
+- `ACTION-DESIGN.md` §7.4：「**一次提交可含多个事件**：同一 `commit_id` 的事件 `seq` 连续」
+  （该条由 Issue #171 新增、2026-10-11 随 PR #174 合入）。同文档另处的「一批 `changes` + 一条事件」
+  **与 A0 一致**，冲突只在多事件那一条。
+
+**冲突收口安排（顺序与阻塞 —— 不兑现则下游合同不自洽）**
+
+仅写「本文优先」不足以让下游合同一致：本文是**唯一提交出口**的合同，必须与 `ACTION-DESIGN.md` /
+`MULTIPLAYER-DESIGN.md` 的口径**逐字对齐**。安排如下：
+
+| 项 | 内容 |
+|---|---|
+| **待修订** | `ACTION-DESIGN.md` §7.4（删「一次提交可含多个事件」与「提交内部顺序 = 事件数组顺序」）、`MULTIPLAYER-DESIGN.md` §7.5（「一次提交可写多个事件」→「一次提交 = 一条事件」）。**各自开文档单**；本单不改它们。 |
+| **顺序** | ① 本单（**#169**）合并 → ② 立即开上述两条文档单 → ③ 两单合入。 |
+| **阻塞** | 上述两条文档单**不阻塞**本单；但**都阻塞 Issue #163（M7-1）**——M7-1 开工前，两处修订**必须已合入**，否则实现方会同时面对两套相反口径。 |
+| **一并落实** | 修订时须同时把 A0 的两条下游后果写进三份文档、口径一致：<br>（a）**多可见范围** → 拆多次 `commit()`（本文 §12.4）；<br>（b）**异种事件**（不同 `type` / `actor`）→ 同样拆多次提交（本文 §12.2）；<br>两处都不得再出现「一次提交多条事件」。 |
+
+> 本节系 Issue #169 审查意见要求补写（「不能仅以『本文优先』代替下游合同一致性」）。
+
+GDD §19.5 点名的字段**全部覆盖**（GDD §19.1–§19.3 只说「重要变更先形成经过验证的事件」，
+未要求一次提交含多条事件——A0 与 GDD 不冲突）。
 
 ### 5.1 字段表
 
@@ -152,15 +214,15 @@ GDD §19.5 点名的字段**全部覆盖**。
 |---|---|---|---|---|
 | `event_id` | string | 是 | 全局唯一、可确定性重建：`"{campaign_id}:{seq:012d}"` | `"yunji:e000000000042"` |
 | `campaign_id` | string | 是 | 战役（权威世界）id，GDD §19.5「战役 ID」 | `"yunji"` |
-| `seq` | int ≥ 1 | 是 | 战役内**单调递增、无空洞**的序列号，GDD §19.5「序列号」 | `42` |
-| `commit_id` | string | 是 | 本次原子提交的分组：`"{campaign_id}:c{n:08d}"`；同 `commit_id` 的 `seq` 连续 | `"yunji:c00000031"` |
+| `seq` | int ≥ 1 | 是 | 战役内**单调递增、无空洞**的序列号，GDD §19.5「序列号」。**每次提交 +1**（A0：一次提交 = 一条事件） | `42` |
+| `commit_id` | string | 是 | 本次原子提交的分组标识：`"{campaign_id}:c{seq:08d}"`（**由 `seq` 派生**，`seq` 按 **8 位十进制零填充**，与唯一事件 1:1，A0）。保留该字段供 `CommitResult` / 幂等记录 / 审计引用；**不允许**一个 `commit_id` 对应多条事件 | `"yunji:c00000042"` |
 | `world_time` | object \| null | 是（可为 `null`） | GDD §19.5「世界时间」。**不透明**，语义与形状归 CHRON（`CHRON-DESIGN.md` §3.1；本文 §6.2 / §12.3），M7 允许 `null` | `null` 或 `{"world_minute":17310,"day":12,"tod":30}` |
 | `type` | string | 是 | GDD §19.5「类型」。`"<domain>.<verb>"`，小写，`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$` | `"core.commit"` / `"map.move"` / `"resource.spend"` |
 | `actor` | string | 是 | GDD §19.5「主体」。实体 id；系统发起用 `"world"` | `"npc-01"` |
 | `target` | string \| null | 是 | GDD §19.5「目标」 | `"loc-02"` |
 | `cause` | string \| null | 是 | GDD §19.5「原因 / 触发事件」：上游 `event_id`；玩家发起的根因是 `null` | `"yunji:e000000000041"` |
 | `visibility` | object | 是 | GDD §19.5「可见范围」+ §12.4 访问控制 | `{"scope":"private","subjects":["pc-1"]}` |
-| `changes` | array | 是 | GDD §19.5「状态变化」。声明式变更清单（5.3） | 见 5.3 |
+| `changes` | array | 是 | GDD §19.5「状态变化」。声明式变更清单（5.3）；承载本次提交**全部**变更（可跨块、多路径） | 见 5.3 |
 | `rules_version` | string | 是 | GDD §19.5「规则版本」：本次裁决所依据的规则 / 数据包修订号 | `"prism@data-79"` |
 | `roll_refs` | array | 是（可空数组） | GDD §19.5「随机判定引用」：指向 PRISM 掷骰账本，骰点**只来自 PRISM**（§4.2 AI 边界） | `[{"roll_id":"r-7","seed":123,"detail":"d20=14"}]` |
 | `commit_status` | string | 是 | GDD §19.5「提交状态」。落盘日志里**恒为** `"committed"` | `"committed"` |
@@ -183,7 +245,7 @@ GDD §19.5 点名的字段**全部覆盖**。
   "event_id": "yunji:e000000000042",
   "campaign_id": "yunji",
   "seq": 42,
-  "commit_id": "yunji:c00000031",
+  "commit_id": "yunji:c00000042",
   "world_time": null,
   "type": "resource.spend",
   "actor": "pc-1",
@@ -202,6 +264,9 @@ GDD §19.5 点名的字段**全部覆盖**。
   "ts": 1760000000000
 }
 ```
+
+> 注意 `seq = 42` → `commit_id = "yunji:c00000042"`、`event_id = "yunji:e000000000042"`：
+> 三者同源于同一个 `seq`，这正是 A0 的机械后果（一次提交只消耗一个 `seq`）。
 
 ### 5.3 `changes` 元素（声明式变更）
 
@@ -223,6 +288,10 @@ M7-1 在 `state.py` 内落一个**零依赖校验器** `validate_event(ev) -> li
 `type` / `op` / `scope` / `source` 的枚举、`seq ≥ 1`、`event_id` 与 `(campaign_id, seq)` 一致、
 `changes[*].path` 以 `/` 开头（或空串）。**不**新增 `data/schema/**` 文件（S10）。
 
+除字段级校验外，还有一条**提交级不变量**（由 `commit()` 与测试共同守卫，无需新增校验器）：
+`CommitResult.seq_from == seq_to`、`len(event_ids) == 1`，且 `event_id` / `commit_id` 均可由
+`(campaign_id, seq)` **确定性重建**（A0）。
+
 ---
 
 ## 6. 快照（检查点）与重建
@@ -241,7 +310,7 @@ M7-1 在 `state.py` 内落一个**零依赖校验器** `validate_event(ev) -> li
 | `save_name` | string | 是 | 展示名（沿用 `Session.save_name`，≤ 40 字符） |
 | `stream` | object | 是 | **叙事流**（S2）：`{"log":[...], "cursor":<int>}`——沿用现有 `log` 与 `seq` 语义，游标改名 `cursor` 以与事件序号分开 |
 | `blocks` | object | 是 | 不透明块：`{"rules": …, "atlas": …, "guide": …}`（外加 M9 的 `chron`） |
-| `indexes` | object | 是 | `{"idempotency": {<key>: <record>}}`（第 7 节），以及 `{"archived_upto": <int>}` |
+| `indexes` | object | 是 | `{"idempotency": {<key>: <record>}}`（第 7 节；**可由事件日志重建**，见 7.4——检查点里只是加速副本），以及 `{"archived_upto": <int>}` |
 | `checksum` | string | 是 | 对**除 `checksum` 外**的载荷做规范化 JSON 后的 SHA-256 十六进制 |
 
 - **规范化 JSON**（canonical）：`json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))`，
@@ -294,11 +363,11 @@ idempotency_key = sha256_hex(
 | 字段 | 类型 | 必填 | 语义 |
 |---|---|---|---|
 | `key` | string | 是 | 幂等键（= 字典键，冗余存一份便于导出 / 排查） |
-| `commit_id` | string | 是 | 首次提交的分组 id |
-| `seq` | int | 是 | 首次提交写入的**首个**事件序号 |
-| `event_ids` | array[string] | 是 | 首次提交写入的全部 `event_id` |
-| `request_digest` | string | 是 | 对提交入参（`type`/`actor`/`target`/`changes`/…）规范化后的 SHA-256 |
-| `result_digest` | string | 是 | 对 `CommitResult`（状态、事件、块摘要）规范化后的 SHA-256 |
+| `commit_id` | string | 是 | 该次提交的 `commit_id`（A0：与唯一事件 1:1） |
+| `seq` | int | 是 | 该次提交唯一事件的序号（A0：`seq_from == seq_to`） |
+| `event_ids` | array[string] | 是 | 该次提交的 `event_id` 列表；A0 下**恒为长度 1**（保留数组形状以兼容 `ACTION-DESIGN.md` §A1 等既有引用） |
+| `request_digest` | string | 是 | 对提交入参（`type`/`actor`/`target`/`cause`/`visibility`/`changes`/`rules_version`/`roll_refs`/`source`/`world_time`）规范化后的 SHA-256；**可由事件封套重建**（7.4） |
+| `result_digest` | string | 是 | 对 `CommitResult` 的**已提交形态**（`status="committed"` 时的 `commit_id`/`seq_from`/`seq_to`/`event_ids`/`state_digest`）规范化后的 SHA-256；**可由事件 + 重放得到的 `state_digest` 重建**（7.4） |
 | `ts` | int | 是 | 首次提交现实时间毫秒 |
 | `expires_at` | int \| null | 是 | 淘汰时间（默认 `ts + IDEM_TTL_DAYS(90) * 86400_000`） |
 
@@ -313,6 +382,23 @@ idempotency_key = sha256_hex(
 
 - 淘汰：检查点写入时顺手剔除 `expires_at < now` 的记录；保留**最近 `IDEM_KEEP = 4096` 条**为硬下限。
 - 这是「重复提交不重复副作用」（GDD §24.1、风险 R2）的**唯一**机制——不靠调用方自觉。
+
+### 7.4 索引可由事件日志重建（崩溃安全的关键性质）
+
+因为**一条事件 = 一次提交**（A0），且事件封套自带 `idempotency_key`、`commit_id`、`seq` 与本次提交的
+全部入参，幂等索引的**每一条记录都能从事件日志自身重建**（字段映射见 7.2 的 `request_digest` /
+`result_digest` 行）：
+
+- `key` ← 事件的 `idempotency_key`（`null` 不入索引）；
+- `commit_id` / `seq` / `event_ids` ← 事件自身的 `commit_id` / `seq` / `[event_id]`；
+- `request_digest` ← 对事件封套承载提交入参的那组字段做规范化 SHA-256；
+- `result_digest` ← 对该事件 + 重放到该事件时的块摘要（`state_digest`）做规范化 SHA-256。
+
+**这条性质消除了「事件已落盘、检查点未写」时崩溃的幂等缺口**：旧稿依赖「幂等记录随检查点补齐」，
+在补齐前用同键重试会被误判为新提交、产生**第二次副作用**。改为**恢复时顺带重建索引**（第 9 节步骤 4）后，
+同键重试**恒**返回 `replayed`。
+
+> 检查点里的 `indexes.idempotency` 因此只是**加速副本**：唯一真相在**事件日志**。
 
 ---
 
@@ -330,26 +416,33 @@ state.commit(...)                       ← 战役级 RLock 取锁（同 Session
    ③ 幂等查表（第 7.3 节）── 命中重放 / 冲突 → 直接返回（不取事件号）
    ④ 版本校验：base_seq == 当前 seq ？
         否 → 冲突策略（8.2）→ 返回 status="conflict"
-   ⑤ 生成事件：分配 seq（连续）、commit_id、event_id；计算块新值
-   ⑥ 追加 events.ndjson（每行一条）+ flush + os.fsync
+   ⑤ 生成**唯一一条**事件：分配 seq（= 当前 seq + 1）；由 seq 派生 `commit_id` 与 `event_id`；计算块新值
+   ⑥ 追加 `events.ndjson`（**一行 = 本条事件 = 本次提交**，A0）+ flush + os.fsync
    ⑦ 应用到内存态（blocks / indexes / seq / world_time / stream）
-   ⑧ 记幂等记录（内存 + 将来随检查点落盘）
+   ⑧ 记幂等记录（内存；落盘由检查点加速副本 + 恢复时的「日志重建」双保，见 7.4）
    ⑨ 检查点？（按 6.3 的时机）
    ⑩ 释放锁，返回 CommitResult
 ```
+
+> **A0 的机械后果**：⑤ 只产出一条事件，⑥ 只追加一行。因此相对一次提交，崩溃点只有三种位置——
+> **行前**（⑤ 之前）、**行中**（⑥ 追加本行时）、**行后**（⑥ 返回之后）。**不存在**「提交内中间崩溃」。
 
 **`CommitResult`**
 
 ```json
 {
   "status": "committed | replayed | conflict | rejected",
-  "commit_id": "yunji:c00000031",
+  "commit_id": "yunji:c00000042",
   "seq_from": 42, "seq_to": 42,
   "event_ids": ["yunji:e000000000042"],
   "state_digest": "<对提交后 seq + blocks 摘要的 sha256>",
   "error": null
 }
 ```
+
+**A0 不变量**：成功提交时恒有 `seq_from == seq_to` 且 `len(event_ids) == 1`（测试断言，第 14 节）。
+`replayed` 复用首次的 `commit_id` / `seq_*` / `event_ids`；`conflict` / `rejected` **不写任何事件**，
+`seq_*` 不带新号（返回当前 `seq` 供调用方重读）。
 
 ### 8.2 冲突策略（乐观并发）
 
@@ -367,16 +460,22 @@ state.commit(...)                       ← 战役级 RLock 取锁（同 Session
 
 ### 8.3 崩溃点 → 持久状态
 
+**前提（A0）**：一次提交 = 一条事件 = `events.ndjson` 的一行。因此相对一次提交，崩溃只有**三种位置**：
+**行前**（⑤ 之前）、**行中**（⑥ 追加本行时）、**行后**（⑥ 返回之后）。
+「同一逻辑提交的多条事件之间崩溃」这一情形**不存在**（没有第二条事件可写）。
+
 | 崩溃发生在 | 磁盘上 | 恢复结果 |
 |---|---|---|
-| ⑤ 之前 | 无新事件 | 提交未发生（幂等键未记，调用方可安全重试） |
-| ⑥ 追加中途（半行） | 末行不完整 | 丢弃末行，提交**未发生**（半行无 `\n` 或 JSON 解析失败） |
-| ⑥ 完成、⑦ 前 | 事件已落，内存未应用 | 重启重放该事件 → 提交**已发生**；幂等记录随检查点补齐（7.3 表按 `request_digest` 仍能挡重复） |
+| **① 行前**（⑤ 之前） | 无新事件 | 提交**未发生**；幂等键既不在索引也未在日志 → 重试按**新提交**处理，只发生一次副作用 |
+| **② 行中**（⑥ 追加本行时，半行） | 末行不完整（无 `\n` 或 JSON 解析失败） | **丢弃末行 → 本次提交的全部 `changes` 都不生效**（原子回到提交前）；`seq` 不前进（下次仍分配同一号）；幂等键未记 → 重试按**新提交**处理 |
+| **③ 行后·⑦ 前** | 事件已**完整**落盘（含 `\n` + `fsync`），内存态未应用 | 重启重放该事件 → 提交**已发生**；幂等索引**由日志重建**（7.4）→ 同键重试 = `replayed`，**不产生第二次副作用** |
 | ⑦ 后、⑨ 前 | 事件已落，检查点旧 | 重启：检查点 + 尾部重放 → 存活态一致 |
-| ⑨ 中途（写 `.tmp` 时） | 旧 `snapshot.json` 完好 | 丢弃 `.tmp`，用旧检查点 + 重放 |
+| ⑨ 中途（写 `.tmp` 时） | 旧 `snapshot.json` 完好 | 丢弃 `.tmp`，用旧检查点 + 重放；**事件日志不动**（提交仍已发生） |
 | ⑨ `os.replace` 时 | 新版或旧版二选一（原子） | 都一致（`os.replace` 不产生半个文件） |
 
-> 关键性质：**「提交已发生」的判据是事件是否落进 `events.ndjson`**，检查点只影响恢复速度，不影响正确性。
+> **关键性质**：「提交已发生」的**唯一判据**是事件是否**完整**落进 `events.ndjson`（整行 + `\n`）；
+> 检查点只影响恢复速度，不影响正确性。因为一次提交只有一行，这个判据**只有「整行在 / 整行不在」两态**，
+> 没有「半发生」的中间态——这正是把多事件提交收成单事件（A0）要买的东西。
 
 ### 8.4 反模式（禁止）
 
@@ -392,15 +491,22 @@ state.commit(...)                       ← 战役级 RLock 取锁（同 Session
 
 1. **检查点**：`snapshot.json` 存在且 `checksum` 校验通过 → 用它；校验失败 / 解析失败 → 退 `snapshot.json.bak`；
    都失败 → 退**创世态**并记一条 `state_corrupt` 说明（**绝不猜内容**）。
-2. **事件日志**：逐行解析 `events.ndjson`（+ 归档段）。
-   - 末行无 `\n` 或 JSON 解析失败 → **丢弃末行**（半写），记一条说明。
-   - 中间行解析失败或 `seq` 不连续 → **拒载**（不自动跳过——中间断裂意味着日志被外部改坏，
-     自动跳过会静默丢事实）；返回 `None` + 说明，交由人工 / 备份处理。
-   - `seq ≤ snapshot.seq` 的行忽略（归档 / 重复段）。
-3. **重放**：按 `seq` 顺序应用 `changes`（第 6.2 节）。
-4. **清理**：`*.tmp` 一律删除（原子写残留）。
+2. **事件日志**：逐行解析 `events.ndjson`（+ 归档段）。**因为一行 = 一次提交（A0），丢一行 = 丢一整个提交，
+   永远不会留下「部分提交」**。
+   - 末行无 `\n` 或 JSON 解析失败 → **丢弃末行**（半写；即 §8.3「行中」崩溃），记一条说明。
+   - `seq ≤ snapshot.seq` 的行忽略（归档段 / 与归档重叠的重复段）——**这是唯一允许出现的重复**。
+   - 在**计入重放的区间**（`seq > snapshot.seq`）内：中间行解析失败、`seq` 不严格递增（跳号 / 回退，
+     含**同一 `commit_id` 出现两次**）→ **拒载**（不自动跳过——区间内断裂 / 重复意味着日志被外部改坏；
+     A0 下同一 `commit_id` 在区间内重复本不可能）；返回 `None` + 说明，交由人工 / 备份处理。
+3. **重放**：按 `seq` 顺序应用 `changes`（第 6.2 节）。**同一提交内的多项 `changes` 一次性、整体应用**——
+   行是完整的才进得了这一步，故不会应用一半。
+4. **重建幂等索引**：重放过程中按 7.4 从事件日志重建 `indexes.idempotency`（`idempotency_key` 非 `null`
+   的事件），以日志为准补全 / 覆盖检查点里的副本。**这一步保证「事件已落盘、检查点未写」时崩溃也不丢幂等键**
+   （§8.3「行后·⑦ 前」），同键重试恒为 `replayed`。
+5. **清理**：`*.tmp` 一律删除（原子写残留）。
 
-**测试锚点**：`kill -9` 落在 8.3 的每一行都要有一条用例（第 14 节）。
+**测试锚点**：`kill -9` 落在 8.3 的每一行都要有一条用例（第 14 节）；「行中」崩溃额外断言
+**本次提交的全部 `changes` 都不生效**（原子性），以及「行后·⑦ 前」崩溃后**索引重建 → 重试不重复副作用**。
 
 ---
 
@@ -445,7 +551,7 @@ state.commit(...)                       ← 战役级 RLock 取锁（同 Session
 | 块 | 权威方 | 在本层里的角色 | 不变量 |
 |---|---|---|---|
 | `rules` | `prism_core.RuleSession`（`snapshot()` L454 / `from_snapshot()` L475） | **不透明块**：原样存、原样取。规则态的唯一真相仍在 `prism_core`（现状口径不变） | 本层**不** import `prism_core`（S4）。规则态变更由调用方在锁内用 prism_core 公开 API 算出新快照，**作为 `changes` 的 `after` 交提交** |
-| `atlas` | `atlas.py`（`export_state` L445 / `restore_state` L497） | **不透明块**：原样存。地图重建**仍走 `atlas.restore_state`**（种子 + deltas） | **同一事实只有一处权威回放**：地图增量以 `atlas` 块内 `deltas` 为准，顶层事件日志**不重复**存地图增量（否则两份真相必然漂移）。顶层只记「发生过一次 `map.move`」并带 place id 供审计 |
+| `atlas` | `atlas.py`（`export_state` L445 / `restore_state` L497） | **不透明块**：原样存。地图重建**仍走 `atlas.restore_state`**（种子 + deltas） | **同一事实只有一处权威回放**：地图增量以 `atlas` 块内 `deltas` 为准，顶层事件日志**不重复**存地图增量（否则两份真相必然漂移）。顶层只记**一条** `map.move` 事件（A0）并带 place id 供审计 |
 | `guide` | `prism_guide`（`empty_guide` L689 / `guide_from` L717） | **非权威展示块**：原样存；salt 必须保留 | `guide` **不进事件溯源**（S2）：`transcript`、`realizations`、AI 文本都不是事实（GDD §24.1）。秘密 / 线索的可见范围只以 `visibility` 表达，**不把秘密内容写进事件**（GDD §12.4） |
 | `stream`（叙事流） | `notdnd_web.Session`（`add_log` L502） | 展示流，游标 `cursor`（原 `seq`） | 与事件 `seq` **两条独立序列**，禁止互相赋值；`/api/log?since=` 继续读 `cursor` |
 | `chron` | **M9**（本层只留位） | 预留不透明块名 | M9 的排程 / 时钟态落在 `blocks.chron`；本层不解析（S8） |
@@ -469,7 +575,7 @@ class Handle:
     def commit(self, *, base_seq, idempotency_key, type, actor, target=None,
                cause=None, visibility=None, changes=(), rules_version,
                roll_refs=(), world_time=None, source="player",
-               revalidate=None) -> dict: ...        # 返回 CommitResult（第 8.1 节）
+               revalidate=None) -> dict: ...        # 返回 CommitResult（第 8.1 节）；**恰好产出 1 条事件**（A0）
     def replay(self, upto_seq=None) -> dict: ...     # 从创世或检查点重放出完整状态
     def flush(self) -> None: ...                     # 强制写检查点（优雅退出用）
     def close(self) -> None: ...
@@ -480,12 +586,18 @@ class StateError(Exception): ...
 ```
 
 - 依赖方向：`Handle` 里**没有** `prism_core` / `atlas` / `prism_guide` 的符号（S4）。
+- **A0 的契约约束**：`commit()` **没有** `events` 参数——一次调用只由 `changes`（任意多项变更）
+  生成**一条**事件；多事件提交在接口层面**无法表达**（第 5.0 节）。
 - `import state` **不得**触碰磁盘（沿用「no side effects on import」口径，`GDD-BASELINE.md` §6.5）。
 
 ### 12.2 给 M8（`ACTION-DESIGN.md`）
 
 - 提案（Action Proposal）在**进入提交**时必须自带：`base_seq`、`idempotency_key`、`type`、`actor`、
   `target`、`visibility`、`changes`、`rules_version`、`roll_refs`、`source`。
+- **一次提交只产出 1 条事件**（A0）：M8 的「一批状态变更（`changes`）+ 一条事件」正是本契约，
+  `CommitResult.event_ids` 长度为 1。**注意**：`ACTION-DESIGN.md` §7.4 另有一条「一次提交可含多个事件」
+  的相反表述（2026-10-11 随 PR #174 合入），已按本文 §5.0 作废，**修订顺序见 §5.0「冲突收口安排」**。若一次行动
+  确需异种 `type` / `visibility`，请拆成多次 `commit()`（各带幂等键），不要指望单次提交写多条事件。
 - M8 的「行动结果契约」（GDD §8.4）→ 本文的映射：`effects` / `consequences` → `changes`；
   `event_ids` ← `CommitResult.event_ids`；`time_cost` **不进本层**（属 CHRON / M9）；
   `status`（`success|partial|failure|blocked`）**不进本层**（它是行动语义，不是提交状态）。
@@ -503,6 +615,8 @@ class StateError(Exception): ...
 - `campaign_id` 与连接 id 分离（S7）：M10 允许多个 `sid` 指向同一 `campaign_id`。
 - 并发：M10 复用「战役级串行 + 乐观 `base_seq`」；抢物品 / 同时攻击 / 重复提交的测试清单直接打在 `commit()` 上。
 - 权限：`visibility`（5.1）是**信息过滤的输入**，不是权限模型本身；M10 拥有权限模型（GDD §12.4）。
+- **一次提交 = 一条事件**（A0）：一条事件只有**一份** `visibility`。若一次操作需按不同可见范围分别披露，
+  拆成多次 `commit()`（各自 `idempotency_key`），不要把多可见范围塞进一条事件。
 - 断线重连：客户端从 `view()`（或 `snapshot + 事件尾部`）恢复，与 GDD §18.4「从已提交事件序列或当前快照恢复」一致。
 
 ---
@@ -514,9 +628,9 @@ class StateError(Exception): ...
 | 物品唯一归属（不能被两人同时拥有） | 战役级串行提交 + `base_seq` 乐观校验（8.2）：同一物品的两次认领，必有一次拿到 `conflict` |
 | 死亡 / 伤害 / 资源消耗 / 任务完成**可溯源** | 每个事实变更都有事件（`changes` + `roll_refs` + `cause`） |
 | 唯一权威时钟；客户端本地时间不得改排程 | 本层**无时钟**（S8）；`ts` 仅审计；顺序只认 `seq` |
-| 重复提交不重复副作用 | 幂等键（第 7 节） |
+| 重复提交不重复副作用 | 幂等键（第 7 节）；索引**可由事件日志重建**（7.4）→ 崩溃后重试仍被挡 |
 | AI 文本 ≠ 状态变化 | `guide` 块不进溯源（第 11 节）；`changes` 不得来自模型输出（8.4） |
-| — （本层自定） | 事件 `seq` **无空洞**；检查点 `checksum` 一致；`replay == live`（6.2） |
+| — （本层自定） | **一次提交 = 一条事件**、`commit_id` 与事件 1:1 且在重放区间内唯一（A0）；事件 `seq` **无空洞**；检查点 `checksum` 一致；`replay == live`（6.2） |
 
 **执行命令（每条实现单都要真跑）**
 
@@ -532,31 +646,36 @@ python3 -m py_compile state.py tests/test_state.py
 ## 14. 测试计划
 
 新增 `tests/test_state.py`（沿用 `tests/README.md`：随机 / 临时存档目录、必收摊、无第三方依赖）。
-算法契约至少覆盖下列四组（验收标准点名的三组 + 迁移）：
+算法契约至少覆盖下列**五组**：
 
 | 组 | 用例 | 断言 |
 |---|---|---|
 | **幂等** | 同一 `idempotency_key` 提交两次 | 事件数不变（`+1` 非 `+2`）；第二次 `status="replayed"`；`result_digest` 与首次相同；**副作用只发生一次**（如物品只被移除一次） |
 | | 同键、不同 `request_digest` | `status="conflict"`；**不写任何事件**；错误码固定 |
 | | 键过期后再提交 | 视为新提交（可再写一次），语义边界与文档一致 |
+| **提交原子性（A0）** | 契约：`commit()` 无多事件入口 | 签名**无** `events` 形参；一次成功提交后日志**只多一行**；`seq_from == seq_to` 且 `len(event_ids) == 1` |
+| | 一次提交内**多项 `changes`**（跨 `rules`/`atlas`，含 `set`/`unset`/`delta`/`append`） | 回放后**全部**变更都生效；行完整时 `replay == live` |
+| | 该行**行中崩**（半行） | 末行被丢弃 → 本次提交的**全部 `changes` 都不生效**（原子回到提交前）；`seq` 不前进；`replay == live` |
+| | 日志守卫：重放区间内同一 `commit_id` 唯一 | 扫描**计入重放的区间**（`seq > snapshot.seq`），任何 `commit_id` 计数恒为 1（归档重叠段按 §9 忽略）；若有「一次提交多条事件」混入即红 |
 | **快照重建 == 存活态** | 创世 + 全量事件回放 | 与存活态规范化 JSON **逐字节相等** |
 | | 检查点 + 尾部回放 | 同上（检查点滞后不影响结果） |
 | | 空检查点 / 只有检查点无事件 | 与创世态相等 |
-| **崩溃恢复** | 追加中途崩（半行） | 末行被丢弃；提交未发生；`replay == live` |
-| | 追加完成、检查点未写 | 重启重放即得提交后的态；幂等仍生效 |
+| **崩溃恢复** | 追加中途崩（半行，§8.3「行中」） | 末行被丢弃；提交**整体**未发生；`replay == live` |
+| | 追加完成、检查点未写（§8.3「行后·⑦ 前」） | 重启重放即得提交后的态；**幂等索引由日志重建**（7.4）→ 同键重试 = `replayed`，事件数不变（**不重复副作用**） |
 | | 检查点损坏 + `.bak` 有效 | 用 `.bak` + 重放恢复；记说明 |
 | | 检查点与 `.bak` 都坏 | 退创世态 + 记 `state_corrupt`；**不猜** |
-| | 日志中间断裂（`seq` 跳号） | **拒载**（返回 `None` + 说明），不自动跳过 |
+| | 日志中间断裂（重放区间内 `seq` 跳号 / 重复 `commit_id`） | **拒载**（返回 `None` + 说明），不自动跳过；归档重叠段不触发拒载 |
 | | `.tmp` 残留 | 加载时清理；不影响结果 |
 | **迁移** | 老单文件档（含 `rules`/`atlas`/`guide`/`log`）加载 | 各块逐字无损；salt 保留；`stream.cursor` 与老 `seq` 相等 |
 | | 迁移往返 | 迁移→检查点→重载：规范化 JSON 相等；`.bak` 存在 |
 | | `schema_version` 更高 | **拒载**且**不写盘**（文件指纹不变） |
 | | 老档缺块 / 脏值 | 按「只补不覆盖 + 脏值降级」处理，不因一键删掉整块 |
 
-另加两条**结构**断言（防越权）：
+另加三条**结构**断言（防越权 / 防契约漂移）：
 
 - `import state` 时**不触碰磁盘**（在空目录里 import 后目录仍为空）。
 - `state.py` 的源码**不出现** `prism_core` / `prism_guide` / `atlas` 的 import（S4 的机械守卫）。
+- `inspect.signature(Handle.commit)` **不含** `events` 形参，且一次成功提交后日志行数**恰好 +1**（A0 的契约守卫）。
 
 ---
 
@@ -574,6 +693,8 @@ python3 -m py_compile state.py tests/test_state.py
 | R8 | `changes` 的 `path` 是弱契约（字符串） | `before`/`after` 让错误**可发现**（应用后摘要不符即冲突）；M7 不做 schema 级 path 校验 |
 | R9 | 并发重试风暴（多人抢资源） | 8.2 的 `revalidate` 钩子留位；M10 用并发测试清单量化 |
 | R10 | 敏感内容进事件（秘密、私聊） | `visibility` 表达范围；秘密正文**不写进 `changes`**（第 11 节）；M10 权限模型收口 |
+| R11 | 下游文档仍写「一次提交可写多个事件」：`MULTIPLAYER-DESIGN.md` §7.5、`ACTION-DESIGN.md` §7.4（后者 2026-10-11 随 PR #174 合入） | **收口安排见 §5.0「冲突收口安排」**：本单合并后立即各开两条文档单修订，且**两单必须早于 Issue #163（M7-1）合入**；否则实现方会同时面对两套相反口径 |
+| R12 | 单事件下，需异种 `type` / `visibility` 的操作只能拆成多次提交，失去「一次事务」的原子合并 | 明确为设计取舍（§5.0「表达能力不受损」段）：每次提交各自原子 + 幂等；若将来确有「多事件一事务」需求，按 §5.0「将来若要放宽」先行定义提交组完整性判定 |
 
 **开放问题（记录在案，不阻塞 M7）**
 
@@ -593,12 +714,14 @@ python3 -m py_compile state.py tests/test_state.py
 - **标签：** `难度：高`，`能力：编程`，`能力：逻辑`
 - **依赖：** 无（`STATE-DESIGN.md` 已合并）。
 - **文件：** `state.py`（新建）、`tests/test_state.py`（新建）
-- **说明：** 落第 4.1 布局、第 5 节事件封套、第 7 节幂等、第 8 节提交时序（含 8.3 崩溃点）、第 6.1 检查点字段、
-  `validate_event`（5.4）、`open_campaign` / `Handle` 骨架（12.1）。**只做库**，不碰 HTTP、不碰 `notdnd_web.py`。
+- **说明：** 落第 4.1 布局、第 5 节事件封套（含 A0 单事件约束）、第 7 节幂等（含 7.4 索引可由日志重建）、
+  第 8 节提交时序（含 8.3 崩溃点）、第 6.1 检查点字段、`validate_event`（5.4）、`open_campaign` / `Handle` 骨架（12.1）。
+  **只做库**，不碰 HTTP、不碰 `notdnd_web.py`。
 - **可改：** `state.py`，`tests/test_state.py`
 - **禁改：** `notdnd_web.py`，`prism_core.py`，`prism_guide.py`，`atlas.py`，`atlas_compile.py`，`atlas_gen.py`，
   `static/**`，`data/**`，`docs/**`，`.github/**`，`README.md`，`MASTER.md`，其它既有 `tests/**`
-- **验收：** `python3 tests/test_state.py` 通过；覆盖第 14 节的**幂等**组与**崩溃恢复**组的全部用例；
+- **验收：** `python3 tests/test_state.py` 通过；覆盖第 14 节的**幂等**组、**提交原子性（A0）**组与
+  **崩溃恢复**组的全部用例；一次提交只写一行、`seq_from == seq_to`、`commit_id` 在日志中唯一（A0）；
   `seq` 无空洞；`import state` 不触碰磁盘；源码无业务模块 import；`bash tests/run_all.sh` 与
   `bash tests/content_firewall.sh` 通过。
 
@@ -673,13 +796,17 @@ python3 -m py_compile state.py tests/test_state.py
 2. **事实与展示分家**：事件日志（权威）与叙事流 `stream`（可丢）两条独立序列，序号互不赋值。
 3. **唯一提交出口**：业务模块只交「不透明新块 + 声明式 `changes`」，`state.py` 只排号 / 留痕 / 落盘 / 重放 / 迁移。
 4. **`state.py` 零业务依赖**：不 import `prism_core` / `atlas` / `prism_guide`，机械守卫写进测试。
-5. **原子提交 = 追加 + fsync（日志）与 临时写 + `os.replace`（检查点）**；「提交已发生」只由日志判定。
+5. **原子提交 = 追加 + fsync（日志）与 临时写 + `os.replace`（检查点）**；「提交已发生」只由日志判定（整行 + `\n`）。
+   **一次提交恰好一条事件（A0）**：一行追加即一次提交，崩溃只有「行前 / 行中 / 行后」三态，**不存在部分提交**。
 6. **幂等键由提交方提供**（`sha256(campaign_id, actor, action_id, client_token)`），状态层只查表与判重；
    同键不同载荷 → 冲突；同键同载荷 → 重放。
 7. **版本分层且拒载高版本**：`STATE_VERSION` / `EVENT_VERSION` / 块内版本各自管理，读到更高版本不降级。
 8. **`world_time` 不透明**，语义归 M9；`campaign_id` 与 `sid` 分离，M7 相等、M10 解耦。
 9. **惰性迁移**，保留 `.bak`，老档的展示流无损搬进 `stream`，权威日志自迁移点起算（不伪造历史）。
 10. **地图不与事件日志双写**：地图重放仍以 `atlas` 块内的 `deltas` 为唯一权威路径。
+11. **单事件提交（A0）**：`commit_id` 由 `seq` 派生、与事件 1:1；`commit()` **无** `events` 入口，
+    多事件提交在契约层**无法表达**；若将来放宽，须先在本文定义**持久化的提交组完整性判定**。
+    **幂等索引可由事件日志重建**（7.4）——「事件已落盘、检查点未写」时崩溃，同键重试恒不重复副作用。
 
 ---
 
