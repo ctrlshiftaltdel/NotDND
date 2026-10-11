@@ -77,6 +77,25 @@ G7 覆盖（行为与对白）：
   `npc_at`；音色取自那一拍；
 - 路人 id `^inc-[0-9a-f]{8}$`、确定、不等于 `npc-01`；manner 沾 `C-` 线索或秘密
   的路人丢掉；`reveal_next_trace` 每次至多揭开一条。
+
+M8-A2 覆盖（NL → 提案与一次性澄清，ACTION-DESIGN §4.2 / §6.3）：
+
+- `action_menu` / `entity_index` / `resolve_verb` / `resolve_target`：只认 id 与
+  世界卡里的原字名字；同名多条即歧义；纯函数、不猜近义词；
+- `build_propose_messages` / `build_propose_body`：世界卡与叙事同源、
+  行动表逐行、密钥不入体、`stream` 为 false、纯函数；
+- `parse_propose_json`：SSE `data:` 行与整段 JSON 走**同一个** `assemble_chat_stream`
+  入口，结果等价（不新增传输路径）；
+- `propose_nl`：NL → 过 A1 `validate_proposal` 的提案（名字对回 id、风险级
+  表优先、脏字段回退默认）；没有 AI 配置返回 `offline` 且不请求上游；
+  上游失败 / 空回包收成 §9.5 的固定短语；
+- 无效实体引用（行动不在表里 / 目标不存在）→ 固定短语**拒绝**，不产出坏提案；
+  坏问题（选项不足 / 对不上世界 / 问 target 却没行动）不许问；
+- 一次澄清：模型自己问或服务端发现歧义 → 只问一次；回答（选项 id / 标签）确定性
+  并入草案、不叫模型；自由文本回答再解析一次但只补 `missing` 一个字段；仍歧义 →
+  拒绝，**永不**二次追问；被改过的草案一律重验；
+- `commit_snapshot` / `build_commit_messages`：叙事消息数组的 L4 用提交后快照
+  重拼，与实时状态双向隔离（§7.2 / §7.5）。
 """
 
 import base64
@@ -512,6 +531,17 @@ def test_transport_injectable_and_build_offline():
                                          _wall_key_nodes() + [_wall_street()]),
                                 canon)
         pg.fallback_realization(canon)
+        # M8-A2 的构建路径同样离线：行动表 / 实体表 / 消息数组 / 请求体 / 快照。
+        half = {"scene": {"id": "sc-1", "actions": [
+            {"id": "a-1", "label": "勘察"}]}, "party": []}
+        pg.action_menu(half)
+        pg.entity_index(bound)
+        pg.resolve_verb(pg.action_menu(half), "a-1")
+        pg.resolve_target(pg.entity_index(bound), "霍砚")
+        pg.build_propose_messages(half, bound, "看一下")
+        pg.build_propose_body([{"role": "user", "content": "x"}], env=env)
+        pg.commit_snapshot(half, bound)
+        pg.build_commit_messages(pg.commit_snapshot(half, bound), "看一下")
     finally:
         pg.TRANSMIT = saved
     ok("上游调用只走可替换的传输入口；构建路径离线、不碰传输")
@@ -2303,6 +2333,513 @@ def test_g7_reveal_next_trace():
     ok("reveal_next_trace：每次至多揭开一条，同地点按顺序")
 
 
+# ── M8-A2：NL → 提案与一次性澄清（ACTION-DESIGN §4.2 / §6.3）─────────────
+
+_A2_ACTIONS = (
+    {"id": "a-persuade", "label": "说服", "kind": "check", "df": 12},
+    {"id": "a-sneak", "label": "潜行", "kind": "check", "df": 13},
+)
+
+_A2_ENV = {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+           "API_KEY": "kk"}
+
+
+def _a2_rules(actions=None, party=True, active="u-2"):
+    """一张带行动表与一队人的规则快照（`active_unit_id` 优先于 `party[0]`）。"""
+    raw = _A2_ACTIONS if actions is None else actions
+    rules = {"scene": {"id": "sc-a2",
+                       "actions": [dict(item) if isinstance(item, dict) else item
+                                   for item in raw]},
+             "active_unit_id": active, "party": []}
+    if party:
+        rules["party"] = [{"id": "u-1", "name": "艾拉", "level": 2,
+                           "attributes": {"MGT": 5}},
+                          {"id": "u-2", "name": "石坚", "level": 1,
+                           "attributes": {"MGT": 6}}]
+    return rules
+
+
+def _a2_guide(scenario="yunji"):
+    guide = pg.empty_guide()
+    guide["scenario_id"] = scenario
+    guide["world_key"] = scenario
+    return guide
+
+
+def _a2_send(envelope, *, calls=None, raw=None, boom=False):
+    """假传输（M8-A2 的解析段）：回包 `content` 取序列化后的 envelope。"""
+    def fake(url, payload, headers, *, timeout):
+        if calls is not None:
+            calls.append({"url": url, "payload": payload, "headers": headers,
+                          "timeout": timeout})
+        if boom:
+            raise pg.TransportError("loopback")
+        content = raw if raw is not None else json.dumps(envelope,
+                                                         ensure_ascii=False)
+        return {"content": content, "tool_calls": [], "usage": {}}
+    return fake
+
+
+def _a2_sse(text, size=7):
+    """把一段正文切成 SSE 增量块（与 `assemble_chat_stream` 对齐）。"""
+    lines = []
+    for start in range(0, len(text), size):
+        obj = {"choices": [{"delta": {"content": text[start:start + size]}}]}
+        lines.append("data: " + json.dumps(obj, ensure_ascii=False) + "\n\n")
+    lines.append("data: [DONE]\n\n")
+    return "".join(lines).encode("utf-8")
+
+
+def test_a2_menu_and_entity_index():
+    """行动表 / 实体表 / 引用解析（纯函数）：只认 id 与原字名字，同名即歧义。"""
+    menu = pg.action_menu(_a2_rules(actions=[
+        {"id": "a-1", "label": "勘察"},
+        {"id": "", "label": "空 id"},
+        "不是字典",
+        {"label": "没有 id"},
+        {"id": "a-2", "label": "说服", "risk": "R3"},
+        {"id": "a-3", "label": "乱写", "risk": "R9"}]))
+    assert [item["id"] for item in menu] == ["a-1", "a-2", "a-3"]
+    assert menu[1]["risk"] == "R3" and menu[2]["risk"] == ""
+    assert pg.action_menu(None) == [] and pg.action_menu({}) == []
+    assert pg.action_menu({"scene": {"actions": None}}) == []
+
+    index = pg.entity_index(_a2_guide())
+    assert index["npc-01"] == {"kind": "npc", "name": "霍砚"}
+    assert index["loc-01"] == {"kind": "location", "name": "冠台"}
+    assert index["C-01"]["kind"] == "thread"
+    assert index["ladders"]["kind"] == "node"
+    assert pg.entity_index(pg.empty_guide()) == {}
+    assert pg.entity_index({"scenario_id": "没有这场"}) == {}
+
+    assert pg.resolve_target(index, "npc-01") == (
+        {"kind": "npc", "id": "npc-01"}, [])
+    assert pg.resolve_target(index, "霍砚") == (
+        {"kind": "npc", "id": "npc-01"}, [])
+    # 「千梯」既是地点（loc-10）又是节点（ladders）→ 歧义；返回值按 id 排序。
+    assert pg.resolve_target(index, "千梯") == (None, ["ladders", "loc-10"])
+    assert pg.resolve_target(index, "查无此人") == (None, [])
+    assert pg.resolve_target(index, "") == (None, [])
+    assert pg.resolve_target(index, "npc") == (None, [])
+
+    hit, hits = pg.resolve_verb(menu, "a-2")
+    assert hit["label"] == "说服" and hits == []
+    dup = [{"id": "x-1", "label": "说服"}, {"id": "x-2", "label": "说服"}]
+    assert pg.resolve_verb(dup, "说服") == (None, ["x-1", "x-2"])
+    assert pg.resolve_verb(dup, "说") == (None, [])
+    assert pg.resolve_verb(menu, "") == (None, [])
+    ok("action_menu / entity_index / resolve_*：只认 id 与原字名字，同名即歧义")
+
+
+def test_a2_propose_messages_and_body():
+    """解析段消息数组 / 请求体：世界卡同源、行动表逐行、密钥不入体、纯函数。"""
+    rules = _a2_rules()
+    guide = _a2_guide()
+    before = json.dumps([rules, guide], ensure_ascii=False, sort_keys=True)
+    messages = pg.build_propose_messages(rules, guide, "我想说服守卫")
+    assert [m["role"] for m in messages] == ["system", "user", "assistant",
+                                             "user"]
+    assert messages[0]["content"] == pg.PROPOSE_SYSTEM
+    assert messages[1]["content"] == pg.l1_for(guide)
+    assert "npc-01 霍砚" in messages[1]["content"], "世界卡里要有实体 id 与原名"
+    task = messages[-1]["content"]
+    assert "【解析】" in task and "我想说服守卫" in task
+    assert "a-persuade 说服" in task and "a-sneak 潜行" in task
+    # 回答路径：问题、回答、草案与「只补一个字段」都带进 user 段。
+    clarify = {"missing": "target", "question": "你要说服谁？",
+               "options": [{"id": "npc-01", "label": "霍砚"}],
+               "proposal_draft": {"intent": {"verb": "a-persuade"}}}
+    again = pg.build_propose_messages(rules, guide, "我想说服守卫",
+                                      clarify=clarify, answer="霍砚")
+    task = again[-1]["content"]
+    assert "你要说服谁？" in task and "霍砚" in task
+    assert "a-persuade" in task
+    assert "只补 target 这一个字段" in task
+
+    body = pg.build_propose_body(messages, env=_A2_ENV)
+    assert body["model"] == "mm" and body["stream"] is False
+    assert body["thinking"] == {"type": "disabled"}
+    assert body["temperature"] == pg.PROPOSE_TEMPERATURE
+    assert body["max_completion_tokens"] == pg.PROPOSE_MAX_TOKENS
+    assert body["messages"] == messages
+    assert "kk" not in json.dumps(body, ensure_ascii=False)
+    assert json.dumps([rules, guide], ensure_ascii=False,
+                      sort_keys=True) == before, "构建路径不得改入参"
+    # 没有行动表时也要能拼出请求（行动表一行写「空」）。
+    bare = pg.build_propose_messages({"scene": {"actions": []}}, {}, "看一眼")
+    assert "（空：这场没有可执行行动）" in bare[-1]["content"]
+    ok("build_propose_messages / build_propose_body：同源世界卡、密钥不入体、纯函数")
+
+
+def test_a2_parse_propose_json_both_encodings():
+    """两种回包编码都走同一个组装入口：SSE `data:` 行与整段 JSON 等价。"""
+    envelope = {"type": "proposal", "verb": "a-persuade", "target": "npc-01",
+                "desired": "进去"}
+    text = json.dumps(envelope, ensure_ascii=False)
+    whole = json.dumps({"choices": [{"message": {"content": text}}]},
+                       ensure_ascii=False).encode("utf-8")
+    assert pg.assemble_chat_stream(whole)["content"] == text
+    assert pg.assemble_chat_stream(_a2_sse(text))["content"] == text
+    assert pg.parse_propose_json(pg.assemble_chat_stream(whole)) == envelope
+    assert pg.parse_propose_json(
+        pg.assemble_chat_stream(_a2_sse(text))) == envelope
+    # 抠不出对象 / 不是对象 / 空回包 → None（调用方翻成拒绝，不抛）。
+    assert pg.parse_propose_json({"content": "不是 JSON"}) is None
+    assert pg.parse_propose_json({"content": "[]"}) is None
+    assert pg.parse_propose_json({"content": ""}) is None
+    assert pg.parse_propose_json(None) is None
+    # 回包外面带杂质：取最外层那个对象（与实相同一套容错）。
+    assert pg.parse_propose_json({"content": "好的：" + text}) == envelope
+    ok("parse_propose_json：SSE 与整段 JSON 同一组装入口、结果等价")
+
+
+def test_a2_proposal_happy_path():
+    """NL → 提案：过 A1 Schema、行动者取活单位、名字对回 id、脏字段回退默认。"""
+    rules = _a2_rules()
+    guide = _a2_guide()
+    calls = []
+    envelope = {"type": "proposal", "verb": "a-persuade", "target": "霍砚",
+                "desired": "让守卫放行", "means": "口头交涉", "risk": "R1",
+                "time_cost": {"value": 5, "unit": "minute"}}
+    out = pg.propose_nl(rules, guide, "我想说服守卫让我进去", env=_A2_ENV,
+                        transmit=_a2_send(envelope, calls=calls))
+    assert out["status"] == "ok" and out["type"] == "proposal", out
+    proposal = out["proposal"]
+    assert prism_core.validate_proposal(proposal) == []
+    assert re.match(r"^p_[0-9a-f]{32}$", proposal["proposal_id"])
+    assert proposal["schema_version"] == prism_core.PROPOSAL_SCHEMA_VERSION
+    assert proposal["actor"] == {"kind": "player", "id": "u-2"}
+    assert proposal["intent"] == {"verb": "a-persuade",
+                                  "target": {"kind": "npc", "id": "npc-01"},
+                                  "desired": "让守卫放行", "means": "口头交涉"}
+    assert proposal["source"] == "nl" and proposal["risk"] == "R1"
+    assert proposal["time_cost"] == {"value": 5, "unit": "minute"}
+    assert proposal["raw_text"] == "我想说服守卫让我进去"
+    assert proposal["interruptible"] is True
+    assert isinstance(proposal["created_at"], int) and proposal["created_at"] > 0
+    assert len(calls) == 1
+    assert calls[0]["url"] == "https://api.example.com/v1/chat/completions"
+    assert calls[0]["headers"] == {pg.KEY_HEADER: "kk"}
+    assert calls[0]["timeout"] == pg.PROPOSE_TIMEOUT_S
+    assert "kk" not in json.dumps(calls[0]["payload"], ensure_ascii=False)
+    assert calls[0]["payload"]["stream"] is False
+
+    # 行动表里的风险级优先；表里没有就用模型的，都没有才用默认 R2。
+    risky = _a2_rules(actions=[{"id": "a-persuade", "label": "说服",
+                                "risk": "R3"}])
+    out_risk = pg.propose_nl(risky, guide, "我想说服守卫", env=_A2_ENV,
+                             transmit=_a2_send({"type": "proposal",
+                                                "verb": "a-persuade",
+                                                "risk": "R1", "desired": "进去"}))
+    assert out_risk["proposal"]["risk"] == "R3"
+    for bad in ("R9", "", None, 3):
+        out_bad = pg.propose_nl(rules, guide, "我想说服守卫", env=_A2_ENV,
+                                transmit=_a2_send({"type": "proposal",
+                                                   "verb": "a-persuade",
+                                                   "risk": bad, "desired": "进去"}))
+        assert out_bad["proposal"]["risk"] == pg.PROPOSE_DEFAULT_RISK
+        assert prism_core.validate_proposal(out_bad["proposal"]) == []
+
+    # 脏 desired / time_cost / target=null：回退到默认形状，仍是合法提案。
+    out_dirty = pg.propose_nl(rules, guide, "我想说服守卫", env=_A2_ENV,
+                              transmit=_a2_send({"type": "proposal",
+                                                 "verb": "a-persuade",
+                                                 "target": None,
+                                                 "desired": "",
+                                                 "time_cost": {"value": -1,
+                                                               "unit": "天"}}))
+    dirty = out_dirty["proposal"]
+    assert dirty["intent"]["target"] is None
+    assert dirty["intent"]["desired"] == "我想说服守卫"
+    assert dirty["time_cost"] == {"value": 0, "unit": "minute"}
+    assert prism_core.validate_proposal(dirty) == []
+
+    # 只走**全局** TRANSMIT 入口（不新增传输路径），且密钥只进请求头。
+    global_calls = []
+    saved, pg.TRANSMIT = pg.TRANSMIT, _a2_send(envelope, calls=global_calls)
+    try:
+        out_global = pg.propose_nl(rules, guide, "我想说服守卫", env=_A2_ENV)
+    finally:
+        pg.TRANSMIT = saved
+    assert out_global["type"] == "proposal" and len(global_calls) == 1
+    ok("propose_nl：提案过 A1 Schema、名字对 id、脏值回退、只走 TRANSMIT")
+
+
+def test_a2_offline_and_failure():
+    """没有 AI 配置 → 离线（不请求上游）；上游失败 / 空回包 → 固定短语拒绝。"""
+    rules, guide = _a2_rules(), _a2_guide()
+    boom = _a2_send({}, boom=True)
+    for env in ({}, {"BASE_URL": "", "MODEL": "mm", "API_KEY": "kk"},
+                {"BASE_URL": "  ", "MODEL": "mm", "API_KEY": "kk"},
+                {"BASE_URL": "https://api.example.com/v1", "MODEL": "",
+                 "API_KEY": "kk"},
+                {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm",
+                 "API_KEY": ""},
+                {"BASE_URL": "https://api.example.com/v1", "MODEL": "mm"}):
+        assert pg.propose_nl(rules, guide, "我想说服守卫", env=env,
+                             transmit=boom) == {"status": "offline",
+                                                "type": "offline"}
+    # 上游失败 / 空回包 / 不是对象：收成 §9.5 的固定短语，不抛、不产出提案。
+    for fake in (_a2_send({}, boom=True), _a2_send(None, raw=""),
+                 _a2_send(None, raw="随便一句"), _a2_send(None, raw="[1, 2]")):
+        out = pg.propose_nl(rules, guide, "我想说服守卫", env=_A2_ENV,
+                            transmit=fake)
+        assert out == {"status": "reject", "type": "reject",
+                       "reason": pg.PROPOSE_REJECTED}, out
+    # 空原文不叫模型。
+    called = []
+    empty = pg.propose_nl(rules, guide, "   ", env=_A2_ENV,
+                          transmit=_a2_send({}, calls=called))
+    assert empty["type"] == "reject" and called == []
+    # 子进程：import 之后掐掉 socket，离线路径照样跑（这条路径不联网）。
+    probe = subprocess.run(
+        [sys.executable, "-c",
+         "import json, socket, sys\n"
+         "import prism_guide as pg\n"
+         "def boom(*a, **k):\n"
+         "    raise AssertionError('不得开套接字')\n"
+         "socket.socket = boom\n"
+         "socket.create_connection = boom\n"
+         "out = pg.propose_nl({'scene': {'actions': []}, 'party': []}, {},\n"
+         "                    '看一眼', env={'BASE_URL': '', 'MODEL': '',\n"
+         "                                   'API_KEY': ''})\n"
+         "sys.stdout.write(json.dumps(out, ensure_ascii=False))\n"],
+        cwd=str(ROOT), capture_output=True, text=True)
+    assert probe.returncode == 0, probe.stderr
+    assert json.loads(probe.stdout) == {"status": "offline", "type": "offline"}
+    ok("propose_nl：离线不请求上游；上游失败收固定短语；import 期不开套接字")
+
+
+def test_a2_invalid_references_reject():
+    """实体引用无效 / 回包不成形状 → 固定短语拒绝，**不产出坏提案**（§9.5）。"""
+    rules, guide = _a2_rules(), _a2_guide()
+    cases = (
+        ({"type": "proposal", "verb": "a-nope", "desired": "进去"},
+         pg.PROPOSE_NO_ACTION),
+        ({"type": "proposal", "desired": "进去"}, pg.PROPOSE_NO_ACTION),
+        ({"type": "proposal", "verb": "a-persuade", "target": "查无此人",
+          "desired": "进去"}, pg.PROPOSE_NO_TARGET),
+        ({"type": "proposal", "verb": "a-persuade", "target": {"id": "npc-99"},
+          "desired": "进去"}, pg.PROPOSE_NO_TARGET),
+        ({"type": "reject"}, pg.PROPOSE_NO_ACTION),
+        ({"type": "不认识的形状"}, pg.PROPOSE_REJECTED),
+        ({"type": "proposal", "verb": "a-persuade", "desired": "进去",
+          "risk": "R1"}, None),                     # 合法：别把好例子误判
+    )
+    for envelope, reason in cases:
+        out = pg.propose_nl(rules, guide, "我想说服守卫", env=_A2_ENV,
+                            transmit=_a2_send(envelope))
+        if reason is None:
+            assert out["type"] == "proposal", out
+            continue
+        assert out == {"status": "reject", "type": "reject", "reason": reason}, out
+        assert "proposal" not in out, "拒绝不允许夹带提案"
+    # 没有行动者（队伍空）→ 造不出合法提案 → 拒绝（不是坏提案）。
+    out = pg.propose_nl(_a2_rules(party=False), guide, "我想说服守卫",
+                        env=_A2_ENV,
+                        transmit=_a2_send({"type": "proposal",
+                                           "verb": "a-persuade",
+                                           "desired": "进去"}))
+    assert out["type"] == "reject" and out["reason"] == pg.PROPOSE_REJECTED
+    # 坏问题不许问：选项不足 / 超上限 / 对不上世界 / 问 target 却没给 verb /
+    # 字段不认 / 问题是空白。
+    good_pair = [{"id": "npc-01", "label": "甲"}, {"id": "npc-02", "label": "乙"}]
+    for envelope in (
+            {"type": "clarify", "missing": "target", "verb": "a-persuade",
+             "question": "谁？", "options": [{"id": "npc-01", "label": "甲"}]},
+            {"type": "clarify", "missing": "target", "verb": "a-persuade",
+             "question": "谁？",
+             "options": [{"id": "npc-01", "label": "甲"},
+                         {"id": "npc-02", "label": "乙"},
+                         {"id": "npc-03", "label": "丙"},
+                         {"id": "npc-04", "label": "丁"},
+                         {"id": "npc-05", "label": "戊"}]},
+            {"type": "clarify", "missing": "target", "verb": "a-persuade",
+             "question": "谁？",
+             "options": [{"id": "npc-01", "label": "甲"},
+                         {"id": "npc-99", "label": "查无此人"}]},
+            {"type": "clarify", "missing": "target", "question": "谁？",
+             "options": good_pair},
+            {"type": "clarify", "missing": "手段", "verb": "a-persuade",
+             "question": "谁？", "options": good_pair},
+            {"type": "clarify", "missing": "target", "verb": "a-persuade",
+             "question": "   ", "options": good_pair},
+            {"type": "clarify", "missing": "target", "verb": "a-persuade",
+             "question": "谁？", "options": "不是数组"},
+    ):
+        out = pg.propose_nl(rules, guide, "我想说服守卫", env=_A2_ENV,
+                            transmit=_a2_send(envelope))
+        assert out == {"status": "reject", "type": "reject",
+                       "reason": pg.PROPOSE_REJECTED}, out
+    # 三种拒绝短语都在 §9.5 的表里（跨模块锁：网页层按短语翻 HTTP 码）。
+    assert pg.PROPOSE_NO_ACTION == "没有这个行动"
+    assert pg.PROPOSE_NO_TARGET == "目标不存在"
+    assert pg.PROPOSE_REJECTED == "做不了这件事"
+    assert set(pg.PROPOSE_REJECTS) == {pg.PROPOSE_NO_ACTION,
+                                       pg.PROPOSE_NO_TARGET,
+                                       pg.PROPOSE_REJECTED}
+    ok("propose_nl：无效实体引用 / 坏问题一律固定短语拒绝，不产出坏提案")
+
+
+def test_a2_clarify_once():
+    """一次性澄清（§6.3）：只问一次；回答成提案；仍歧义 → 拒绝、不二次追问。"""
+    rules, guide = _a2_rules(), _a2_guide()
+    first = {"type": "clarify", "missing": "target", "verb": "a-persuade",
+             "desired": "让守卫放行", "question": "你要说服的是哪一位？",
+             "options": [{"id": "npc-01", "label": "霍砚"},
+                         {"id": "loc-01", "label": "冠台"}]}
+    out = pg.propose_nl(rules, guide, "我想说服那个人", env=_A2_ENV,
+                        transmit=_a2_send(first))
+    assert out["status"] == "ok" and out["type"] == "clarify", out
+    clarify = out["clarify"]
+    assert re.match(r"^c_[0-9a-f]{32}$", clarify["clarify_id"])
+    assert clarify["missing"] == "target" and clarify["question"]
+    assert clarify["options"] == [{"id": "npc-01", "label": "霍砚"},
+                                  {"id": "loc-01", "label": "冠台"}]
+    draft = clarify["proposal_draft"]
+    assert re.match(r"^p_[0-9a-f]{32}$", draft["proposal_id"])
+    assert draft["intent"] == {"verb": "a-persuade", "target": None,
+                               "desired": "让守卫放行", "means": ""}
+    assert draft["source"] == "nl" and draft["actor"]["id"] == "u-2"
+
+    # 回答选项 id / 选项标签：确定性并入草案，**不再叫模型**。
+    for answer in ("npc-01", "霍砚"):
+        calls = []
+        out_answer = pg.propose_nl(rules, guide, "我想说服那个人",
+                                   clarify=clarify, answer=answer, env=_A2_ENV,
+                                   transmit=_a2_send(first, calls=calls))
+        assert out_answer["type"] == "proposal" and calls == []
+        proposal = out_answer["proposal"]
+        assert prism_core.validate_proposal(proposal) == []
+        assert proposal["intent"]["target"] == {"kind": "npc", "id": "npc-01"}
+        assert proposal["intent"]["verb"] == "a-persuade"
+        assert proposal["proposal_id"] == draft["proposal_id"], "幂等挂在提案 id 上"
+        assert proposal["intent"]["desired"] == "让守卫放行"
+        assert proposal["created_at"] == draft["created_at"]
+
+    # 自由文本回答：带着草案再解析一次，只补 target 那一个字段。
+    calls = []
+    out_free = pg.propose_nl(rules, guide, "我想说服那个人", clarify=clarify,
+                             answer="是那个副理", env=_A2_ENV,
+                             transmit=_a2_send({"type": "proposal",
+                                                "target": "npc-01"}, calls=calls))
+    assert out_free["type"] == "proposal" and len(calls) == 1
+    assert out_free["proposal"]["intent"]["target"] == {"kind": "npc",
+                                                        "id": "npc-01"}
+    sent = json.dumps(calls[0]["payload"], ensure_ascii=False)
+    assert "你要说服的是哪一位？" in sent and "是那个副理" in sent
+    assert "只补 target 这一个字段" in sent
+
+    # 第二次仍要澄清 / 回包不成形状 → 拒绝，**不产出第二个问题**。
+    for envelope in (first,
+                     {"type": "clarify", "missing": "verb",
+                      "question": "哪一件？",
+                      "options": [{"id": "a-persuade", "label": "说服"},
+                                  {"id": "a-sneak", "label": "潜行"}]},
+                     {"type": "reject"}, {"type": "proposal"}, {"再看一次": 1}):
+        out_again = pg.propose_nl(rules, guide, "我想说服那个人",
+                                  clarify=clarify, answer="随便", env=_A2_ENV,
+                                  transmit=_a2_send(envelope))
+        assert out_again["type"] == "reject", out_again
+        assert out_again["reason"] in pg.PROPOSE_REJECTS
+        assert "clarify" not in out_again and "proposal" not in out_again
+
+    # 被改过的澄清 / 草案：服务端重验，仍不产出坏提案。
+    tampered = dict(clarify)
+    tampered["options"] = [{"id": "npc-99", "label": "查无此人"}]
+    assert pg.propose_nl(rules, guide, "我想说服那个人", clarify=tampered,
+                         answer="npc-99", env=_A2_ENV,
+                         transmit=_a2_send({})) == {
+        "status": "reject", "type": "reject", "reason": pg.PROPOSE_NO_TARGET}
+    # 澄清 id 形状不对 → 拒绝（生命周期归网页层，但形状必须对）。
+    bad_id = dict(clarify)
+    bad_id["clarify_id"] = "c_不是十六进制"
+    assert pg.propose_nl(rules, guide, "我想说服那个人", clarify=bad_id,
+                         answer="npc-01", env=_A2_ENV,
+                         transmit=_a2_send({}))["reason"] == pg.PROPOSE_REJECTED
+    for bad in ({"missing": "target"},
+                {"missing": "target", "options": [], "proposal_draft": {}},
+                {"missing": "target", "options": [{"id": "npc-01"}],
+                 "proposal_draft": {}},
+                {"missing": "手段", "options": [{"id": "npc-01"}],
+                 "proposal_draft": {}}):
+        out_bad = pg.propose_nl(rules, guide, "我想说服那个人", clarify=bad,
+                                answer="npc-01", env=_A2_ENV,
+                                transmit=_a2_send({}))
+        # 草案立不住（没有行动 / 形状不对）→ 固定短语拒绝：要么「没有这个行动」，
+        # 要么「做不了这件事」，绝不是提案、也不是第二个问题。
+        assert out_bad["type"] == "reject", out_bad
+        assert out_bad["reason"] in pg.PROPOSE_REJECTS
+        assert "proposal" not in out_bad and "clarify" not in out_bad
+
+    # 服务端自己发现歧义（行动表两条同名）→ 也只问一次。
+    dup_actions = _a2_rules(actions=[{"id": "a-1", "label": "说服"},
+                                     {"id": "a-2", "label": "说服"}])
+    out_dup = pg.propose_nl(dup_actions, guide, "我想说服守卫", env=_A2_ENV,
+                            transmit=_a2_send({"type": "proposal",
+                                               "verb": "说服",
+                                               "desired": "进去"}))
+    assert out_dup["type"] == "clarify"
+    assert out_dup["clarify"]["missing"] == "verb"
+    assert [o["id"] for o in out_dup["clarify"]["options"]] == ["a-1", "a-2"]
+    assert out_dup["clarify"]["proposal_draft"]["intent"]["verb"] == ""
+    out_dup_answer = pg.propose_nl(dup_actions, guide, "我想说服守卫",
+                                   clarify=out_dup["clarify"], answer="a-2",
+                                   env=_A2_ENV, transmit=_a2_send({}))
+    assert out_dup_answer["proposal"]["intent"]["verb"] == "a-2"
+
+    # 「千梯」既是地点（loc-10）又是节点（ladders）：候选带种类提示。
+    out_twin = pg.propose_nl(rules, guide, "去千梯", env=_A2_ENV,
+                             transmit=_a2_send({"type": "proposal",
+                                                "verb": "a-sneak",
+                                                "target": "千梯",
+                                                "desired": "到千梯"}))
+    assert out_twin["type"] == "clarify"
+    assert {o["id"]: o["label"]
+            for o in out_twin["clarify"]["options"]} == {
+        "ladders": "千梯（节点）", "loc-10": "千梯（地点）"}
+    out_twin_answer = pg.propose_nl(rules, guide, "去千梯",
+                                    clarify=out_twin["clarify"],
+                                    answer="ladders", env=_A2_ENV,
+                                    transmit=_a2_send({}))
+    assert out_twin_answer["proposal"]["intent"]["target"] == {
+        "kind": "node", "id": "ladders"}
+    ok("澄清：只问一次、回答成提案、仍歧义即拒绝、服务端也能自己发现歧义")
+
+
+def test_a2_commit_snapshot_rebuild():
+    """叙事消息数组的 L4 用**提交后快照**重拼（§7.2 / §7.5）：与实时状态隔离。"""
+    rules = _fixture_rules()
+    rules["scene"]["actions"] = [{"id": "a-1", "label": "勘察"}]
+    rules["active_unit_id"] = "u-1"
+    rules["party"][0]["vitality"] = 9
+    rules["party"][0]["max_vitality"] = 12
+    guide = pg.empty_guide()
+    snapshot = pg.commit_snapshot(rules, guide)
+    result = {"status": "resolved", "outcome": "success"}
+    messages = pg.build_commit_messages(snapshot, "我去看看", result)
+    assert messages == pg.build_narrative_messages(snapshot["rules"],
+                                                   snapshot["guide"],
+                                                   "我去看看", result)
+    assert "活力 9/12" in messages[-1]["content"]
+    assert "a-1 勘察" in messages[-1]["content"]
+    assert "我去看看" in messages[-1]["content"]
+    # 提交之后世界继续走：改实时状态不影响已冻结的叙事输入（§7.5）。
+    rules["party"][0]["vitality"] = 1
+    rules["scene"]["actions"].append({"id": "a-2", "label": "新的"})
+    same = pg.build_commit_messages(snapshot, "我去看看", result)
+    assert "活力 9/12" in same[-1]["content"]
+    assert "a-2" not in same[-1]["content"]
+    # 反向也隔离：改快照不改实时状态；快照形状不对不抛。
+    snapshot["guide"]["transcript"].append({"role": "user", "content": "改快照"})
+    assert guide["transcript"] == []
+    assert rules["scene"]["actions"][-1]["id"] == "a-2"
+    assert pg.build_commit_messages(None, "看一眼")[-1]["content"]
+    assert pg.build_commit_messages({"rules": None}, "看一眼")[0]["content"] == pg.L0
+    assert pg.build_commit_messages({"guide": {"l2": "x"}}, "看一眼")[-1]["content"]
+    ok("commit_snapshot / build_commit_messages：L4 用提交后快照重拼，与实时状态隔离")
+
+
 def test_env_example():
     text = (ROOT / ".env.example").read_text(encoding="utf-8")
     assert "NOTDND_HOST" in text and "NOTDND_PORT" in text
@@ -2385,6 +2922,14 @@ def main():
     test_g7_beats_of_assigns_voice()
     test_g7_incidental_id_shape_and_drop()
     test_g7_reveal_next_trace()
+    test_a2_menu_and_entity_index()
+    test_a2_propose_messages_and_body()
+    test_a2_parse_propose_json_both_encodings()
+    test_a2_proposal_happy_path()
+    test_a2_offline_and_failure()
+    test_a2_invalid_references_reject()
+    test_a2_clarify_once()
+    test_a2_commit_snapshot_rebuild()
     test_module_offline_no_socket()
     test_env_example()
     print()

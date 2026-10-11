@@ -111,11 +111,23 @@ G7（行为与对白）：
   取前 8 位十六进制；manner 里出现 `C-` 加两位数字、或任一 NPC 秘密的连续 8 字
   就丢掉这个路人。路人**不能**写入 `known_clues`。不改 `data/`。
 
+M8-A2（NL → 提案与一次性澄清，ACTION-DESIGN §4.2 / §6.3）：
+
+- `propose_nl`：NL → 过 A1（`prism_core.validate_proposal`）的提案；关键歧义
+  **只问一次**（`clarify_id` / `missing` / `question` / `options` / `proposal_draft`），
+  回答并入 `proposal_draft` 后成提案，仍定不下来就降级为拒绝（§6.3）——
+  **永不**产出坏提案、**永不**二次追问；没有 AI 配置时返回 `offline`，不请求上游；
+- 解析段的回包与叙事走**同一个** `TRANSMIT` / `assemble_chat_stream`（SSE `data:`
+  行与整段 JSON 都认），不新增第二条传输路径；
+- `commit_snapshot` / `build_commit_messages`：叙事消息数组的 L4 用**提交之后**
+  的快照重拼（§7.2 / §7.5）。
+
 密钥只放请求头 `api-key`，不进 URL、不进 JSON、不进状态字典、不进日志；
 异常字符串不携带上游响应体（§5.1 / §8）。
 """
 
 import base64
+import copy
 import hashlib
 import json
 import os
@@ -3011,3 +3023,655 @@ def build_narrative_messages(rules, guide, player_text, result=None):
     messages.append({"role": "user",
                      "content": build_l4(rules, guide, player_text, result)})
     return messages
+
+
+# ── §7.2 / §7.5 提交后快照：叙事只读冻结的那一份 ────────────────────────
+
+
+def commit_snapshot(rules, guide):
+    """提交后快照（§7.5 / §10.2）：把两份状态**深拷贝**成值快照。
+
+    调用方必须在**提交的那一把锁内**取好快照，再把快照带出锁外交给叙事段
+    （`settle` 的手法：加锁 → 结算 → 写回 → `save()`）；叙事只用这份冻结副本
+    拼 L0–L4，**不再读实时状态**。非 dict 一律当空状态处理。
+    """
+    rules = rules if isinstance(rules, dict) else {}
+    guide = guide if isinstance(guide, dict) else {}
+    return {"rules": copy.deepcopy(rules), "guide": copy.deepcopy(guide)}
+
+
+def build_commit_messages(snapshot, player_text, result=None):
+    """行动管线的叙事消息数组：用**提交后的快照**重拼 L0–L4（§7.2 / §7.5）。
+
+    与旧 `turn` 路径（`_guide_turn` 在工具预通行写回之后重拼）同一口径：`result`
+    是**已提交**的机械结果，L4 里的活快照与行动菜单都取提交之后的版本。快照形状
+    不对（不是 dict / 缺键）时按空状态拼，仍返回完整的 L0–L4，不抛。
+    """
+    snapshot = snapshot if isinstance(snapshot, dict) else {}
+    return build_narrative_messages(snapshot.get("rules"), snapshot.get("guide"),
+                                    player_text, result)
+
+
+# ════════════════════════════════════════════════════════════════════════
+# M8-A2 · NL → 提案与一次性澄清（ACTION-DESIGN §4.2 / §6.3）
+#
+# 导引者只做两件事（§9.6）：第 1 段「NL → 提案」与第 6 段「叙事」。它**不结算、
+# 不提交**——第 3–5 段归 A3 的管线（`settle` 保留给旧 `turn` 路径）。
+#
+# 上游仍走**同一个** `TRANSMIT` 入口（§5.3 / §5.10）：回包是 SSE `data:` 行还是
+# 整段 JSON，都由 `assemble_chat_stream` 认——不新增第二条传输路径。
+# 输出**无状态透明**（§9.2）：提案一律由服务端重新校验，模型回带的形状与实体
+# 引用都不被信任，因此**永不**产出「过不了 A1 `validate_proposal` 的提案」。
+#
+# 一次澄清（§6.3）：歧义只问一次；玩家的回答并入 `proposal_draft` 产出正式提案；
+# 仍歧义 → 降级为拒绝，**不二次追问**。澄清不消耗资源、不落世界事件、不掷骰。
+# ════════════════════════════════════════════════════════════════════════
+
+# 解析段请求体：思考关、低温（结构化提取，不是创作）、非流式。
+PROPOSE_TEMPERATURE = 0.2
+PROPOSE_MAX_TOKENS = 512
+PROPOSE_TIMEOUT_S = 20.0
+
+# 一次澄清的 id（§6.3）：`^c_[0-9a-f]{32}$`。
+CLARIFY_ID_RE = re.compile(r"^c_[0-9a-f]{32}$")
+
+# 允许澄清的字段（§6.3）：只有这两处需要世界校验，也只有这两处值得一问。
+CLARIFY_FIELDS = ("verb", "target")
+# 候选项个数：少于 2 个不算问，多于 4 个玩家选不动。
+CLARIFY_MIN_OPTIONS = 2
+CLARIFY_MAX_OPTIONS = 4
+
+# 拒绝的固定短语：与 §9.5 错误码总表逐条对应（短语归导引者，HTTP 码归网页层）。
+PROPOSE_NO_ACTION = "没有这个行动"      # §9.5 → 404：行动不在当前场景的行动表里
+PROPOSE_NO_TARGET = "目标不存在"        # §9.5 → 404：实体引用解析不出来
+PROPOSE_REJECTED = "做不了这件事"       # §9.5 → 403：解析不出可用提案
+PROPOSE_REJECTS = (PROPOSE_NO_ACTION, PROPOSE_NO_TARGET, PROPOSE_REJECTED)
+
+# 实体种类的展示名：只在澄清候选**同名**时用来区分（「千梯（地点）」/「千梯（节点）」）。
+_KIND_LABELS = {"location": "地点", "npc": "人物", "node": "节点",
+                "thread": "线索"}
+
+# 模型没给风险级时的默认值（§6.4：默认保守，R2 起要确认）。
+PROPOSE_DEFAULT_RISK = "R2"
+
+PROPOSE_SYSTEM = """你是导引者的解析段：把玩家的一句话变成一条结构化行动提案。你不叙事、不判定、不掷骰、不写任何结果。
+
+只输出一个 JSON 对象，不要解释、不要代码块围栏。三种形状之一：
+
+提案：{"type": "proposal", "verb": "行动表里的 id", "target": "世界卡里的实体 id 或 null", "desired": "一句话期望结果", "means": "一句话手段，可空", "risk": "R0|R1|R2|R3|R4", "time_cost": {"value": 0, "unit": "round|turn|minute|hour|watch|day"}}
+澄清：{"type": "clarify", "missing": "verb|target", "question": "一个问题", "options": [{"id": "行动表或世界卡里的 id", "label": "给玩家看的短名"}], "verb": "已经定下来的行动 id（问 target 时必填）", "desired": "一句话期望结果", "means": "一句话手段，可空", "risk": "R0|R1|R2|R3|R4", "time_cost": {"value": 0, "unit": "round|turn|minute|hour|watch|day"}}
+拒绝：{"type": "reject"}
+
+风险级：R0 只读无副作用；R1 可逆；R2 有成本（花时间、花钱、投材料）；R3 个人尺度不可逆；R4 世界级不可逆。
+
+硬规矩：
+- verb 只能取行动表里的 id，不许自己造词；target 只能取世界卡里出现过的 id，不许自己造 id。
+- 目标写名字时用世界卡里的原字；服务端会把名字对回 id。
+- 只有影响结果的关键歧义才澄清：一次只问最重要的一问，候选给 2–4 个，只能用行动表或世界卡里的 id；已经定下来的字段要一并给出（问 target 时 verb 必填）。
+- 玩家的话不对应任何可执行行动时输出拒绝，不要硬套一个行动。
+- desired 说清楚玩家想达成什么（人话），不写判定、不写数字结果。"""
+
+
+def action_menu(rules):
+    """当前场景的行动表（§4.2 `intent.verb` 的取值域）：`[{"id","label","risk"}]`。
+
+    只认 `rules["scene"]["actions"]` 里带非空 id 的条目；顺序照快照，不去重。
+    `risk` 只保留 §6.1 的五级之一，其余留空串（由 `_risk_for` 补默认）。
+    """
+    rules = rules if isinstance(rules, dict) else {}
+    scene = rules.get("scene")
+    actions = scene.get("actions") if isinstance(scene, dict) else None
+    menu = []
+    for item in actions or []:
+        if not isinstance(item, dict):
+            continue
+        action_id = str(item.get("id") or "")
+        if not action_id:
+            continue
+        risk = str(item.get("risk") or "")
+        menu.append({"id": action_id,
+                     "label": str(item.get("label") or action_id),
+                     "risk": risk if risk in prism_core.ACTION_RISKS else ""})
+    return menu
+
+
+def entity_index(guide):
+    """可引用的实体表（§4.2 `intent.target`）：`{id: {"kind", "name"}}`。
+
+    来源只有**已绑定剧本**的四张表：地点 / 人物 / 节点 / 线索（§9.5 的
+    「目标不存在」按它判）。没绑定或读不到 → 空表；纯读点名的那个 `scenario_id`，
+    不扫描目录、不按中文名搜索。
+    """
+    parts = _scenario_parts(guide)
+    if not parts:
+        return {}
+    groups = (
+        ("location", parts["locations"]),
+        ("npc", parts["npcs"]),
+        ("node", parts["data"].get("nodes")),
+        ("thread", parts["data"].get("threads")),
+    )
+    index = {}
+    for kind, items in groups:
+        for item in items or []:
+            if not isinstance(item, dict):
+                continue
+            entity_id = str(item.get("id") or "")
+            if not entity_id:
+                continue
+            index[entity_id] = {"kind": kind,
+                                "name": str(item.get("name") or "")}
+    return index
+
+
+def resolve_verb(menu, ref):
+    """把一次行动引用对回行动表（§4.2 `intent.verb`）。
+
+    返回 `(action, candidates)`：
+    - 命中 id、或按 label **全等**唯一命中 → `(行动表条目, [])`；
+    - label 全等命中多个（歧义）→ `(None, [id, ...])`，调用方翻成**一次**澄清；
+    - 都没命中 → `(None, [])`，调用方翻成拒绝「没有这个行动」（§9.5）。
+    纯函数：只查附表，不猜近义词、不做子串匹配。
+    """
+    ref = str(ref or "").strip()
+    if not ref:
+        return None, []
+    for item in menu:
+        if item["id"] == ref:
+            return item, []
+    hits = [item for item in menu if str(item.get("label") or "") == ref]
+    if len(hits) == 1:
+        return hits[0], []
+    return None, [item["id"] for item in hits]
+
+
+def resolve_target(index, ref):
+    """把一次目标引用对回世界卡（§4.2 `intent.target`）。
+
+    返回 `(target, candidates)`：
+    - 命中 id、或名字**唯一**命中 → `({"kind", "id"}, [])`；
+    - 同名多个（歧义）→ `(None, [id, ...])`，调用方翻成**一次**澄清（§6.3）；
+    - 都没命中 → `(None, [])`，调用方翻成拒绝「目标不存在」（§9.5）。
+    id 优先、其次世界卡里的**原字**名字；种类以世界卡为准（模型说的不算）。
+    """
+    ref = str(ref or "").strip()
+    if not ref:
+        return None, []
+    found = index.get(ref)
+    if isinstance(found, dict):
+        return {"kind": str(found.get("kind") or ""), "id": ref}, []
+    matches = _index_by_name(index).get(ref) or []
+    if len(matches) == 1:
+        entity_id = matches[0]
+        return {"kind": str(index[entity_id].get("kind") or ""),
+                "id": entity_id}, []
+    return None, matches
+
+
+def build_propose_messages(rules, guide, text, *, clarify=None, answer=""):
+    """解析段的消息数组（§4.2）：世界卡 → 行动表 →（上一问与回答 →）玩家原文。
+
+    世界卡与叙事同源（`l1_for`：未绑定就是那句常量），实体 id / 名字与 L1 逐字
+    一致；行动表逐行列出 id 与 label。`clarify` 是回答路径的上一问：把问题、
+    玩家的回答、已确定的部分都带上，并强调**只补 `missing` 那一个字段**。
+    纯函数：不改入参、不碰传输。
+    """
+    lines = ["【解析】", "玩家原文：" + str(text or ""), "行动表："]
+    menu = action_menu(rules)
+    if menu:
+        for item in menu:
+            lines.append("- " + item["id"] + " " + item["label"])
+    else:
+        lines.append("- （空：这场没有可执行行动）")
+    if isinstance(clarify, dict):
+        missing = str(clarify.get("missing") or "")
+        lines.append("上一问：" + str(clarify.get("question") or ""))
+        lines.append("玩家的回答：" + str(answer or ""))
+        lines.append("已确定的部分：" + json.dumps(
+            clarify.get("proposal_draft"), ensure_ascii=False, sort_keys=True))
+        lines.append("只补 " + missing + " 这一个字段，其余字段不许改；"
+                     "仍定不下来就输出拒绝。")
+    return [
+        {"role": "system", "content": PROPOSE_SYSTEM},
+        {"role": "user", "content": l1_for(guide)},
+        {"role": "assistant", "content": "已载入世界卡。"},
+        {"role": "user", "content": "\n".join(lines)},
+    ]
+
+
+def build_propose_body(messages, model=None, env=None):
+    """解析段请求体。密钥不入体：调用方只把它放进请求头 `api-key`。"""
+    env = env if env is not None else load_env()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    return {
+        "model": str(resolved),
+        "messages": list(messages),
+        "thinking": {"type": "disabled"},
+        "temperature": PROPOSE_TEMPERATURE,
+        "max_completion_tokens": PROPOSE_MAX_TOKENS,
+        "stream": False,
+    }
+
+
+def parse_propose_json(got):
+    """从解析段回包里取那个 JSON 对象；取不到返回 None（调用方翻成拒绝）。
+
+    回包已经由传输层组装成 `{content, ...}`（`assemble_chat_stream`：SSE
+    `data:` 行与整段 JSON 等价）；这里只从 `content` 里抠对象——与实相（§5.7）
+    同一套容错：`{…}` 之外带杂质时取最外层那个对象。
+    """
+    return parse_realization_json(got)
+
+
+def call_propose(messages, model=None, env=None, transmit=None):
+    """经传输入口取一次解析段回包（§5.3 / §5.10）。离线 / 失败 / 不成形状 → None。
+
+    与叙事、TTS、实相、场外节拍走**同一条**可替换入口 `TRANSMIT`。
+    """
+    env = env if env is not None else load_env()
+    url = chat_url(env.get("BASE_URL"))
+    key = (env.get("API_KEY") or "").strip()
+    resolved = model if model is not None else (env.get("MODEL") or "").strip()
+    if not url or not key or not str(resolved or "").strip():
+        return None
+    body = build_propose_body(messages, model=resolved, env=env)
+    return parse_propose_json(
+        _send_once(url, body, key, PROPOSE_TIMEOUT_S, transmit))
+
+
+def propose_nl(rules, guide, text, *, clarify=None, answer="", env=None,
+               transmit=None):
+    """NL → 提案 / 澄清 / 拒绝 / 离线（ACTION-DESIGN §4.2 / §6.3）。
+
+    返回四选一（网页层只做 HTTP 翻译，不改语义）：
+
+    - `{"status": "ok", "type": "proposal", "proposal": {...}}`：过 A1
+      （`prism_core.validate_proposal`）的提案，`source` 恒为 `"nl"`；
+    - `{"status": "ok", "type": "clarify", "clarify": {...}}`：一次澄清
+      （`clarify_id` / `missing` / `question` / `options` / `proposal_draft`）；
+    - `{"status": "reject", "type": "reject", "reason": <固定短语>}`：§9.5 的
+      三条固定短语之一，**不产出提案**；
+    - `{"status": "offline", "type": "offline"}`：没有 AI 配置（不上游、不报 5xx）。
+
+    `clarify` + `answer` 是**同一个澄清回合**的回答：答案并入 `proposal_draft`，
+    仍定不下来就拒绝，**不再追问**（§6.3）。`text` 是这一回合的玩家原文（回答
+    路径沿用第一次的原文）。空原文、上游失败、回包不成形状一律收成固定短语，
+    不抛异常、不新增错误短语。无状态：`clarify_id` 的生命周期（过期 / 404）归网页层。
+    """
+    rules = rules if isinstance(rules, dict) else {}
+    guide = guide if isinstance(guide, dict) else {}
+    text = str(text or "")
+    if not text.strip():
+        return _out_reject(PROPOSE_REJECTED)
+    if isinstance(clarify, dict) and clarify:
+        return _answer_clarify(rules, guide, text, clarify, answer, env=env,
+                               transmit=transmit)
+    env = env if env is not None else load_env()
+    if not _propose_ready(env):
+        return _out_offline()
+    envelope = call_propose(build_propose_messages(rules, guide, text), env=env,
+                            transmit=transmit)
+    return _envelope_outcome(envelope, rules, guide, text)
+
+
+def new_clarify_id():
+    """一次澄清的 id（§6.3）：`^c_[0-9a-f]{32}$`。"""
+    return "c_" + secrets.token_hex(16)
+
+
+def _out_proposal(proposal):
+    """提案结论（§9.2 `type: "proposal"`）。"""
+    return {"status": "ok", "type": "proposal", "proposal": proposal}
+
+
+def _out_clarify(clarify):
+    """澄清结论（§9.2 `type: "clarify"`；§6.3：是提案的替代产物，不是错误）。"""
+    return {"status": "ok", "type": "clarify", "clarify": clarify}
+
+
+def _out_reject(reason):
+    """拒绝结论：固定短语，网页层按 §9.5 翻成 HTTP 码。"""
+    return {"status": "reject", "type": "reject", "reason": reason}
+
+
+def _out_offline():
+    """没有 AI 配置（§9.2）：网页层提示改用 `mode: "action"`，不报 5xx。"""
+    return {"status": "offline", "type": "offline"}
+
+
+def _propose_ready(env):
+    """AI 配置齐不齐（与 `call_narrative` 同口径）：缺任一项就是「离线」。
+
+    `call_propose` 失败也返回 None，所以离线必须在发请求**之前**判掉——
+    否则「没有密钥」会被说成「模型没回话」。
+    """
+    env = env if isinstance(env, dict) else {}
+    return bool(chat_url(env.get("BASE_URL"))
+                and (env.get("API_KEY") or "").strip()
+                and (env.get("MODEL") or "").strip())
+
+
+def _envelope_outcome(envelope, rules, guide, text):
+    """把解析段回包翻成结论。**服务端在这里做全部校验**（§9.2：不信任回带）。"""
+    if not isinstance(envelope, dict):
+        return _out_reject(PROPOSE_REJECTED)
+    kind = str(envelope.get("type") or "")
+    if kind == "reject":
+        return _out_reject(PROPOSE_NO_ACTION)
+    if kind == "clarify":
+        clarify = _clarify_from_envelope(envelope, rules, guide, text)
+        return _out_reject(PROPOSE_REJECTED) if clarify is None \
+            else _out_clarify(clarify)
+    if kind != "proposal":
+        return _out_reject(PROPOSE_REJECTED)
+
+    menu = action_menu(rules)
+    index = entity_index(guide)
+    verb_item, hits = resolve_verb(menu, envelope.get("verb"))
+    if verb_item is None:
+        if hits:
+            # 行动表里同名多条：关键歧义，问一次（§6.3）。
+            return _out_clarify(_ambiguity_clarify(
+                "verb", hits, rules, guide, text, envelope=envelope))
+        return _out_reject(PROPOSE_NO_ACTION)
+    ref = _target_ref(envelope.get("target"))
+    target = None
+    if ref:
+        target, hits = resolve_target(index, ref)
+        if target is None:
+            if hits:
+                return _out_clarify(_ambiguity_clarify(
+                    "target", hits, rules, guide, text, envelope=envelope,
+                    verb_item=verb_item))
+            return _out_reject(PROPOSE_NO_TARGET)
+    candidate = _draft(rules, guide, text, verb=verb_item["id"],
+                       verb_item=verb_item, target=target, envelope=envelope)
+    if prism_core.validate_proposal(candidate):
+        return _out_reject(PROPOSE_REJECTED)
+    return _out_proposal(candidate)
+
+
+def _clarify_from_envelope(envelope, rules, guide, text):
+    """模型自己提出的一次澄清：问题与候选都要立得住，立不住返回 None（→ 拒绝）。
+
+    - `missing` 只认 `CLARIFY_FIELDS`；`question` 去空白后非空；
+    - 候选 2–4 个、逐个对回世界卡 / 行动表（对不上任何一个就整题作废）——
+      **不许问一个答不了的问题**；
+    - 问 `target` 时行动必须已经定下来（否则答完也成不了提案）；
+      问 `verb` 时目标能定就带上，定不下就不带（草案不带立不住的引用）。
+    """
+    if not isinstance(envelope, dict):
+        return None
+    missing = str(envelope.get("missing") or "")
+    question = str(envelope.get("question") or "").strip()
+    raw_options = envelope.get("options")
+    if missing not in CLARIFY_FIELDS or not question \
+            or not isinstance(raw_options, list) \
+            or not CLARIFY_MIN_OPTIONS <= len(raw_options) <= CLARIFY_MAX_OPTIONS:
+        return None
+    options = _resolve_options(missing, raw_options, action_menu(rules),
+                               entity_index(guide))
+    if options is None:
+        return None
+    verb_item = None
+    target = None
+    if missing == "verb":
+        ref = _target_ref(envelope.get("target"))
+        if ref:
+            target = resolve_target(entity_index(guide), ref)[0]
+    else:
+        verb_item = resolve_verb(action_menu(rules), envelope.get("verb"))[0]
+        if verb_item is None:
+            return None
+    return _make_clarify(rules, guide, text, missing=missing, question=question,
+                         options=options,
+                         verb=("" if missing == "verb" else verb_item["id"]),
+                         verb_item=verb_item, target=target, envelope=envelope)
+
+
+def _resolve_options(missing, raw_options, menu, index):
+    """把候选逐条对回世界（§6.3）：任一条立不住就整题作废（返回 None）。
+
+    规范化后返回 `[{"id", "label"}]`：`id` 一律是行动表 / 世界卡里的真 id，
+    `label` 用模型给的短名，缺了就用行动表 / 世界卡里的原名。
+    """
+    options = []
+    seen = set()
+    for raw in raw_options:
+        if not isinstance(raw, dict):
+            return None
+        label = str(raw.get("label") or "").strip()
+        ref = str(raw.get("id") or "").strip() or label
+        if missing == "verb":
+            item = resolve_verb(menu, ref)[0]
+            if item is None:
+                return None
+            option_id, fallback = item["id"], item["label"]
+        else:
+            target = resolve_target(index, ref)[0]
+            if target is None:
+                return None
+            option_id = target["id"]
+            fallback = str((index.get(option_id) or {}).get("name") or "")
+        if option_id in seen:
+            continue
+        seen.add(option_id)
+        options.append({"id": option_id,
+                        "label": label or fallback or option_id})
+    if not CLARIFY_MIN_OPTIONS <= len(options) <= CLARIFY_MAX_OPTIONS:
+        return None
+    return options
+
+
+def _ambiguity_clarify(missing, candidates, rules, guide, text, *, envelope=None,
+                       verb_item=None):
+    """引用对到多个实体 / 多条行动时，服务端自己造**一次**澄清（§6.3）。"""
+    envelope = envelope if isinstance(envelope, dict) else {}
+    ref = str(envelope.get("target") or envelope.get("verb") or "")
+    menu = action_menu(rules)
+    index = entity_index(guide)
+    rows = []
+    for candidate in candidates:
+        if missing == "verb":
+            item = next((x for x in menu if x["id"] == candidate), None)
+            rows.append((candidate, str((item or {}).get("label") or candidate),
+                         ""))
+        else:
+            found = index.get(candidate) or {}
+            rows.append((candidate, str(found.get("name") or candidate),
+                         str(found.get("kind") or "")))
+    # 候选同名（如「千梯」既是地点又是节点）时补一个种类提示，否则玩家分不出来。
+    labels = [row[1] for row in rows]
+    repeated = len(set(labels)) < len(labels)
+    options = []
+    for candidate, label, kind in rows:
+        hint = _KIND_LABELS.get(kind, "") if repeated else ""
+        options.append({"id": candidate,
+                        "label": label + ("（" + hint + "）" if hint else "")})
+    return _make_clarify(rules, guide, text, missing=missing,
+                         question="你说的「" + str(ref) + "」是指哪一个？",
+                         options=options,
+                         verb=("" if missing == "verb" else
+                               str((verb_item or {}).get("id") or "")),
+                         verb_item=verb_item, target=None, envelope=envelope)
+
+
+def _make_clarify(rules, guide, text, *, missing, question, options, verb="",
+                  verb_item=None, target=None, envelope=None):
+    """组一个 §6.3 的澄清对象：id / 问题 / 规范化候选 / `proposal_draft`。
+
+    `missing` 是 A2 为**无状态合并**补的键（§6.3 的示例用注释表达「待补 target」）：
+    回答只能补它，其余字段一律沿用草案。草案与服务端生成的 `proposal_id` 绑定，
+    正式提案沿用它（§4.2：幂等与澄清都挂在 `proposal_id` 上）。
+    """
+    draft = _draft(rules, guide, text, verb=verb, verb_item=verb_item,
+                   target=target, envelope=envelope)
+    return {"type": "clarify", "clarify_id": new_clarify_id(),
+            "missing": missing, "question": question, "options": options,
+            "proposal_draft": draft}
+
+
+def _answer_clarify(rules, guide, text, clarify, answer, *, env=None,
+                    transmit=None):
+    """回答一次澄清（§6.3）：答案并入草案 → 服务端重验 → 提案 / 拒绝。
+
+    答案先按**选项 id / 选项标签**确定性对回（不叫模型）；对不上时带着草案再
+    解析一次（`_reparse_with_answer`），但**只许补 `missing` 那一个字段**。
+    这条路径**永不**产出第二个澄清——仍定不下来就降级为拒绝。`clarify_id`
+    若带上了就必须是 `^c_[0-9a-f]{32}$`（可缺省；生命周期归网页层）。
+    """
+    if not isinstance(clarify, dict):
+        return _out_reject(PROPOSE_REJECTED)
+    missing = str(clarify.get("missing") or "")
+    options = clarify.get("options")
+    draft = clarify.get("proposal_draft")
+    answer = str(answer or "").strip()
+    clarify_id = str(clarify.get("clarify_id") or "")
+    if missing not in CLARIFY_FIELDS or not isinstance(options, list) \
+            or not isinstance(draft, dict) or not answer \
+            or (clarify_id and not CLARIFY_ID_RE.match(clarify_id)):
+        return _out_reject(PROPOSE_REJECTED)
+    value = ""
+    for option in options:
+        if not isinstance(option, dict):
+            continue
+        if answer in (str(option.get("id") or ""),
+                      str(option.get("label") or "")):
+            value = str(option.get("id") or "")
+            break
+    if not value:
+        value = _reparse_with_answer(rules, guide, text, clarify, answer,
+                                     env=env, transmit=transmit)
+    if not value:
+        return _out_reject(PROPOSE_REJECTED)
+
+    intent = draft.get("intent")
+    intent = intent if isinstance(intent, dict) else {}
+    verb_ref = str(intent.get("verb") or "")
+    target_ref = _target_ref(intent.get("target")) or ""
+    if missing == "verb":
+        verb_ref = value
+    else:
+        target_ref = value
+    verb_item = resolve_verb(action_menu(rules), verb_ref)[0]
+    if verb_item is None:
+        return _out_reject(PROPOSE_NO_ACTION)
+    target = None
+    if target_ref:
+        target = resolve_target(entity_index(guide), target_ref)[0]
+        if target is None:
+            return _out_reject(PROPOSE_NO_TARGET)
+    candidate = _draft(rules, guide, text, verb=verb_item["id"],
+                       verb_item=verb_item, target=target,
+                       envelope=_draft_fields(draft),
+                       proposal_id=str(draft.get("proposal_id") or ""),
+                       created_at=_int_value(draft.get("created_at")))
+    if prism_core.validate_proposal(candidate):
+        return _out_reject(PROPOSE_REJECTED)
+    return _out_proposal(candidate)
+
+
+def _reparse_with_answer(rules, guide, text, clarify, answer, *, env=None,
+                         transmit=None):
+    """答案对不上候选时再解析一次（§6.3）：只许补 `missing` 那一个字段。
+
+    返回补上的引用（补不出返回空串）。回包是澄清 / 拒绝 / 形状不对一律补不出
+    ——**永不**产出第二个澄清；离线（空配置）同样补不出。
+    """
+    missing = str(clarify.get("missing") or "")
+    envelope = call_propose(
+        build_propose_messages(rules, guide, text, clarify=clarify,
+                               answer=answer),
+        env=env, transmit=transmit)
+    if not isinstance(envelope, dict) \
+            or str(envelope.get("type") or "") != "proposal":
+        return ""
+    value = envelope.get(missing)
+    if missing == "target":
+        return _target_ref(value) or ""
+    return str(value or "").strip()
+
+
+def _draft(rules, guide, text, *, verb="", verb_item=None, target=None,
+           envelope=None, proposal_id="", created_at=0):
+    """拼一份 §4.2 的提案骨架（澄清的 `proposal_draft` 也用它）。
+
+    只取服务端认得下的字段：行动者取 `_active_unit`（空则 `party[0]`，同
+    `settle` 口径）、`source` 恒为 `"nl"`、`desired` 缺省用玩家原文（§4.2：
+    desired 只给叙事用，不参与判定）。`envelope` 里的脏值一律回退到 A1 的
+    默认形状，不猜——绝不让一件 `validate_proposal` 过不去的东西混出去。
+    """
+    envelope = envelope if isinstance(envelope, dict) else {}
+    unit = _active_unit(rules)
+    desired = str(envelope.get("desired") or "").strip() or str(text or "")
+    return prism_core.new_proposal(
+        proposal_id=str(proposal_id or ""),
+        actor={"kind": "player", "id": str((unit or {}).get("id") or "")},
+        intent={"verb": str(verb or ""), "target": target, "desired": desired,
+                "means": str(envelope.get("means") or "").strip()},
+        source="nl", risk=_risk_for(verb_item, envelope),
+        time_cost=_time_cost(envelope), raw_text=str(text or ""),
+        created_at=_int_value(created_at) or int(time.time() * 1000))
+
+
+def _risk_for(verb_item, envelope):
+    """§6.1 的风险级：行动表写死的优先，其次模型给的，最后默认保守 R2。"""
+    declared = str((verb_item or {}).get("risk") or "")
+    if declared in prism_core.ACTION_RISKS:
+        return declared
+    said = str((envelope or {}).get("risk") or "")
+    return said if said in prism_core.ACTION_RISKS else PROPOSE_DEFAULT_RISK
+
+
+def _time_cost(envelope):
+    """§4.2 `time_cost`：形状 / 单位不对返回 None（`new_proposal` 用默认值）。"""
+    raw = (envelope or {}).get("time_cost")
+    if not isinstance(raw, dict):
+        return None
+    value = raw.get("value")
+    unit = str(raw.get("unit") or "")
+    if not _is_plain_int(value) or value < 0:
+        return None
+    if unit not in prism_core.TIME_COST_UNITS:
+        return None
+    return {"value": value, "unit": unit}
+
+
+def _is_plain_int(value):
+    """严格整数（`bool` 不算——它是 `int` 的子类）。"""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _target_ref(value):
+    """取出一次目标引用：dict 取 id（空则取 name / label），str 直接用。
+
+    没有目标（`None` / 空串 / 形状不对）返回 None——§4.2 里 `target` 可以缺省。
+    """
+    if isinstance(value, dict):
+        for key in ("id", "name", "label"):
+            ref = str(value.get(key) or "").strip()
+            if ref:
+                return ref
+        return None
+    ref = str(value or "").strip()
+    return ref or None
+
+
+def _draft_fields(draft):
+    """从草案里取出可沿用的字段（服务端重验，不信任回带的形状）。"""
+    intent = draft.get("intent")
+    intent = intent if isinstance(intent, dict) else {}
+    return {"desired": str(intent.get("desired") or ""),
+            "means": str(intent.get("means") or ""),
+            "risk": str(draft.get("risk") or ""),
+            "time_cost": draft.get("time_cost")}
+
+
+def _index_by_name(index):
+    """名字 → `[id]`（同名多个就是歧义，§6.3）。按 id 排序，结果确定。"""
+    names = {}
+    for entity_id in sorted(index):
+        name = str((index[entity_id] or {}).get("name") or "")
+        if name:
+            names.setdefault(name, []).append(entity_id)
+    return names
