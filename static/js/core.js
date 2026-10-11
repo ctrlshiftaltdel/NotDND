@@ -71,12 +71,15 @@ function buzz(ms) {
   try { navigator.vibrate(ms); } catch (e) { /* 不支持就算了 */ }
 }
 
-/* 视图切换：只改 .is-on，不用 hidden。 */
+/* 视图切换：只改 .is-on，不用 hidden。
+   切完顺手重测 --dock-h：各视图的 .dock 高度不同（见下「底部工具条实测
+   高度」），不跟着切的话，切过去的一瞬间提示条还按旧视图的高度定位。 */
 function showView(id) {
   VIEW = id;
   $$('.view').forEach(function (v) {
     v.classList.toggle('is-on', v.id === id);
   });
+  syncDockHeight();
 }
 
 /* ── 跨片写动作「单一在途」守卫（UI-DESIGN §2.0）─────────
@@ -415,10 +418,29 @@ function renderAux() {
 
 /* ═══════════════ 底部工具条实测高度 ═══════════════
    --dock-h 用于提示条定位等。硬编码会随字号档位 / 安全区变化而失准，
-   所以实测回写：ResizeObserver 盯着工具条，尺寸一变就更新。 */
+   所以实测回写：ResizeObserver 盯着工具条，尺寸一变就更新。
+
+   三个视图各有一条 .dock（大厅 / 主画面 / 设置），高度各不相同；而
+   `.view:not(.is-on)` 是 display:none——量隐藏的那条只会得 0，所以
+   必须按**当前可见视图**取 dock。只认文档里第一条（旧写法）的话，
+   切到主画面后量到的是大厅那条（display:none → 0，被 h > 0 守卫挡掉），
+   --dock-h 就一直停在大厅的旧值上，提示条会盖住主画面的输入区。 */
+
+function currentDock() {
+  var view = $('.view.is-on');
+  var dock = view ? view.querySelector('.dock') : null;
+  if (dock && dock.getBoundingClientRect().height > 0) return dock;
+  // 没有 .is-on（或它还没布局出高度）时，退回第一条**量得出高度**的
+  // .dock：隐藏视图的高度是 0，天然被排除，不会把旧值写回去。
+  var docks = $$('.dock');
+  for (var i = 0; i < docks.length; i++) {
+    if (docks[i].getBoundingClientRect().height > 0) return docks[i];
+  }
+  return null;
+}
 
 function syncDockHeight() {
-  var dock = $('.dock');
+  var dock = currentDock();
   if (!dock) return;
   var h = dock.getBoundingClientRect().height;
   if (h > 0) document.documentElement.style.setProperty('--dock-h', Math.round(h) + 'px');
