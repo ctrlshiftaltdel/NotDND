@@ -535,7 +535,7 @@ Issue 编号与登记评论链接、以及「只扫开放 Issue 会漏掉该项�
 |---|---|---|---|---|
 | 标准活动锁恢复探针 | #258 | `drill/orchestration-lock-probe`（**未创建**） | 尚未开 PR | `DISPATCHED` →（演练收尾）**已取消** |
 | 清理失败跨会话恢复探针 | #259 | `drill/cleanup-sim-20261011`（**仅本地 bare 仓库**） | 演练（**无真实 PR**） | `MERGED` + `cleanup_blocked` → `cleanup_complete` |
-| 本单实现（文档） | #257 | `fix/orchestration-cleanup-recovery` | 承载本记录的 PR（Issue #257） | `MASTER_REVIEW` |
+| 本单实现（文档） | #257 | `fix/orchestration-cleanup-recovery` | PR #260（Issue #257） | `MASTER_REVIEW` |
 
 （两探针均为**演练 Issue**，**无真实 PR**、编号**未编造**；演练产物不合并。核验：`gh issue view 258/259` → `state=CLOSED`。）
 
@@ -567,7 +567,7 @@ Issue 编号与登记评论链接、以及「只扫开放 Issue 会漏掉该项�
 
 - Issue **#259** 登记评论（**MERGED + cleanup_pending**）：`…/issues/259#issuecomment-6107249375`。[真实执行]
   - `orchestration 状态：MERGED` · `分支名：drill/cleanup-sim-20261011` · `PR：演练（无真实 PR）；合并事实 = merge commit 77cf7c4…` · `清理状态（cleanup）：cleanup_pending`
-- 贴索引标签 `编排：待清理`（**允许贴到已关闭 Issue**），随后**关闭** Issue 模拟 `Closes #N` 自动关闭。[真实执行]
+- 贴索引标签 `编排：待清理`（**允许贴到已关闭 Issue**；该标签为本机制所设，由承载本记录的 **PR #260（Issue #257）** 创建），随后**关闭** Issue 模拟 `Closes #N` 自动关闭。[真实执行]
 
 ```text
 $ gh issue edit 259 --add-label '编排：待清理'      # 索引
