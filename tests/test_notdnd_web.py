@@ -48,6 +48,12 @@
      另有一条**确定性并发回归**：房主在「鉴权通过后、踢人变更前」离房时，踢人必须
      被拒（用锁代理插入交错，不靠 sleep 赌时序）。
 
+ 11. 建局写接口（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）：`POST /api/session/create`
+     真起服务（随机端口 + 临时存档目录）建局 → 返回可用的新 `sid` 与新局最小视图
+     → `GET /api/session` / `GET /api/log` 立即可用；导引者离线（无 `.env`）时同样成立；
+     畸形 JSON 体 → 400；落盘失败 → 500 且不返回误导性成功（与 #170 同一口径）；
+     重载往返（服务重启后从磁盘重新载入）。既有 `X-Session` / `?sid=` 语义不变。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -2374,6 +2380,136 @@ def check_room_create_save_failure():
     notdnd_web._sessions.pop(rid, None)
 
 
+# --------------------------------------------------------------------------
+# 建局写接口（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）
+# --------------------------------------------------------------------------
+
+
+def check_session_create_endpoint():
+    """`POST /api/session/create`：真起服务，建局 → 拉视图 → 日志（§2.1）。
+
+    断言「建局返回的 sid 立刻可用、且磁盘上真有这一局」，并核对既有
+    `X-Session` / `?sid=` 语义没被改动。
+    """
+    with _Server() as server:
+        status, info = server.get("/api/saves")
+        assert status == 200, "服务未就绪：%s" % status
+        save_dir = info["save_dir"]
+
+        status, view = server.post("/api/session/create", {})
+        assert status == 200, "建局应 200，实际 %s / %s" % (status, view)
+        sid = view.get("sid") or ""
+        assert notdnd_web.SID_RE.fullmatch(sid), "sid 必须过白名单：%r" % sid
+        assert view.get("status") == "ok", view
+        # 新局最小视图与 GET /api/session 同形：空 party / 空场景 / save 块。
+        assert view["party"] == [] and view["pressure"] == 0
+        assert view["scene"] == {"id": "", "actions": []}
+        assert view["save"]["name"] and view["save"]["named"] is False
+        assert view["log"] == []
+
+        # 磁盘上真有这一局（不是只在内存里）。
+        assert os.path.isfile(os.path.join(save_dir, "%s.json" % sid))
+
+        # 建局成功后：GET /api/session 200、GET /api/log 可用。
+        status, got = server.get("/api/session", sid=sid)
+        assert status == 200, "新局应能拉视图，实际 %s / %s" % (status, got)
+        assert got["sid"] == sid
+        status, log = server.get("/api/log", sid=sid)
+        assert status == 200, (status, log)
+        assert log.get("log") == []
+
+        # 既有 X-Session / ?sid= 语义不变：无 sid 仍 400，?sid= 与 X-Session 等价。
+        assert server.get("/api/session")[0] == 400
+        status, via_q = server.get("/api/session?sid=%s" % sid)
+        assert status == 200 and via_q["sid"] == sid, (status, via_q)
+
+        # 列表里能看到这一局（current 走 X-Session）。
+        status, saves = server.get("/api/saves", sid=sid)
+        assert status == 200
+        assert any(row["id"] == sid for row in saves["saves"]), saves["saves"]
+        assert saves["current"] == sid
+
+        # 再建一局：sid 不同（各局独立）。
+        status, view2 = server.post("/api/session/create", {})
+        assert status == 200, (status, view2)
+        assert view2["sid"] != sid
+
+        # 参数非法：畸形 JSON 体 → 400（沿用 _body() 的统一语义）。
+        conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=10)
+        conn.request("POST", "/api/session/create", body=b"{not json",
+                     headers={"Content-Type": "application/json"})
+        response = conn.getresponse()
+        bad_status, bad_body = response.status, _load_json(response.read())
+        conn.close()
+        assert bad_status == 400 and bad_body.get("error"), (bad_status, bad_body)
+
+
+def check_session_create_offline():
+    """导引者离线（无 .env / 无密钥）：建局照常成立，进入可玩骨架（§2.1 兜底态）。"""
+    saved_env = prism_guide.load_env
+    prism_guide.load_env = lambda *_a, **_k: {}
+    made = []
+    try:
+        with _LocalServer() as server:
+            status, info = server.get("/api/guide/status")
+            assert status == 200, (status, info)
+            assert info == {"chat": False, "tts": False, "configured": False}, info
+
+            status, view, _raw, _heads = server.post("/api/session/create", {})
+            assert status == 200, "离线建局应 200，实际 %s / %s" % (status, view)
+            sid = view["sid"]
+            made.append(sid)
+            assert view["party"] == [] and view["status"] == "ok"
+            assert server.get("/api/session", sid=sid)[0] == 200
+            assert server.get("/api/log", sid=sid)[0] == 200
+    finally:
+        prism_guide.load_env = saved_env
+        for sid in made:
+            notdnd_web._sessions.pop(sid, None)
+
+
+def check_session_create_reload():
+    """建局落盘 → 服务重启（同存档目录）→ 仍能拉视图 / 日志：往返一致。"""
+    with _LocalServer() as server:
+        status, view, _raw, _heads = server.post("/api/session/create", {})
+        assert status == 200, (status, view)
+        sid = view["sid"]
+    # 服务实例已关；本进程的内存缓存也要摘掉，才逼出「从磁盘重新载入」。
+    notdnd_web._sessions.pop(sid, None)
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded is not None, "建局必须落盘，重启后才能载入"
+    assert notdnd_web.rules_view(reloaded)["sid"] == sid
+    with _LocalServer() as server:
+        status, again = server.get("/api/session", sid=sid)
+        assert status == 200, "重启后新局应仍可拉取，实际 %s / %s" % (status, again)
+        assert again["sid"] == sid and again["party"] == []
+        assert server.get("/api/log", sid=sid)[0] == 200
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_session_create_save_failure():
+    """建局落盘失败：500、不进缓存、磁盘无档；恢复后能建局（#170 语义）。"""
+    def _save_files():
+        return {name for name in os.listdir(_TMP) if name.endswith(".json")}
+
+    with _LocalServer() as server:
+        before_sessions = set(notdnd_web._sessions)
+        before_files = _save_files()
+        with _storage_fault(replace=True):
+            status, body, _raw, _heads = server.post("/api/session/create", {})
+        assert status == 500, "落盘失败应 500，实际 %s / %s" % (status, body)
+        assert body.get("error"), body
+        assert set(notdnd_web._sessions) == before_sessions, "半成品不得进缓存"
+        assert _save_files() == before_files, "磁盘不得留下半成品存档"
+
+        # 故障解除后重试：建局成功并落盘。
+        status, view, _raw, _heads = server.post("/api/session/create", {})
+        assert status == 200, (status, view)
+        sid = view["sid"]
+        assert os.path.exists(_save_path(sid))
+        notdnd_web._sessions.pop(sid, None)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -2421,6 +2557,10 @@ CHECKS = (
     check_room_kick_authorization,
     check_room_kick_host_check_is_atomic,
     check_room_auth_chain,
+    check_session_create_endpoint,
+    check_session_create_offline,
+    check_session_create_reload,
+    check_session_create_save_failure,
 )
 
 
