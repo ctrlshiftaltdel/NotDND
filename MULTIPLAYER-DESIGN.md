@@ -86,7 +86,7 @@
 
 | 假设 | 内容（对齐后） | 对齐对象 | 状态 |
 |---|---|---|---|
-| A1 | 状态层提供**唯一提交入口**：`state.Handle.commit(*, base_seq, idempotency_key, type, actor, …, changes=(), world_time=None, source=…) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`；同 `idempotency_key` 重复提交返回**首次结果**、不重放副作用。房间层把 `room_id` 映射为状态层 `campaign_id`（M-11：`room_id == sid == campaign_id`）。原名 `commit(room_id, proposal, idem_key) -> {rev, seq, events[]}`，**已按 STATE §12.1 统一**（`idem_key`→`idempotency_key`、`rev`→`seq`/`base_seq`、返回 `CommitResult`）。 | STATE-DESIGN §12.1 / §7 | ✅ 已对齐 |
+| A1 | 状态层提供**唯一提交入口**：`state.Handle.commit(*, base_seq, idempotency_key, type, actor, …, changes=(), world_time=None, source=…) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`；同 `idempotency_key` 重复提交返回**首次结果**、不重放副作用。房间层把 `room_id` 映射为状态层 `campaign_id`（M-11：`room_id == sid == campaign_id`）。原名 `commit(room_id, proposal, idem_key) -> {rev, seq, events[]}`，**已按 STATE §12.1 统一**（`idem_key`→`idempotency_key`、`rev`→`seq`/`base_seq`、返回 `CommitResult`）。**一次提交 = 一条事件（A0）**，故 `CommitResult` 恒有 `seq_from == seq_to` 且 `len(event_ids) == 1`。 | STATE-DESIGN §12.1 / §7 | ✅ 已对齐 |
 | A2 | 状态层按**序号范围读事件**：可读 `seq > since` 的区间，事件封套带 `visibility`（STATE §5.1）；**受众过滤以 `visibility` 为输入**、由房间层完成（STATE §12.4：`visibility` 是过滤输入、不是权限模型）。`seq` 在战役内**单调递增、无空洞**（STATE §5.1）。 | STATE-DESIGN §12.4 / §5.1 / §16 M7-4 | ✅ 已对齐 |
 | A3 | 房间块作为状态层快照里的**不透明块** `blocks.room`（`STATE-DESIGN.md` §6.1 / §11：与 `rules`/`atlas`/`guide`/`chron` 同级），随检查点原子写；`state.py` 原样存取、不解析（STATE S4）。旧档惰性迁移。 | STATE-DESIGN §6.1 / §11 / §10 | ✅ 已对齐 |
 | A4 | CHRON 在识别到互相影响时开**事件窗口** `Window`（`CHRON-DESIGN.md` §5.4 / §5.5）；窗口内相关角色按 CHRON **稳定排序**结算，窗口外成员照常异步；窗口开关本身是事件（`window.opened` / `window.closed`）。**入口名**（是否对外暴露 `window_open(...)`）以 CHRON 实现切片为准。 | CHRON-DESIGN §5.4 / §5.5 | ✅ 已拍板（2026-10-10）：入口名以 CHRON 实现切片为准 |
@@ -300,7 +300,7 @@ wire 帧（text/event-stream）：
 
 - 现有 `prism_guide` 已有秘密门（`redact_narration` / `redact_secrets` / `secret_allowed_for`）与「已知线索 ∩ 角色 knows」的门（G7）。**多人把这条门从「单角色」推广到「每成员各过一次」**：
   - 生成一份叙事/事件后，对**每个受众成员**分别计算可见部分（本成员的角色 knows 集 + 目击 + 被告知）。
-  - `world` 事件只过一次（对所有人相同）；`tell` / `npc` / 个人线索按成员各算。
+  - `world` 事件只过一次（对所有人相同、一条事件一份 `visibility`）；`tell` / `npc` / 个人线索按成员各算——**可见范围不同即分属不同事件**，按 §6.4 拆成多次提交（A0：一条事件只有一份 `visibility`）。
 - **事实与信念分离**（GDD §12.1）：房间落地时，`world` 事实是唯一真相；「某成员以为 X」是**该成员自己的**知识/信念记录，**不写回** `world`。
 - **不越权**：LOREX（导引者）**看得到全局真相**，但**不得**把全局真相推给没权限的成员；NPC 同理（GDD §11.4）。
 
@@ -314,6 +314,7 @@ wire 帧（text/event-stream）：
 **已对齐**（`STATE-DESIGN.md` §5.1 / §12.4；假设 A2 / M-15）：
 
 - 事件在**提交时**计算并冻结 `audience`（受众集合或频道判据）；其**可落库的载体是事件封套的 `visibility`**（STATE §5.1）。
+- **一条事件只有一份 `visibility`**（STATE §5.0 的 A0）：可见范围（`public` / `team` / `private(subjects)` / `gm`，STATE §5.1）随该事件在提交时冻结。若一次操作需要向**不同可见范围**分别披露（例如对当事人 `private`、对全场 `public`，或对不同成员分别 `tell`），**拆成多次提交**、各带自己的 `idempotency_key`，**不要**把多可见范围塞进一条事件（STATE §12.4）。
 - 重连补发按 STATE §12.4 的**按序号读事件**口径：读 `seq > since` 的事件，房间层**以同一 `visibility` 判据**过滤给成员，**绝不会**因为「重连」而多给。——这是防越权最关键的一条。
 - 若事件日志缺席（M7 未落地，假设 A6）→ 退化为「当前快照 + `system` 帧提示『可能错过一段，已按你当前权限重新对齐』」，**不**用前端的 `since` 去猜。
 - 断线期间本人角色的**长行动照常推进**（服务器权威），回来时用补发+快照看到结果；不因掉线回滚。
@@ -342,13 +343,13 @@ wire 帧（text/event-stream）：
 
 - A、B 同时对同一件地上物品提交「拾取」。
 - 服务端串行：先入队者提交成功（物品 `holder = 该角色`）；后者提交时 `base_seq` 校验失败 → `409 conflict`，返回 `holder`。
-- 结果：物品**恰好一个**持有者，事件日志两条（一条成功、一条被拒），无复制。
+- 结果：物品**恰好一个**持有者，无复制。成功者写**一条**事件；被拒者 `status="conflict"`，按 STATE §8.1 **不写任何事件**。
 - 前端：B 看到「已被 A 拿走」，可改行动。
 
 **(b) 同时行动（同一目标 / 同一地点）**
 
 - 自由模式：两个互不影响的行动各自异步提交，互不阻塞。
-- 事件模式（如同时攻击同一 NPC / 争夺）：假设 A4，CHRON 把相关角色纳入**同一同步窗口**（`CHRON-DESIGN.md` §5.4），窗口内按 CHRON 排序结算，所有结果作为同一批事件提交（`seq` 连续）。
+- 事件模式（如同时攻击同一 NPC / 争夺）：假设 A4，CHRON 把相关角色纳入**同一同步窗口**（`CHRON-DESIGN.md` §5.4），窗口内按 CHRON 排序结算；所有结果作为**一串 `seq` 连续的提交**落地（A0：**每次提交 = 一条事件**，窗口内 N 个结果即 N 次提交，**不是**「一次提交写多条事件」）。
 - **M9 未落地前**（M8 同步路径）：先靠 §7.2 的**串行提交**保证一致性；代价是「同时性」被序列化——可接受，且**不产生矛盾状态**。此时不给玩家承诺「同时」的手感，只保证「不矛盾」。
 
 **(c) 重复提交 / 重连重发**
@@ -368,7 +369,8 @@ wire 帧（text/event-stream）：
 
 ### 7.5 排序与可解释性
 
-- 所有已提交变更带 `seq`（STATE §5.1：一次提交可写多个事件，`seq` **连续**、共享 `commit_id`）；同一 `world_time` / 同一到期点的多张任务卡按 CHRON §5.2 的**稳定排序键** `(due_minute, -priority, created_seq, action_id)` 定序（可测、两次运行全等）。
+- **一次提交 = 一条事件**（STATE §5.0 的 **A0**）：`commit()` 每次调用只产出一条事件，`seq` 每次 **+1**、战役内单调递增且无空洞（STATE §5.1），`commit_id` 由 `seq` 派生、与事件 **1:1**；本次提交的**全部**状态变更由该事件的 `changes[]` 承载。事件日志里**不存在**「一个 `commit_id` 对应多条事件」的形态。**一条事件只有一份 `visibility`**——若一次操作需按不同可见范围分别披露，或需产出异种 `type` / `actor`，应**拆成多次 `commit()`**、各带自己的 `idempotency_key`（见 §6.4；STATE §12.2 / §12.4）。
+- 同一 `world_time` / 同一到期点的多张任务卡按 CHRON §5.2 的**稳定排序键** `(due_minute, -priority, created_seq, action_id)` 定序（可测、两次运行全等）。
 - 每次拒绝都带**机器可读的 reason** + 人话（GDD §24.3 可观测性）：`room_full` / `pvp_disabled` / `pvp_needs_consent` / `room_paused` / `conflict` / `not_authorized` / `token_invalid`。
 
 ---
@@ -438,7 +440,7 @@ wire 帧（text/event-stream）：
 
 | # | 场景 | 期望 |
 |---|---|---|
-| T1 | 两名成员并发提交「拾取同一件物品」 | 恰一人成功（`200`），另一人 `409 conflict` 且带 `holder`；物品**唯一归属**；事件两条可溯源 |
+| T1 | 两名成员并发提交「拾取同一件物品」 | 恰一人成功（`200`）并写**一条**事件（`seq` / `commit_id` 唯一），另一人 `409 conflict` 且带 `holder`、**不写事件**（STATE §8.1）；物品**唯一归属**、可溯源 |
 | T2 | 两名成员同时攻击同一目标（自由模式） | 两次结算都被提交，`seq` 有序，无伤害丢失/重复；目标状态一致 |
 | T3 | 同一请求带**同一幂等键**提交两次 | 第二次**不产生副作用**，返回首次结果；资源/物品无重复变化 |
 | T4 | 带**不同幂等键**但语义相同的重复点击（过渡口径） | 按规则判定（预期：第二次因 `base_seq`/条件失败），**不出现双份副作用** |
