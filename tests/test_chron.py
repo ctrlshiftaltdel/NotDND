@@ -1880,12 +1880,14 @@ def check_merge_snapshot_and_log():
                                 "priority": 0, "depends_on": []}
     merged = chron.merge_blocks(snapshot, log)
     assert merged["actions"]["z"] == snapshot["actions"]["z"]
-    # 窗口：按 `window_id` 去重，保留首次出现的次序。
-    snapshot["windows"] = [{"window_id": "2:b", "key": "b"},
-                           {"window_id": "1:a", "key": "a"}]
-    log["windows"] = [{"window_id": "1:a", "key": "a"}]
+    # 窗口：按 `window_id` 去重，保留首次出现的次序；同一 id 取**参与者更多**的一边
+    # （C3 的「并入窗口」不进事件，快照侧往往更完整）。
+    snapshot["windows"] = [{"window_id": "2:b", "key": "b", "participants": ["x"]},
+                           {"window_id": "1:a", "key": "a", "participants": ["x", "y"]}]
+    log["windows"] = [{"window_id": "1:a", "key": "a", "participants": ["x"]}]
     merged = chron.merge_blocks(snapshot, log)
     assert [window["window_id"] for window in merged["windows"]] == ["2:b", "1:a"]
+    assert merged["windows"][1]["participants"] == ["x", "y"], merged["windows"]
 
 
 def check_restart_roundtrip():

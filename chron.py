@@ -2270,6 +2270,12 @@ def _last_event_ordinal(action):
     return int(tail[index:])
 
 
+def _window_participant_count(window):
+    """窗口的参与者数量（脏值按 0 计；合并块时用它判「哪一边的窗口更完整」）。"""
+    participants = window.get("participants") if isinstance(window, dict) else None
+    return len(participants) if isinstance(participants, list) else 0
+
+
 # --------------------------------------------------------------------------
 # §8.1 块形状与搬运
 # --------------------------------------------------------------------------
@@ -2402,8 +2408,8 @@ def scheduler_from_block(block, notes=None):
     """存档块 → 调度器状态（§8.2 第 4 步：派生索引与 `due_heap` **全部重建**）。
 
     - `blocks`（§5.1 的 `deps`）由每张卡的 `depends_on` 重建（反向索引，单一真相是卡）；
-    - `running`（在飞行动的冲突键，§5.5 识别用）由「状态 ∈ {scheduled, running} 且
-      `conflict_key` 非空」重建；
+    - `running`（在飞行动的冲突键，§5.5 识别用）由「`status == running` 且 `conflict_key`
+      非空」重建（`scheduled` 还没开始，不进这张表——与 `_fire_one` 的登记时机一致）；
     - `due_heap` 由 `rebuild_heap` 重建（§5.2 的稳定排序键，确定性）；
     - `keys` = 块的 `idempotency`（§8.3 的幂等表）；
     - §8.4 的**折叠引用不进 `actions`**：那张卡的终态事实留在事件日志里，调度器只认
@@ -2493,7 +2499,8 @@ def merge_blocks(snapshot_block, log_block, notes=None):
       的一边（相等 → 日志为准）；只有一边有的卡照收——快照里 staged、日志里没有的卡
       同样是事实；
     - `windows`：按 `window_id` 并集，**首次出现的次序**保留（快照在前 → 与存活态的
-      追加顺序一致），同 id 时日志覆盖快照；
+      追加顺序一致）；同一 id 取**参与者更多**的一边（C3 的「并入窗口」不进事件，
+      快照侧往往更完整），参与者一样多则日志为准；
     - `idempotency`：**并集，只加不减**（幂等键丢一条 = 多一次重复副作用的机会）；
     - `folded`（§8.4）：并集，且**折叠优先**——出现在任一边折叠引用里的行动不再进
       `actions`（裁剪是调用方的显式决定，合并不得把它翻回来）。
@@ -2532,7 +2539,14 @@ def merge_blocks(snapshot_block, log_block, notes=None):
             continue
         if window_id not in windows:
             order.append(window_id)
-        windows[window_id] = _clone(window)                  # 日志在后 → 覆盖快照
+            windows[window_id] = _clone(window)
+            continue
+        # 同 id：取**参与者更多**的一边（C3 的「并入窗口」不进事件，快照侧往往更完整）；
+        # 参与者一样多则后者（日志）为准——两条都确定性，不随合并方向抖动。
+        current = windows[window_id]
+        candidate = _clone(window)
+        if _window_participant_count(candidate) >= _window_participant_count(current):
+            windows[window_id] = candidate
     merged["windows"] = [windows[window_id] for window_id in order]
 
     idempotency = _clone(snapshot["idempotency"])
@@ -2589,10 +2603,16 @@ def restore(handle, *, notes=None):
 # --------------------------------------------------------------------------
 
 def committed_seq(block, key):
-    """该幂等键已提交的事件序号；没记过 / 键非法 → `None`。"""
+    """该幂等键已提交的事件序号；没记过 / 键非法 → `None`。
+
+    只读（不迁移、不拷贝）：脏块拿不到就按「没记过」处理，热路径上不整块克隆。
+    """
     if not isinstance(key, str) or not key:
         return None
-    value = migrate_block(block)["idempotency"].get(key)
+    idempotency = block.get("idempotency") if isinstance(block, dict) else None
+    if not isinstance(idempotency, dict):
+        return None
+    value = idempotency.get(key)
     return value if _is_block_minute(value) else None
 
 
@@ -2619,11 +2639,10 @@ def mark_committed(block, key, seq):
 
 def pending_events(block, events):
     """过滤掉**已提交过**的事件（§8.3：同键重投 no-op），返回按原序的待提交清单。"""
-    snapshot = migrate_block(block)
     pending = []
     for event in events:
         _require_mapping(event, "event")
-        if not is_committed(snapshot, event.get("idempotency_key")):
+        if committed_seq(block, event.get("idempotency_key")) is None:
             pending.append(event)
     return pending
 
@@ -2716,8 +2735,9 @@ def commit_event(handle, event, *, block, after_block=None, state=None,
     返回 `{"status", "result", "block", "seq", "changes"}`：`status` ∈ `committed` /
     `replayed` / `skipped` / `conflict` / `rejected`；`result` 是状态层的 `CommitResult`
     （`skipped` 时为 `None`——本次没提交）；`block` 是**新块**——提交成功时记下幂等键与
-    状态层的新 `seq`，可直接作为下一条事件的 `block`；`changes` 是本次提交的声明式变更
-    （`block_changes` 的产物）。
+    状态层的新 `seq`，可直接作为下一条事件的 `block`；`changes` 是本次**尝试**提交的
+    声明式变更（`block_changes` 的产物；`status` 不是 `committed` / `replayed` 时
+    状态层没有应用它们，`block` 也回到事件前）。
     """
     _require_mapping(block, "block")
     _require_mapping(event, "event")
