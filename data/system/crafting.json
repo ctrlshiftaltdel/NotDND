@@ -16,7 +16,7 @@
     "items": [
       {"id": "blueprint", "name": "蓝图", "detail": "可以从势力、导师、废墟、数据库中获得；稀有度分为 普通 / 进阶 / 稀有 / 唯一。", "source": "docs/system/03-interaction-layer.md:273"},
       {"id": "material", "name": "材料", "detail": "从场景中获取，或从市场购买；材料有自己的品质等级（-1 / +0 / +1）。", "source": "docs/system/03-interaction-layer.md:275"},
-      {"id": "worktime", "name": "工时", "detail": "以「工作时段」为单位，每个等级的物品需要不同工时。", "source": "docs/system/03-interaction-layer.md:277"}
+      {"id": "worktime", "name": "工时", "detail": "以「工作时段」为单位（1 工作时段 = 8 小时；3 工作时段 = 1 天），每个等级的物品需要不同工时。", "source": "docs/system/03-interaction-layer.md:277"}
     ],
     "blueprint_rarities": ["普通", "进阶", "稀有", "唯一"],
     "blueprint_rarity_source": "docs/system/03-interaction-layer.md:273",
@@ -24,9 +24,9 @@
     "material_quality_source": "docs/system/03-interaction-layer.md:275"
   },
   "tiers": [
-    {"id": "simple", "name": "简易", "examples": "绳子、陷阱、简易药品", "worktime": "1 时段", "craft_df": 10, "requirement": "无", "source": "docs/system/03-interaction-layer.md:281"},
-    {"id": "standard", "name": "标准", "examples": "常规武器、通信设备、护符", "worktime": "3 时段", "craft_df": 13, "requirement": "工作台", "source": "docs/system/03-interaction-layer.md:282"},
-    {"id": "fine", "name": "精良", "examples": "改造武器、专业设备、共鸣增幅器", "worktime": "1 天（3 时段）", "craft_df": 16, "requirement": "专业工坊", "source": "docs/system/03-interaction-layer.md:283"},
+    {"id": "simple", "name": "简易", "examples": "绳子、陷阱、简易药品", "worktime": "1 工作时段", "craft_df": 10, "requirement": "无", "source": "docs/system/03-interaction-layer.md:281"},
+    {"id": "standard", "name": "标准", "examples": "常规武器、通信设备、护符", "worktime": "3 工作时段", "craft_df": 13, "requirement": "工作台", "source": "docs/system/03-interaction-layer.md:282"},
+    {"id": "fine", "name": "精良", "examples": "改造武器、专业设备、共鸣增幅器", "worktime": "1 天（3 工作时段）", "craft_df": 16, "requirement": "专业工坊", "source": "docs/system/03-interaction-layer.md:283"},
     {"id": "masterwork", "name": "杰作", "examples": "独一无二的作品", "worktime": "3 天", "craft_df": 19, "requirement": "稀有材料 + 专业工坊 + 一次灵感场景", "source": "docs/system/03-interaction-layer.md:284"}
   ],
   "quality_grades": [
