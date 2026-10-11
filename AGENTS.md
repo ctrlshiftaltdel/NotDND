@@ -230,7 +230,7 @@ PR 转 Ready 后、给出四行建议（第 6 节）前，**逐项**核对：
 | 路径 | 说明 |
 |---|---|
 | `<后端模块>.py` | 「规则会话核心」与「AI 导引者」（两者分离） |
-| `static/` | 前端资源（`index.html` / `app.css` / `app.js`） |
+| `static/` | 前端资源（`index.html` + `css/*.css` + `js/*.js`，U0 切分后：`tokens` / `base` / `lobby` / `stream` 各自独立） |
 | `data/` | 由 `docs/` 转换出的 JSON |
 | `tests/` | 回归测试 |
 | `README.md`、`HANDOVER.md` | 文档 |
