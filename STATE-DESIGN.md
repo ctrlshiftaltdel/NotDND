@@ -216,7 +216,7 @@ GDD §19.5 点名的字段**全部覆盖**（GDD §19.1–§19.3 只说「重要
 | `campaign_id` | string | 是 | 战役（权威世界）id，GDD §19.5「战役 ID」 | `"yunji"` |
 | `seq` | int ≥ 1 | 是 | 战役内**单调递增、无空洞**的序列号，GDD §19.5「序列号」。**每次提交 +1**（A0：一次提交 = 一条事件） | `42` |
 | `commit_id` | string | 是 | 本次原子提交的分组标识：`"{campaign_id}:c{seq:08d}"`（**由 `seq` 派生**，`seq` 按 **8 位十进制零填充**，与唯一事件 1:1，A0）。保留该字段供 `CommitResult` / 幂等记录 / 审计引用；**不允许**一个 `commit_id` 对应多条事件 | `"yunji:c00000042"` |
-| `world_time` | object \| null | 是（可为 `null`） | GDD §19.5「世界时间」。**不透明**，语义与形状归 CHRON（`CHRON-DESIGN.md` §3.1；本文 §6.2 / §12.3），M7 允许 `null` | `null` 或 `{"world_minute":17310,"day":12,"tod":30}` |
+| `world_time` | object \| null | 是（可为 `null`） | GDD §19.5「世界时间」。**不透明**，语义与形状归 CHRON（`CHRON-DESIGN.md` §3.1；本文 §6.2 / §12.3），M7 允许 `null` | `null` 或 `{"world_minute":17310,"day":13,"tod":30}` |
 | `type` | string | 是 | GDD §19.5「类型」。`"<domain>.<verb>"`，小写，`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$` | `"core.commit"` / `"map.move"` / `"resource.spend"` |
 | `actor` | string | 是 | GDD §19.5「主体」。实体 id；系统发起用 `"world"` | `"npc-01"` |
 | `target` | string \| null | 是 | GDD §19.5「目标」 | `"loc-02"` |
