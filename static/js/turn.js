@@ -549,7 +549,9 @@ async function loadStreamLog() {
 /* 服务端条目并入本地流：
    1. 游标去重（seq <= lastSeq 的已经收过）；
    2. 同 (kind, text) 的**本地乐观条目**被认领（补上 seq），不新增第二条；
-   3. `trace` 不是独立条目，而是挂到最近一条叙事上的痕迹块（§3.5.2）。 */
+   3. `trace` 不是独立条目，而是挂到最近一条叙事上的痕迹块（§3.5.2）；
+   4. 叙事条目带 `beats` 时**原样透传**（M4-B5）：刷新 / 重进会话后恢复的历史
+      叙事与即时渲染同口径——按拍切段、保留朗读入口。 */
 function mergeServerEntries(entries) {
   (entries || []).forEach(function (raw) {
     if (!raw || typeof raw !== 'object') return;
@@ -564,6 +566,8 @@ function mergeServerEntries(entries) {
       speaker: raw.speaker || '',
       pending: false
     };
+    // 服务端无拍时不写这个键，这里同样不补空字段（条目形状与 B2 一致）。
+    if (raw.beats && raw.beats.length) entry.beats = raw.beats;
     for (var i = TURN.log.length - 1; i >= 0; i--) {
       var e = TURN.log[i];
       if (e.pending && e.kind === entry.kind && String(e.text || '') === String(entry.text || '')) {
