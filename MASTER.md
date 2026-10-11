@@ -51,7 +51,7 @@ AI 任「**导引者**」，**纯文本运行 + 视觉占位框架**（D2：为�
 
 ---
 
-## 2. 当前状态快照（截至 2026-10-10）
+## 2. 当前状态快照（截至 2026-10-11）
 
 > ⚠️ 快照会过时——**以 GitHub 为准**。每次里程碑/阶段收口后更新本表（§6 第 4 项）。
 
@@ -59,13 +59,15 @@ AI 任「**导引者**」，**纯文本运行 + 视觉占位框架**（D2：为�
 - **CI 四道门**（`.github/workflows/ci.yml`）：语法门 / 回归门 / 内容防火墙门 / **提交邮箱门**。
 - **安全**：全历史 **0 真实邮箱**（2026-10-09 已重写历史 + 账号开启「keep email private」）；无密钥、无本机路径。
 - **数据层**：`python3 tests/validate_data.py` → **79 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ `data/atlas/lexicon.json` + schema/registry）。
-- **回归**：`bash tests/run_all.sh` → **12 个脚本**（`test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_repo_layout` / `test_notdnd_web` / `test_prism_core` / `test_atlas_kernel` / `test_atlas_compile` / `test_atlas_gen` / `test_atlas_ledger_pins` / `test_prism_guide` / `test_ui_smoke`）。
+- **回归**：`bash tests/run_all.sh` → **14 个脚本**（`test_atlas_compile` / `test_atlas_gen` / `test_atlas_kernel` / `test_atlas_ledger_pins` / `test_chron` / `test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_notdnd_web` / `test_prism_core` / `test_prism_guide` / `test_repo_layout` / `test_state` / `test_ui_smoke`）。
 - **里程碑**：**M0–M6 主体 ✅（已完成历史，见 §4）**；**M6a ✅（Issue #123 / PR #127）· M6b ✅（Issue #124 / PR #128）**——M6 收口。官方路线自 **M7** 起见 `GDD-BASELINE.md` §5。
+- **M7 起实现首片（已合并）**：**M7-1 状态层内核 ✅（Issue #163 / PR #214）· M8-A1 提案与结果契约 ✅（Issue #202 / PR #213）· M9-C1 CHRON 内核 ✅（Issue #165 / PR #176）· M10-S1 房间与成员骨架 ✅（Issue #166 / PR #188）**。
+- **M4 前端切片（并行轨）**：**U0 ✅（Issue #164 / PR #177）· U1 ✅（Issue #206 / PR #233）· U3 ✅（Issue #204 / PR #215）· U4 ✅（Issue #201 / PR #221）· B1 ✅（Issue #203 / PR #219）· B2 ✅（Issue #205 / PR #224）**；U2 / U5 / U6 尚未开单。
 - **GDD 基线**（PR #135）：`GDD.html`（v1.1 原件）与 `GDD-BASELINE.md` 入库；Markdown 版 `GDD.md`（Issue #139 / PR #150）。
 - **角色分工**（Issue #141 / PR #142，2026-10-10 人定）：Master Agent 只把控方向 / 拆单派发 / 审批，**不做实现**（不编辑 / 不 commit / 不 push / 不开 PR）；Execution Agent 严格按 Issue 执行、**一律不合并**（细则见 `AGENTS.md` §3）。
 - **设计单（六份全部入库）**：M7-a `STATE-DESIGN.md`（#136 / PR #152）· M8-a `ACTION-DESIGN.md`（#137 / PR #149）· M9-a `CHRON-DESIGN.md`（#138 / PR #151）· M10-a `MULTIPLAYER-DESIGN.md`（#143 / PR #146）· M4 正式 UI `UI-DESIGN.md`（#133 / PR #147，**含 D2 视觉占位框架要求**）。
 - **已关单**：**#110**（要点节点 cites 自引专名，PR #148）；**#140**（2026-10-10 角色边界复盘产物，按人决定「不重做、不审阅」关闭）——其内容重开为 **#144**（D2/D3 治理口径同步）与 **#145**（即为本快照单）。
-- **在办 / 待办**（开放 PR：**无**）：**#144**（D2/D3 口径同步：`AGENTS.md` 铁律 2 + `README.md` / `HANDOVER.md` / `tests`）· **#153**（Master 复核范围收窄：不预读未开 PR 的新分支；**与 #145 同文件 `MASTER.md`，二单串行**）· **#154**（STATE / ACTION / CHRON / MULTIPLAYER 四份设计单接口对齐，拆实现单前）· **#155**（CHRON §2.6 时间口径修订，待人拍板后开工）。
+- **在办 / 待办**：**以 GitHub 为准**（`gh issue list --state open` / `gh pr list --state open`）——本快照不再逐条维护开放 Issue / PR 列表，避免下次漂移；待人拍板与待办项登记见 §5（#218 / #222 / #236）。
 
 ---
 
@@ -282,6 +284,28 @@ bash tests/content_firewall.sh
   评论 / 汇报 / 待办 / 复盘中提及 PR 一律写 `PR #N（Issue #M）`（反向 `Issue #M（PR #N）`）；
   多 Issue 列全，无关联写明「无关联 Issue」及原因，不得编造；旧式仅 PR 编号写法停用（历史出处索引除外）。
   细则见 `AGENTS.md` §4、§6、§7。
+- **D2 实施边界细化**（2026-10-11 人定，Issue #186 / PR #231）：D2 区分三类视觉资产——**必要 UI chrome**
+  （界面框架 / 面板 / 边框 / 图标 / 控件状态；可用 CSS / 内嵌 SVG，必要时用原创、本地、可随仓库交付的静态素材）；
+  **世界 / 故事相关资产**（角色 / 场景 / 物品 / 地点图继续支持占位与失败回退，正式资产按独立决策管理）；
+  **少量生成式测试样张**（隔离标记，仅用于测试 / 原型）。保留零外链、无运行时生成、无构建步骤、占位回退；
+  已同步 `GDD-BASELINE.md` D2 与 `UI-DESIGN.md` §0.2 / §4。
+- **「时段」口径收尾**（2026-10-11，Issue #168 / PR #232 + PR #234；Issue #179 / PR #225）：判定基准
+  `CHRON-DESIGN.md` §2.3——**「时段」只指一天四段（晨 / 昼 / 昏 / 夜）**；行程 / 预算 / 工时等**时长**
+  一律用分钟 / 小时 / 天（四段**节奏义**合法，可保留并注明）。行程 / 迷路耗时改写为小时，
+  `action_economy.json` 的 `id:"period"` 改名 `minor_action`，`docs/` 与 `data/` 镜像一致（docs 侧与 data
+  镜像分 PR 串行）；ATLAS 接口响应键与常量口径为 `minutes` / `BAND_MINUTES`（PR #225 同步 `UI-DESIGN.md` / `CHRON-DESIGN.md`）。
+- **自主编排落地**（2026-10-11，Issue #194 / PR #200；Issue #195 / PR #207；Issue #196 / PR #209；
+  Issue #197 / PR #211；Issue #198 / PR #212；Issue #210 / PR #223）：`AGENT-ORCHESTRATION.md`
+  状态机 / 合并闸门 G1–G6 / 能力探测 C1–C4 / 阶段出口 E1–E5 入库；提示词库（`prompts/` 四份）落地；
+  `AGENTS.md` §3 授权 Master Agent 自主调度 Execution Subagent；本文件接入模式选择 / 阶段循环 / 阶段汇报，
+  并定义端到端验收与阶段收口清单。
+- **待办 / 待人拍板**（2026-10-11 登记，**以 GitHub 为准**）：
+  - **#222**（M4 新局空态「可选的战役入口」：列表范围与绑定语义）——**待人拍板**（列表范围 / 绑定语义 /
+    数据载体三问，含 UI 设计），拍板后开工。
+  - **#218**（M4 跨片写动作单一在途守卫，`UI-DESIGN.md` §2.0）——待办；把「单一在途」从各片自守升级为
+    `core.js` 层跨片统一守卫（前置 U3 已合并）。
+  - **#236**（口径收尾 2 · 「时段」旧义残留）——待办；`docs/system/03` 其余 + `04` 复查 + `data` 镜像
+    （Issue #168 的收尾延续）。
 - **全面检查**：每 1–2 阶段一次（§6）。
 
 ---
