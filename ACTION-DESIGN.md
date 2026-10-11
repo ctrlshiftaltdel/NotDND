@@ -10,6 +10,9 @@
 > **并发与因果补齐（2026-10-11，Issue #171）**：在 §7.4–§7.9 定稿**同一战役并发请求的权威排序**、
 > **提交后的上下文快照**与**叙事结果与行动事件的因果绑定**；§7 标题相应扩为「结算、叙事与并发顺序」。
 > 结论一句话：**顺序 = 状态层提交的 `seq`；叙事输入冻结在提交点；模型调用不持锁；重试受幂等键约束**。
+> **提交事件数量对齐 A0（2026-10-11，Issue #182）**：`STATE-DESIGN.md` §5.0 的 A0（一次 `commit()` = 一条事件、
+> 多项状态变更放入该事件的 `changes[]`）已随 PR #175（Issue #169）合并；本文 §7.4 原「一次提交可含多个事件」
+> 作废，改为**一次提交一条事件**；一次行动确需不同 `type` / `visibility` 时拆成多次 `commit()`（各带幂等键）。
 > 只改本文件。
 > 本文不是规则正文，不替代 `docs/`。它把 GDD 的「自由行动与解析管线」翻译成可拆实现单的接口与数据契约。
 
@@ -85,7 +88,7 @@ Issue #137 起草时 `STATE-DESIGN.md`（M7-a）尚未合并，曾按 GDD §8.4 
 
 | 编号 | 假设（对齐后） | 依据 / 处置 |
 |---|---|---|
-| A1 | 状态层提供**唯一提交接口**，原子落库并返回提交结果。签名以 `STATE-DESIGN.md` §12.1 为准：`Handle.commit(*, base_seq, idempotency_key, type, actor, target=None, cause=None, visibility=None, changes=(), rules_version, roll_refs=(), world_time=None, source="player", revalidate=None) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`。 | GDD §19.2 / §19.3；§4.2「唯一提交」；`STATE-DESIGN.md` §12.1（2026-10-10 对齐） |
+| A1 | 状态层提供**唯一提交接口**，原子落库并返回提交结果。签名以 `STATE-DESIGN.md` §12.1 为准：`Handle.commit(*, base_seq, idempotency_key, type, actor, target=None, cause=None, visibility=None, changes=(), rules_version, roll_refs=(), world_time=None, source="player", revalidate=None) -> CommitResult{status, commit_id, seq_from, seq_to, event_ids, state_digest, error}`；**A0**（STATE §5.0）：一次提交 = 一条事件，故 `seq_from == seq_to` 且 `len(event_ids) == 1`。 | GDD §19.2 / §19.3；§4.2「唯一提交」；`STATE-DESIGN.md` §12.1（2026-10-10 对齐） |
 | A2 | 状态层有**乐观并发序号**：提交携带读取状态时的 `base_seq`，不匹配则返回 `status="conflict"`（网页层翻 409）。原名 `base_version`，**已按 STATE 统一为 `base_seq`**。 | GDD §19.3；`STATE-DESIGN.md` §8.2 / §12.1（2026-10-10 对齐） |
 | A3 | 状态层提供**幂等键**：同一 `idempotency_key` 重复提交返回首次结果，不产生新副作用。 | GDD §19.3 / §24.1；`STATE-DESIGN.md` §7 / §12.1 |
 | A4 | 事件封套字段以 GDD §19.5 为准（事件 ID、战役 ID、世界时间、序列号、类型、主体、目标、原因、可见范围、状态变更、规则版本、随机判定引用、提交状态）；字段级实现以 `STATE-DESIGN.md` §5.1 为准。 | §4.3 第 1 条；`STATE-DESIGN.md` §5.1 |
@@ -240,7 +243,7 @@ GDD §6.4 的八个状态，M8 只实现其中四个（P1）：
     {"fact_id": "f_gate_shift", "scope": "personal"}
   ],
   "event_ids": ["evt_000123"],
-  "commit_ref": {"commit_id": "yunji:c00000031", "seq_from": 122, "seq_to": 123,
+  "commit_ref": {"commit_id": "yunji:c00000123", "seq_from": 123, "seq_to": 123,
                  "state_digest": "<sha256>"},
   "time_cost": {"value": 5, "unit": "minute"},
   "interrupt_conditions": [],
@@ -262,8 +265,8 @@ GDD §6.4 的八个状态，M8 只实现其中四个（P1）：
 | `effects` | array | 是 | 状态变更（已通过提交的）。 |
 | `consequences` | array | 是 | 后果（关系、声誉、后续机会）。可空数组。 |
 | `discovered_facts` | array | 是 | 本行动新发现的事实 / 线索，带可见范围（GDD §12.4）。**只记「发现了什么」，不在此处展开内容**。 |
-| `event_ids` | array | 是 | 状态层提交后返回的事件 ID（假设 A1）。M8 过渡态可为空数组。 |
-| `commit_ref` | obj\|null | 否 | 提交引用（假设 A1；= `STATE-DESIGN.md` §8.1 的 `CommitResult`）：`{commit_id, seq_from, seq_to, state_digest}`。**叙事的基线版本 = `seq_to`**（§7.5）。M8 过渡态允许 `null`；`state.py` 落地后必填。 |
+| `event_ids` | array | 是 | 状态层提交后返回的事件 ID（假设 A1）。**A0：一次提交 = 一条事件，故恒为长度 1**（保留数组形状以兼容 STATE §7.2）。M8 过渡态可为空数组。 |
+| `commit_ref` | obj\|null | 否 | 提交引用（假设 A1；= `STATE-DESIGN.md` §8.1 的 `CommitResult`）：`{commit_id, seq_from, seq_to, state_digest}`。**叙事的基线版本 = `seq_to`**（§7.5）。**A0：一次提交 = 一条事件，故 `seq_from == seq_to`**（`seq_to` 即本次提交的唯一 `seq`）。M8 过渡态允许 `null`；`state.py` 落地后必填。 |
 | `time_cost` | obj | 是 | 实际耗时，与提案的 `time_cost` 口径一致（8.1）。 |
 | `interrupt_conditions` | array | 否 | 本行动在 M9 下需要监听的中断条件。 |
 | `rule_ref` | obj | 是 | 规则版本 + DF + 随机判定引用（GDD §9.2 / §19.5），供复盘。 |
@@ -386,7 +389,8 @@ Issue #137 要求**五级**风险分级。GDD §8.3 给的是四行示例表（�
 
 - **串行化**：同一战役的提交经**战役级锁**串行（STATE §8.1）。「并发到达」在状态层看是「排队提交」，不是「同时写」。M8 走同步路径，因此两个并发行动各得一条 **`seq` 连续**的提交，先到者赢。
 - **`conflict` 不是 `failure`**：`conflict` 是并发 / 传输层的拒绝（未结算、未提交、未扣费），玩家可带新 `base_seq` 重新提案；`failure` 是已结算并**已提交**的规则结果（§5.2）。两者叙事不得混淆（§7.6）。
-- **一次提交可含多个事件**：同一 `commit_id` 的事件 `seq` 连续（STATE §5.1），提交**内部**顺序 = `changes` / 事件数组顺序，不是任意。
+- **一次提交 = 一条事件（A0，STATE §5.0）**：`commit()` 一次调用只产出**一条**事件（`CommitResult.event_ids` 恒为长度 1，`seq_from == seq_to`），本次提交的**多项状态变更**由该事件的 `changes[]` 承载（可跨块、多路径、多 `op`，STATE §5.3）。提交**内部**顺序 = `changes` 数组顺序，不是任意。
+- **异种事件须拆成多次提交**：若一次行动确需**不同的 `type` / `actor` / `visibility`**，它本就**不是一次**提交——须拆成多次 `commit()`，**每次各自原子、各带自己的 `idempotency_key`**（各自可幂等重试），并以 `cause` 串起因果；**不得**在一次提交里塞多条事件（STATE §5.0 / §12.2 / §12.4）。拆出的多次提交在状态层各得一条**不同 `seq`** 的事件。
 - **M9 的稳定排序提前到提交前**：需要「同一世界时间真同时」时，由 CHRON 在写入前按 `(due_minute, -priority, created_seq, action_id)` 定序（CHRON §5.2）；提交顺序仍等于由此产生的 `seq`。**M8 不接 CHRON**，因此并发只承诺「不矛盾」，不承诺「同时」（对齐 MULTIPLAYER §7.3b / §10 风险 1）。
 - **锁边界（本单明确非目标）**：战役级锁**只**覆盖「结算（第 4 段）→ 提交（第 5 段）→ 取提交后快照（§7.5）」这一小段；**不在模型调用期间持有**。上下文组装与叙事写回一律在锁外。
 
@@ -396,12 +400,12 @@ Issue #137 要求**五级**风险分级。GDD §8.3 给的是四行示例表（�
 - **每个叙事请求必须绑定一个已提交的行动**。叙事段的输入必须携带并记录该行动的身份与状态版本：
   - **行动标识**：结果的 `action_id`（并回指 `proposal_id`）；
   - **已提交事件**：结果的 `event_ids`（= `CommitResult.event_ids`）；
-  - **状态版本**：提交的 `seq_from` / `seq_to`（`CommitResult`，STATE §8.1），必要时附 `state_digest`。
+  - **状态版本**：提交的 `seq_from` / `seq_to`（`CommitResult`，STATE §8.1；**A0 下二者相等**，即该行动的唯一 `seq`），必要时附 `state_digest`。
 
 为此 §5.1 的结果契约新增**可选**字段 `commit_ref`（示例见 §5.1）：
 
 ```json
-"commit_ref": {"commit_id": "yunji:c00000031", "seq_from": 122, "seq_to": 123,
+"commit_ref": {"commit_id": "yunji:c00000123", "seq_from": 123, "seq_to": 123,
                "state_digest": "<sha256>"}
 ```
 
