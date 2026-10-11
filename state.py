@@ -1,0 +1,977 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""状态与事件层内核（STATE-DESIGN 的 M7-1 切片）。
+
+只做库：不碰 HTTP，也不 import 任何业务模块（依赖方向硬约束，STATE-DESIGN §3 S4 /
+`GDD-BASELINE.md` §4.2）——本模块只搬运**不透明块** + 结构化 `changes`，
+语义解释归调用方；它不认识六维、地点或 NPC。
+
+覆盖 STATE-DESIGN 的：
+- 存储布局（§4.1）：每战役一个目录，检查点 + 追加式 NDJSON 事件日志 + 幂等索引；
+- 事件封套（§5，含 A0「一次提交 = 一条事件 = 一行追加」）；
+- 幂等（§7，含 7.4「索引可由事件日志重建」）；
+- 提交时序（§8，含 8.3 崩溃点）；
+- 检查点字段（§6.1）、加载顺序与重放（§9）；
+- 零依赖校验器（§5.4 `validate_event`）；
+- 接口骨架（§12.1 `open_campaign` / `Handle`）。
+
+**`import state` 不触碰磁盘**（沿用 no-side-effects-on-import 口径，
+`GDD-BASELINE.md` §6.5）：本模块顶层只做常量与函数定义。
+
+M7-1 / M7-2 边界：本文件落 M7-1 的「事件封套 + 原子提交 + 幂等 + 版本 + 骨架」。
+因为本单验收要求覆盖 §14 的**崩溃恢复**组（其判据是「加载 + 重放」），
+所以 §9 的加载顺序与 §6.2 的重放规则也在此落了一版最小实现；
+归档段（§4.1 `events.<n>.ndjson`）与检查点调度调优留待 M7-2 扩展。
+
+存储布局（§4.1）::
+
+    <base_dir>/campaigns/<campaign_id>/
+        snapshot.json          检查点（§6.1 字段）
+        snapshot.json.bak      上一次成功检查点（崩溃回退用）
+        events.ndjson          追加式事件日志：一行一个事件（A0）
+        idempotency.json       幂等索引的独立可读副本
+"""
+
+import copy
+import hashlib
+import json
+import os
+import re
+import threading
+import time
+
+__all__ = [
+    "STATE_VERSION",
+    "EVENT_VERSION",
+    "DEFAULT_SAVE_ROOT",
+    "StateError",
+    "Handle",
+    "open_campaign",
+    "validate_event",
+]
+
+# ── 版本（§3 S6：版本分层，读到更高版本一律拒载）─────────────────────────────
+STATE_VERSION = 1          # 档（检查点）版本
+EVENT_VERSION = 1          # 事件封装版本（预留给后续迁移；M7-1 不写入事件体）
+
+# ── 路径与布局（§4.1）───────────────────────────────────────────────────────
+# 默认落本地运行物目录 web-saves/（禁入库）；与 notdnd_web.py 同口径：可被
+# NOTDND_SAVE 覆盖，且**惰性创建**——import 不建目录、不碰磁盘。
+DEFAULT_SAVE_ROOT = os.environ.get("NOTDND_SAVE") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "web-saves")
+
+CAMPAIGN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")   # 沿用 SID_RE 口径，防 ../
+CAMP_DIRNAME = "campaigns"
+
+SNAPSHOT_NAME = "snapshot.json"
+SNAPSHOT_BAK_NAME = "snapshot.json.bak"
+SNAPSHOT_TMP_NAME = "snapshot.json.tmp"
+EVENTS_NAME = "events.ndjson"
+IDEMPOTENCY_NAME = "idempotency.json"
+
+# ── 常量（§6.3 / §7 / §4.1）─────────────────────────────────────────────────
+CHECKPOINT_EVERY = 32                       # 每 N 个事件写一次检查点
+CHECKPOINT_MAX_AGE_S = 5.0                   # 距上次检查点超过该秒数也写
+CHECKPOINT_MAX_LOG_BYTES = 1024 * 1024       # 日志增长越过该字节数也写
+IDEM_TTL_DAYS = 90                           # 幂等记录默认存活天数
+IDEM_KEEP = 4096                             # 幂等记录保留下限（条）
+EVENT_ARCHIVE_THRESHOLD = 100000             # 归档阈值（M7-2 用；此处仅登记）
+
+# ── 枚举（§5.1，初始可扩展）────────────────────────────────────────────────
+_VISIBILITY_SCOPES = ("public", "team", "private", "gm")
+_SOURCES = ("player", "npc", "system", "ai_proposal")
+_OPS = ("set", "unset", "delta", "append", "replace_block")
+_COMMIT_STATUS = "committed"
+_TYPE_RE = re.compile(r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+
+# 幂等摘要覆盖的字段（§7.2 / §7.4）：提交入参 → request_digest。
+# 不含 base_seq（并发基线）与 idempotency_key（键本身），二者不是载荷。
+REQUEST_FIELDS = (
+    "type", "actor", "target", "cause", "visibility", "changes",
+    "rules_version", "roll_refs", "source", "world_time",
+)
+# 已提交形态的 CommitResult → result_digest（§7.2 / §7.4）。
+RESULT_FIELDS = ("commit_id", "seq_from", "seq_to", "event_ids", "state_digest")
+
+# 事件封套必填字段（§5.1；可为 null 的字段也必须在）。
+_EVENT_FIELDS = (
+    "event_id", "campaign_id", "seq", "commit_id", "world_time", "type",
+    "actor", "target", "cause", "visibility", "changes", "rules_version",
+    "roll_refs", "commit_status", "source", "idempotency_key", "ts",
+)
+
+_MISSING = object()   # 内部哨兵：区分「未提供」与「显式 null」
+
+
+class StateError(Exception):
+    """状态层不可恢复的错误（损坏日志 / 拒载高版本 / 非法入参）。"""
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 小工具：规范 JSON / 摘要 / 时间 / 指针
+# ════════════════════════════════════════════════════════════════════════════
+
+def _now_ms():
+    """现实时间毫秒（**仅审计**；不参与任何权威判断，§5.1 `ts`）。
+
+    独立成函数便于测试进程内注入受控时钟（`state._now_ms = lambda: ...`）。
+    """
+    return int(time.time() * 1000)
+
+
+def _canonical(value):
+    """规范化 JSON（§6.1）：`ensure_ascii=False, sort_keys=True`、无多余空白。"""
+    return json.dumps(value, ensure_ascii=False, sort_keys=True,
+                      separators=(",", ":"))
+
+
+def _digest(value):
+    """对规范化 JSON 取 SHA-256 十六进制。"""
+    return hashlib.sha256(_canonical(value).encode("utf-8")).hexdigest()
+
+
+def _event_id(campaign_id, seq):
+    """§5.1：全局唯一、可确定性重建。"""
+    return "%s:e%012d" % (campaign_id, seq)
+
+
+def _commit_id(campaign_id, seq):
+    """§5.1：由 seq 派生，与唯一事件 1:1（A0）。"""
+    return "%s:c%08d" % (campaign_id, seq)
+
+
+def _is_int(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _parse_pointer(path):
+    """RFC 6901 JSON Pointer → 段列表；根 `""` → `[]`。"""
+    if path == "":
+        return []
+    if not isinstance(path, str) or not path.startswith("/"):
+        raise StateError("JSON Pointer 必须以 '/' 开头（或为空串）：%r" % (path,))
+    return [seg.replace("~1", "/").replace("~0", "~")
+            for seg in path[1:].split("/")]
+
+
+def _ptr_read(doc, parts):
+    cur = doc
+    for part in parts:
+        if isinstance(cur, list):
+            cur = cur[int(part)]
+        elif isinstance(cur, dict):
+            cur = cur[part]
+        else:
+            raise StateError("指针路径无法下探：%r" % (parts,))
+    return cur
+
+
+def _ptr_write(container, parts, value):
+    """在 container 的 pointer 处写 value；根（空 parts）返回新根。"""
+    if not parts:
+        return value
+    cur = container
+    for part in parts[:-1]:
+        cur = cur[int(part)] if isinstance(cur, list) else cur[part]
+    last = parts[-1]
+    if isinstance(cur, list):
+        index = int(last)
+        if index < 0:
+            raise StateError("负数组下标不受支持：%r" % (last,))
+        while len(cur) <= index:
+            cur.append(None)
+        cur[index] = value
+    else:
+        cur[last] = value
+    return container
+
+
+def _ptr_delete(container, parts):
+    """删除 pointer 处的值；根（空 parts）返回 `_MISSING`。"""
+    if not parts:
+        return _MISSING
+    cur = container
+    for part in parts[:-1]:
+        cur = cur[int(part)] if isinstance(cur, list) else cur[part]
+    last = parts[-1]
+    if isinstance(cur, list):
+        del cur[int(last)]
+    else:
+        del cur[last]
+    return container
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# changes 的机械应用（§5.3：state.py 不理解 path 的业务含义）
+# ════════════════════════════════════════════════════════════════════════════
+
+def _apply_change(blocks, change):
+    """按 `op` 机械应用一条变更到 `blocks`（原地）。"""
+    block = change.get("block")
+    if not isinstance(block, str) or not block:
+        raise StateError("change.block 非法：%r" % (block,))
+    op = change.get("op")
+    parts = _parse_pointer(change.get("path", ""))
+
+    if op == "replace_block":
+        blocks[block] = copy.deepcopy(change.get("after"))
+        return
+
+    container = blocks.get(block)
+    if container is None:
+        # 块尚未存在：按路径首段猜容器类型（S4：块对 state 不透明，
+        # 只能靠 JSON 结构；数字首段视为数组下标，其余视为对象键）。
+        if not parts:
+            container = [] if op == "append" else {}
+        elif parts[0].isdigit():
+            container = []
+        else:
+            container = {}
+        blocks[block] = container
+
+    if op == "set":
+        result = _ptr_write(container, parts, copy.deepcopy(change.get("after")))
+        if result is not container:
+            blocks[block] = result
+    elif op == "delta":
+        # `delta` 只允许整数；`after` 是变更后值，重放以它为准（确定性）。
+        before = change.get("before")
+        after = change.get("after")
+        if not _is_int(before) or not _is_int(after):
+            raise StateError("delta 只允许整数：%r -> %r" % (before, after))
+        result = _ptr_write(container, parts, after)
+        if result is not container:
+            blocks[block] = result
+    elif op == "append":
+        if not parts:
+            target = container
+        else:
+            try:
+                target = _ptr_read(container, parts)
+            except (KeyError, IndexError, TypeError, ValueError, StateError):
+                target = None
+            if target is None:
+                # 目标列表尚不存在：先建空列表再追加（块对 state 不透明）。
+                target = []
+                _ptr_write(container, parts, target)
+        if not isinstance(target, list):
+            raise StateError("append 目标不是列表：%r" % (change.get("path"),))
+        target.append(copy.deepcopy(change.get("after")))
+    elif op == "unset":
+        result = _ptr_delete(container, parts)
+        if result is _MISSING:
+            blocks[block] = None
+        elif result is not container:
+            blocks[block] = result
+    else:
+        raise StateError("未知 op：%r" % (op,))
+
+
+def apply_changes(blocks, changes):
+    """一次性、整体应用一组变更（§9 步骤 3：行完整才进得来）。"""
+    for change in changes:
+        _apply_change(blocks, change)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 校验器（§5.4）
+# ════════════════════════════════════════════════════════════════════════════
+
+def validate_event(ev):
+    """零依赖事件校验器，返回错误说明列表（空列表 = 合法）。"""
+    errors = []
+    if not isinstance(ev, dict):
+        return ["事件必须是对象"]
+
+    for field in _EVENT_FIELDS:
+        if field not in ev:
+            errors.append("缺少必填字段：%s" % field)
+    if errors:
+        return errors
+
+    campaign_id = ev["campaign_id"]
+    if not isinstance(campaign_id, str) or not CAMPAIGN_ID_RE.match(campaign_id):
+        errors.append("campaign_id 非法：%r" % (campaign_id,))
+
+    seq = ev["seq"]
+    if not _is_int(seq) or seq < 1:
+        errors.append("seq 必须是 ≥ 1 的整数：%r" % (seq,))
+
+    if isinstance(campaign_id, str) and _is_int(seq) and seq >= 1:
+        if ev["event_id"] != _event_id(campaign_id, seq):
+            errors.append("event_id 与 (campaign_id, seq) 不一致：%r" % (ev["event_id"],))
+        if ev["commit_id"] != _commit_id(campaign_id, seq):
+            errors.append("commit_id 与 (campaign_id, seq) 不一致：%r" % (ev["commit_id"],))
+    else:
+        if not isinstance(ev["event_id"], str):
+            errors.append("event_id 必须是字符串")
+        if not isinstance(ev["commit_id"], str):
+            errors.append("commit_id 必须是字符串")
+
+    world_time = ev["world_time"]
+    if world_time is not None and not isinstance(world_time, dict):
+        errors.append("world_time 必须是对象或 null")
+
+    ev_type = ev["type"]
+    if not isinstance(ev_type, str) or not _TYPE_RE.match(ev_type):
+        errors.append("type 非法（应为 <domain>.<verb>）：%r" % (ev_type,))
+
+    if not isinstance(ev["actor"], str) or not ev["actor"]:
+        errors.append("actor 必须是非空字符串")
+    for field in ("target", "cause"):
+        if ev[field] is not None and not isinstance(ev[field], str):
+            errors.append("%s 必须是字符串或 null" % field)
+
+    visibility = ev["visibility"]
+    if not isinstance(visibility, dict):
+        errors.append("visibility 必须是对象")
+    else:
+        if visibility.get("scope") not in _VISIBILITY_SCOPES:
+            errors.append("visibility.scope 非法：%r" % (visibility.get("scope"),))
+        subjects = visibility.get("subjects")
+        if not isinstance(subjects, list) or any(
+                not isinstance(s, str) for s in subjects):
+            errors.append("visibility.subjects 必须是字符串列表")
+
+    changes = ev["changes"]
+    if not isinstance(changes, list):
+        errors.append("changes 必须是数组")
+    else:
+        errors.extend(_validate_changes(changes))
+
+    if not isinstance(ev["rules_version"], str) or not ev["rules_version"]:
+        errors.append("rules_version 必须是非空字符串")
+    if not isinstance(ev["roll_refs"], list):
+        errors.append("roll_refs 必须是数组")
+
+    if ev["commit_status"] != _COMMIT_STATUS:
+        errors.append("commit_status 落盘必须为 %r：%r"
+                      % (_COMMIT_STATUS, ev["commit_status"]))
+    if ev["source"] not in _SOURCES:
+        errors.append("source 非法：%r" % (ev["source"],))
+    if ev["idempotency_key"] is not None and not isinstance(ev["idempotency_key"], str):
+        errors.append("idempotency_key 必须是字符串或 null")
+    if not _is_int(ev["ts"]):
+        errors.append("ts 必须是整数毫秒")
+    return errors
+
+
+def _validate_changes(changes):
+    errors = []
+    for index, change in enumerate(changes):
+        where = "changes[%d]" % index
+        if not isinstance(change, dict):
+            errors.append("%s 必须是对象" % where)
+            continue
+        if not isinstance(change.get("block"), str) or not change.get("block"):
+            errors.append("%s.block 非法" % where)
+        path = change.get("path", "")
+        if not isinstance(path, str) or (path != "" and not path.startswith("/")):
+            errors.append("%s.path 必须以 '/' 开头（或为空串）：%r" % (where, path))
+        op = change.get("op")
+        if op not in _OPS:
+            errors.append("%s.op 非法：%r" % (where, op))
+        if "before" not in change or "after" not in change:
+            errors.append("%s 缺少 before / after" % where)
+        if op == "delta":
+            if not _is_int(change.get("before")) or not _is_int(change.get("after")):
+                errors.append("%s.delta 只允许整数 before / after" % where)
+    return errors
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 摘要与幂等记录（§7）
+# ════════════════════════════════════════════════════════════════════════════
+
+def _request_payload(source):
+    """从提交入参或事件封套取出 request_digest 覆盖的字段。"""
+    return {name: source.get(name) for name in REQUEST_FIELDS}
+
+
+def _result_payload(result):
+    """从 CommitResult（已提交形态）取出 result_digest 覆盖的字段。"""
+    return {name: result.get(name) for name in RESULT_FIELDS}
+
+
+def _state_digest(seq, blocks):
+    """§8.1：对提交后 seq + blocks 的摘要。"""
+    return _digest({"seq": seq, "blocks": blocks})
+
+
+def _record_from_event(ev, state_digest):
+    """§7.2 / §7.4：由事件封套重建一条幂等记录（日志是唯一真相）。"""
+    event_ids = [ev["event_id"]]
+    committed = {
+        "commit_id": ev["commit_id"],
+        "seq_from": ev["seq"],
+        "seq_to": ev["seq"],
+        "event_ids": event_ids,
+        "state_digest": state_digest,
+    }
+    return {
+        "key": ev["idempotency_key"],
+        "commit_id": ev["commit_id"],
+        "seq": ev["seq"],
+        "event_ids": event_ids,
+        "request_digest": _digest(_request_payload(ev)),
+        "result_digest": _digest(_result_payload(committed)),
+        "state_digest": state_digest,
+        "ts": ev["ts"],
+        "expires_at": ev["ts"] + IDEM_TTL_DAYS * 86400 * 1000,
+    }
+
+
+def _replayed_result(record):
+    """§8.1：`replayed` 复用首次的 commit_id / seq_* / event_ids。"""
+    seq = record.get("seq")
+    return {
+        "status": "replayed",
+        "commit_id": record.get("commit_id"),
+        "seq_from": seq,
+        "seq_to": seq,
+        "event_ids": list(record.get("event_ids") or []),
+        "state_digest": record.get("state_digest"),
+        "error": None,
+    }
+
+
+def _normalize_visibility(visibility):
+    if visibility is None:
+        return {"scope": "public", "subjects": []}
+    if not isinstance(visibility, dict):
+        raise StateError("visibility 必须是对象：%r" % (visibility,))
+    vis = dict(visibility)
+    vis.setdefault("scope", "public")
+    vis.setdefault("subjects", [])
+    return vis
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 持久化小工具
+# ════════════════════════════════════════════════════════════════════════════
+
+def _read_json(path):
+    with open(path, "r", encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _write_atomic(path, text):
+    """写 `<path>.tmp` → flush + fsync → os.replace（§3 S5）。"""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as handle:
+        handle.write(text)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
+
+
+def _genesis_blocks():
+    """创世态的不透明块（§6.1；chron 由 M9 预留，不在本层创建）。"""
+    return {"rules": None, "atlas": None, "guide": None}
+
+
+def _genesis_snapshot(campaign_id, save_name=None):
+    now = _now_ms()
+    payload = {
+        "schema_version": STATE_VERSION,
+        "kind": "state.snapshot",
+        "campaign_id": campaign_id,
+        "seq": 0,
+        "world_time": None,
+        "created": now,
+        "updated": now,
+        "save_name": (save_name or campaign_id)[:40],
+        "stream": {"log": [], "cursor": 0},
+        "blocks": _genesis_blocks(),
+        "indexes": {"idempotency": {}, "archived_upto": 0},
+    }
+    payload["checksum"] = _digest(payload)
+    return payload
+
+
+def _verify_snapshot(data, campaign_id):
+    """检查点可用性。返回错误说明；更高版本抛 StateError（拒载，§10.3）。"""
+    if not isinstance(data, dict):
+        return "不是对象"
+    schema_version = data.get("schema_version")
+    if not _is_int(schema_version):
+        return "schema_version 非法：%r" % (schema_version,)
+    if schema_version > STATE_VERSION:
+        raise StateError("拒载：检查点 schema_version=%d 高于本实现 %d"
+                         % (schema_version, STATE_VERSION))
+    if schema_version < STATE_VERSION:
+        return "schema_version=%d 低于本实现（需迁移）" % schema_version
+    if data.get("kind") != "state.snapshot":
+        return "kind 非法：%r" % (data.get("kind"),)
+    if data.get("campaign_id") != campaign_id:
+        return "campaign_id 不匹配：%r" % (data.get("campaign_id"),)
+    checksum = data.get("checksum")
+    if not isinstance(checksum, str):
+        return "缺少 checksum"
+    recomputed = _digest({k: v for k, v in data.items() if k != "checksum"})
+    if checksum != recomputed:
+        return "checksum 不匹配"
+    return None
+
+
+def _load_snapshot(campaign_dir, campaign_id, notes):
+    """§9 步骤 1：snapshot.json → snapshot.json.bak → 创世态。"""
+    primary = os.path.join(campaign_dir, SNAPSHOT_NAME)
+    backup = os.path.join(campaign_dir, SNAPSHOT_BAK_NAME)
+    for path, label in ((primary, SNAPSHOT_NAME), (backup, SNAPSHOT_BAK_NAME)):
+        if not os.path.exists(path):
+            continue
+        try:
+            data = _read_json(path)
+        except (OSError, ValueError) as exc:
+            notes.append("检查点解析失败（%s）：%s" % (label, exc))
+            continue
+        problem = _verify_snapshot(data, campaign_id)   # 高版本 StateError 直接冒泡
+        if problem:
+            notes.append("检查点校验失败（%s）：%s" % (label, problem))
+            continue
+        if label == SNAPSHOT_BAK_NAME:
+            notes.append("主检查点不可用，已回退到 %s" % SNAPSHOT_BAK_NAME)
+        return data
+    if os.path.exists(primary) or os.path.exists(backup):
+        notes.append("检查点与备份均不可用，退回创世态（state_corrupt）")
+    return None
+
+
+def _read_events(events_path, notes):
+    """§9 步骤 2：逐行解析 NDJSON；末行半写 / 解析失败 → 丢弃。"""
+    if not os.path.exists(events_path):
+        return []
+    with open(events_path, "rb") as handle:
+        raw = handle.read()
+    if not raw:
+        return []
+
+    lines = raw.split(b"\n")
+    complete = lines[:-1]     # 以 \n 收尾的完整行
+    tail = lines[-1]          # 最后一个 \n 之后的内容（不完整即使非空）
+
+    events = []
+    for index, bline in enumerate(complete):
+        if not bline.strip():
+            continue
+        try:
+            events.append(json.loads(bline.decode("utf-8")))
+        except (ValueError, UnicodeDecodeError) as exc:
+            if index == len(complete) - 1:
+                notes.append("事件日志末行解析失败，已丢弃（半写）")
+                break
+            raise StateError("事件日志中间行解析失败（第 %d 行）：%s"
+                             % (index + 1, exc))
+    if tail.strip():
+        notes.append("事件日志末行不完整，已丢弃（半写）")
+    return events
+
+
+def _validate_chain(events, base_seq):
+    """§9 步骤 2：重放区间 seq 严格递增（无跳号 / 回退），commit_id 唯一。"""
+    last = base_seq
+    seen_commits = set()
+    for ev in events:
+        seq = ev.get("seq")
+        if not _is_int(seq):
+            raise StateError("事件 seq 非法：%r" % (seq,))
+        if seq <= base_seq:
+            continue          # 归档段 / 与检查点重叠的重复段：唯一允许的重复
+        if seq != last + 1:
+            raise StateError("重放区间 seq 不连续（跳号 / 回退）：期望 %d，得到 %d"
+                             % (last + 1, seq))
+        errors = validate_event(ev)
+        if errors:
+            raise StateError("重放区间事件校验失败：%s" % "; ".join(errors))
+        commit_id = ev.get("commit_id")
+        if commit_id in seen_commits:
+            raise StateError("重放区间 commit_id 重复：%r（A0 下本不可能）"
+                             % (commit_id,))
+        seen_commits.add(commit_id)
+        last = seq
+    return last
+
+
+def _replay_events(events, base_seq, blocks, world_time):
+    """§6.2 / §9 步骤 3-4：折入重放区间事件，并重建幂等索引。"""
+    seq = base_seq
+    idem = {}
+    for ev in events:
+        if ev["seq"] <= base_seq:
+            continue
+        apply_changes(blocks, ev["changes"])
+        seq = ev["seq"]
+        world_time = ev["world_time"]
+        key = ev.get("idempotency_key")
+        if key is not None:
+            idem[key] = _record_from_event(ev, _state_digest(seq, blocks))
+    return seq, world_time, idem
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Handle（§12.1）
+# ════════════════════════════════════════════════════════════════════════════
+
+class Handle:
+    """一个战役的句柄：唯一提交出口（§3 S3）。
+
+    只改允许路径：本类不 import 任何业务模块，也不直接改块——
+    调用方把「不透明新块 / 声明式 changes」交进来，本类负责排号、留痕、
+    原子落盘、重放。
+    """
+
+    def __init__(self, campaign_id, campaign_dir, snapshot):
+        self.campaign_id = campaign_id
+        self._dir = campaign_dir
+        self._events_path = os.path.join(campaign_dir, EVENTS_NAME)
+        self._lock = threading.RLock()
+        self._closed = False
+        self.notes = []          # 加载 / 检查点过程的说明（含 state_corrupt）
+
+        self._blocks = copy.deepcopy(snapshot.get("blocks") or _genesis_blocks())
+        self._seq = snapshot.get("seq", 0)
+        self._world_time = snapshot.get("world_time")
+        self._stream = copy.deepcopy(snapshot.get("stream") or {"log": [], "cursor": 0})
+        self._created = snapshot.get("created") or _now_ms()
+        self._updated = snapshot.get("updated") or self._created
+        self._save_name = snapshot.get("save_name") or campaign_id
+        indexes = snapshot.get("indexes") or {}
+        self._idem = copy.deepcopy(indexes.get("idempotency") or {})
+        self._archived_upto = indexes.get("archived_upto", 0)
+
+        self._events_since_checkpoint = 0
+        self._last_checkpoint_ms = _now_ms()
+        self._last_checkpoint_bytes = self._log_size()
+
+    # ── 只读视图（§12.1）────────────────────────────────────────────────────
+    def view(self):
+        """只读视图：深拷贝 {campaign_id, seq, world_time, blocks, stream}。"""
+        with self._lock:
+            return {
+                "campaign_id": self.campaign_id,
+                "seq": self._seq,
+                "world_time": copy.deepcopy(self._world_time),
+                "blocks": copy.deepcopy(self._blocks),
+                "stream": copy.deepcopy(self._stream),
+            }
+
+    def replay(self, upto_seq=None):
+        """从创世（seq 0）按事件日志重放出完整状态（§6.2）。"""
+        with self._lock:
+            notes = []
+            events = _read_events(self._events_path, notes)
+            _validate_chain(events, 0)
+            blocks = _genesis_blocks()
+            seq = 0
+            world_time = None
+            for ev in events:
+                if upto_seq is not None and ev["seq"] > upto_seq:
+                    break
+                apply_changes(blocks, ev["changes"])
+                seq = ev["seq"]
+                world_time = ev["world_time"]
+            return {
+                "campaign_id": self.campaign_id,
+                "seq": seq,
+                "world_time": world_time,
+                "blocks": blocks,
+                "stream": {"log": [], "cursor": 0},
+            }
+
+    # ── 唯一提交出口（§8）──────────────────────────────────────────────────
+    def commit(self, *, base_seq, idempotency_key, type, actor, target=None,
+               cause=None, visibility=None, changes=(), rules_version,
+               roll_refs=(), world_time=None, source="player", revalidate=None):
+        """一次调用恰好产出一条事件（A0）；返回 CommitResult 字典（§8.1）。
+
+        **没有** `events` 形参——多事件提交在接口层无法表达（§5.0）。
+        `revalidate` 钩子按 M7 约定**不实现**，仅在签名上留位（§8.2）。
+        """
+        del revalidate   # M7 不实现可选的 revalidate 钩子（§8.2）
+        with self._lock:
+            if self._closed:
+                return self._result("rejected", code="已关闭",
+                                    message="句柄已关闭")
+            try:
+                changes = copy.deepcopy(list(changes or ()))
+                roll_refs = copy.deepcopy(list(roll_refs or ()))
+                vis = _normalize_visibility(visibility)
+            except StateError as exc:
+                return self._result("rejected", code="入参非法", message=str(exc))
+
+            request = {
+                "type": type, "actor": actor, "target": target, "cause": cause,
+                "visibility": vis, "changes": changes,
+                "rules_version": rules_version, "roll_refs": roll_refs,
+                "source": source, "world_time": world_time,
+            }
+            request_digest = _digest(_request_payload(request))
+
+            # ③ 幂等查表（§7.3 / §8.1）：命中重放 / 冲突 → 直接返回，不取事件号
+            record = self._idem.get(idempotency_key) if idempotency_key else None
+            if record is not None and _now_ms() > record.get("expires_at", 0):
+                record = None     # 过期 → 视为新提交（§7.3）
+            if record is not None:
+                if request_digest == record.get("request_digest"):
+                    return _replayed_result(record)
+                return self._result("conflict", code="幂等键冲突",
+                                    message="同一幂等键的载荷不同")
+
+            # R7：非系统提交必须自带幂等键，否则 rejected（§15 R7）
+            if source != "system" and not idempotency_key:
+                return self._result("rejected", code="缺少幂等键",
+                                    message="非系统提交必须提供 idempotency_key")
+
+            # ④ 版本校验（§8.2 乐观并发，默认 reject）
+            if base_seq != self._seq:
+                return self._result("conflict", code="版本冲突",
+                                    message="base_seq=%r 与当前 seq=%d 不符"
+                                            % (base_seq, self._seq))
+
+            # ⑤ 生成唯一一条事件（A0）
+            new_seq = self._seq + 1
+            event = {
+                "event_id": _event_id(self.campaign_id, new_seq),
+                "campaign_id": self.campaign_id,
+                "seq": new_seq,
+                "commit_id": _commit_id(self.campaign_id, new_seq),
+                "world_time": world_time,
+                "type": type,
+                "actor": actor,
+                "target": target,
+                "cause": cause,
+                "visibility": vis,
+                "changes": changes,
+                "rules_version": rules_version,
+                "roll_refs": roll_refs,
+                "commit_status": _COMMIT_STATUS,
+                "source": source,
+                "idempotency_key": idempotency_key,
+                "ts": _now_ms(),
+            }
+            errors = validate_event(event)
+            if errors:
+                return self._result("rejected", code="事件校验失败",
+                                    message="; ".join(errors))
+
+            new_blocks = copy.deepcopy(self._blocks)
+            try:
+                apply_changes(new_blocks, changes)
+            except StateError as exc:
+                return self._result("rejected", code="变更应用失败",
+                                    message=str(exc))
+            state_digest = _state_digest(new_seq, new_blocks)
+
+            # ⑥ 追加一行 + flush + fsync（原子提交；失败则内存不动）
+            self._append_event(event)
+
+            # ⑦ 应用到内存态
+            self._blocks = new_blocks
+            self._seq = new_seq
+            self._world_time = world_time
+            self._updated = event["ts"]
+
+            # ⑧ 记幂等记录（落盘由检查点副本 + 恢复时日志重建双保，§7.4）
+            if idempotency_key:
+                self._idem[idempotency_key] = _record_from_event(event, state_digest)
+
+            # ⑨ 检查点？（§6.3 时机）
+            self._events_since_checkpoint += 1
+            self._maybe_checkpoint()
+
+            # ⑩ 返回（A0：seq_from == seq_to == new_seq，event_ids 长度 1）
+            return {
+                "status": "committed",
+                "commit_id": event["commit_id"],
+                "seq_from": new_seq,
+                "seq_to": new_seq,
+                "event_ids": [event["event_id"]],
+                "state_digest": state_digest,
+                "error": None,
+            }
+
+    def flush(self):
+        """强制写检查点（优雅退出用，§6.3）。"""
+        with self._lock:
+            self._write_checkpoint()
+
+    def close(self):
+        """写检查点并标记关闭（优雅退出）。"""
+        with self._lock:
+            if self._closed:
+                return
+            try:
+                self._write_checkpoint()
+            except OSError as exc:
+                self.notes.append("关闭时写检查点失败：%s" % exc)
+            self._closed = True
+
+    # ── 内部：结果构造 ─────────────────────────────────────────────────────
+    def _result(self, status, code=None, message=None):
+        """conflict / rejected：不写任何事件，seq_* 返回当前 seq（§8.1）。"""
+        return {
+            "status": status,
+            "commit_id": None,
+            "seq_from": self._seq,
+            "seq_to": self._seq,
+            "event_ids": [],
+            "state_digest": _state_digest(self._seq, self._blocks),
+            "error": {"code": code, "message": message},
+        }
+
+    # ── 内部：持久化 ───────────────────────────────────────────────────────
+    def _append_event(self, event):
+        line = json.dumps(event, ensure_ascii=False, sort_keys=True,
+                          separators=(",", ":")) + "\n"
+        with open(self._events_path, "a", encoding="utf-8") as handle:
+            handle.write(line)
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    def _log_size(self):
+        try:
+            return os.path.getsize(self._events_path)
+        except OSError:
+            return 0
+
+    def _snapshot_payload(self):
+        payload = {
+            "schema_version": STATE_VERSION,
+            "kind": "state.snapshot",
+            "campaign_id": self.campaign_id,
+            "seq": self._seq,
+            "world_time": copy.deepcopy(self._world_time),
+            "created": self._created,
+            "updated": _now_ms(),
+            "save_name": self._save_name,
+            "stream": copy.deepcopy(self._stream),
+            "blocks": copy.deepcopy(self._blocks),
+            "indexes": {
+                "idempotency": copy.deepcopy(self._idem),
+                "archived_upto": self._archived_upto,
+            },
+        }
+        payload["checksum"] = _digest(payload)
+        return payload
+
+    def _evict_idempotency(self):
+        """淘汰过期记录；保留最近 IDEM_KEEP 条为硬下限（§7.3）。"""
+        now = _now_ms()
+        live = {k: v for k, v in self._idem.items()
+                if v.get("expires_at", 0) >= now}
+        if len(live) > IDEM_KEEP:
+            ordered = sorted(live.items(), key=lambda kv: kv[1].get("ts", 0))
+            live = dict(ordered[-IDEM_KEEP:])
+        self._idem = live
+
+    def _write_checkpoint(self):
+        """备份现有检查点 → 写 .tmp → os.replace；并写幂等独立副本（§6.3）。"""
+        self._evict_idempotency()
+        payload = self._snapshot_payload()
+        text = _canonical(payload)
+        primary = os.path.join(self._dir, SNAPSHOT_NAME)
+        backup = os.path.join(self._dir, SNAPSHOT_BAK_NAME)
+        tmp = os.path.join(self._dir, SNAPSHOT_TMP_NAME)
+        with open(tmp, "w", encoding="utf-8") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if os.path.exists(primary):
+            os.replace(primary, backup)
+        os.replace(tmp, primary)
+
+        idem_text = _canonical({
+            "schema_version": STATE_VERSION,
+            "kind": "state.idempotency",
+            "campaign_id": self.campaign_id,
+            "indexes": self._idem,
+        })
+        _write_atomic(os.path.join(self._dir, IDEMPOTENCY_NAME), idem_text)
+
+        self._last_checkpoint_ms = _now_ms()
+        self._last_checkpoint_bytes = self._log_size()
+        self._events_since_checkpoint = 0
+
+    def _maybe_checkpoint(self):
+        """§6.3：按事件数 / 日志体积 / 时间任一触发；失败只记说明（可滞后）。"""
+        age_s = (_now_ms() - self._last_checkpoint_ms) / 1000.0
+        size = self._log_size()
+        due = (self._events_since_checkpoint >= CHECKPOINT_EVERY
+               or size - self._last_checkpoint_bytes >= CHECKPOINT_MAX_LOG_BYTES
+               or age_s > CHECKPOINT_MAX_AGE_S)
+        if not due:
+            return
+        try:
+            self._write_checkpoint()
+        except OSError as exc:
+            self.notes.append("检查点写入失败（不影响正确性）：%s" % exc)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# open_campaign（§9 / §12.1）
+# ════════════════════════════════════════════════════════════════════════════
+
+def _cleanup_tmp(campaign_dir):
+    """§9 步骤 5：清除原子写残留 `*.tmp`。"""
+    try:
+        names = os.listdir(campaign_dir)
+    except OSError:
+        return
+    for name in names:
+        if name.endswith(".tmp"):
+            try:
+                os.unlink(os.path.join(campaign_dir, name))
+            except OSError:
+                pass
+
+
+def open_campaign(campaign_id, *, base_dir=None, save_name=None):
+    """加载（+ 惰性迁移）一个战役，损坏则抛 `StateError`（§9 / §12.1）。
+
+    `base_dir` 为可选扩展：默认落 `DEFAULT_SAVE_ROOT`（`web-saves/`），
+    测试可指向临时目录（保持 §12.1 `open_campaign(campaign_id)` 契约不变）。
+    """
+    if not isinstance(campaign_id, str) or not CAMPAIGN_ID_RE.match(campaign_id):
+        raise StateError("非法 campaign_id（须匹配 ^[A-Za-z0-9_-]{1,64}$）：%r"
+                         % (campaign_id,))
+    root = os.path.join(base_dir or DEFAULT_SAVE_ROOT, CAMP_DIRNAME)
+    campaign_dir = os.path.join(root, campaign_id)
+    os.makedirs(campaign_dir, exist_ok=True)
+
+    _cleanup_tmp(campaign_dir)          # §9 步骤 5（先于加载，残留不影响结果）
+
+    notes = []
+    snapshot = _load_snapshot(campaign_dir, campaign_id, notes)
+    fresh = snapshot is None
+    if fresh:
+        snapshot = _genesis_snapshot(campaign_id, save_name=save_name)
+
+    events_path = os.path.join(campaign_dir, EVENTS_NAME)
+    events = _read_events(events_path, notes)
+    _validate_chain(events, snapshot.get("seq", 0))
+
+    blocks = copy.deepcopy(snapshot.get("blocks") or _genesis_blocks())
+    seq, world_time, rebuilt = _replay_events(
+        events, snapshot.get("seq", 0), blocks, snapshot.get("world_time"))
+    snapshot["blocks"] = blocks
+    snapshot["seq"] = seq
+    snapshot["world_time"] = world_time
+    # §9 步骤 4：日志是唯一真相，其重建的记录覆盖检查点里的加速副本。
+    indexes = snapshot.get("indexes") or {}
+    merged = copy.deepcopy(indexes.get("idempotency") or {})
+    merged.update(rebuilt)
+    snapshot["indexes"] = {
+        "idempotency": merged,
+        "archived_upto": indexes.get("archived_upto", 0),
+    }
+
+    handle = Handle(campaign_id, campaign_dir, snapshot)
+    handle.notes.extend(notes)
+    if fresh and not os.path.exists(events_path):
+        # 全新战役：落创世检查点 + 空日志（老档迁移属 M7-3，不在本单）。
+        open(events_path, "a", encoding="utf-8").close()
+        handle._last_checkpoint_ms = _now_ms()
+        handle._last_checkpoint_bytes = 0
+        handle._write_checkpoint()
+    return handle
