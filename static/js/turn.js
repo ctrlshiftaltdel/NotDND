@@ -141,10 +141,28 @@ function streamItemHtml(e) {
     // 秘密门（prism_guide.redact_narration）的删除对玩家**无痕**：服务端给的
     // 就是涂掉之后的字，这里既不提示「此处有内容被隐藏」，也不留占位——
     // 「告诉玩家删过东西」本身就是泄密（§2.3 唯一允许静默删减的地方）。
-    return '<div class="msg msg-narrate"><span class="msg-text">' + esc(e.text) + '</span>' +
+    // 正文块本身可能被 U5 按 `beats` 切成拍，见 narrateBodyHtml。
+    return '<div class="msg msg-narrate">' + narrateBodyHtml(e) +
       (e.trace ? traceBlockHtml(e.trace) : '') + '</div>';
   }
   return '<div class="msg msg-note"><span class="msg-text">' + esc(e.text) + '</span></div>';
+}
+
+/* 叙事条目的正文块。含 `beats` 的条目交给 js/voice.js 的**可选**全局
+   `voiceNarrateHtml(entry)` 按拍切段（片 U5 的唯一衔接点）：一拍 = 一个段落，
+   对白拍带竖线 / 说话人名 / 「朗读」按钮。
+
+   它不存在（没加载 voice.js）、返回空、或自己抛了异常时，走下面这行 U2 的
+   整段渲染——默认渲染与既有选择器语义（`.msg-text`）一字不变。该函数只**读**
+   条目数据，不改 TURN.log。 */
+function narrateBodyHtml(e) {
+  if (e && e.beats && e.beats.length && typeof voiceNarrateHtml === 'function') {
+    try {
+      var html = voiceNarrateHtml(e);
+      if (typeof html === 'string' && html) return html;
+    } catch (err) { /* 切拍失败不拖垮这一条叙事：退回整段渲染 */ }
+  }
+  return '<span class="msg-text">' + esc(e && e.text) + '</span>';
 }
 
 /* 痕迹揭开（§3.5.2）：它是「这一回合的收获」，**要**显式呈现——与秘密门的

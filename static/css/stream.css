@@ -213,3 +213,50 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
 /* ── 紧凑排版（设置项）：收窄叙事行距 ─────────────────── */
 html[data-dense="on"] .stream { gap: 4px; }
 html[data-dense="on"] .msg { line-height: 1.45; }
+
+/* ── 对白拍与语音（U5，§2.5）─────────────────────────────
+   一拍 = 一个段落（.msg-beat）：对白拍（speaker 非空）加左侧竖线与说话人名，
+   旁白拍就是普通叙事段落。音色名（白桦 / 茉莉）是 TTS 的声线、不是角色名，
+   所以这里**没有**它的位置。「朗读」按钮只在 tts=true 时由 js/voice.js 画
+   出来（本片只管它的样子），图标随按钮内联。 */
+.msg-beat {
+  display: block;
+  margin: 0 0 var(--sp-2);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;       /* 拍里保留的换行照原样排（不重排服务端的字） */
+}
+.msg-beat:last-child { margin-bottom: 0; }
+.msg-beat.is-dialogue {
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--accent);
+}
+.beat-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: 2px; }
+.beat-name {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  letter-spacing: .04em;
+  overflow-wrap: anywhere;
+}
+.beat-head .beat-say { margin-left: auto; }   /* 名字在左、按钮靠右 */
+.beat-line { display: block; font-family: var(--font-serif); color: var(--text-1); }
+
+/* 「朗读」按钮：小喇叭，只在 tts=true 时出现。触摸目标 32px，
+   与工具条里的就地按钮同一口径（§5.1）。 */
+.beat-say {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  min-width: 32px; min-height: 32px; padding: 0 var(--sp-2);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: transparent; color: var(--text-2);
+  font-size: var(--fs-xs); white-space: nowrap;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.beat-say:hover:not(:disabled) { color: var(--text-1); border-color: var(--line-strong); }
+.beat-say:disabled { opacity: .45; cursor: not-allowed; }
+/* 「正在播」：按钮高亮 + 喇叭/停止图形的呼吸；配一枚说得出话的「停止」标签。
+   动效设置关掉时不动（§3.2 / html.no-anim）。 */
+.beat-say.is-playing { color: var(--accent); border-color: var(--accent); }
+.beat-say.is-playing .i { animation: beatPulse 900ms ease-in-out infinite; }
+.beat-say-label { font-size: var(--fs-xs); }
+.msg-beat.is-playing { border-left-color: var(--accent-2); }
+@keyframes beatPulse { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
+html.no-anim .beat-say.is-playing .i { animation: none; }
