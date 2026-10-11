@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""chron —— CHRON 内核（M9-C1 / C2）：世界时钟、时间单位与行动生命周期（纯函数）。
+"""chron —— CHRON 内核（M9-C1–C4）：世界时钟、行动生命周期、调度器与时间压缩（纯函数）。
 
 本模块实现 `CHRON-DESIGN.md` 的**纯函数**部分：
 
@@ -17,9 +17,13 @@
   `due_heap`（**稳定**排序键 `(due_minute, -priority, created_seq, action_id)`，§5.2）、
   依赖图（**无环**是硬约束，有环提案 `proposed → failed`；默认**级联取消**，§5.3）、
   `Window` 与冲突识别（同 `place` / 同 `resource` / `blocks`；只**识别**、**不裁决**，§5.4–§5.5）。
+- 时间压缩与事件屏障（§6）：`BARRIERS`（**B1–B8 机读判据**一张表）、`next_barrier`
+  （下一个必须停的分钟）、`barriers_at`（该分钟上的屏障记录）、`advance_to` 的**屏障语义**
+  （停在屏障之前 / 到期是结算点）、`compression_log`（**只记真实事件**，不产生「被跳过」的模拟事件）。
 
-**本单边界**：不压缩时间、不判屏障（`next_barrier` 归 C4）、不判行动胜负（归 PRISM）、
-不落库、不碰 IO；不 import 任何业务模块（§7 依赖方向）。
+**本单边界**：不判行动胜负（归 PRISM）、不关窗口（`window.closed` 归后续切片）、
+不判「谁在线」（`offline_advance` 只作入参回显，开关落 M10，§3.4）、不落库、不碰 IO；
+不 import 任何业务模块（§7 依赖方向）。
 世界时间是一条**自战役纪元起的整数分钟轴，只增不减**（§3.2）。
 
 口径依据：
@@ -129,6 +133,16 @@ __all__ = (
     "blocked_by",
     "blocks_of",
     "dependents_of",
+    # §6 时间压缩与事件屏障（C4）
+    "BARRIERS",
+    "BARRIER_IDS",
+    "BARRIER_FIELDS",
+    "KIND_BARRIERS",
+    "INTERRUPT_BARRIERS",
+    "NOW_BARRIER_IDS",
+    "PAUSING_BARRIER_IDS",
+    "barriers_at",
+    "next_barrier",
 )
 
 
@@ -957,7 +971,7 @@ def apply_event(action, event):
 #
 # **本切片只识别、不裁决**（§5.5 / Key Decision 7）：调度器产出「该开窗口 / 该到期 / 该开始」
 # 的判断与事件；胜负、物品归属、伤害与死亡等**事实**由 PRISM 与权威状态层负责。
-# 屏障与时间压缩（`next_barrier`、B1–B8）归 C4，本切片不判。
+# 屏障与时间压缩（`next_barrier`、B1–B8）见下方 §6（C4）。
 
 # §5.2 排序键的四段（字典序）。放在一处，测试与文档都引用它，避免口径散落。
 DUE_KEY_FIELDS = ("due_minute", "-priority", "created_seq", "action_id")
@@ -1620,50 +1634,472 @@ def settle(state, action_id, to, *, world_minute, reason=None):
     return {"state": new_state, "events": events}
 
 
-def advance_to(state, target_minute):
-    """推进世界时间到 `target_minute`，**按稳定顺序**触发途中到期（§5.2 / §5.3）。
+def _fire_dues_upto(state, limit_minute, tracker, events):
+    """逐条触发堆上 **≤ `limit_minute`** 的到期（§5.2 稳定堆序），返回**真实触发过的分钟**。
 
-    返回 `{"state": 新状态, "world_minute": 实际到达分钟, "events": [途中事件]}`。
-    事件流按执行顺序排列：每个到期点先开始 / 开窗（`action.started`、`window.opened`），
-    再 `action.due`；同一分钟的多张卡严格按 §5.2 排序键。
+    - 不批量绕过校验（§6.3 硬约束）：逐个到期点走 `_fire_one`；
+    - 这一步里有行动失败 / 被取消 → 立刻级联它的下游（§5.3）；
+    - 只改 `state` 的派生索引与行动卡（调用方已在新状态上操作）。
+    """
+    fired = []
+    while state["due_heap"]:
+        due_minute = state["due_heap"][0][0]
+        if due_minute > limit_minute:
+            break
+        bad_before = {action_id for action_id, action in state["actions"].items()
+                      if action["status"] in ("failed", "cancelled")}
+        events.extend(_fire_one(state, due_minute, tracker))
+        fired.append(due_minute)
+        bad_after = {action_id for action_id, action in state["actions"].items()
+                     if action["status"] in ("failed", "cancelled")}
+        if bad_after - bad_before:
+            cascade = _cascade_dependents(state, state["world_minute"], bad_after)
+            for action_id in sorted(cascade):
+                events.extend(cascade[action_id])
+    return fired
 
-    **本切片不做屏障**（`next_barrier` 与 B1–B8 归 C4）：这里会**一直推进到**
-    `target_minute`，只在「最早到期 > 目标」时停。C4 在此之上插入「停在屏障之前」。
+
+# ==========================================================================
+# §6 时间压缩与事件屏障（Time Compression & Event Barrier）——M9-C4
+# ==========================================================================
+#
+# §6.1 的充要条件（该时段内没有重要交互 / 冲突 / 因果依赖）在 §6.2 落成 **B1–B8 八条
+# 机读判据**。本切片把八条判据做成**一张表**（`BARRIERS`：编号 / 名称 / 设计原句 /
+# 机读落地），识别的产物统一是 `Barrier` 记录（`BARRIER_FIELDS`）——「哪一条判据在拦」
+# 因此可核对、可测试，而不是散在 `if` 里的隐式判断。
+#
+# 两条硬口径（§6.3）：
+#
+# 1. **停在屏障之前**：语义屏障（B1–B7）的那一分钟**不执行**——`world_minute` 停在
+#    屏障分钟返回，该分钟的内容（`action.started` / 开窗 / 到期）留给玩家；到达之后
+#    再次推进即表示「玩家已处理，继续」，否则屏障会永久卡死压缩（§6.4 的「不允许压缩」
+#    只在**尚未到达**时拦）。
+# 2. **到期是结算点**（B8）：到期**逐条触发**（绝不跳过、绝不延迟到别的分钟），然后
+#    `advance_to` **停在该分钟**——结算未完成前压缩不前进（§6.4；「这是结算点」）。
+#
+# 判据里带**内容判断**的部分（战斗 / 线索 / 危险 / 遭遇）由**规则包**翻成行动声明
+# （`kind` / `interrupt_conditions`）：CHRON 只认名字、只按名字停（§7 依赖方向）。
+# CHRON 自己的事件词表只有 `action.*` / `window.*`（没有 `combat.start` /
+# `discovered_facts`），所以「事件类」判据在 CHRON 侧的落地就是**行动声明**。
+#
+# **不在本切片**：不判「谁在线」（`offline_advance` 只作入参回显，开关落 M10，§3.4）、
+# 不判行动胜负（归 PRISM）、不关窗口（`window.closed` 归后续切片）。
+
+BARRIER_IDS = ("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8")
+
+# §6.2 八条判据：`criterion` 是设计文档的机读判据原句，`machine` 是 CHRON 侧的落地
+# （手里有什么就用什么；两者都进表，审查时一眼能对照）。
+BARRIERS = (
+    {
+        "id": "B1",
+        "name": "进入战斗",
+        "criterion": "到期事件类型 ∈ {combat.start}；或某行动 kind = combat 开始",
+        "machine": "kind = combat 的行动开始；或进行中的战斗行动（已在战斗）",
+    },
+    {
+        "id": "B2",
+        "name": "发现关键线索",
+        "criterion": "事件 discovered_facts 含 significant: true",
+        "machine": "kind = discover 的行动**到期**（到达时发现；是否关键由规则包用这个 kind 声明）"
+                   "——标注在该结算点上，到期照常触发",
+    },
+    {
+        "id": "B3",
+        "name": "玩家角色安全受威胁",
+        "criterion": "事件的 risk 触及某 PC 的伤害 / 死亡 / 被俘",
+        "machine": "kind = hazard 或带 hazard 中断条件的行动开始；或这类行动进行中",
+    },
+    {
+        "id": "B4",
+        "name": "角色遭遇",
+        "criterion": "新 NPC / 另一玩家在同一 place 出现（encounter 事件）",
+        "machine": "kind = encounter 的行动开始（CHRON 看不出 actor 是 PC 还是 NPC，名字由规则包给）",
+    },
+    {
+        "id": "B5",
+        "name": "世界状态冲突",
+        "criterion": "两行动争同一 resource / 同一 place（§5.5 的识别命中）",
+        "machine": "窗口开着且参与者仍在飞 → 立刻停；两张同键的卡都在飞 → 把「较晚的到期分钟」"
+                   "标注为识别命中点（开窗就在那一刻，§5.4）",
+    },
+    {
+        "id": "B6",
+        "name": "玩家有未决决策",
+        "criterion": "存在 status = proposed 且 needs_confirmation = true（GDD §8.3 风险分级）",
+        "machine": "存在 status = proposed 的卡；卡上显式 needs_confirmation = False 时不停",
+    },
+    {
+        "id": "B7",
+        "name": "行动转 blocked / interrupted",
+        "criterion": "状态机产生这两类转换",
+        "machine": "存在 status ∈ {blocked, interrupted} 的卡（等规则 / 玩家处理）",
+    },
+    {
+        "id": "B8",
+        "name": "有行动到期",
+        "criterion": "due_minute ≤ 目标分钟——到期本身总是要停（这是结算点）",
+        "machine": "rebuild_heap 上最早的可办到期分钟（≥ 起点），逐条列在答案里",
+    },
+)
+
+_BARRIER_BY_ID = {row["id"]: row for row in BARRIERS}
+
+assert tuple(row["id"] for row in BARRIERS) == BARRIER_IDS, "BARRIERS 表的编号必须与 BARRIER_IDS 一致"
+
+# 屏障记录的字段（JSON 友好；`subject` = 相关行动 id / 窗口 id，`None` = 无单一主体）。
+BARRIER_FIELDS = ("id", "name", "minute", "reason", "subject")
+
+# §6.2 判据的**行动声明**侧（规则包给名字，CHRON 只认名字）：
+#   - `KIND_BARRIERS`：行动 `kind` → 屏障编号；
+#   - `INTERRUPT_BARRIERS`：中断条件 `kind`（ACTION-DESIGN §8.4 词表）→ 屏障编号。
+KIND_BARRIERS = {
+    "combat": "B1",      # 战斗行动：一开始即「进入战斗」
+    "discover": "B2",    # 发现类行动：**到期**时即「发现关键线索」（§6.5 第 3 条的例子）
+    "hazard": "B3",      # 危险类行动：一开始即「玩家角色安全受威胁」
+    "encounter": "B4",   # 遭遇类行动：一开始即「角色遭遇」
+}
+
+INTERRUPT_BARRIERS = {
+    "enemy_appears": "B1",   # 敌人出现 = 进入战斗
+    "hazard": "B3",          # 危险 = 玩家角色安全受威胁
+}
+
+# 一次性拦在**当前分钟**的判据（§6.4「不允许压缩」）：B5 窗口开着 / B6 未决提案 /
+# B7 blocked、interrupted。上表里的 B1 / B3 对**进行中**行动同样立刻拦。
+NOW_BARRIER_IDS = ("B1", "B3", "B5", "B6", "B7")
+
+# 声明型屏障里**会暂停**的编号（停点 = 它，停在它**之前**、那一分钟的内容不执行）：
+# B1 / B3 / B4 是「那一分钟会发生一件值得玩家在场的事」（战斗开始 / 危险开始 / 遭遇），
+# 该分钟**留给玩家**；B2（发现）与 B5（冲突识别）落点就在**到期分钟**上——那一刻本来
+# 就是结算点（B8），它们只**标注**（「这个结算点是线索 / 是冲突」），到期照常触发。
+PAUSING_BARRIER_IDS = ("B1", "B3", "B4")
+
+
+def _barrier_record(minute, barrier_id, reason, subject=None):
+    """一条机读屏障记录（`BARRIER_FIELDS`；确定性、可 JSON 落盘）。"""
+    return {
+        "id": barrier_id,
+        "name": _BARRIER_BY_ID[barrier_id]["name"],
+        "minute": minute,
+        "reason": reason,
+        "subject": subject,
+    }
+
+
+def _sorted_barrier_records(found):
+    """把 `(minute, id, reason, subject)` 集合折成**确定性**的记录列表（按编号 / 原因 / 主体）。"""
+    records = [_barrier_record(minute, barrier_id, reason, subject)
+               for minute, barrier_id, reason, subject in found]
+    return sorted(records, key=lambda record: (record["id"], record["reason"],
+                                               record["subject"] or ""))
+
+
+def _interrupt_kinds(action):
+    """行动 `interrupt_conditions` 里声明的条件 `kind`（只读 `kind`；其他形状忽略，不判）。"""
+    kinds = []
+    for item in action["interrupt_conditions"]:
+        if isinstance(item, dict):
+            kind = item.get("kind")
+        elif isinstance(item, str):
+            kind = item
+        else:
+            kind = None
+        if isinstance(kind, str) and kind:
+            kinds.append(kind)
+    return kinds
+
+
+def _in_flight(state, action_id):
+    """行动是否「在飞」（已排期 / 进行中）——只有它们才可能撞上未来的屏障。"""
+    card = state["actions"].get(action_id)
+    return card is not None and card["status"] in ("scheduled", "running")
+
+
+def _conflict_groups(state):
+    """按冲突键（§5.5）分组的**在飞**行动：`{key: [action_id, ...]}`（升序、确定性）。"""
+    groups = {}
+    for action_id in sorted(state["actions"]):
+        action = state["actions"][action_id]
+        if action["status"] not in ("scheduled", "running"):
+            continue
+        key = conflict_key(action)
+        if key is not None:
+            groups.setdefault(key, []).append(action_id)
+    return groups
+
+
+def _declared_barriers(state):
+    """**声明型**屏障：`{minute: [记录, ...]}`（B1–B5；由 `kind` / 中断条件 / 冲突键推出）。
+
+    - B1 / B3 / B4：行动**开始**的那一分钟；
+    - B2：行动**到期**的那一分钟（「到达时会发现线索」——发现发生在到达时）；
+    - B5：同一冲突键的两张卡都在飞 → 识别命中的分钟 = 两者**较晚的到期分钟**
+      （此刻第二张卡开始、第一张还在飞 → §5.4 开窗）。它**只标注**（不暂停，见
+      `PAUSING_BARRIER_IDS`）：那一刻本来就是到期点（B8），窗口照常开出来。
+
+    已到达的分钟也如实列出（调用方按 `> 起点` 过滤）——「到达过」不等于「不存在」。
+    """
+    found = set()
+    for action_id in sorted(state["actions"]):
+        action = state["actions"][action_id]
+        if action["status"] not in ("scheduled", "running"):
+            continue
+        for kind, barrier_id in sorted(KIND_BARRIERS.items()):
+            if action["kind"] != kind:
+                continue
+            minute = action["due_minute"] if barrier_id == "B2" else action["start_minute"]
+            if minute is not None:
+                found.add((minute, barrier_id, "kind:%s" % kind, action_id))
+        for condition, barrier_id in sorted(INTERRUPT_BARRIERS.items()):
+            if condition in _interrupt_kinds(action) and action["start_minute"] is not None:
+                found.add((action["start_minute"], barrier_id,
+                           "interrupt:%s" % condition, action_id))
+    for key, action_ids in sorted(_conflict_groups(state).items()):
+        if len(action_ids) < 2:
+            continue
+        minute = max(state["actions"][action_id]["due_minute"] for action_id in action_ids)
+        if minute is not None:
+            found.add((minute, "B5", "conflict:%s" % key, key))
+    grouped = {}
+    for record in _sorted_barrier_records(found):
+        grouped.setdefault(record["minute"], []).append(record)
+    return grouped
+
+
+def _due_barriers(state, minute):
+    """该分钟上的**到期**屏障（B8）：逐条记录（按 §5.2 堆序 → 确定性）。"""
+    records = []
+    for entry in rebuild_heap(state):
+        if entry[0] == minute:
+            records.append(_barrier_record(minute, "B8", "action_due", entry[3]))
+    return records
+
+
+def _now_barriers(state):
+    """**当前就成立**的屏障（`minute` = 当前世界分钟）：压缩**不允许**（§6.4）。
+
+    - B1 / B3：**进行中**的战斗 / 危险行动（已在战斗 / 已在危险中，不能快进）；
+    - B5：**开着的窗口且参与者仍在飞**（§6.4 第 1 条：窗口内必须同步；参与者全部落定后
+      窗口不再拦压缩——关窗本身（`window.closed`）不在本切片）；
+    - B6：停在 `proposed` 的卡 = 玩家有未决决策（显式 `needs_confirmation = False` 时不停）；
+    - B7：`blocked` / `interrupted` 的卡 = 状态机已产生这两类转换，等规则 / 玩家处理。
+    """
+    minute = state["world_minute"]
+    found = set()
+    for action_id in sorted(state["actions"]):
+        action = state["actions"][action_id]
+        if action["status"] == "running":
+            conditions = set(_interrupt_kinds(action))
+            for kind, barrier_id in sorted(KIND_BARRIERS.items()):
+                if action["kind"] == kind and barrier_id in ("B1", "B3"):
+                    found.add((minute, barrier_id, "running:%s" % kind, action_id))
+            for condition, barrier_id in sorted(INTERRUPT_BARRIERS.items()):
+                if condition in conditions:
+                    found.add((minute, barrier_id, "running:interrupt:%s" % condition,
+                               action_id))
+        elif action["status"] == "proposed":
+            if action.get("needs_confirmation", True) is not False:
+                found.add((minute, "B6", "proposal_pending", action_id))
+        elif action["status"] in ("blocked", "interrupted"):
+            found.add((minute, "B7", "status:%s" % action["status"], action_id))
+    for window in open_windows(state):
+        if [action_id for action_id in window["participants"] if _in_flight(state, action_id)]:
+            found.add((minute, "B5", "window_open", window["window_id"]))
+    return _sorted_barrier_records(found)
+
+
+def barriers_at(state, minute):
+    """该分钟上命中的**机读屏障记录**（§6.2 B1–B8；确定性、按编号 / 原因 / 主体升序）。
+
+    - **声明型**（B1–B5）：行动 `kind` / 中断条件 / 冲突键推出的分钟；
+    - **到期**（B8）：`rebuild_heap` 上落在该分钟的到期，**逐条**一条记录；
+    - **当前型**（B1 / B3 / B5 / B6 / B7）：只在 `minute == state["world_minute"]` 时计入
+      ——它们说的是「**现在**就不能压缩」。
+
+    这是**只读判断**：不改写状态、不产生事件。`advance_to` 的返回里也带同一形状的记录
+    （`barriers` = 造成本次停下的记录；同一分钟上的其它判据也如实列出，如 B1 与 B8 同分钟
+    时两条都在——§6.5 第 5 条的「屏障优先」据此可见）。
+    """
+    _check_scheduler(state)
+    minute = _require_non_negative(minute, "minute")
+    found = set()
+    for record in _declared_barriers(state).get(minute, ()):
+        found.add((minute, record["id"], record["reason"], record["subject"]))
+    for record in _due_barriers(state, minute):
+        found.add((minute, record["id"], record["reason"], record["subject"]))
+    if minute == state["world_minute"]:
+        for record in _now_barriers(state):
+            found.add((minute, record["id"], record["reason"], record["subject"]))
+    return _sorted_barrier_records(found)
+
+
+def _pausing_barrier_minute(state, after_minute):
+    """`after_minute` 之后**最早**的语义屏障分钟（B1 / B3 / B4，见 `PAUSING_BARRIER_IDS`）。"""
+    minutes = [minute for minute, records in _declared_barriers(state).items()
+               if minute > after_minute
+               and any(record["id"] in PAUSING_BARRIER_IDS for record in records)]
+    return min(minutes) if minutes else None
+
+
+def _earliest_due_minute(state, from_minute):
+    """`from_minute` 起**最早**的到期分钟（B8 结算点；`rebuild_heap` 上的最小 ≥ 起点）。"""
+    minutes = [entry[0] for entry in rebuild_heap(state) if entry[0] >= from_minute]
+    return min(minutes) if minutes else None
+
+
+def next_barrier(state, from_minute=None):
+    """下一个**屏障 / 结算点**分钟：从 `from_minute` 起**最早可能停住**的那一分钟。
+
+    = min(**最早的语义屏障**（B1 / B3 / B4，停在它之前）, **最早的到期**（B8，结算点）)；
+    没有可停的分钟就返回 `None`。对**给定目标**的实际停点看 `advance_to` 的 `stopped_at`
+    （有语义屏障时先停屏障：途中到期照常触发，屏障之后不再推进）。
+
+    - `from_minute` 省略 = 当前世界分钟；不得早于当前（世界时间只增不减，§3.2）→ 否则
+      显式抛 `ScheduleError`；
+    - **现在就不能压缩**（§6.4）→ 返回 `from_minute` 本身（屏障就是「当前这一分钟」）：
+      B1 / B3 的进行中行动、B5 的开着窗口（参与者仍在飞）、B6 的未决提案、B7 的
+      blocked / interrupted 卡。**该判断只对 `from_minute == 当前世界分钟` 生效**
+      （它们说的是「现在」）；
+    - **已到达**的屏障分钟不再拦（屏障 = 停一次、把控制权交回）：到达后再次推进即可
+      得到下一个屏障——否则任何屏障都会永久卡死压缩；
+    - 到期（B8）与语义屏障落在同一分钟时**屏障优先**（§6.5 第 5 条）：本函数只给分钟，
+      「停在屏障之前（不执行）」与「停在结算点上（已触发）」的区别看 `barriers_at`
+      与 `advance_to` 的 `stopped_at` / `barriers`。
+    """
+    _check_scheduler(state)
+    now = state["world_minute"]
+    start = now if from_minute is None else _require_non_negative(from_minute, "from_minute")
+    if start < now:
+        raise ScheduleError("next_barrier 的起点不得早于当前世界时间：from_minute=%d < "
+                            "world_minute=%d" % (start, now))
+    if start == now and _now_barriers(state):
+        return start
+    minutes = [minute for minute, records in _declared_barriers(state).items()
+               if minute > start and any(record["id"] in PAUSING_BARRIER_IDS
+                                         for record in records)]
+    minutes.extend(entry[0] for entry in rebuild_heap(state) if entry[0] >= start)
+    return min(minutes) if minutes else None
+
+
+def _stop_barriers(state, stop, start):
+    """停在 `stop` 时**真正命中**的屏障记录（已到达的声明型屏障不算，见 `next_barrier`）。"""
+    found = set()
+    if stop > start:
+        for record in _declared_barriers(state).get(stop, ()):
+            found.add((stop, record["id"], record["reason"], record["subject"]))
+    for record in _due_barriers(state, stop):
+        found.add((stop, record["id"], record["reason"], record["subject"]))
+    return _sorted_barrier_records(found)
+
+
+def _advance_result(state, start, target, offline_advance, events, fired_minutes,
+                    stopped_at, barriers):
+    """`advance_to` 的结果封套 + **压缩日志**（§6.3 末条：只记真实事件）。
+
+    `compression_log` 里只有**真实发生**的事件的引用（`fired_minutes` = 真实触发过到期的
+    分钟，`event_ids` = 本次产出的事件 id，与 `events` 一一对应）；被压缩掉的时段
+    **不**产生条目、更不产生「被跳过」的模拟事件。
+    """
+    return {
+        "state": state,
+        "world_minute": state["world_minute"],
+        "target": target,
+        "stopped_at": stopped_at,
+        "barriers": list(barriers),
+        "events": events,
+        "compression_log": {
+            "from_minute": start,
+            "to_minute": state["world_minute"],
+            "target_minute": target,
+            "stopped_at": stopped_at,
+            "offline_advance": offline_advance,
+            "fired_minutes": sorted(set(fired_minutes)),
+            "event_ids": [event["event_id"] for event in events],
+        },
+    }
+
+
+def advance_to(state, target_minute, *, offline_advance=False):
+    """推进世界时间到 `target_minute`——**遇屏障就停**（§6.2 / §6.3；M9-C4）。
+
+    返回：
+
+    ```
+    {"state": 新状态, "world_minute": 实际到达分钟, "target": 目标分钟,
+     "stopped_at": 停住的分钟 / None（抵达目标）,
+     "barriers": [造成本次停下的屏障记录, ...],
+     "events": [途中事件, ...],
+     "compression_log": {……只含真实事件……}}
+    ```
+
+    语义（§6.3 / §6.4 两条硬口径）：
+
+    - **停点 = 下一个屏障**：区间内有语义屏障（B1 / B3 / B4）就以**最早的那个**为停点，
+      **停在它之前**——该分钟的内容（`action.started` / 开窗 / 到期）留给玩家；严格早于
+      它的到期照常**逐条触发**（§6.3 的 `fire_all_due_at` 在屏障前照跑）；
+    - **没有语义屏障 → 停在最早的到期**（B8：到期是结算点）：触发那一分钟的到期，然后
+      停住——结算未完成前压缩**不再前进**（§6.4；目标分钟不得跨越屏障，B1–B8 任一）；
+    - **屏障优先**（§6.5 第 5 条）：同一分钟既有到期又有语义屏障 → 屏障优先，该分钟的到期
+      **不**触发；
+    - **抵达不算跨越**：停点 `> target` 时推进到 `target`（`stopped_at is None`）；停点
+      `== target` 且是到期时同样算抵达（到期已触发）；
+    - **已到达的屏障不再拦**：屏障 = 停一次、把控制权交回；到达后再次推进即「玩家已处理，
+      继续」，否则任何屏障都会永久卡死压缩；
+    - **压缩不产生假事件**：被压缩掉的时段不产出任何事件，`compression_log` 只引用真实事件。
+
+    `offline_advance` **只作入参**（默认 `False`，沿用 §3.4 的口径）：本切片**不判**
+    「有没有人在线」（那是房间设置 / M10 的事），所以它**不改变**推进结果，只回显在
+    `compression_log` 里。
 
     性质：**不改写入参 `state`**（`actions` / `blocks` / `running` / `windows` 都在新状态上
     复制后再改），返回的新状态可以与入参安全共存。`target_minute` 早于当前世界时间 →
-    显式抛 `ScheduleError`（世界时间只增不减，§3.2）。
+    显式抛 `ScheduleError`（世界时间只增不减，§3.2）；`offline_advance` 非 bool → `TypeError`。
     """
     _check_scheduler(state)
     target = _require_non_negative(target_minute, "target_minute")
     if target < state["world_minute"]:
         raise ScheduleError("世界时间只增不减：target_minute=%d < world_minute=%d"
                             % (target, state["world_minute"]))
+    flag = _require_bool(offline_advance, "offline_advance")
     new_state = dict(state,
                      actions=dict(state["actions"]),
                      blocks=dict(state["blocks"]),
                      running=dict(state["running"]),
                      windows=[dict(window) for window in state["windows"]],
-                     due_heap=[list(entry) for entry in state["due_heap"]])
-    tracker = _MinuteTracker(new_state["world_minute"])
-    events = []
-    while new_state["due_heap"]:
-        due_minute = new_state["due_heap"][0][0]
-        if due_minute > target:
-            break
-        bad_before = {action_id for action_id, action in new_state["actions"].items()
-                      if action["status"] in ("failed", "cancelled")}
-        events.extend(_fire_one(new_state, due_minute, tracker))
-        bad_after = {action_id for action_id, action in new_state["actions"].items()
-                     if action["status"] in ("failed", "cancelled")}
-        if bad_after - bad_before:
-            # 这一步里有行动失败 / 被取消：立刻级联它的下游（§5.3），再继续推进。
-            cascade = _cascade_dependents(new_state, new_state["world_minute"], bad_after)
-            for action_id in sorted(cascade):
-                events.extend(cascade[action_id])
-    new_state["world_minute"] = max(new_state["world_minute"], target)
+                     due_heap=[])
+    # 派生索引先重建（§8.2 第 4 步）：屏障判据与触发顺序都基于它，因此与入参堆的陈旧无关。
     new_state["due_heap"] = rebuild_heap(new_state)
-    return {"state": new_state, "world_minute": new_state["world_minute"], "events": events}
+    start = new_state["world_minute"]
+    tracker = _MinuteTracker(start)
+    events = []
+    now = _now_barriers(new_state)
+    if now:
+        # §6.4「不允许压缩」：当前这一分钟就停（不动时间、不产事件）。
+        return _advance_result(new_state, start, target, flag, events, [], start, now)
+    # 停点：**有语义屏障（B1 / B3 / B4）就以它为停点**（把它的那一分钟留给玩家；严格早于
+    # 它的到期照常逐条触发，§6.3）；没有语义屏障则以**最早的到期**（B8 结算点）为停点。
+    barrier_minute = _pausing_barrier_minute(new_state, start)
+    if barrier_minute is not None and barrier_minute <= target:
+        records = _stop_barriers(new_state, barrier_minute, start)
+        fired = _fire_dues_upto(new_state, barrier_minute - 1, tracker, events)
+        new_state["world_minute"] = max(new_state["world_minute"], barrier_minute)
+        new_state["due_heap"] = rebuild_heap(new_state)
+        return _advance_result(new_state, start, target, flag, events, fired,
+                               barrier_minute, records)
+    due_stop = _earliest_due_minute(new_state, start)
+    if due_stop is None or due_stop > target:
+        # 区间内没有到期（也没有语义屏障）→ 纯压缩：抵达目标、不产事件。
+        fired = _fire_dues_upto(new_state, target, tracker, events)
+        new_state["world_minute"] = target
+        new_state["due_heap"] = rebuild_heap(new_state)
+        return _advance_result(new_state, start, target, flag, events, fired, None, [])
+    records = _stop_barriers(new_state, due_stop, start)
+    fired = _fire_dues_upto(new_state, due_stop, tracker, events)
+    new_state["world_minute"] = max(new_state["world_minute"], due_stop)
+    new_state["due_heap"] = rebuild_heap(new_state)
+    if due_stop == target:
+        return _advance_result(new_state, start, target, flag, events, fired, None, [])
+    return _advance_result(new_state, start, target, flag, events, fired, due_stop, records)
 
 
 def _fire_one(state, due_minute, tracker):
