@@ -72,6 +72,144 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
 .act-label { flex: 1 1 auto; }
 .act-hint { flex: 0 0 auto; font-size: var(--fs-xs); color: var(--text-3); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 1px 8px; }
 
+/* ── 叙事条目：U2 补齐的 kind（§3.5.1 的完整映射表）─────
+   narrate / act / note 三条在上一节；这里是 check（规则判定）与
+   result（规则结果 = 判定卡）。痕迹块不是独立 kind：它挂在叙事条目里。 */
+.msg-text { display: block; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* 规则判定（check）：居中窄条 + 等宽字体 + 次要色。
+   机械事实居中，就不与「谁在说话」抢位置（§3.5.1）。 */
+.msg-check {
+  align-self: center;
+  max-width: 100%;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+/* 规则结果（result）：判定卡。比叙事「硬」——左侧一条 --accent 细边 */
+.msg-result {
+  align-self: flex-start;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--bg-2) 85%, transparent);
+}
+.res-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-2); }
+.res-badge {
+  display: inline-flex; align-items: center;
+  padding: 1px var(--sp-2);
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+  font-size: var(--fs-sm); font-weight: 600; letter-spacing: .04em;
+  color: var(--text-1);
+}
+/* 五档语义色（§2.4）：凯旋 / 灾难实心，其余描边。
+   档位的**文字**始终在，颜色只是辅助（§5.4 硬要求）。 */
+.res-badge[data-tone="success"] { border-color: var(--success); color: var(--success); }
+.res-badge[data-tone="accent"] { border-color: var(--accent); color: var(--accent); }
+.res-badge[data-tone="danger"] { border-color: var(--danger); color: var(--danger); }
+.res-badge[data-solid="true"][data-tone="success"] { background: var(--success); border-color: var(--success); color: var(--bg-0); }
+.res-badge[data-solid="true"][data-tone="danger"] { background: var(--danger); border-color: var(--danger); color: var(--bg-0); }
+.res-action { font-family: var(--font-serif); color: var(--text-1); min-width: 0; overflow-wrap: anywhere; }
+.res-flag {
+  font-size: var(--fs-xs); color: var(--text-2);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  padding: 1px 8px;
+}
+.res-flag.is-danger { color: var(--danger); border-color: var(--danger); }
+.res-notation {
+  margin-top: var(--sp-1);
+  font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.res-tier, .res-granted { margin-top: var(--sp-1); font-size: var(--fs-sm); color: var(--text-2); }
+/* 代价块：危险色只作左边（同 .alert 的口径），明细逐项列 */
+.res-cost {
+  margin-top: var(--sp-2);
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--danger);
+}
+.res-cost-title { font-size: var(--fs-xs); letter-spacing: .14em; color: var(--danger); }
+.res-rows { display: grid; grid-template-columns: auto 1fr; gap: 0 var(--sp-2); margin: var(--sp-1) 0 0; }
+.res-rows dt { color: var(--text-2); font-size: var(--fs-sm); }
+.res-rows dd { margin: 0; font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-1); text-align: right; }
+.res-delta { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); font-size: var(--fs-sm); color: var(--text-2); }
+.res-delta-item b { font-family: var(--font-mono); color: var(--text-1); font-weight: 600; }
+
+/* 痕迹块（§3.5.2）：悬在对应叙事条目里的独立块。语义色用 --accent
+   （是「获得」不是「危险」）；正文是服务端原文，不加自造前缀。 */
+.msg-trace {
+  margin-top: var(--sp-2);
+  padding: var(--sp-1) 0 var(--sp-1) var(--sp-3);
+  border-left: 2px solid var(--accent);
+}
+.trace-head {
+  display: flex; align-items: center; gap: var(--sp-1);
+  font-size: var(--fs-xs); letter-spacing: .14em; color: var(--accent);
+}
+.trace-text { font-size: var(--fs-sm); color: var(--text-1); overflow-wrap: anywhere; }
+
+/* 流末尾的如实说明（中途断流 / 未持久化 / 恢复失败）+ 重试入口 */
+.stream-note .btn { margin-left: var(--sp-2); }
+
+/* 已完成 / 机会耗尽的行动按钮（§2.4）：就地置灰 + 一枚说清楚原因的标签 */
+.act-spent { color: var(--text-2); }
+
+/* ── 回合输入区（U2，§1.3.2 / §2.3）─────────────────────
+   .composer 的框体样式在 base.css（跨片共用件，U0 已备好）；本片只补
+   「输入区作为回合入口」的口径：高度跟着内容长、超长计数转危险色、
+   就地错误行（服务端 error 原文 + 可重试时的「重试」）。 */
+.composer textarea {
+  resize: none;                /* 高度由内容决定（js/turn.js 的 growComposer） */
+  max-height: 30dvh;           /* 用 dvh：手机键盘弹起时不虚高（§5.1） */
+  overflow-y: auto;
+}
+.composer-count.is-over { color: var(--danger); }
+.composer-error {
+  display: flex; align-items: center; gap: var(--sp-2);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-xs);
+  color: var(--danger);
+}
+.composer-error .turn-error-text { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.turn-retry { min-height: 32px; padding: 0 var(--sp-3); font-size: var(--fs-sm); }
+/* 会话加载失败（§2.8）：整块禁用，视觉上也要看得出不能发回合 */
+.composer.is-disabled { opacity: .6; }
+
+/* ── 顶栏的导引者状态（U2，§1.3.8 / §2.8）───────────────
+   点本身复用 base.css 的 .status-dot（灰 / 蓝 / 亮 / 危险）；这里只补
+   它右边的「本地模式」小标与抽屉里的说明行。位置是顶栏角落，安静显示。 */
+.top-guide { display: flex; align-items: center; gap: var(--sp-2); flex: 0 0 auto; }
+.guide-tag {
+  padding: 1px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  /* 顶栏是 --bg-1：--text-3 在这上面 4.8:1 达标，但字号小、还带字距，
+     按 §3.2 的硬规则一律用 --text-2 更稳。 */
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.guide-note {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* ── 会话不可用的就地错误卡（U2，§2.2 / §2.8 最后一行）────
+   框体与危险色左细边复用 base.css 的 .alert；这里补标题层级与两个动作。 */
+.play-error { margin: var(--sp-3) 0; }
+.play-error-title { font-size: var(--fs-lg); color: var(--text-1); }
+.play-error-reason { color: var(--text-2); overflow-wrap: anywhere; }
+.play-error-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+.play-error-actions .btn { flex: 1 1 auto; min-width: 0; }
+/* 行动区整体禁用（含「前往」出口）：视觉与交互一起收掉 */
+.act-zone.is-disabled { opacity: .5; }
+.act-zone.is-disabled .btn { cursor: not-allowed; }
+
 /* ── 紧凑排版（设置项）：收窄叙事行距 ─────────────────── */
 html[data-dense="on"] .stream { gap: 4px; }
 html[data-dense="on"] .msg { line-height: 1.45; }
