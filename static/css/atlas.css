@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 片 U3：出口与移动（ATLAS）
+   本片专属样式；令牌见 css/tokens.css，跨片共用件见 css/base.css。
+   出口按钮复用了行动按钮的基类（.btn / .act-btn，见 stream.css），
+   这里只补出口特有的档位徽标、就地状态与危险确认框。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ══════════════ 「前往」出口列表 ══════════════ */
+.exit-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--sp-2); }
+
+/* 「前往」小节整体作为写动作的就地状态区：加载 / 移动在途时 aria-busy。
+   这一点给验收脚本一个可断言的旋钮（§2.0 三态），不靠猜字。 */
+#exitsSection[aria-busy="true"] .act-btn-exit { opacity: .55; pointer-events: none; }
+
+.exit-band { white-space: nowrap; }
+
+/* 危险档：语义色只表语义（§3.1 原则 2）。左边一条 danger 提示「这一步有代价」，
+   按钮右侧另给一个可辨识的文字徽标（不只靠颜色分辨危险）。 */
+.act-btn-exit.is-danger {
+  border-left: 3px solid var(--danger);
+  padding-left: var(--sp-3);
+}
+.exit-danger {
+  flex: 0 0 auto;
+  font-size: var(--fs-xs);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 52%, transparent);
+  border-radius: var(--r-pill);
+  padding: 1px 8px;
+}
+
+/* 就地状态行：加载「正在读取出口…」/「正在移动…」，以及演示态的说明。
+   真有会话而 exits 为空时**不**走这里——整节由 JS 收起（§2.6）。 */
+.exit-note,
+.exit-empty {
+  grid-column: 1 / -1;
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+  padding: var(--sp-3);
+  text-align: center;
+}
+
+/* 就地错误卡（§1.3.9 / §2.8）：一行原因 + 一个动作按钮，原因用服务端原文。
+   #exitError 是 #exitList 的兄弟节点（不在网格里），所以不写 grid-column。 */
+.exit-error { margin-top: var(--sp-2); }
+.exit-error .alert-msg {
+  margin: 0;
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r);
+  background: var(--bg-1);
+  overflow-wrap: anywhere;
+}
+.exit-error .btn-sm {
+  min-height: 36px;
+  margin-top: var(--sp-2);
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+/* ══════════════ 危险移动确认框（L2）══════════════
+   复用 .sheet / .scrim-top（base.css）的同层视觉与 z-index：
+   作为模态压在抽屉（55）之上，与通用辅助层（65）同层。 */
+.exit-confirm .sheet-head { padding-bottom: var(--sp-2); }
+.confirm-line {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lg);
+  color: var(--text-1);
+  margin: 0;
+}
+.confirm-sub {
+  margin: var(--sp-2) 0 0;
+  color: var(--text-2);
+  font-size: var(--fs-ui);
+}
+.confirm-actions {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-4);
+}
+.confirm-actions .btn { flex: 1 1 auto; }
