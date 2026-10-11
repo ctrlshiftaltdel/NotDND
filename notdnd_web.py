@@ -29,6 +29,11 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     （非流式 / 思考关，失败不留痕、不兜底）；玩家的整段叙事进 L3 与切拍之前
     先过秘密门（未放行的秘密换成「……」，不第二次叫模型）；`narration` 事件
     至多带一条服务端揭开的 `trace`；对白拍按 `npc.id` 分配白桦 / 茉莉
+  · 多人房间骨架（M10-S1，MULTIPLAYER-DESIGN.md §3.2 / §4）：顶层 `room` 块
+    随存档落盘（旧单人档惰性迁移成最小房间，M-16）；`POST /api/room/create` /
+    `join` / `leave` / `kick` 走 `Authorization: Bearer` + `X-Room` / `X-Member`
+    鉴权链（§4.1）；房间级角色矩阵（§4.2）与 6 人上限（容量满 → `409 room_full`）；
+    令牌只存 `sha256`，明文仅在创建 / 加入时回一次，永不落盘 / 写日志
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -45,6 +50,8 @@ MND / PRE）补齐，本文件不臆造字段与数值。
 from __future__ import annotations
 
 import copy
+import hashlib
+import hmac
 import json
 import os
 import pathlib
@@ -143,6 +150,150 @@ GUIDE_ABSENT_ERROR = "导引者不在席"
 # （§5.1：「兜底句是模块级常量，不向模型现编」）。模块在时以它为准。
 FALLBACK_NARRATION = "导引者这会儿不在席。刚才的规则结果已经生效，请按桌上的判定继续。"
 
+# ── 多人房间（M10-S1）常量 ───────────────────────────────────────────────
+#
+# 依据 MULTIPLAYER-DESIGN.md §3.1 / §3.2 / §4.1 / §4.2：房间 == 存档
+# （M-11：`room_id == sid`），成员身份 = 房间级**不透明令牌**（服务端只存
+# `sha256(token)`，明文永不落盘 / 不写日志 / 不回显）。
+ROOM_SCHEMA_VERSION = 1
+ROOM_MAX_MEMBERS = 6                    # GDD §7.1 / §25.1：首发上限 6 名玩家角色
+ROOM_ID_RE = SID_RE                     # 复用存档 sid 白名单（同一条磁盘安全边界）
+MEMBER_ID_RE = re.compile(r"m-[A-Za-z0-9]{8,32}")
+ROOM_TOKEN_BYTES = 32                   # 32 字节 → 64 位十六进制；只存 sha256
+ROOM_ROLES = ("host", "player", "observer")
+# §6.1 频道表；S1 只落常量，分流 / 扇出的实现归 S3。
+ROOM_CHANNELS = ("world", "party", "org", "ooc", "host")
+
+
+def _hash_token(token: str) -> str:
+    """令牌只以 `sha256` 十六进制落盘（§4.1）。明文在服务端不驻留。"""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _new_member_id() -> str:
+    """成员 id：`m-` + 8 位十六进制（过 `MEMBER_ID_RE`）。"""
+    return "m-" + secrets.token_hex(4)
+
+
+def _new_room_token() -> str:
+    """下发一次的房间令牌明文（`secrets.token_hex(32)`）；此后只留 hash。"""
+    return secrets.token_hex(ROOM_TOKEN_BYTES)
+
+
+def _empty_room(sid: str = "") -> dict:
+    """最小房间块（§3.2）：新建与**旧档惰性迁移**共用一份默认值工厂。
+
+    `host_member_id` 为空串 = 尚无房主（旧单人档迁移态，M-16）；`room_id`
+    由调用方对齐到存档 sid。`created_at` 为 0 表示「未知」（老档迁移）。
+    """
+    return {
+        "schema_version": ROOM_SCHEMA_VERSION,
+        "room_id": str(sid or ""),
+        "host_member_id": "",
+        "capacity": ROOM_MAX_MEMBERS,
+        "created_at": 0.0,
+        "paused": False,                # 房主暂停（GDD §7.6）；S1 只落字段
+        "pvp_mode": "consent",          # "off" | "consent" | "on"（GDD §7.5）
+        "world_key": "",                # 复用现有世界键；空 = 尚未绑定
+        "scenario_id": "",              # 复用现有剧本键，可为空
+        "settings": {
+            # A5 / CHRON §3.4：房间无人时**默认不推进**世界。
+            "offline_advance": "never",
+            "content": {"violence": "medium", "adult": False},   # GDD §21.3
+        },
+        "members": {},
+        "seq": 0,                       # 房间重连游标（M7 落地前由房间层自增）
+    }
+
+
+def _empty_member(member_id: str) -> dict:
+    """成员记录的默认形状（§3.2 `room.members[*]`）。"""
+    return {
+        "member_id": member_id,
+        "token_hash": "",               # 永不落明文令牌
+        "display_name": "",
+        "role": "player",               # "host" | "player" | "observer"
+        "character_id": "",             # 归属指针；角色本体在 rules 里
+        "state": "active",              # "active" | "left"
+        "created_at": 0.0,
+        "last_seen_at": 0.0,
+    }
+
+
+def _room_from(raw: object, sid: str) -> dict:
+    """按键还原房间块（§3.2 加载合同）：坏键丢、缺键补，**不**因一个键换掉整块。
+
+    `room_id` 恒等于存档 sid（M-11），`schema_version` / `capacity` 是契约常量；
+    成员逐条清洗（坏 id / 非字典直接丢，未知令牌字段不会从磁盘被读进来），
+    房主指向一个不存在的成员时房间回到「无主」态。
+    """
+    room = _empty_room(sid)
+    if isinstance(raw, dict):
+        for key in ("host_member_id", "created_at", "paused", "pvp_mode",
+                    "world_key", "scenario_id", "settings", "seq", "members"):
+            if key in raw:
+                room[key] = raw[key]
+    # 契约常量 / 规范清洗（不属于玩家值，永远对齐）。
+    room["room_id"] = str(sid or "")
+    room["schema_version"] = ROOM_SCHEMA_VERSION
+    room["capacity"] = ROOM_MAX_MEMBERS
+    if not isinstance(room.get("paused"), bool):
+        room["paused"] = False
+    if room.get("pvp_mode") not in ("off", "consent", "on"):
+        room["pvp_mode"] = "consent"
+    if not isinstance(room.get("settings"), dict):
+        room["settings"] = _empty_room(sid)["settings"]
+    if not isinstance(room.get("host_member_id"), str):
+        room["host_member_id"] = ""
+    room["created_at"] = _float_or(room.get("created_at"), 0.0)
+    room["seq"] = max(0, _int_or(room.get("seq"), 0))
+    clean: dict[str, dict] = {}
+    raw_members = room.get("members")
+    if isinstance(raw_members, dict):
+        for mid, entry in raw_members.items():
+            if not MEMBER_ID_RE.fullmatch(str(mid)) or not isinstance(entry, dict):
+                continue
+            member = _empty_member(str(mid))
+            for key in ("token_hash", "display_name", "role", "character_id",
+                        "state"):
+                if isinstance(entry.get(key), str):
+                    member[key] = entry[key]
+            member["created_at"] = _float_or(entry.get("created_at"), 0.0)
+            member["last_seen_at"] = _float_or(entry.get("last_seen_at"), 0.0)
+            if member["role"] not in ROOM_ROLES:
+                member["role"] = "player"
+            if member["state"] not in ("active", "left"):
+                member["state"] = "active"
+            clean[str(mid)] = member
+    room["members"] = clean
+    if room["host_member_id"] and room["host_member_id"] not in clean:
+        room["host_member_id"] = ""     # 房主记录已不在 → 房间回到无主态
+    return room
+
+
+def _room_seats(room: dict) -> list:
+    """占座成员：`host` / `player` 且 `state=active`（observer 不计入上限，§4.4）。"""
+    members = room.get("members") if isinstance(room, dict) else None
+    if not isinstance(members, dict):
+        return []
+    return [m for m in members.values()
+            if isinstance(m, dict) and m.get("state") == "active"
+            and m.get("role") in ("host", "player")]
+
+
+class _RoomAuthError(Exception):
+    """鉴权链失败：带 HTTP 码与机器可读 reason（§4.1 / §7.5）。
+
+    由 `Handler._room_auth` 抛出、端点捕获后翻成固定 JSON。**不回显**失败缘由，
+    避免泄露成员是否存在。
+    """
+
+    def __init__(self, code: int, msg: str, reason: str):
+        super().__init__(msg)
+        self.code = code
+        self.msg = msg
+        self.reason = reason
+
 
 def _empty_guide() -> dict:
     """新存档的 `guide` 块（零参工厂：每次现造一份，含新 salt）。
@@ -224,6 +375,8 @@ _SESSION_DEFAULTS: dict[str, object] = {
     "atlas": None,                      # ATLAS 存档块（§3.4）；老档缺失按 None，
                                         # 第一次用到地图时按当前世界懒编译
     "guide": _empty_guide,              # 导引者状态块（工厂：现造，salt 新掷）
+    "room": _empty_room,                # 多人房间块（§3.2）；工厂：现造最小房间，
+                                        # 老档缺失即惰性迁移成「单人房」（M-16）
 }
 
 
@@ -403,6 +556,9 @@ class Session:
         # 同样是**快照字典**。新存档在这一刻生成 salt（§7）。模块缺失时是
         # 最小空块；加载路径由 load() 调 _guide_from() 按键还原。
         self.guide: dict = _empty_guide()
+        # 多人房间块（§3.2，与 rules / atlas / guide 平级）：新存档起最小房间
+        # （无房主、无成员）；成员由 /api/room/* 写入。老档迁移路径见 load()。
+        self.room: dict = _empty_room(sid)
 
     # ── 持久化 ────────────────────────────────────────────
     def to_dict(self) -> dict:
@@ -416,6 +572,7 @@ class Session:
             "rules": self.rules,
             "atlas": self._export_atlas_block(),
             "guide": self.guide,
+            "room": self.room,
         }
 
     def _export_atlas_block(self) -> dict | None:
@@ -493,6 +650,9 @@ class Session:
         # 导引者块：**显式**在 rules 旁边还原（§7 加载合同，G2 就要做）。
         # 按键处理——旁边一个键脏了不会把整块换成空块（否则会删掉 realizations）。
         s.guide = _guide_from(d.get("guide"))
+        # 多人房间块（§3.2 / M-16）：缺块的老档在这一刻惰性迁移成「单人房」
+        # （host 空、members 空），只补不覆盖；磁盘上的老档不被就地改写。
+        s.room = _room_from(d.get("room"), sid)
         # TODO(M3)：PRISM 存档层字段（世界 id / 进度索引等**索引 / 展示**用途的
         # 派生字段）的迁移规则加在这里（同样：只补不覆盖）；规则态本身不进这里，
         # 统一放 s.rules。
@@ -759,8 +919,16 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, obj, code: int = 200):
         self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"))
 
-    def _err(self, msg: str, code: int = 400):
-        self._json({"error": msg}, code)
+    def _err(self, msg: str, code: int = 400, reason: str = ""):
+        """错误响应：`error` 是人话，`reason` 是机器可读原因（§7.5）。
+
+        `reason` 缺省不写，保持既有端点的响应形状不变；多人房间端点按
+        §7.5 一律带上（`room_full` / `not_authorized` / `token_invalid` …）。
+        """
+        body = {"error": msg}
+        if reason:
+            body["reason"] = reason
+        self._json(body, code)
 
     def _body(self) -> dict:
         """读取并解析 JSON 请求体：上限 2MB；畸形体抛 ValueError → 400。"""
@@ -922,6 +1090,18 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/guide/speak":
                 return self._guide_speak(b)
+
+            if path == "/api/room/create":
+                return self._room_create(b)
+
+            if path == "/api/room/join":
+                return self._room_join(b)
+
+            if path == "/api/room/leave":
+                return self._room_leave(b)
+
+            if path == "/api/room/kick":
+                return self._room_kick(b)
 
             if path == "/api/save/rename":
                 # 目标 sid 来自请求体，不是 X-Session 头（头里是当前打开那局）。
@@ -1216,6 +1396,201 @@ class Handler(BaseHTTPRequestHandler):
             self._sse_close()       # 零长度块收尾：空合成也是一条完整的流
         except (BrokenPipeError, ConnectionResetError):
             pass
+
+    # ── 多人房间（M10-S1，§4）────────────────────────────────
+    def _bearer_token(self) -> str:
+        """从 `Authorization: Bearer <token>` 取令牌明文；缺失 / 形态不对回空串。"""
+        raw = (self.headers.get("Authorization") or "").strip()
+        if not raw:
+            return ""
+        parts = raw.split(None, 1)
+        if len(parts) != 2 or parts[0].lower() != "bearer":
+            return ""
+        return parts[1].strip()
+
+    def _header_room(self) -> str:
+        """当前请求指向的房间号：`X-Room` 头（§4.1）。"""
+        return (self.headers.get("X-Room") or "").strip()
+
+    def _room_auth(self, room_id: str):
+        """§4.1 鉴权链（每个请求都走）：读房间 → 认成员 → 比对令牌 → 查状态。
+
+        顺序：`room_id` 过白名单（也读得到房间）→ `member_id` 命中 `room.members`
+        → `sha256(token)` 与 `member.token_hash` **常量时间比较** → 成员状态。
+        任一不过一律 `401`（未认证）/ `403`（已认证但无权），**不回显**为何失败
+        （不泄露成员是否存在）。通过时返回 `(session, member)`。
+        """
+        if not ROOM_ID_RE.fullmatch(room_id or ""):
+            raise _RoomAuthError(401, "未认证", "token_invalid")
+        session = get_session(room_id)
+        if session is None:
+            raise _RoomAuthError(401, "未认证", "token_invalid")
+        member_id = (self.headers.get("X-Member") or "").strip()
+        token = self._bearer_token()
+        with session.lock:
+            member = (session.room.get("members") or {}).get(member_id)
+            # 三种失败回**同一个**响应：成员不存在 / 无令牌 / 令牌不匹配。
+            if (not isinstance(member, dict) or not token
+                    or not member.get("token_hash")
+                    or not hmac.compare_digest(_hash_token(token),
+                                               str(member["token_hash"]))):
+                raise _RoomAuthError(401, "未认证", "token_invalid")
+            if member.get("state") != "active":
+                # 已离开 / 被踢：令牌仍能对上（hash 保留以便识别），但不给权限。
+                raise _RoomAuthError(403, "已不在房间", "member_left")
+            member["last_seen_at"] = time.time()
+            return session, member
+
+    def _room_create(self, body: dict):
+        """`POST /api/room/create`：建房（= 建一份新存档，M-11）+ 首位成员当房主。
+
+        体：`{room_id, display_name?, character_id?, world_key?, scenario_id?}`。
+        名单里已有同名房间 → `409 room_exists`。返回**一次性**明文令牌（此后
+        服务端只留 `sha256`，§4.1）。建房即在磁盘落盘，随后的读接口即可用。
+        """
+        room_id = str(body.get("room_id") or "").strip()
+        if not ROOM_ID_RE.fullmatch(room_id):
+            return self._err("房间号不合法", 400, "bad_room_id")
+        display_name = _text_or(body.get("display_name"), 40).strip()
+        # 建房必须**原子**：同一房间号不能既命中缓存又落到磁盘上两份。
+        with _sessions_lock:
+            if room_id in _sessions or (SAVE_DIR / f"{room_id}.json").is_file():
+                return self._err("房间已存在", 409, "room_exists")
+            # 新会话此刻还不对外可见（尚未进 _sessions），构造成员记录不与他人竞争。
+            session = Session(room_id)
+            now = time.time()
+            session.room["created_at"] = now
+            session.room["world_key"] = _text_or(body.get("world_key"), 64).strip()
+            session.room["scenario_id"] = _text_or(body.get("scenario_id"), 64).strip()
+            member_id = _new_member_id()
+            token = _new_room_token()
+            member = _empty_member(member_id)
+            member.update({
+                "token_hash": _hash_token(token),
+                "display_name": display_name or "房主",
+                "role": "host",
+                "character_id": _text_or(body.get("character_id"), 64).strip(),
+                "state": "active",
+                "created_at": now,
+                "last_seen_at": now,
+            })
+            session.room["members"][member_id] = member
+            session.room["host_member_id"] = member_id
+            session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
+            session.save()
+            _sessions[room_id] = session
+        return self._json({
+            "status": "ok",
+            "room_id": room_id,
+            "member_id": member_id,
+            "token": token,             # 唯一一次回明文；服务端只留 hash
+            "role": "host",
+            "capacity": ROOM_MAX_MEMBERS,
+        })
+
+    def _room_join(self, body: dict):
+        """`POST /api/room/join`：加入一个已存在的房间。
+
+        `room_id` 取 `X-Room` 头或请求体；体：`{display_name?, character_id?}`。
+        座位 = `host` / `player` 且 `active`（observer 不计入，§4.4）；
+        满员 → `409 room_full`（T7），房间不存在 → `404`。旧单人档（无房主）的
+        首位加入者成为房主（M-16）。
+        """
+        room_id = self._header_room() or str(body.get("room_id") or "").strip()
+        if not ROOM_ID_RE.fullmatch(room_id):
+            return self._err("房间号不合法", 400, "bad_room_id")
+        session = get_session(room_id)
+        if session is None:
+            return self._err("房间不存在", 404, "room_not_found")
+        display_name = _text_or(body.get("display_name"), 40).strip()
+        with session.lock:
+            if len(_room_seats(session.room)) >= int(
+                    session.room.get("capacity") or ROOM_MAX_MEMBERS):
+                return self._err("房间已满", 409, "room_full")
+            now = time.time()
+            member_id = _new_member_id()
+            token = _new_room_token()
+            # 尚无房主（老档迁移态）→ 首位加入者补上房主位（M-16）。
+            role = "host" if not session.room.get("host_member_id") else "player"
+            member = _empty_member(member_id)
+            member.update({
+                "token_hash": _hash_token(token),
+                "display_name": display_name or "玩家",
+                "role": role,
+                "character_id": _text_or(body.get("character_id"), 64).strip(),
+                "state": "active",
+                "created_at": now,
+                "last_seen_at": now,
+            })
+            session.room["members"][member_id] = member
+            if role == "host":
+                session.room["host_member_id"] = member_id
+            session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
+            session.save()
+        return self._json({
+            "status": "ok",
+            "room_id": room_id,
+            "member_id": member_id,
+            "token": token,
+            "role": role,
+            "capacity": ROOM_MAX_MEMBERS,
+        })
+
+    def _room_leave(self, body: dict):
+        """`POST /api/room/leave`：本人离开房间（§4.2「进/离房间」）。
+
+        走完整鉴权链（`X-Room` / `X-Member` / Bearer）。成员 `state=left`，令牌
+        随之失效（后续请求 `403 member_left`）。房主离开时清掉房主位，
+        房间回到「无主」（可由下一位加入者接管，M-16）；房主**移交**另开单。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        with session.lock:
+            member["state"] = "left"
+            member["last_seen_at"] = time.time()
+            if session.room.get("host_member_id") == member["member_id"]:
+                session.room["host_member_id"] = ""
+            session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
+            session.save()
+        return self._json({"status": "ok", "room_id": room_id,
+                           "member_id": member["member_id"]})
+
+    def _room_kick(self, body: dict):
+        """`POST /api/room/kick`：房主踢出成员（§4.2 角色矩阵）。
+
+        体：`{member_id}`。非房主 → `403 not_authorized`（T8，房间状态不变）；
+        被踢者 `state=left`、其请求此后得 `403 member_left`（§4.4）。
+
+        ⚠️ **房主授权检查与变更必须同处一个 `session.lock` 临界区**：`_room_auth`
+        返回时锁已释放，若把「房主仍为当前 active host」的检查留在锁外，并发的
+        离房请求可在检查通过之后、变更之前落地 —— 踢人仍会执行（越权）。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        target_id = str(body.get("member_id") or "").strip()
+        with session.lock:
+            # 授权判定读的是**锁内**的房间 / 成员当前值，与下面的变更原子。
+            if (member.get("role") != "host"
+                    or member.get("state") != "active"
+                    or session.room.get("host_member_id") != member["member_id"]):
+                return self._err("只有房主能踢人", 403, "not_authorized")
+            target = (session.room.get("members") or {}).get(target_id)
+            if not isinstance(target, dict):
+                return self._err("成员不存在", 404, "member_not_found")
+            if target_id == member["member_id"]:
+                return self._err("不能踢出自己", 400, "bad_target")
+            target["state"] = "left"
+            target["last_seen_at"] = time.time()
+            session.room["seq"] = _int_or(session.room.get("seq"), 0) + 1
+            session.save()
+        return self._json({"status": "ok", "room_id": room_id,
+                           "member_id": target_id})
 
 
 def lan_ip() -> str:
