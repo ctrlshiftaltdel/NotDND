@@ -218,6 +218,9 @@ function renderSceneCard() {
     (crumb ? '<div class="sc-crumb">' + esc(crumb) + '</div>' : '') +
     '<div class="sc-name">' + esc(scene.name || scene.id || '—') + '</div>' +
     (scene.read ? '<p class="sc-read">' + esc(scene.read) + '</p>' : '');
+  // 视觉占位框架（U6，js/ph.js）：渲染后的**可选**装饰钩子——ph.js 不在
+  // （或算不出资产位）时什么都不发生，本函数其余逻辑与选择器语义不变。
+  if (typeof phDecorateSceneCard === 'function') phDecorateSceneCard();
 }
 
 /* 单一状态入口：状态一变就整屏重画，而不是各处零散地改 DOM。

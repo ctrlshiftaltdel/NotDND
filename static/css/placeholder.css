@@ -1,0 +1,38 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 片 U6：视觉占位框架（世界 / 故事资产）
+   三态占位符的**状态**样式与各接入点的尺寸。
+
+   底座在 css/base.css（`.ph` 的几何块、`.ph-mark` / `.ph-id`、loading 骨架
+   动画、failed 的 --danger 失败点、以及场景卡 empty / failed 的高度塌缩）
+   ——那份是跨片共用件，U6 不重复定义。本文件只补 U6 独有的两件事：
+
+     1. **状态 → 可见性**：`ready` 藏起位名、`empty` / `failed` 藏掉 `<img>`。
+        只认 `data-state`（§4.3）：JS 不改 class、不写行内样式；失败时
+        `<img>` 留在 DOM 里由这里藏掉，**绝不出现破图图标**。
+     2. **接入点尺寸**：角色卡头部的方形肖像位（固定 56px）。场景卡的 16:9
+        与世界面板的宽幅由 `data-ratio`（base.css）给，这里不重复。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 状态 → 可见性 ────────────────────────────────────── */
+
+/* 画面到位（ready）：中央位名与角落位 id 让位给图片本身。 */
+.ph[data-state="ready"] .ph-mark,
+.ph[data-state="ready"] .ph-id { display: none; }
+
+/* 未提供（empty）与加载失败（failed）：`<img>` 一律不显示。
+   failed 的外观就是 empty 的几何块 + base.css 的 ::after 失败点——
+   缺一张图不该让玩家以为「这一局坏了」（§4.2）。 */
+.ph[data-state="empty"] > img,
+.ph[data-state="failed"] > img { display: none; }
+
+/* ── 接入点 · 角色卡（队伍面板）──────────────────────────
+   `portrait/<实体 id>`：贴在单位卡标题行最前，56px 方形（1:1 由 base.css
+   的 `.ph` 默认比例给）。只在有肖像位时把标题行的剩余宽度让给名字，
+   没有肖像位的卡片布局不变（`~` 只命中跟着位的那一个名字）。 */
+.unit-head > .ph {
+  flex: 0 0 auto;
+  align-self: center;
+  width: 56px;
+  margin: 0 var(--sp-2) 0 0;
+}
+.unit-head > .ph ~ .unit-name { flex: 1 1 auto; }

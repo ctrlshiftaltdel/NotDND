@@ -113,6 +113,8 @@ function renderPartyPanel() {
     html += party.map(function (u) { return unitCard(u, u && u.id === active); }).join('');
   }
   box.innerHTML = html;
+  // 视觉占位框架（U6，js/ph.js）：可选装饰钩子（没有 id 的单位不加位）。
+  if (typeof phDecoratePortraits === 'function') phDecoratePortraits(box, party);
 }
 
 function combatBand(combat, active) {
@@ -234,6 +236,8 @@ function renderScenePanel() {
   }
 
   box.innerHTML = html;
+  // 视觉占位框架（U6，js/ph.js）：当前位置的地点位（ATLAS 的 place_id）。
+  if (typeof phDecoratePlace === 'function') phDecoratePlace(box, here);
   Array.prototype.slice.call(box.querySelectorAll('[data-world-exit]')).forEach(function (btn) {
     btn.addEventListener('click', function () { activateWorldExit(intOr(btn.dataset.worldExit, -1)); });
   });
