@@ -31,9 +31,51 @@ jobs:
   regression:
     name: 回归门
     runs-on: ubuntu-latest
+    env:
+      # UI 冒烟在 CI 必须真实执行：前置条件缺失即失败，不得静默跳过（Issue #172）。
+      NOTDND_UI_SMOKE_MANDATORY: "1"
     steps:
       - uses: actions/checkout@v4
-      - name: 一键回归
+      - name: 准备 UI 冒烟前置（无头浏览器 + WebSocket 客户端）
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # 1) WebSocket 客户端：测试期唯一依赖（铁律 2）。Ubuntu 24.04 的 system
+          #    python 受 PEP 668 保护，直接 pip 装会被拒 —— 先建一次性 venv 装好并
+          #    前置到 PATH，run_all.sh 里的 python3 即可见；venv 建不出来再退回
+          #    pip --user --break-system-packages。
+          if python3 -m venv "$RUNNER_TEMP/ui-smoke-venv" 2>/dev/null; then
+            "$RUNNER_TEMP/ui-smoke-venv/bin/pip" install --quiet \
+              --disable-pip-version-check websocket-client
+            echo "$RUNNER_TEMP/ui-smoke-venv/bin" >> "$GITHUB_PATH"
+          else
+            python3 -m pip install --quiet --disable-pip-version-check \
+              --user --break-system-packages websocket-client
+          fi
+
+          # 2) 无头浏览器：优先复用镜像自带的 Google Chrome；没有再从 Google 官方
+          #    仓库装 stable（签名 key + apt，非第三方 marketplace action）。
+          #    只认真 Chrome（google-chrome*），不认 snap 的 chromium 垫片。
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$chrome" ]; then
+            sudo install -d -m 0755 /etc/apt/keyrings
+            curl -fsSL https://dl.google.com/linux/linux_signing_key.pub \
+              | sudo gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" \
+              | sudo tee /etc/apt/sources.list.d/google-chrome.list >/dev/null
+            sudo apt-get update -q
+            sudo apt-get install -y -q google-chrome-stable
+            chrome="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          fi
+          if [ -z "$chrome" ]; then
+            echo "::error::未能准备无头浏览器，UI 冒烟无法在 CI 真实执行。"
+            exit 1
+          fi
+          # 显式钉住浏览器，避免 _cdp 在 PATH 上先撞见不可用的同名可执行文件。
+          echo "NOTDND_CHROME=$chrome" >> "$GITHUB_ENV"
+          echo "UI 冒烟前置：websocket-client + 浏览器 $chrome"
+      - name: 一键回归（UI 冒烟强制真实执行）
         shell: bash
         run: bash tests/run_all.sh
 
