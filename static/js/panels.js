@@ -243,7 +243,7 @@ function activateWorldExit(i) {
   var a = PANELS.atlas || {};
   var x = (a.exits || [])[i];
   if (!x || !x.via) return;
-  if (PANELS.move) return;                 // 单一在途：移动中不接受新的点击
+  if (PANELS.move || writeInFlight()) return;   // 单一在途：本片 / 统一层有写在途
   buzz(12);
 
   // 与主画面「前往」同一动作、同一确认：主画面（U3）已接后端时，按
@@ -318,7 +318,7 @@ async function loadAtlas() {
 }
 
 async function doWorldMove(x) {
-  if (PANELS.move) return;
+  if (PANELS.move || writeInFlight()) return;   // 统一守卫在途：不发起第二次写
   PANELS.move = true;
   renderIfOpen('scene');
   try {

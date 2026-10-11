@@ -126,7 +126,9 @@ function renderServerExits() {
   }).join('') + '</div>';
 
   $$('#exitList [data-exit-index]').forEach(function (btn) {
-    if (ATLAS.moveInFlight) return;   // 移动在途：不接受新的点击（§2.0）
+    // 单一在途（§2.0）：本片移动在途，或**任一**写请求在统一层在途时，
+    // 不接受新的点击（writeInFlight 由 core 的 api() 统一登记）。
+    if (ATLAS.moveInFlight || writeInFlight()) return;
     btn.addEventListener('click', function () { pickExit(Number(btn.dataset.exitIndex)); });
   });
 }
@@ -191,7 +193,7 @@ function renderExitError(message, actionLabel) {
 
 /* ── 点出口：危险档先确认，其余直接走 ──────────────────── */
 function pickExit(index) {
-  if (ATLAS.moveInFlight) return;
+  if (ATLAS.moveInFlight || writeInFlight()) return;   // 本片 / 统一层有写在途：忽略
   var x = (ATLAS.exits || [])[index];
   if (!x || !x.via) return;
   buzz(12);
@@ -243,7 +245,7 @@ function closeExitConfirm() {
 
 /* ── 移动：写动作三态（进行中 aria-busy / 成功就地更新 / 失败可重试）── */
 async function doMove(via, x) {
-  if (ATLAS.moveInFlight) return;
+  if (ATLAS.moveInFlight || writeInFlight()) return;   // 统一守卫在途：不发起第二次写
   ATLAS.moveInFlight = true;
   ATLAS_RETRY = { type: 'move', via: via, exit: x };   // 失败后按原方向重试
   clearExitError();

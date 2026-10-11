@@ -79,34 +79,86 @@ function showView(id) {
   });
 }
 
+/* ── 跨片写动作「单一在途」守卫（UI-DESIGN §2.0）─────────
+   任一时刻最多一个**写**请求（method !== GET）在途：建局 / 改名 / 删除 /
+   移动 / 回合互斥。理由：写请求会在服务端改状态，并发提交等于玩家自己
+   跟自己抢状态。守卫放在 api() 这一薄层**统一登记**——各片不再各自为政，
+   读请求（GET）不受限。
+
+   在途时新的写请求直接拒绝（抛出可捕获的错误），不发往网络；各片写入口
+   先用 writeInFlight() 提前忽略并禁用（见各片接线），本地 busy 标志保留为
+   **幂等双保险**。完成后 / 失败后一律恢复，无「点了没反应」。 */
+var WRITE_INFLIGHT = false;    // 是否有写请求在途
+var WRITE_WATCHERS = [];       // 统一在途状态变化的订阅者（各片据此刷新忙碌反馈）
+
+function writeInFlight() { return WRITE_INFLIGHT; }
+
+/* 订阅统一在途状态变化：回调收到当前是否在途。返回一个退订函数。
+   订阅者抛错不影响守卫本身（守卫是安全底线，不能被 UI 拖垮）。 */
+function onWriteBusy(fn) {
+  if (typeof fn !== 'function' || WRITE_WATCHERS.indexOf(fn) >= 0) return function () {};
+  WRITE_WATCHERS.push(fn);
+  return function () {
+    var i = WRITE_WATCHERS.indexOf(fn);
+    if (i >= 0) WRITE_WATCHERS.splice(i, 1);
+  };
+}
+
+function setWriteInFlight(on) {
+  on = !!on;
+  if (WRITE_INFLIGHT === on) return;
+  WRITE_INFLIGHT = on;
+  WRITE_WATCHERS.slice().forEach(function (fn) {
+    try { fn(on); } catch (e) { /* 订阅者异常不影响守卫 */ }
+  });
+}
+
+/* 只读快照，供测试 / 调试核对统一守卫状态（等价 window.__ERRS 的用途）。 */
+function writeSnapshot() {
+  return { inflight: WRITE_INFLIGHT, watchers: WRITE_WATCHERS.length };
+}
+
 /* ── 与后端通信 ───────────────────────────────────────── */
 async function api(path, opts) {
   var o = Object.assign({ method: 'GET', headers: {} }, opts || {});
+  var isWrite = String(o.method || 'GET').toUpperCase() !== 'GET';
+
+  // 单一在途（§2.0）：写请求互斥，读请求不受限。
+  if (isWrite && WRITE_INFLIGHT) {
+    throw new Error('上一项操作还没完成，请稍候');
+  }
+
   if (o.body !== undefined) {
     o.headers['Content-Type'] = 'application/json';
     o.body = JSON.stringify(o.body);
   }
   if (SID) o.headers['X-Session'] = SID;
 
-  var res;
+  if (isWrite) setWriteInFlight(true);
   try {
-    res = await fetch(path, o);
-  } catch (e) {
-    throw new Error('无法连接服务，请确认后端仍在运行');
-  }
-  var data = null;
-  try { data = await res.json(); } catch (e) { /* 非 JSON 响应 */ }
-
-  if (!res.ok) {
-    // 会话失效是唯一会自动清状态的一类错误：留着一个过期 SID，
-    // 之后每个请求都会撞同一堵墙，而用户看不到原因。
-    if (res.status === 400 && data && /会话/.test(String(data.error || ''))) {
-      SID = '';
-      try { localStorage.removeItem(SID_KEY); } catch (e) { /* 隐私模式 */ }
+    var res;
+    try {
+      res = await fetch(path, o);
+    } catch (e) {
+      throw new Error('无法连接服务，请确认后端仍在运行');
     }
-    throw new Error((data && data.error) || ('请求失败（' + res.status + '）'));
+    var data = null;
+    try { data = await res.json(); } catch (e) { /* 非 JSON 响应 */ }
+
+    if (!res.ok) {
+      // 会话失效是唯一会自动清状态的一类错误：留着一个过期 SID，
+      // 之后每个请求都会撞同一堵墙，而用户看不到原因。
+      if (res.status === 400 && data && /会话/.test(String(data.error || ''))) {
+        SID = '';
+        try { localStorage.removeItem(SID_KEY); } catch (e) { /* 隐私模式 */ }
+      }
+      throw new Error((data && data.error) || ('请求失败（' + res.status + '）'));
+    }
+    return data;
+  } finally {
+    // 成功 / 失败 / 异常一律恢复：不把在途状态留死。
+    if (isWrite) setWriteInFlight(false);
   }
-  return data;
 }
 
 /* ── 六维属性（产品层统一用 PRISM 名与缩写）────────────── */
@@ -442,6 +494,8 @@ function bindCore() {
     var btns = $$('#actList [data-act]');
     if (btns[idx]) { e.preventDefault(); btns[idx].click(); }
   });
+
+  window.__WRITE = writeSnapshot;   // 跨片写动作单一在途守卫的只读快照（测试 / 调试）
 }
 
 /* ═══════════════ 启动 ═══════════════ */

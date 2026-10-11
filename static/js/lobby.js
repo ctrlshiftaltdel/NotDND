@@ -24,7 +24,11 @@ var LOBBY = {
   deleteError: ''     // 删除确认框里的失败提示
 };
 
-function lobbyBusy() { return !!LOBBY.busy; }
+function lobbyBusy() {
+  // 本片在途标志 + core 统一守卫（§2.0）：任一片的写请求在途时，本片写入口
+  // 一并忽略。LOBBY.busy 保留为幂等双保险（本片自己的三态渲染仍靠它）。
+  return !!LOBBY.busy || writeInFlight();
+}
 
 /* 当前局：服务端回传的 current 优先，退回本地 SID（两者同源）。 */
 function lobbyCurrent() { return LOBBY.current || SID; }
@@ -432,7 +436,7 @@ function closeSaveConfirm() {
 }
 
 async function doDelete() {
-  if (LOBBY.busy || !LOBBY.confirm) return;
+  if (lobbyBusy() || !LOBBY.confirm) return;
   var sid = LOBBY.confirm.id;
   LOBBY.busy = 'delete';
   LOBBY.deleteError = '';
