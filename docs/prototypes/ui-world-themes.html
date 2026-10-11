@@ -1,0 +1,1217 @@
+<!doctype html>
+<!--
+  棱镜 · 世界主题原型（prototype）· 评审参考稿
+
+  这是什么：docs/prototypes/ui-world-themes.html —— 三种世界主题（奇幻 / 现代 / 未来）
+  在同一场景、同一信息架构下的对照参考稿。设计出处见 UI-WORLD-THEMES.md。
+
+  不是什么：
+    · 不是运行时画面：static/ 不引用本文件，本文件也不引用 static/；
+    · 不接生产 API：全部数据是**样例**，页面上逐处标注「原型样例」；
+    · 无外链：没有 <link>、没有 CDN、没有 Web Font、没有外链图片；单文件，file:// 直接打开。
+
+  两条渐进增强契约：
+    · 无 JavaScript 时正文仍可完整阅读：<noscript> 把三个 L2 面板就地展开为主列内容，
+      并隐藏只对 JS 有意义的控件；主题固定为「现代 / 跟随系统」（切换需要 JS）。
+    · 主题切换只改 <html> 上的 data-world / data-appearance，不动 DOM 结构、
+      不动 aria-live、不重置滚动位置（UI-WORLD-THEMES.md §8 第 8 条）。
+
+  素材边界（GDD-BASELINE.md §2 D2）：场景 / 地点 / 肖像占位只用 CSS 几何 + 字符 + 内联 SVG，
+  与正式世界资产隔离；不引入图像生成运行时，不新增图片文件。
+-->
+<html lang="zh-CN" data-world="modern" data-appearance="auto" data-font="m" data-anim="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>棱镜 · 世界主题原型（prototype）</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   令牌层 —— 覆盖顺序（UI-WORLD-THEMES.md §4.7）
+
+     1. :root .......................... 现代 / 暗（= UI-DESIGN.md §3.2 现值）
+     2. 明色（跟随系统 / 强制明）........ 现代 / 明
+     3. :root[data-world="…"] ......... 奇幻 / 暗、未来 / 暗
+     4. 明色 × 世界主题 ................ 奇幻 / 明、未来 / 明
+     5. data-font / no-anim ............ 与主题正交（现值机制）
+
+   B 层语义令牌（--danger / --success / --scope-*）**只出现在 1 / 2 两块**，
+   世界主题块（3 / 4）一个都不许写 —— 这就是「语义色不被主题重定义」。
+
+   生产实现落在 static/css/tokens.css（唯一令牌定义处），组件选择器零改动；
+   本文件把需要的子集抄过来，是为了让原型与生产代码**隔离**、可独立演进。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── A 层 · 现代 / 暗（现值） ─────────────────────────────── */
+  --bg-0:#0e1015; --bg-1:#151821; --bg-2:#1b1f2b; --bg-3:#232838;
+  --text-1:#e7ebf3; --text-2:#aeb6c6; --text-3:#7c8598;
+  --accent:#6ea8fe; --accent-2:#7ee0c0; --on-accent:#0a1020;
+  --line:#2b3142; --line-strong:#3d4560;
+  --bg-frame:#090b10; --scrim:rgba(5,7,12,.62);
+  --elev-1:0 2px 8px rgba(0,0,0,.32); --elev-2:0 10px 28px rgba(0,0,0,.5);
+  color-scheme:dark;
+
+  /* ── B 层 · 语义令牌（世界主题不得覆盖；只有明暗两套） ─────── */
+  --danger:#f2796b; --success:#74d99f;
+  --scope-public:#aeb6c6; --scope-party:#9db8e8; --scope-private:#c9a6ff;
+
+  /* ── C 层 · 装饰令牌（主题专属，只影响非语义装饰） ─────────── */
+  --wt-motif-ink:transparent;
+  --wt-motif:none; --wt-motif-size:auto;
+  --wt-title-font:var(--font-serif); --wt-title-track:.01em;
+  --wt-edge:none;
+
+  /* ── 与主题无关的令牌（字体 / 字号 / 间距 / 动效）─────────── */
+  --font-sans:-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --font-serif:Georgia,"Songti SC","Noto Serif SC",serif;
+  --font-mono:ui-monospace,Menlo,Consolas,monospace;
+  --fs-xs:11px; --fs-sm:12.5px; --fs-ui:14px; --fs-body:15px; --fs-lg:17.5px; --fs-xl:21px;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:24px;
+  --r-sm:6px; --r:10px; --r-lg:14px; --r-pill:999px;
+  --dur-fast:120ms; --dur:200ms; --ease:cubic-bezier(.2,.8,.2,1);
+  --icon:20px; --icon-sm:16px;
+}
+
+/* ── 现代 / 明（跟随系统；data-appearance 可强制） ───────────── */
+@media (prefers-color-scheme: light) {
+  :root[data-appearance="auto"],
+  :root[data-appearance="light"] {
+    color-scheme:light;
+    --bg-0:#f7f8fb; --bg-1:#ffffff; --bg-2:#eef1f7; --bg-3:#e3e8f2;
+    --text-1:#16181f; --text-2:#4a5261; --text-3:#6a7386;
+    --accent:#1f5fd0; --accent-2:#0e7a63; --on-accent:#ffffff;
+    --line:#d8deea; --line-strong:#bcc5d6;
+    --bg-frame:#e6eaf3; --scrim:rgba(22,24,31,.38);
+    --elev-1:0 1px 2px rgba(22,24,31,.06),0 4px 12px rgba(22,24,31,.05);
+    --elev-2:0 10px 28px rgba(22,24,31,.14);
+    --danger:#b3261e; --success:#1a6b41;
+    --scope-public:#4a5261; --scope-party:#2c5aa0; --scope-private:#6a37c9;
+  }
+}
+:root[data-appearance="light"] {
+  color-scheme:light;
+  --bg-0:#f7f8fb; --bg-1:#ffffff; --bg-2:#eef1f7; --bg-3:#e3e8f2;
+  --text-1:#16181f; --text-2:#4a5261; --text-3:#6a7386;
+  --accent:#1f5fd0; --accent-2:#0e7a63; --on-accent:#ffffff;
+  --line:#d8deea; --line-strong:#bcc5d6;
+  --bg-frame:#e6eaf3; --scrim:rgba(22,24,31,.38);
+  --elev-1:0 1px 2px rgba(22,24,31,.06),0 4px 12px rgba(22,24,31,.05);
+  --elev-2:0 10px 28px rgba(22,24,31,.14);
+  --danger:#b3261e; --success:#1a6b41;
+  --scope-public:#4a5261; --scope-party:#2c5aa0; --scope-private:#6a37c9;
+}
+
+/* ── 奇幻 · Chronicle / 暗（UI-WORLD-THEMES.md §4.5）───────────
+   B 层（--danger / --success / --scope-*）在此块内**故意缺席**：
+   语义色不随世界主题变。 */
+:root[data-world="fantasy"] {
+  --bg-0:#0d1410; --bg-1:#131d17; --bg-2:#1a261e; --bg-3:#223027;
+  --text-1:#ece5d4; --text-2:#b9b3a2; --text-3:#8d8a78;
+  --accent:#dcb45f; --accent-2:#93cc9f; --on-accent:#16110a;
+  --line:#2c3a30; --line-strong:#40543f;
+  --bg-frame:#080d0a; --scrim:rgba(6,10,8,.64);
+  --wt-motif-ink:rgba(220,180,95,.10);
+  --wt-motif:repeating-linear-gradient(0deg,var(--wt-motif-ink) 0 1px,transparent 1px 5px);
+  --wt-motif-size:auto;
+  --wt-title-font:var(--font-serif); --wt-title-track:.01em;
+  --wt-edge:none;
+}
+
+/* ── 未来 · Orbit / 暗 ───────────────────────────────────────── */
+:root[data-world="future"] {
+  --bg-0:#05080f; --bg-1:#0a1020; --bg-2:#101a2e; --bg-3:#17253f;
+  --text-1:#dfe8f4; --text-2:#a9b7cc; --text-3:#7a8aa4;
+  --accent:#5fd8e8; --accent-2:#b39cff; --on-accent:#04121a;
+  --line:#1c2a44; --line-strong:#2d4363;
+  --bg-frame:#03060b; --scrim:rgba(3,6,12,.68);
+  --wt-motif-ink:rgba(95,216,232,.10);
+  --wt-motif:linear-gradient(90deg,var(--wt-motif-ink) 1px,transparent 1px),
+             linear-gradient(0deg,var(--wt-motif-ink) 1px,transparent 1px);
+  --wt-motif-size:12px 12px;
+  --wt-title-font:var(--font-sans); --wt-title-track:.04em;
+  --wt-edge:orbit;
+}
+
+/* ── 世界主题 × 明色 ─────────────────────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root[data-world="fantasy"][data-appearance="auto"],
+  :root[data-world="fantasy"][data-appearance="light"] {
+    color-scheme:light;
+    --bg-0:#f7f5ed; --bg-1:#fffdf6; --bg-2:#ece8da; --bg-3:#e0dccc;
+    --text-1:#1b1913; --text-2:#4d4a3c; --text-3:#6d6a56;
+    --accent:#71540d; --accent-2:#1d6a49; --on-accent:#fffdf6;
+    --line:#ddd8c6; --line-strong:#c1bca6;
+    --bg-frame:#e8e4d6; --scrim:rgba(27,25,19,.40);
+    --wt-motif-ink:rgba(113,84,13,.10);
+  }
+  :root[data-world="future"][data-appearance="auto"],
+  :root[data-world="future"][data-appearance="light"] {
+    color-scheme:light;
+    --bg-0:#f1f5fa; --bg-1:#ffffff; --bg-2:#e6edf6; --bg-3:#d8e3f1;
+    --text-1:#0f1520; --text-2:#414f63; --text-3:#5c6a80;
+    --accent:#0b6c7a; --accent-2:#5b3fb8; --on-accent:#ffffff;
+    --line:#d4dfec; --line-strong:#b6c6d9;
+    --bg-frame:#e3ebf5; --scrim:rgba(15,21,32,.40);
+    --wt-motif-ink:rgba(11,108,122,.12);
+  }
+}
+:root[data-world="fantasy"][data-appearance="light"] {
+  color-scheme:light;
+  --bg-0:#f7f5ed; --bg-1:#fffdf6; --bg-2:#ece8da; --bg-3:#e0dccc;
+  --text-1:#1b1913; --text-2:#4d4a3c; --text-3:#6d6a56;
+  --accent:#71540d; --accent-2:#1d6a49; --on-accent:#fffdf6;
+  --line:#ddd8c6; --line-strong:#c1bca6;
+  --bg-frame:#e8e4d6; --scrim:rgba(27,25,19,.40);
+  --wt-motif-ink:rgba(113,84,13,.10);
+}
+:root[data-world="future"][data-appearance="light"] {
+  color-scheme:light;
+  --bg-0:#f1f5fa; --bg-1:#ffffff; --bg-2:#e6edf6; --bg-3:#d8e3f1;
+  --text-1:#0f1520; --text-2:#414f63; --text-3:#5c6a80;
+  --accent:#0b6c7a; --accent-2:#5b3fb8; --on-accent:#ffffff;
+  --line:#d4dfec; --line-strong:#b6c6d9;
+  --bg-frame:#e3ebf5; --scrim:rgba(15,21,32,.40);
+  --wt-motif-ink:rgba(11,108,122,.12);
+}
+
+/* 字号档位（现值机制，与主题正交） */
+html[data-font="s"] { --fs-xs:10px; --fs-sm:11.5px; --fs-ui:13px; --fs-body:13.5px; --fs-lg:15.5px; --fs-xl:19px; }
+html[data-font="l"] { --fs-xs:12px; --fs-sm:14px; --fs-ui:15.5px; --fs-body:17px; --fs-lg:19.5px; --fs-xl:23px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   基础
+   ═══════════════════════════════════════════════════════════════════════ */
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body {
+  background:var(--bg-frame);
+  color:var(--text-1);
+  font:var(--fs-body)/1.6 var(--font-sans);
+  -webkit-text-size-adjust:100%;
+  overflow-wrap:anywhere;
+}
+[hidden] { display:none !important; }
+h1,h2,h3 { margin:0; font-weight:650; }
+p { margin:0; }
+ul { margin:0; padding:0; list-style:none; }
+button { font:inherit; color:inherit; }
+.sr-only {
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+}
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--r-sm); }
+.mono { font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+svg.i { width:var(--icon); height:var(--icon); fill:none; stroke:currentColor;
+         stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; flex:0 0 auto; }
+svg.i.i-sm { width:var(--icon-sm); height:var(--icon-sm); }
+.sprite { position:absolute; width:0; height:0; overflow:hidden; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   原型评审工具条（**不属于产品界面**）
+   ═══════════════════════════════════════════════════════════════════════ */
+.pchrome {
+  max-width:860px; margin:0 auto; padding:var(--sp-3) var(--sp-3) var(--sp-4);
+  border-bottom:1px dashed var(--line-strong);
+  background:var(--bg-frame); color:var(--text-2); font-size:var(--fs-sm);
+}
+.pchrome .ptag {
+  display:inline-block; padding:1px 6px; margin-bottom:var(--sp-2);
+  border:1px solid var(--line-strong); border-radius:var(--r-pill);
+  font-family:var(--font-mono); font-size:var(--fs-xs); letter-spacing:.06em;
+  text-transform:uppercase; color:var(--text-2);
+}
+.pchrome .pnote { margin-bottom:var(--sp-3); }
+.pchrome .prow { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center; }
+.pchrome .plabel { font-size:var(--fs-xs); color:var(--text-2); }
+.seg { display:inline-flex; flex-wrap:wrap; gap:2px; padding:2px; background:var(--bg-2);
+       border:1px solid var(--line); border-radius:var(--r-pill); }
+.seg-btn {
+  min-height:32px; padding:0 var(--sp-3); border:0; border-radius:var(--r-pill);
+  background:transparent; color:var(--text-2); font-size:var(--fs-sm); cursor:pointer;
+}
+.seg-btn[aria-pressed="true"] { background:var(--bg-3); color:var(--text-1); }
+.pref { margin-top:var(--sp-3); }
+.pref > summary { cursor:pointer; min-height:32px; display:flex; align-items:center; }
+.pref-body { padding:var(--sp-3) 0 0; display:grid; gap:var(--sp-3); }
+.pref-row { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center; }
+.pref-cap { font-size:var(--fs-xs); color:var(--text-2); min-width:9em; }
+.swatch { display:inline-flex; align-items:center; gap:6px; font-size:var(--fs-xs); color:var(--text-2); }
+.swatch i { width:14px; height:14px; border-radius:3px; border:1px solid var(--line-strong); display:block; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   产品框架（宽屏居中 860px；窄屏满宽 —— UI-DESIGN.md §5.1）
+   ═══════════════════════════════════════════════════════════════════════ */
+.app {
+  height:100dvh; min-height:520px;
+  display:grid; grid-template-rows:auto 1fr auto;
+  background:var(--bg-0);
+  max-width:860px; margin:0 auto;
+}
+@media (min-width:900px) {
+  .app { border-left:1px solid var(--line); border-right:1px solid var(--line); }
+}
+
+/* ── 顶栏 ───────────────────────────────────────────────────── */
+.top {
+  position:relative; display:flex; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-3); padding-top:calc(var(--sp-2) + env(safe-area-inset-top,0px));
+  background:var(--bg-1); border-bottom:1px solid var(--line);
+}
+.top::after {
+  content:""; position:absolute; left:0; right:0; bottom:0; height:12px;
+  background-image:var(--wt-motif); background-size:var(--wt-motif-size);
+  pointer-events:none;
+}
+.top-mid { flex:1 1 auto; min-width:0; text-align:center; }
+.top-line1 { font-family:var(--wt-title-font); letter-spacing:var(--wt-title-track);
+             font-size:var(--fs-lg); line-height:1.3; display:flex; gap:6px;
+             align-items:center; justify-content:center; flex-wrap:wrap; }
+.top-line2 { font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-2); line-height:1.5; }
+.world-badge {
+  display:inline-flex; align-items:center; gap:4px; padding:1px 6px;
+  border:1px solid var(--line-strong); border-radius:var(--r-pill);
+  font-family:var(--font-sans); font-size:var(--fs-xs); letter-spacing:0; color:var(--text-2);
+}
+.top-guide { display:flex; align-items:center; gap:4px; }
+.guide-tag { font-size:var(--fs-xs); color:var(--text-2); }
+.status-dot {
+  width:9px; height:9px; border-radius:50%; background:var(--text-3);
+  box-shadow:0 0 0 1px var(--line-strong) inset; display:block;
+}
+.status-dot[data-state="on"] { background:var(--accent-2); }
+.ic {
+  min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center;
+  border:1px solid transparent; border-radius:var(--r); background:transparent; cursor:pointer;
+}
+.ic:hover { background:var(--bg-2); }
+
+/* ── 滚动主列 ───────────────────────────────────────────────── */
+.play-scroll { overflow-y:auto; overscroll-behavior:contain; padding:var(--sp-3); }
+.play-scroll > * + * { margin-top:var(--sp-3); }
+.sec-title {
+  font-size:var(--fs-xs); letter-spacing:.14em; color:var(--text-2);
+  text-transform:uppercase; display:flex; align-items:baseline; gap:var(--sp-2);
+  margin-bottom:var(--sp-2);
+}
+.sec-hint { font-size:var(--fs-xs); letter-spacing:0; text-transform:none; color:var(--text-2); }
+
+/* 场景卡 */
+.scene-card {
+  position:relative; padding:var(--sp-4) var(--sp-4) var(--sp-3);
+  background:var(--bg-1); border:1px solid var(--line); border-radius:var(--r-lg);
+  box-shadow:var(--elev-1);
+}
+.scene-card::before {
+  content:""; position:absolute; left:0; right:0; top:0; height:12px;
+  background-image:var(--wt-motif); background-size:var(--wt-motif-size);
+  border-radius:var(--r-lg) var(--r-lg) 0 0; pointer-events:none;
+}
+.crumb { font-size:var(--fs-xs); color:var(--text-2); margin-bottom:var(--sp-1); }
+.scene-name {
+  font-family:var(--wt-title-font); letter-spacing:var(--wt-title-track);
+  font-size:var(--fs-xl); line-height:1.25; margin-bottom:var(--sp-2);
+}
+.scene-read { font-size:var(--fs-body); color:var(--text-2); line-height:1.65; }
+.chip {
+  display:inline-block; padding:1px 6px; border:1px solid var(--line-strong);
+  border-radius:var(--r-sm); font-family:var(--font-mono); font-size:var(--fs-xs);
+  color:var(--text-2); white-space:nowrap;
+}
+.tag {
+  display:inline-block; padding:1px 6px; border:1px solid var(--line-strong);
+  border-radius:var(--r-pill); font-size:var(--fs-xs); color:var(--text-2); white-space:nowrap;
+}
+.tag.live { border-color:var(--accent); color:var(--accent); }
+.tier {
+  display:inline-block; padding:2px 8px; border-radius:var(--r-sm);
+  font-size:var(--fs-sm); font-weight:650; white-space:nowrap;
+}
+.tier-solid { border:1px solid var(--tier-ink); background:var(--tier-ink); color:var(--bg-1); }
+.tier-out { border:1px solid var(--tier-ink); color:var(--tier-ink); }
+.tier-triumph, .tier-success { --tier-ink:var(--success); }
+.tier-narrow { --tier-ink:var(--accent); }
+.tier-failure, .tier-catastrophe { --tier-ink:var(--danger); }
+
+/* 占位符（UI-DESIGN.md §4.2 三态的 empty 态；与正式资产隔离） */
+.ph {
+  position:relative; display:block; margin:var(--sp-3) 0 0; aspect-ratio:16/9;
+  background:var(--bg-2); border:1px dashed var(--line-strong); border-radius:var(--r);
+  overflow:hidden;
+}
+.ph[data-ratio="1"] { aspect-ratio:1/1; }
+/* 原型专用：把场景位压成窄带（产品是 16:9，未提供资产时塌缩为 0）。
+   窄带里位名与位 id 改为左右并排，避免绝对定位互相压住。 */
+.ph[data-ratio="band"] {
+  aspect-ratio:auto; min-height:44px;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:var(--sp-2); padding:0 var(--sp-3);
+}
+.ph[data-ratio="band"] .ph-mark,
+.ph[data-ratio="band"] .ph-id { position:static; inset:auto; text-align:left; }
+.ph[data-ratio="band"] .ph-mark { letter-spacing:.1em; font-size:var(--fs-lg); }
+.ph[data-ratio="band"] .ph-id { flex:0 1 auto; min-width:0; text-align:right; }
+.ph::before {
+  content:""; position:absolute; inset:0; background-image:var(--wt-motif);
+  background-size:var(--wt-motif-size); opacity:.6; pointer-events:none;
+}
+.ph-mark {
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--wt-title-font); font-size:var(--fs-xl); color:var(--text-2);
+  letter-spacing:.2em;
+}
+.ph-id {
+  position:absolute; right:6px; bottom:4px; font-family:var(--font-mono);
+  font-size:var(--fs-xs); color:var(--text-2);
+}
+
+/* 进行中 / 活动摘要 */
+.running { padding:var(--sp-3) var(--sp-4); background:var(--bg-1);
+           border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--elev-1); }
+.run-row { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center; padding:var(--sp-1) 0; }
+.run-row + .run-row { border-top:1px solid var(--line); margin-top:var(--sp-1); padding-top:var(--sp-2); }
+.run-label { min-width:4.5em; font-size:var(--fs-sm); color:var(--text-2); }
+.run-meta { font-size:var(--fs-sm); color:var(--text-2); }
+.bar { flex:1 1 120px; min-width:80px; height:6px; background:var(--bg-3);
+       border-radius:var(--r-pill); overflow:hidden; }
+.bar > i { display:block; height:100%; background:var(--accent); }
+
+/* 叙事流 */
+.stream { display:grid; gap:var(--sp-3); }
+.msg { max-width:92%; }
+.msg-narrate { border-left:3px solid var(--accent-2); padding-left:var(--sp-3); }
+.msg-narrate p + p { margin-top:var(--sp-2); }
+.msg-act {
+  margin-left:auto; padding:var(--sp-2) var(--sp-3); border-radius:var(--r-lg);
+  background:color-mix(in srgb, var(--accent) 14%, transparent);
+  border:1px solid var(--line); text-align:right;
+}
+.msg-check {
+  max-width:none; display:block; text-align:center; font-family:var(--font-mono);
+  font-size:var(--fs-sm); color:var(--text-2);
+  border-top:1px dashed var(--line-strong); border-bottom:1px dashed var(--line-strong);
+  padding:var(--sp-2) 0;
+}
+.msg-system {
+  max-width:none; text-align:center; font-size:var(--fs-sm); color:var(--text-2);
+}
+.msg-system::before, .msg-system::after { content:"—"; margin:0 var(--sp-2); color:var(--line-strong); }
+.msg-result {
+  max-width:none; border-left:3px solid var(--accent); padding-left:var(--sp-3);
+  display:grid; gap:var(--sp-2);
+}
+.result-head { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center; }
+.result-line { font-size:var(--fs-sm); color:var(--text-2); }
+.block {
+  padding:var(--sp-2) var(--sp-3); border-radius:var(--r);
+  background:var(--bg-1); border:1px solid var(--line); border-left-width:3px;
+}
+.block-cost { border-left-color:var(--danger); }
+.block-state { border-left-color:var(--accent); }
+.block-next { border-left-color:var(--line-strong); }
+.block-title { font-size:var(--fs-xs); letter-spacing:.1em; color:var(--text-2);
+              text-transform:uppercase; margin-bottom:var(--sp-1); }
+.kv { display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-3); font-size:var(--fs-sm); }
+.kv b { font-weight:650; }
+.delta-up { color:var(--success); }
+.delta-down { color:var(--danger); }
+.delta-flat { color:var(--text-2); }
+.trace {
+  margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3);
+  border-left:3px solid var(--accent); background:var(--bg-1);
+  border-top:1px solid var(--line); border-right:1px solid var(--line);
+  border-bottom:1px solid var(--line); border-radius:var(--r);
+}
+.trace-head { font-size:var(--fs-xs); letter-spacing:.1em; text-transform:uppercase;
+              color:var(--accent); margin-bottom:var(--sp-1); }
+/* 隐私可见范围：图标 + 文字 + 颜色（颜色不是唯一线索） */
+.scope {
+  display:inline-flex; align-items:center; gap:4px; padding:1px 6px;
+  border:1px solid currentColor; border-radius:var(--r-pill);
+  font-size:var(--fs-xs); white-space:nowrap;
+}
+.scope-public { color:var(--scope-public); }
+.scope-party { color:var(--scope-party); }
+.scope-private { color:var(--scope-private); }
+.scope svg.i { width:12px; height:12px; stroke-width:2; }
+.msg-head { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
+            justify-content:space-between; margin-bottom:var(--sp-1); }
+
+/* 行动 / 出口 */
+.btn-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+            gap:var(--sp-2); margin-bottom:var(--sp-3); }
+.btn {
+  min-height:44px; display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-2);
+  padding:var(--sp-2) var(--sp-3); background:var(--bg-2); color:var(--text-1);
+  border:1px solid var(--line-strong); border-radius:var(--r); cursor:pointer;
+  text-align:left; font-size:var(--fs-ui);
+}
+.btn-text { flex:1 1 auto; min-width:0; }
+.btn:hover { background:var(--bg-3); }
+.btn-primary { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+.btn-primary:hover { filter:brightness(1.06); }
+.btn[disabled] { opacity:.5; cursor:not-allowed; }
+.act-key {
+  flex:0 0 auto; min-width:20px; height:20px; display:inline-flex; align-items:center;
+  justify-content:center; border-radius:var(--r-sm); background:var(--bg-3);
+  font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-2);
+}
+.btn-primary .act-key { background:transparent; color:var(--on-accent); opacity:.8; }
+.act-zone { margin-top:var(--sp-4); }
+.note { font-size:var(--fs-sm); color:var(--text-2); }
+
+/* ── 工具条（固定输入区 + 面板入口）─────────────────────────── */
+.dock {
+  background:var(--bg-1); border-top:1px solid var(--line);
+  padding:var(--sp-3) var(--sp-3) calc(var(--sp-2) + env(safe-area-inset-bottom,0px));
+  display:grid; gap:var(--sp-2);
+}
+.input-row { display:flex; gap:var(--sp-2); align-items:flex-end; }
+.input-row textarea {
+  flex:1 1 auto; min-height:44px; max-height:120px; resize:vertical;
+  padding:var(--sp-2) var(--sp-3); background:var(--bg-2); color:var(--text-1);
+  border:1px solid var(--line-strong); border-radius:var(--r); font:inherit;
+}
+.dock-meta { display:flex; flex-wrap:wrap; gap:var(--sp-2); justify-content:space-between;
+             font-size:var(--fs-xs); color:var(--text-2); }
+.dock-meta .counter.warn { color:var(--danger); }
+.dock-tabs { display:flex; gap:var(--sp-2); }
+.dock-tabs .btn { flex:1 1 0; justify-content:center; min-height:40px; }
+
+/* ── L2 辅助层（队伍 / 世界 / 记录）─────────────────────────── */
+.scrim { position:fixed; inset:0; background:var(--scrim); z-index:60; }
+.sheet {
+  position:fixed; left:0; right:0; bottom:0; z-index:65;
+  max-height:82dvh; display:flex; flex-direction:column;
+  background:var(--bg-1); border:1px solid var(--line-strong);
+  border-radius:var(--r-lg) var(--r-lg) 0 0; box-shadow:var(--elev-2);
+}
+@media (min-width:900px) {
+  .sheet { left:50%; right:auto; transform:translateX(-50%); width:860px;
+           border-radius:var(--r-lg) var(--r-lg) 0 0; }
+  .scrim { inset:0; }
+}
+.sheet-head {
+  position:relative; display:flex; align-items:center; justify-content:space-between;
+  gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-bottom:1px solid var(--line);
+}
+.sheet-head::after {
+  content:""; position:absolute; left:0; right:0; top:0; height:12px;
+  background-image:var(--wt-motif); background-size:var(--wt-motif-size); pointer-events:none;
+}
+.sheet-head h2 { font-family:var(--wt-title-font); letter-spacing:var(--wt-title-track);
+                 font-size:var(--fs-lg); }
+.sheet-body { overflow-y:auto; overscroll-behavior:contain; padding:var(--sp-3); }
+.sheet-body > * + * { margin-top:var(--sp-3); }
+.sheet-body .ph { max-width:480px; }
+.sheet-note { padding:var(--sp-2) var(--sp-3); border-top:1px solid var(--line);
+              font-size:var(--fs-xs); color:var(--text-2); }
+
+/* 队伍卡 */
+.unit {
+  display:grid; gap:var(--sp-2); padding:var(--sp-3);
+  background:var(--bg-2); border:1px solid var(--line); border-radius:var(--r);
+}
+.unit-head { display:flex; gap:var(--sp-2); align-items:center; }
+.unit-name { font-size:var(--fs-ui); font-weight:650; }
+.unit[data-downed="true"] .unit-name { color:var(--danger); }
+.unit .ph.unit-ph { width:44px; height:44px; margin:0; aspect-ratio:1/1; flex:0 0 auto; }
+.unit .ph.unit-ph .ph-mark { font-size:var(--fs-sm); }
+.unit .ph.unit-ph .ph-id { display:none; }
+.stats { display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-3); font-size:var(--fs-sm);
+         color:var(--text-2); }
+.attrs { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:var(--sp-1);
+         margin:0; font-family:var(--font-mono); font-size:var(--fs-xs); }
+.attrs div { background:var(--bg-3); border-radius:var(--r-sm); padding:2px 4px; text-align:center; }
+.attrs dt { color:var(--text-2); letter-spacing:.04em; }
+.attrs dd { margin:0; color:var(--text-1); font-size:var(--fs-sm); }
+.cond { display:flex; flex-wrap:wrap; gap:var(--sp-1); }
+
+/* 世界面板 */
+.place-name { font-family:var(--wt-title-font); font-size:var(--fs-lg); }
+.place-meta { font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-2); }
+.exit-list { display:grid; gap:var(--sp-2); }
+.exit-list li { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
+                padding:var(--sp-2); background:var(--bg-2); border:1px solid var(--line);
+                border-radius:var(--r); font-size:var(--fs-sm); }
+details.raw { border:1px solid var(--line); border-radius:var(--r); padding:var(--sp-2) var(--sp-3); }
+details.raw > summary { cursor:pointer; min-height:32px; display:flex; align-items:center;
+                        font-size:var(--fs-sm); color:var(--text-2); }
+.raw-text { margin-top:var(--sp-2); font-size:var(--fs-sm); color:var(--text-2); white-space:pre-wrap; }
+.track { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center; font-size:var(--fs-sm); }
+
+/* 记录面板 */
+.log-list { display:grid; gap:var(--sp-2); }
+.log-row { display:grid; gap:4px; padding:var(--sp-2) var(--sp-3);
+           border-left:3px solid var(--line-strong); background:var(--bg-2);
+           border-radius:0 var(--r) var(--r) 0; }
+.log-row[data-kind="check"], .log-row[data-kind="result"] { border-left-color:var(--accent); }
+.log-row[data-kind="narrate"] { border-left-color:var(--accent-2); }
+.log-head { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
+            font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-2); }
+.log-text { font-size:var(--fs-sm); }
+
+/* 仅无 JS 时显示（<noscript> 里改回 block） */
+.proto-noscript-hint {
+  display:none; max-width:860px; margin:var(--sp-3) auto; padding:0 var(--sp-3);
+}
+code { font-family:var(--font-mono); font-size:.95em; }
+
+/* 原型提示条（role=status，只用来说明「未接后端」） */
+.proto-msg {
+  padding:var(--sp-2) var(--sp-3); border-radius:var(--r); font-size:var(--fs-sm);
+  background:var(--bg-3); border:1px dashed var(--line-strong); color:var(--text-2);
+}
+.proto-msg:empty { display:none; }
+
+/* ── 未来主题的角切母题（--wt-edge: orbit）────────────────────
+   只作用于**大块、不可聚焦**的表面（卡片 / 浮层）：焦点环长在按钮上，
+   而按钮不裁剪（UI-WORLD-THEMES.md §8 第 5 条）。 */
+:root[data-world="future"] .scene-card,
+:root[data-world="future"] .running,
+:root[data-world="future"] .sheet {
+  clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);
+}
+:root[data-world="future"] .scene-card::before,
+:root[data-world="future"] .sheet-head::after { border-radius:0; }
+
+/* ── 动效：三重关闭（prefers-reduced-motion / data-anim / 无过渡）── */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration:1ms !important; animation-duration:1ms !important;
+      scroll-behavior:auto !important; }
+}
+html[data-anim="off"] * { transition-duration:1ms !important; animation-duration:1ms !important; }
+
+/* ── 窄屏（<600px）：满宽、工具条贴底、浮层 82dvh（UI-DESIGN.md §5.1）── */
+@media (max-width:599px) {
+  .app { max-width:none; height:100dvh; }
+  .pchrome { border-bottom-style:solid; }
+  .play-scroll { padding:var(--sp-3) var(--sp-3) var(--sp-4); }
+  .msg { max-width:100%; }
+  .scene-card { border-radius:var(--r); }
+  .sheet { max-height:82dvh; border-radius:var(--r-lg) var(--r-lg) 0 0; }
+  .attrs { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}
+/* 320px 不横向溢出是硬指标 */
+@media (max-width:360px) {
+  .top-line1 { font-size:var(--fs-ui); }
+  .attrs { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+</style>
+</head>
+<body>
+
+<!-- 内嵌图标 sprite：纯几何线条，无图标字体、无 emoji、无位图 -->
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></symbol>
+  <symbol id="i-tune" viewBox="0 0 24 24"><line x1="4" y1="8" x2="20" y2="8"/><circle cx="9" cy="8" r="2.4"/><line x1="4" y1="16" x2="20" y2="16"/><circle cx="15" cy="16" r="2.4"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3.4 3 14.6 0 18"/><path d="M12 3c-3 3.4-3 14.6 0 18"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.2"/><path d="M4 19c0-3 2.2-4.6 5-4.6s5 1.6 5 4.6"/><path d="M16 7.5a3 3 0 0 1 0 5.6"/><path d="M17 19c0-2.4-.9-3.8-2.4-4.4"/></symbol>
+  <symbol id="i-scroll" viewBox="0 0 24 24"><rect x="5.5" y="4" width="13" height="16" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12.5" x2="15" y2="12.5"/><line x1="9" y1="16" x2="13" y2="16"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M9 11V8a3 3 0 0 1 6 0v3"/></symbol>
+</svg>
+
+<!-- ═══════════ 原型评审工具条（不属于产品界面）═══════════ -->
+<header class="pchrome" aria-label="原型评审工具条">
+  <span class="ptag">prototype</span>
+  <p class="pnote">
+    棱镜 · 世界主题参考稿（三种世界主题 / 同一场景 / 同一信息架构）。
+    <strong>不接生产 API</strong>，页面里所有数字与叙事都是<strong>原型样例</strong>；
+    <strong>无外链</strong>（无 CDN / 无 Web Font / 无外链图片），单文件可离线打开。
+    切主题与切外观是<strong>渐进增强</strong>：无 JavaScript 时固定为「现代 · 跟随系统」，
+    但正文与三个面板仍完整可读。
+  </p>
+  <div class="prow">
+    <span class="plabel" id="lblWorld">世界主题（评审用）</span>
+    <div class="seg" role="group" aria-labelledby="lblWorld">
+      <button type="button" class="seg-btn" aria-pressed="false" data-world-set="fantasy">奇幻 · Chronicle</button>
+      <button type="button" class="seg-btn" aria-pressed="true" data-world-set="modern">现代 · Field Notes</button>
+      <button type="button" class="seg-btn" aria-pressed="false" data-world-set="future">未来 · Orbit</button>
+    </div>
+    <span class="plabel" id="lblAppearance">外观（评审用）</span>
+    <div class="seg" role="group" aria-labelledby="lblAppearance">
+      <button type="button" class="seg-btn" aria-pressed="true" data-appearance-set="auto">跟随系统</button>
+      <button type="button" class="seg-btn" aria-pressed="false" data-appearance-set="dark">暗</button>
+      <button type="button" class="seg-btn" aria-pressed="false" data-appearance-set="light">明</button>
+    </div>
+  </div>
+  <details class="pref">
+    <summary>评审对照：判定五档 / 隐私三档 / 语义色不变式</summary>
+    <div class="pref-body">
+      <div class="pref-row">
+        <span class="pref-cap">判定五档（文字 + 形状 + 颜色）</span>
+        <span class="tier tier-solid tier-triumph">凯旋</span>
+        <span class="tier tier-out tier-success">成功</span>
+        <span class="tier tier-out tier-narrow">险成</span>
+        <span class="tier tier-out tier-failure">挫败</span>
+        <span class="tier tier-solid tier-catastrophe">灾难</span>
+      </div>
+      <div class="pref-row">
+        <span class="pref-cap">隐私三档（图标 + 文字 + 颜色）</span>
+        <span class="scope scope-public"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg>公开</span>
+        <span class="scope scope-party"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>队伍</span>
+        <span class="scope scope-private"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>私人</span>
+      </div>
+      <div class="pref-row">
+        <span class="pref-cap">语义色（不随世界主题变）</span>
+        <span class="swatch"><i style="background:var(--success)"></i>成功 / 凯旋 --success</span>
+        <span class="swatch"><i style="background:var(--danger)"></i>代价 / 濒危 --danger</span>
+        <span class="swatch"><i style="background:var(--scope-public)"></i>--scope-public</span>
+        <span class="swatch"><i style="background:var(--scope-party)"></i>--scope-party</span>
+        <span class="swatch"><i style="background:var(--scope-private)"></i>--scope-private</span>
+      </div>
+      <p class="note">
+        切三套世界主题时，上面两行与三个语义色块<strong>不变</strong>；只有背景族、文本族与
+        <code>--accent</code>（含险成档位与焦点环）随主题改变——见 UI-WORLD-THEMES.md §6。
+      </p>
+    </div>
+  </details>
+</header>
+
+<!-- ═══════════ 产品框架（主画面）═══════════ -->
+<div class="app">
+
+  <header class="top">
+    <button class="ic" type="button" aria-label="打开菜单" aria-haspopup="dialog" data-proto="菜单是 L1 抽屉，原型未展开">
+      <svg class="i" aria-hidden="true"><use href="#i-menu"/></svg>
+    </button>
+    <div class="top-mid">
+      <div class="top-line1">
+        雾桥初夜
+        <span class="world-badge"><svg class="i i-sm" aria-hidden="true"><use href="#i-globe"/></svg>样例世界</span>
+      </div>
+      <div class="top-line2">雾桥 · 北岸 ｜ 第 12 日 22:41</div>
+    </div>
+    <div class="top-guide">
+      <span class="guide-tag">本地模式</span>
+      <span class="status-dot" data-state="off" role="img" aria-label="导引者状态：未配置（能力探测，不是故障告警）"></span>
+    </div>
+    <button class="ic" type="button" aria-label="设置" data-proto="设置是 #v-settings 视图，原型未展开">
+      <svg class="i" aria-hidden="true"><use href="#i-tune"/></svg>
+    </button>
+  </header>
+
+  <main class="play-scroll">
+
+    <!-- 场景卡：面包屑（世界 · 剧本）+ 场景名 + 引文 + 16:9 占位（empty 态） -->
+    <section class="scene-card" aria-label="场景">
+      <p class="crumb">样例世界 · 雾桥巡夜 <span class="chip">第 2 幕</span> <span class="chip">原型样例</span></p>
+      <h1 class="scene-name">雾桥 · 北岸</h1>
+      <p class="scene-read">“桥面上没有灯，只有水在动。往北岸去的路只剩一条，贴着栏杆。”</p>
+      <figure class="ph" data-slot="scene/mist-bridge-north" data-state="empty" data-ratio="band">
+        <span class="ph-mark" aria-hidden="true">景</span>
+        <span class="ph-id">scene/mist-bridge-north · 占位（未提供资产）</span>
+        <figcaption class="sr-only">场景占位符：资产位 scene/mist-bridge-north 尚未提供，显示几何占位，与正式资产隔离。</figcaption>
+      </figure>
+      <p class="note">
+        场景位按 UI-DESIGN.md §4.3 是 16:9，且<strong>未提供资产时高度塌缩为 0</strong>；
+        原型把它压成一条窄带（8:1）来演示 <code>data-slot</code> / <code>data-state</code> 占位契约，
+        避免占位块把叙事推离首屏。16:9 形态见「世界」面板的地点位。
+      </p>
+    </section>
+
+    <section class="proto-msg" id="protoMsg" role="status" aria-live="polite"></section>
+
+    <!-- 进行中：状态 / 预计完成时间 / 可中断性 / 阻塞等待原因 + 活动任务摘要 -->
+    <section class="running" aria-label="进行中与活动摘要">
+      <div class="sec-title">进行中 <span class="sec-hint">原型样例 · 未接后端</span></div>
+      <div class="run-row">
+        <span class="run-label">行动</span>
+        <div class="bar" role="img" aria-label="贴栏潜行：阶段 2/3"><i style="width:62%"></i></div>
+        <span class="run-meta">贴栏潜行 · 阶段 2/3 · 剩余约 40 秒</span>
+        <span class="tag live">可中断</span>
+        <span class="run-meta">中断会留下当前位置的痕迹</span>
+      </div>
+      <div class="run-row">
+        <span class="run-label">等待</span>
+        <span class="run-meta">阿柚撬巡夜亭门锁 · 预计 2 回合 · 等待原因：缺照明</span>
+      </div>
+      <div class="run-row">
+        <span class="run-label">摘要</span>
+        <span class="run-meta">任务：找到失踪的巡夜人（进行中）｜ 活动：雨停前离开桥面（约 2 回合）</span>
+      </div>
+    </section>
+
+    <!-- 叙事流：narrate / act / check / result（含代价、状态变化、后续建议）/ system -->
+    <div class="stream" id="stream" aria-live="polite">
+
+      <article class="msg msg-narrate">
+        <div class="msg-head">
+          <span class="scope scope-party"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>队伍</span>
+        </div>
+        <p>雨从子夜起就没有停过。桥面的水没过脚踝，每一步都带起一阵细碎的响。北岸本该亮着三盏灯，现在只剩最远的一盏，隔着雨幕缩成一点。</p>
+        <p>你贴着桥栏往北挪，手掌底下的石头一路都是湿的。到第三根锚桩时，你听见桥下的水声里夹了一段不属于水的东西——很轻，间隔均匀，像有人在数拍子。</p>
+        <div class="trace">
+          <div class="trace-head">痕迹</div>
+          <p>锚桩背面有三道新的刻痕，间距和那串节奏一样。</p>
+        </div>
+      </article>
+
+      <article class="msg msg-act">
+        <p>我压低身子，先摸到锚桩背面，再听一次那个节奏。</p>
+      </article>
+
+      <p class="msg msg-check">洞察 INS vs DF 14 · 无掷骰明细</p>
+
+      <article class="msg msg-result">
+        <div class="result-head">
+          <span class="tier tier-out tier-narrow">险成</span>
+          <span class="result-line">附一个代价</span>
+          <span class="result-line mono">action: listen-anchor · 剩余机会 2 / 上限 3</span>
+        </div>
+        <div class="block block-cost">
+          <div class="block-title">代价</div>
+          <div class="kv">
+            <span>活力 <b class="delta-down">−2</b></span>
+            <span>负担 <b class="delta-up">+1</b></span>
+          </div>
+        </div>
+        <div class="block block-state">
+          <div class="block-title">状态变化</div>
+          <div class="kv mono">
+            <span>活力 12 → 10</span>
+            <span>韧性 4 → 3</span>
+            <span>新增状态：湿透（1 层）</span>
+          </div>
+        </div>
+        <div class="block block-next">
+          <div class="block-title">后续建议</div>
+          <div class="kv">
+            <span>沿桥栏继续北行（短程，约 6 分钟）</span>
+            <span>先退回巡夜亭避雨（可中断）</span>
+          </div>
+        </div>
+        <p class="note">建议来自服务端（导引者 / 规则），前端不自造；行动区的按钮是同一批建议的结构化入口。</p>
+      </article>
+
+      <p class="msg msg-system">
+        <span class="scope scope-public"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg>公开</span>
+        北岸渡口今夜停摆：最后两班渡船取消。
+      </p>
+
+      <article class="msg msg-narrate">
+        <div class="msg-head">
+          <span class="scope scope-private"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>私人</span>
+        </div>
+        <p>只有你知道：那三道刻痕的间距，和昨晚巡夜亭墙上刻的一样。</p>
+      </article>
+
+    </div>
+
+    <!-- 行动区：自然语言是主入口，这里是结构化快捷入口（不是唯一选择） -->
+    <section class="act-zone" aria-label="当前场景行动">
+      <div class="sec-title">你可以 <span class="sec-hint">快捷键 1–3（原型样例）</span></div>
+      <div class="btn-grid">
+        <button class="btn" type="button" data-proto-action="1" aria-keyshortcuts="1"><span class="act-key">1</span><span class="btn-text">贴栏继续北行</span> <span class="chip">FIN</span></button>
+        <button class="btn" type="button" data-proto-action="2" aria-keyshortcuts="2"><span class="act-key">2</span><span class="btn-text">退回巡夜亭</span> <span class="chip">INS</span></button>
+        <button class="btn" type="button" data-proto-action="3" aria-keyshortcuts="3"><span class="act-key">3</span><span class="btn-text">用绳子探水深</span> <span class="chip">MGT</span></button>
+      </div>
+      <div class="sec-title">前往 <span class="sec-hint">档位与名义分钟照抄服务端口径</span></div>
+      <div class="btn-grid">
+        <button class="btn" type="button" data-proto-exit="北岸渡口" aria-keyshortcuts="4"><span class="act-key">4</span><span class="btn-text">北岸渡口</span> <span class="chip">短程 · 6 分钟</span></button>
+        <button class="btn" type="button" data-proto-exit="旧闸口" aria-keyshortcuts="5"><span class="act-key">5</span><span class="btn-text">旧闸口</span> <span class="chip">中程 · 25 分钟</span> <span class="tag">不稳</span></button>
+        <button class="btn" type="button" data-proto-exit="桥头巡夜亭" aria-keyshortcuts="6"><span class="act-key">6</span><span class="btn-text">桥头巡夜亭</span> <span class="chip">短程 · 3 分钟</span></button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 工具条：固定输入区（自然语言为主入口）+ 三个 L2 面板入口 -->
+  <footer class="dock">
+    <div class="input-row">
+      <label class="sr-only" for="actInput">描述你要做的事，或直接说一句话</label>
+      <textarea id="actInput" rows="1" placeholder="描述你要做的事，或直接说一句话……"></textarea>
+      <button class="btn btn-primary" id="sendBtn" type="button" disabled>说 / 做</button>
+    </div>
+    <p class="dock-meta">
+      <span>原型样例 · 未接后端（不会真的提交）</span>
+      <span>Enter 发送 / Shift+Enter 换行 · <span class="counter" id="counter">0</span>/2000</span>
+    </p>
+    <div class="dock-tabs">
+      <button class="btn" type="button" data-sheet="party" aria-haspopup="dialog"><svg class="i i-sm" aria-hidden="true"><use href="#i-users"/></svg>队伍</button>
+      <button class="btn" type="button" data-sheet="world" aria-haspopup="dialog"><svg class="i i-sm" aria-hidden="true"><use href="#i-globe"/></svg>世界</button>
+      <button class="btn" type="button" data-sheet="log" aria-haspopup="dialog"><svg class="i i-sm" aria-hidden="true"><use href="#i-scroll"/></svg>记录</button>
+    </div>
+  </footer>
+
+</div>
+
+<!-- ═══════════ L2 辅助层（无 JS 时由 <noscript> 就地展开）═══════════ -->
+<div class="scrim" id="scrim" hidden></div>
+
+<section class="sheet" id="sheet-party" role="dialog" aria-modal="true" aria-labelledby="sheet-party-title" hidden>
+  <header class="sheet-head">
+    <h2 id="sheet-party-title">队伍</h2>
+    <button class="ic" type="button" data-close aria-label="关闭队伍面板"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="sheet-body">
+    <p class="note">
+      六维只写 PRISM 名（缩写见 static/js/core.js 的 ATTR_LABEL）：
+      MGT 力道 · FIN 灵巧 · VIG 体魄 · INS 洞察 · MND 心智 · PRE 气场。
+      活力 / 韧性 / 应力来自规则层快照；本面板是<strong>原型样例</strong>，未接 /api/session。
+    </p>
+
+    <section class="unit" aria-label="沈青（出场）">
+      <div class="unit-head">
+        <figure class="ph unit-ph" data-slot="portrait/shen-qing" data-state="empty">
+          <span class="ph-mark" aria-hidden="true">肖</span>
+        </figure>
+        <span class="unit-name">沈青</span>
+        <span class="tag live">出场</span>
+        <span class="cond"><span class="tag">湿透</span></span>
+      </div>
+      <div class="stats">
+        <span>活力 10/14</span><span>韧性 3/5</span><span>应力 1</span>
+      </div>
+      <dl class="attrs">
+        <div><dt>MGT</dt><dd>12</dd></div>
+        <div><dt>FIN</dt><dd>14</dd></div>
+        <div><dt>VIG</dt><dd>11</dd></div>
+        <div><dt>INS</dt><dd>15</dd></div>
+        <div><dt>MND</dt><dd>12</dd></div>
+        <div><dt>PRE</dt><dd>10</dd></div>
+      </dl>
+    </section>
+
+    <section class="unit" aria-label="阿柚">
+      <div class="unit-head">
+        <figure class="ph unit-ph" data-slot="portrait/a-you" data-state="empty">
+          <span class="ph-mark" aria-hidden="true">肖</span>
+        </figure>
+        <span class="unit-name">阿柚</span>
+        <span class="cond"><span class="tag">湿透</span></span>
+      </div>
+      <div class="stats"><span>活力 9/12</span><span>韧性 3/4</span><span>应力 2</span></div>
+      <dl class="attrs">
+        <div><dt>MGT</dt><dd>9</dd></div>
+        <div><dt>FIN</dt><dd>13</dd></div>
+        <div><dt>VIG</dt><dd>10</dd></div>
+        <div><dt>INS</dt><dd>14</dd></div>
+        <div><dt>MND</dt><dd>13</dd></div>
+        <div><dt>PRE</dt><dd>12</dd></div>
+      </dl>
+    </section>
+
+    <section class="unit" data-downed="true" aria-label="老钟（濒危）">
+      <div class="unit-head">
+        <figure class="ph unit-ph" data-slot="portrait/lao-zhong" data-state="empty">
+          <span class="ph-mark" aria-hidden="true">肖</span>
+        </figure>
+        <span class="unit-name">老钟</span>
+        <span class="tag" style="border-color:var(--danger);color:var(--danger)">濒危</span>
+        <span class="cond"><span class="tag">湿透</span><span class="tag">失血</span></span>
+      </div>
+      <div class="stats"><span>活力 0/16</span><span>韧性 0/4</span><span>应力 4</span></div>
+      <dl class="attrs">
+        <div><dt>MGT</dt><dd>15</dd></div>
+        <div><dt>FIN</dt><dd>8</dd></div>
+        <div><dt>VIG</dt><dd>16</dd></div>
+        <div><dt>INS</dt><dd>9</dd></div>
+        <div><dt>MND</dt><dd>10</dd></div>
+        <div><dt>PRE</dt><dd>11</dd></div>
+      </dl>
+    </section>
+
+    <section class="unit" aria-label="白露">
+      <div class="unit-head">
+        <figure class="ph unit-ph" data-slot="portrait/bai-lu" data-state="empty">
+          <span class="ph-mark" aria-hidden="true">肖</span>
+        </figure>
+        <span class="unit-name">白露</span>
+      </div>
+      <div class="stats"><span>活力 11/13</span><span>韧性 5/5</span><span>应力 0</span></div>
+      <dl class="attrs">
+        <div><dt>MGT</dt><dd>10</dd></div>
+        <div><dt>FIN</dt><dd>12</dd></div>
+        <div><dt>VIG</dt><dd>12</dd></div>
+        <div><dt>INS</dt><dd>15</dd></div>
+        <div><dt>MND</dt><dd>14</dd></div>
+        <div><dt>PRE</dt><dd>13</dd></div>
+      </dl>
+    </section>
+
+    <section class="unit" aria-label="辛夷">
+      <div class="unit-head">
+        <figure class="ph unit-ph" data-slot="portrait/xin-yi" data-state="empty">
+          <span class="ph-mark" aria-hidden="true">肖</span>
+        </figure>
+        <span class="unit-name">辛夷</span>
+        <span class="cond"><span class="tag">轻伤</span></span>
+      </div>
+      <div class="stats"><span>活力 8/11</span><span>韧性 2/3</span><span>应力 3</span></div>
+      <dl class="attrs">
+        <div><dt>MGT</dt><dd>8</dd></div>
+        <div><dt>FIN</dt><dd>15</dd></div>
+        <div><dt>VIG</dt><dd>9</dd></div>
+        <div><dt>INS</dt><dd>13</dd></div>
+        <div><dt>MND</dt><dd>14</dd></div>
+        <div><dt>PRE</dt><dd>11</dd></div>
+      </dl>
+    </section>
+
+    <section class="unit" aria-label="陆迟">
+      <div class="unit-head">
+        <figure class="ph unit-ph" data-slot="portrait/lu-chi" data-state="empty">
+          <span class="ph-mark" aria-hidden="true">肖</span>
+        </figure>
+        <span class="unit-name">陆迟</span>
+        <span class="cond"><span class="tag">疲劳</span></span>
+      </div>
+      <div class="stats"><span>活力 6/10</span><span>韧性 1/3</span><span>应力 5</span></div>
+      <dl class="attrs">
+        <div><dt>MGT</dt><dd>13</dd></div>
+        <div><dt>FIN</dt><dd>11</dd></div>
+        <div><dt>VIG</dt><dd>10</dd></div>
+        <div><dt>INS</dt><dd>11</dd></div>
+        <div><dt>MND</dt><dd>12</dd></div>
+        <div><dt>PRE</dt><dd>15</dd></div>
+      </dl>
+    </section>
+  </div>
+  <p class="sheet-note">原型样例 · 未接 /api/session 的 party[]；濒危标记用 --danger + 文字「濒危」，颜色不是唯一线索。</p>
+</section>
+
+<section class="sheet" id="sheet-world" role="dialog" aria-modal="true" aria-labelledby="sheet-world-title" hidden>
+  <header class="sheet-head">
+    <h2 id="sheet-world-title">世界</h2>
+    <button class="ic" type="button" data-close aria-label="关闭世界面板"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="sheet-body">
+    <section aria-label="当前位置">
+      <div class="sec-title">当前位置</div>
+      <p class="place-name">雾桥 · 北岸锚桩</p>
+      <p class="place-meta">place_id: bridge-north-anchor · kind: 桥面 · world: sample-world</p>
+      <figure class="ph" data-slot="place/sample-world/bridge-north-anchor" data-state="empty">
+        <span class="ph-mark" aria-hidden="true">地</span>
+        <span class="ph-id">place/sample-world/bridge-north-anchor · 占位（16:9）</span>
+        <figcaption class="sr-only">地点占位符：资产位 place/sample-world/bridge-north-anchor 尚未提供，显示 16:9 几何占位。</figcaption>
+      </figure>
+    </section>
+
+    <section aria-label="出口">
+      <div class="sec-title">出口 <span class="sec-hint">显示口径与服务端一致（档位 + 名义分钟 + 不稳）</span></div>
+      <ul class="exit-list">
+        <li><span>北岸渡口</span><span class="chip">短程 · 6 分钟</span></li>
+        <li><span>旧闸口</span><span class="chip">中程 · 25 分钟</span><span class="tag">不稳</span></li>
+        <li><span>桥头巡夜亭</span><span class="chip">短程 · 3 分钟</span></li>
+      </ul>
+      <details class="raw">
+        <summary>服务端原文（GET /api/atlas/exits 的 text 字段口径）</summary>
+        <p class="raw-text">这里向北是北岸渡口（短程，名义 6 分钟）。西北是旧闸口（中程，名义 25 分钟，不稳）。返回桥头巡夜亭（短程，名义 3 分钟）。</p>
+      </details>
+    </section>
+
+    <section aria-label="世界时钟与世界轨">
+      <div class="sec-title">世界时间 / 世界轨 <span class="sec-hint">原型样例</span></div>
+      <p class="run-meta mono">CHRON：第 12 日 22:41（夜 · 名义时段 360 分钟/段）</p>
+      <div class="track">
+        <span>世界轨（示例槽）</span>
+        <div class="bar" role="img" aria-label="世界轨示例槽：名义进度"><i style="width:40%"></i></div>
+        <span class="mono">3 / 8</span>
+      </div>
+      <p class="note">
+        世界专属指标（如世界模组 <code>world_rules.tracks</code> 的烬值 / 阈丝度 / 同步率，
+        以及未来世界才有的航行时间、通信延迟、生命支持）<strong>只在世界提供时出现</strong>；
+        主题层只负责样式，不凭空生成。这里是一个<strong>明确标注的样例槽</strong>，未接后端。
+      </p>
+    </section>
+  </div>
+  <p class="sheet-note">原型样例 · 未接 /api/atlas/exits 与 CHRON 接口。</p>
+</section>
+
+<section class="sheet" id="sheet-log" role="dialog" aria-modal="true" aria-labelledby="sheet-log-title" hidden>
+  <header class="sheet-head">
+    <h2 id="sheet-log-title">记录</h2>
+    <button class="ic" type="button" data-close aria-label="关闭记录面板"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </header>
+  <div class="sheet-body">
+    <p class="note">按 seq 递增；kind 归类与可见范围照抄服务端口径（原型样例）。</p>
+    <div class="log-list">
+      <article class="log-row" data-kind="narrate">
+        <div class="log-head"><span class="mono">seq 12</span><span class="mono">narrate</span><span class="scope scope-party"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>队伍</span></div>
+        <p class="log-text">雨从子夜起就没有停过。桥面的水没过脚踝……</p>
+      </article>
+      <article class="log-row" data-kind="act">
+        <div class="log-head"><span class="mono">seq 13</span><span class="mono">act</span><span class="scope scope-private"><svg class="i" aria-hidden="true"><use href="#i-lock"/></svg>私人</span></div>
+        <p class="log-text">我压低身子，先摸到锚桩背面，再听一次那个节奏。</p>
+      </article>
+      <article class="log-row" data-kind="check">
+        <div class="log-head"><span class="mono">seq 14</span><span class="mono">check</span><span class="scope scope-party"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>队伍</span></div>
+        <p class="log-text">洞察 INS vs DF 14 · 无掷骰明细</p>
+      </article>
+      <article class="log-row" data-kind="result">
+        <div class="log-head"><span class="mono">seq 15</span><span class="mono">result</span><span class="scope scope-party"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg>队伍</span></div>
+        <p class="log-text">险成 · 附一个代价（活力 −2、负担 +1）</p>
+      </article>
+      <article class="log-row" data-kind="atlas">
+        <div class="log-head"><span class="mono">seq 16</span><span class="mono">atlas</span><span class="scope scope-public"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg>公开</span></div>
+        <p class="log-text">北岸渡口今夜停摆：最后两班渡船取消。</p>
+      </article>
+    </div>
+  </div>
+  <p class="sheet-note">原型样例 · 未接 GET /api/log?since=…。</p>
+</section>
+
+<!-- 无 JavaScript：把面板就地展开、隐藏只对 JS 有意义的控件，正文保持可读 -->
+<noscript>
+  <style>
+    .sheet {
+      position:static; inset:auto; transform:none; width:auto; max-width:860px;
+      max-height:none; margin:var(--sp-4) auto; display:block !important;
+      background:var(--bg-0); border:1px solid var(--line); border-radius:var(--r-lg);
+    }
+    .sheet[hidden] { display:block !important; }
+    .sheet-body { overflow:visible; }
+    .scrim { display:none !important; }
+    .pchrome .seg { display:none !important; }
+    .proto-noscript-hint { display:block; }
+  </style>
+</noscript>
+<p class="note proto-noscript-hint">
+  没有 JavaScript：正文与三个面板（队伍 / 世界 / 记录）全部可读；主题固定为「现代 · 跟随系统」，
+  切主题与浮层交互属渐进增强，需要 JS。输入区的发送按钮在无 JS 时保持禁用，避免「点了没反应」。
+</p>
+
+<script>
+/* 原型脚本（渐进增强）：
+   1. 评审工具条：世界主题 / 外观切换 —— 只改 <html> 上的 data-*；
+   2. L2 浮层：Esc 关闭、焦点陷阱、关闭后焦点归还触发按钮；
+   3. 原型提示：所有「本该调接口」的动作只显示一条「未接后端」提示，不伪造结果。 */
+(function () {
+  'use strict';
+
+  var root = document.documentElement;
+  var protoMsg = document.getElementById('protoMsg');
+  var protoTimer = 0;
+
+  function say(text) {
+    if (!protoMsg) { return; }
+    protoMsg.textContent = text;
+    window.clearTimeout(protoTimer);
+    protoTimer = window.setTimeout(function () { protoMsg.textContent = ''; }, 4000);
+  }
+
+  /* ── 1. 评审工具条 ───────────────────────────────────────── */
+  function bindGroup(selector, attr, target) {
+    var buttons = Array.prototype.slice.call(document.querySelectorAll(selector));
+    buttons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        root.setAttribute(target, btn.getAttribute(attr));
+        buttons.forEach(function (other) {
+          other.setAttribute('aria-pressed', String(other === btn));
+        });
+      });
+    });
+  }
+  bindGroup('[data-world-set]', 'data-world-set', 'data-world');
+  bindGroup('[data-appearance-set]', 'data-appearance-set', 'data-appearance');
+
+  /* ── 2. L2 浮层：打开 / 关闭 / 焦点陷阱 / 焦点归还 ────────── */
+  var scrim = document.getElementById('scrim');
+  var openId = null;
+  var lastTrigger = null;
+
+  function focusables(sheet) {
+    return Array.prototype.slice.call(
+      sheet.querySelectorAll('button, [href], input, textarea, select, summary, [tabindex]:not([tabindex="-1"])')
+    ).filter(function (el) {
+      return !el.disabled && el.getClientRects().length > 0;
+    });
+  }
+
+  function openSheet(id, trigger) {
+    var sheet = document.getElementById('sheet-' + id);
+    if (!sheet) { return; }
+    lastTrigger = trigger || document.activeElement;
+    openId = id;
+    sheet.hidden = false;
+    if (scrim) { scrim.hidden = false; }
+    var first = focusables(sheet)[0];
+    if (first) { first.focus(); }
+  }
+
+  function closeSheet() {
+    if (!openId) { return; }
+    var sheet = document.getElementById('sheet-' + openId);
+    if (sheet) { sheet.hidden = true; }
+    if (scrim) { scrim.hidden = true; }
+    openId = null;
+    if (lastTrigger && typeof lastTrigger.focus === 'function') { lastTrigger.focus(); }
+  }
+
+  document.querySelectorAll('[data-sheet]').forEach(function (btn) {
+    btn.addEventListener('click', function () { openSheet(btn.getAttribute('data-sheet'), btn); });
+  });
+  document.querySelectorAll('[data-close]').forEach(function (btn) {
+    btn.addEventListener('click', closeSheet);
+  });
+  if (scrim) { scrim.addEventListener('click', closeSheet); }
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') { closeSheet(); return; }
+    if (openId && event.key === 'Tab') {
+      var sheet = document.getElementById('sheet-' + openId);
+      var list = sheet ? focusables(sheet) : [];
+      if (!list.length) { return; }
+      var first = list[0];
+      var last = list[list.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+      return;
+    }
+    /* 1–6 选行动 / 出口：输入框里不劫持（与产品同口径） */
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'TEXTAREA' || tag === 'INPUT') { return; }
+    if (openId) { return; }
+    var index = ['1', '2', '3', '4', '5', '6'].indexOf(event.key);
+    if (index < 0) { return; }
+    var target = document.querySelector('[data-proto-action="' + event.key + '"]') ||
+                 document.querySelectorAll('[data-proto-exit]')[index - 3];
+    if (target) { event.preventDefault(); target.focus(); target.click(); }
+  });
+
+  /* ── 3. 原型提示：动作只提示「未接后端」─────────────────── */
+  document.querySelectorAll('[data-proto-action], [data-proto-exit], [data-proto]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var label = btn.textContent.replace(/\s+/g, ' ').trim();
+      say('原型样例：' + label + '（未接生产 API，这里不会真的提交。）');
+    });
+  });
+
+  var input = document.getElementById('actInput');
+  var send = document.getElementById('sendBtn');
+  var counter = document.getElementById('counter');
+  var LIMIT = 2000;
+
+  function syncInput() {
+    if (!input) { return; }
+    var len = input.value.length;
+    if (counter) {
+      counter.textContent = String(len);
+      counter.classList.toggle('warn', len > LIMIT);
+    }
+    if (send) { send.disabled = len > LIMIT; }
+  }
+
+  if (input) {
+    input.addEventListener('input', syncInput);
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        if (send && !send.disabled) { send.click(); }
+      }
+    });
+  }
+  if (send) {
+    send.disabled = false;
+    send.addEventListener('click', function () {
+      say('原型样例：输入已收到，但本原型不接 /api/guide/turn（不会伪造判定或叙事）。');
+    });
+  }
+  syncInput();
+})();
+</script>
+
+</body>
+</html>
