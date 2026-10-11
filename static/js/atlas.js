@@ -82,20 +82,21 @@ function renderExits() {
 function renderPlaceholderExits() {
   var exits = (ST && ST.exits) || [];
   setExitsBusy(false);
-  $('#exitList').innerHTML = exits.length
-    ? '<div class="exit-list">' + exits.map(function (x) {
-        return '<button class="btn act-btn" data-exit="' + esc(x.via || x.id) + '" disabled>' +
-          '<span class="act-label">' + esc(x.label || x.name || '') + '</span>' +
-          '</button>';
-      }).join('') + '</div>' +
-      '<div class="exit-empty">演示出口：接入会话后将由服务端给出「前往」列表。</div>'
-    : '<div class="exit-empty">演示态：还没有会话，出口列表为空。</div>';
+  if (!exits.length) { setExitsVisible(false); return; }
+  setExitsVisible(true);
+  $('#exitList').innerHTML = '<div class="exit-list">' + exits.map(function (x) {
+    return '<button class="btn act-btn" data-exit="' + esc(x.via || x.id) + '" disabled>' +
+      '<span class="act-label">' + esc(x.label || x.name || '') + '</span>' +
+      '</button>';
+  }).join('') + '</div>' +
+    '<div class="exit-empty">演示出口：接入会话后将由服务端给出「前往」列表。</div>';
 }
 
 function renderServerExits() {
   var exits = ATLAS.exits || [];
 
   if (ATLAS.loading) {
+    setExitsVisible(true);           // 首次拉取：整节可见 + 加载态
     setExitsBusy(true);
     $('#exitList').innerHTML = '<div class="exit-note" role="status">正在读取出口…</div>';
     return;
@@ -103,12 +104,15 @@ function renderServerExits() {
 
   setExitsBusy(ATLAS.moveInFlight);
 
-  // 空态：照抄服务端原文（§2.6 / Issue 验收），不自己编话术。
+  // 空态（UI-DESIGN.md §2.6）：「前往」小节**整体隐藏**——含小节标题与列表区，
+  // 不是留一行空标题。主画面**不渲染**服务端原文，也不编兜底句；原文
+  // （`这里没有已知出口。`）的落点是世界面板（U4 / Issue #201），不属本片。
   if (!exits.length) {
-    $('#exitList').innerHTML = '<div class="exit-empty">' +
-      esc(ATLAS.serverText || '这里没有已知出口。') + '</div>';
+    setExitsVisible(false);
     return;
   }
+
+  setExitsVisible(true);
 
   // 用**数组下标**而非 via 定位出口：via 不唯一（同一地点可有多扇「门」
   // 通往不同目的地，实测 emberfall 起始地点有 3 条 via="门"）。点击回传的
@@ -135,6 +139,13 @@ function renderServerExits() {
 function setExitsBusy(busy) {
   var sec = $('#exitsSection');
   if (sec) sec.setAttribute('aria-busy', busy ? 'true' : 'false');
+}
+
+/* 「前往」整节的显隐（§2.6 空态）：没出口就整节收起，标题与列表区一起走。
+   用 hidden 而非清空 innerHTML——内容留着，等下一个地点有出口时直接复用。 */
+function setExitsVisible(visible) {
+  var sec = $('#exitsSection');
+  if (sec) sec.hidden = !visible;
 }
 
 /* ── 拉取出口列表（只读接口）─────────────────────────────
