@@ -13,7 +13,8 @@
 - **Master Agent**：接手只需一句 **「你是 Master Agent，接手 NotDND 项目继续工作。」**。
   先读 [`MASTER.md`](MASTER.md)（当前状态 / 路线图 / 全面检查清单），再读本文件，
   然后以 **GitHub 的 Issues / PRs** 为唯一事实来源继续。
-- **Execution Agent**：只领人指定的 Issue；从最新 `master` 开分支、尽早开 Draft PR，**不合并**。
+- **Execution Agent**：领取被派发的 Issue（**人指定**，或 **Master Agent 按 §3 授权自主调度**）；
+  从最新 `master` 开分支、尽早开 Draft PR，**不合并**。
 
 ## 1. 项目速览
 
@@ -64,22 +65,36 @@ lockfile 随同一 PR 更新。测试期依赖**从简、能不加就不加**；
 
 ## 3. 角色
 
-- **人**：提需求；指定哪个 Execution Agent 领哪条 Issue；对争议与需拍板的风险拍板。
-  日常合并按第 5 节运行约定**由 Master Agent 自主执行**，不再逐件请示。
+- **人**：提需求、给出目标与边界，并对争议与需拍板的风险拍板。人**可以**指定 Agent、
+  指定 Master 运行模式或缩小授权范围，但**不是**所有工作流的强制前置——未指定时，
+  Master Agent 按本节授权自主调度。日常合并按第 5 节运行约定**由 Master Agent 自主执行**，不再逐件请示。
 - **Master Agent（把控方向，不做实现）**：① **把控开发方向**——把项目目标规划成
-  **可执行、可检查**的阶段；② **拆单派发**——把阶段分解成**可以被明确执行**的 Issue
+  **可执行、可检查**的阶段；② **拆单与调度**——把阶段分解成**可以被明确执行**的 Issue
   （目标 / 验收标准 / 可改路径 / 禁改路径 / 依赖 / 难度与能力标签），发布到 GitHub，
-  由**人**派给 Execution Agent；③ **审批 PR**——Execution Agent 交回后对照验收标准审查：
-  **合并**（已审通过且 CI 全绿的可直接合并并删除远端分支，不再逐件请示人），或
-  **写明原因退回**（四行建议，见第 6 节）；有未完成项 / 问题则写四行说明或**开 Issue 跟踪**。
-  **不做实现**：不编辑任何文件、不 commit / push、不开 PR、不改仓库保护规则——需要改动时，
-  一律回到「收成 Issue → 人派单 → Execution Agent 执行」。文档中「由 Master Agent 执行 /
-  落地 / 维护」等字样**不构成编辑授权**，一律解读为「推进到收单并跟踪」。
-- **Execution Agent（只做被要求的事）**：只领**人指定**的 Issue，**严格按项目要求与 Issue
-  中的指示**完成对应任务，**绝不做任何未要求的任务或改动**；只改 Issue 允许的路径
-  （确需超范围 → 先停下报告、申请追加范围，**不要默默改**）。从最新 `master` 开分支，
-  尽快开 Draft PR，做完按第 5.2 节「完成交接清单」交出可审查的 PR。**一律不合并**——**包括自主推进期**；
-  合并**只能由 Master Agent 执行**。
+  并**在授权范围内自主调度**：依用户目标与当前阶段确定依赖与文件占用、**为每项 Issue 自主选择 /
+  启动 Execution Subagent**、收集其状态、决定下一项可执行任务；③ **审批 PR**——Execution Agent
+  交回后对照验收标准审查：**合并**（已审通过且 CI 全绿的可直接合并并删除远端分支，不再逐件请示人），
+  或**写明原因退回**（四行建议，见第 6 节）；有未完成项 / 问题则写四行说明或**开 Issue 跟踪**。
+  **人仍可指定 Agent、指定运行模式或缩小授权范围**；未指定时按本节自主调度。
+  **不做实现**：不编辑任何**产品 / 文档文件**、不 commit / push、不开 PR、不改仓库保护规则，
+  也**不替 Execution 实现任务**——所有实际修改一律由被调度的 **Execution Subagent** 完成。
+  文档中「由 Master Agent 执行 / 落地 / 维护」等字样**不构成编辑授权**，一律解读为
+  「推进到收单、调度执行并跟踪」。**调度与编排细则**（状态机、闸门、并发锁、降级）一律引用
+  [`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md)，本文件不复制状态机。
+- **独立验收（不可省）**：Master Agent **不得依据 Subagent 的「完成」声明直接合并**——必须
+  独立检查 diff、Issue 验收、允许路径、PR 基线与 head SHA、**当前 head 的 CI** 与风险（第 5.4 节）。
+- **Execution Agent / Execution Subagent（只做被要求的事）**：领取被派发的 Issue（**人指定**，
+  或 **Master Agent 按本节授权自主调度**），**严格按任务包与 Issue 中的指示**完成对应任务，
+  **绝不做任何未要求的任务或改动**；只改 Issue 允许的路径（确需超范围 → 先停下报告、申请追加范围，
+  **不要默默改**）。从最新 `master` 开分支，尽快开 Draft PR，做完按第 5.2 节「完成交接清单」
+  交出可审查的 PR。**一律不合并**——**包括自主推进期**；合并**只能由 Master Agent 执行**。
+  超范围、需产品决策或**无法验证**时**报告阻塞**（`BLOCKED` / `NEEDS_HUMAN_DECISION`，见
+  [`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md)），**不得静默搁置或降低标准**。
+- **运行时能力约束**：仅当运行平台**实际提供** Subagent 启动、隔离上下文与等待 / 收集结果能力时，
+  才可运行**单会话自动编排**；不支持时**改用多会话交接**，**不得虚构调用或结果**
+  （能力探测与安全降级见 [`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md) §5）。
+- **人类介入边界**：产品方向 / 规则语义不清、破坏性操作、安全疑虑、凭据处理、验收冲突或重试耗尽时，
+  Master Agent **停下请人拍板**（`NEEDS_HUMAN_DECISION`）；普通任务**不逐件请示**。
 - **不得越权**：三个角色只做本文件（及对应手册）授权的动作；**越出角色边界的动作，除非用户明确授权，否则不做**。
 
 ## 4. 交接规则（硬性）
@@ -88,8 +103,10 @@ lockfile 随同一 PR 更新。测试期依赖**从简、能不加就不加**；
 - **PR ↔ Issue 强制显式对应**（2026-10-11 人定，Issue #190）：提及 PR 编号时**紧跟**其关联 Issue——
   正向 `PR #176（Issue #165）`、反向 `Issue #165（PR #176）`；一个 PR 关联多个 Issue 时**列全**；
   确无关联须写明「无关联 Issue」及原因，**不得编造**。适用于 PR 标题、审查评论、状态汇报、待办清单与复盘。
-- 同一条 Issue **只派一个** Execution Agent。无关任务可以并行，各用一条 Issue、一个分支。
+- 同一条 Issue **只调度一个** Execution Subagent（执行实例）。无关任务可以并行，各用一条 Issue、一个分支。
 - 同一**文件**已有开放 PR 时**不并行**；不同文件（**含同目录**）可并行，派活前确认不冲突。
+  资源锁与活动任务状态一律引用 [`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md) §3，
+  本文件不复制锁表或状态机。
 - `master` 为**受保护分支**：**禁止直接 push，禁止 force push**，必须经 PR，CI 通过后合并。
   > 分支保护已开启，见第 10 节「已确认」：`master` 须经 PR 合并且 CI 四道门通过。
   > 具体生效的规则组合以 GitHub 设置页为准，本文件不假定单项规则的开闭。
@@ -100,10 +117,11 @@ lockfile 随同一 PR 更新。测试期依赖**从简、能不加就不加**；
 2. Master Agent 收成一条 **Issue**：一个 Issue 只做一件事，写清目标、验收标准、
    可改路径、禁改路径、依赖的 PR；并打上 **难度标签**（`难度：低` / `难度：中` / `难度：高`，三选一）
    与 **主要能力标签**（`能力：编程` / `能力：逻辑` / `能力：文学` / `能力：数据` /
-   `能力：测试` / `能力：前端` / `能力：设计` / `能力：文档`，1–3 个），供人按能力指派 Execution Agent。
-   **涉及 UI 设计（界面 / 交互 / 视觉）的 Issue 必须带 `能力：设计` 标签，并在正文首行注明「含 UI 设计」**——供人指派给有专属设计技能的 Agent。
+   `能力：测试` / `能力：前端` / `能力：设计` / `能力：文档`，1–3 个），供人（或 Master Agent 依 §3 授权）按能力指派 Execution Agent。
+   **涉及 UI 设计（界面 / 交互 / 视觉）的 Issue 必须带 `能力：设计` 标签，并在正文首行注明「含 UI 设计」**——供人（或 Master Agent）指派给有专属设计技能的 Agent。
    Master Agent 不实现这条 Issue。Master Agent **能并行就并行**——不与在办 PR 撞同一文件即可同时开单，节约总工时。
-3. 人把 Issue 编号交给某个 Execution Agent，并要求它先读本文件。
+3. 由**人指定**、或由 **Master Agent 依 §3 授权自主调度**一个 Execution Subagent 承接该 Issue；
+   执行者先读本文件与 [`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md)。
 4. Execution Agent 从最新 `master` 开分支、推送、开 **Draft PR**，只改允许的路径；
    **PR 标题必须显式标出关联 Issue**（格式见 §7，如 `feat(chron): 世界时钟纯函数（Issue #165）`），
    正文保留 GitHub 关联语句（`Closes #165`）；
@@ -157,7 +175,8 @@ PR 转 Ready 后、给出四行建议（第 6 节）前，**逐项**核对：
 - 测试证据是否**真实**（命令与结果可复现，而非「已测试」式空话或历史结果）；
 - 是否有**未决设计决策**需人拍板。
 
-**CI 绿灯本身不等于 Ready，也不等于可合并。**
+**不得依据 Subagent 的「完成」声明直接合并**——必须独立核对上列各项（diff / Issue 验收 / 允许路径 /
+基线与 head SHA / 当前 head 的 CI / 风险）。**CI 绿灯本身不等于 Ready，也不等于可合并。**
 
 ### 5.5 Ready ≠ 自动合并
 
@@ -284,6 +303,12 @@ PR 转 Ready 后、给出四行建议（第 6 节）前，**逐项**核对：
   正文保留 `Closes #N`；评论 / 状态汇报 / 待办清单 / 复盘中提及 PR 一律写 `PR #N（Issue #M）`
   （反向 `Issue #M（PR #N）`）；一个 PR 关联多个 Issue 时**列全**；确无关联须写明「无关联 Issue」及原因，
   **不得编造**。细则见 §4、§6、§7；历史出处索引（§10 与 `MASTER.md` §2/§4/§5 既有 PR 记录）保留原编号、不作为格式示例。
+- **Master Agent 自主调度 Execution Subagent**（本单 Issue #196）：在用户目标与阶段边界明确的前提下，
+  Master Agent 可依 §3 授权自主拆单、确定依赖与文件占用、**为每项 Issue 选择 / 启动 Execution Subagent**、
+  收集状态并决定下一项可执行任务；**人仍可指定 Agent、指定运行模式或缩小授权范围**。
+  实现边界不变（Master 不编辑 / 不 commit / 不 push / 不替 Execution 实现）、Execution **一律不合并**、
+  独立验收与 CI / 审查闸门**不降低**；编排细则（状态机、锁、降级）见 [`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md)。
+  运行时是否支持单会话自动编排由**平台实际能力**决定，不支持时降级为多会话交接，**不得虚构调用或结果**。
 
 **待确认**：
 
@@ -293,13 +318,14 @@ PR 转 Ready 后、给出四行建议（第 6 节）前，**逐项**核对：
 
 ## 给 Execution Agent 的开工步骤
 
-1. 读本文件（`AGENTS.md`）与你要领的 Issue。
+1. 读本文件（`AGENTS.md`）、[`AGENT-ORCHESTRATION.md`](AGENT-ORCHESTRATION.md) 与你要领的 Issue。
 2. `git fetch --prune`，从最新 `master` 开分支：`git worktree add .worktrees/<name> -b feat/<scope>-<short>`。
-   **开前先 `gh pr list --state open`**——若有人正在改你要动的文件，先停下并报告（别并行开工）、
+   **开前先 `gh pr list --state open`**——若有开放 PR 正在改你要动的文件，先停下并报告（别并行开工）、
    或按 Issue 写明的依赖顺序等其合并。
 3. 只改 Issue 允许的路径，不顺手重构。
 4. 尽快推送并开 **Draft PR**（模板见 `.github/pull_request_template.md`）。
 5. 逐条对照验收标准；未完成项写进 PR 的「没做什么」。
 6. 验证命令真跑一遍，把命令与结果写进 PR。
 7. 做完：**先 `git fetch && git rebase origin/master` 并重跑回归**（命令与结果更新进 PR），
-   确认 PR `MERGEABLE`，再按第 5.2 节「完成交接清单」逐项自查，把 PR 改为可审查、交人指定的 Master Agent 审查。
+   确认 PR `MERGEABLE`，再按第 5.2 节「完成交接清单」逐项自查，把 PR 改为可审查、交 Master Agent 审查
+   （人指定或依 §3 授权自主调度）。
