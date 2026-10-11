@@ -51,7 +51,7 @@ AI 任「**导引者**」，**纯文本运行 + 视觉占位框架**（D2：为�
 
 ---
 
-## 2. 当前状态快照（截至 2026-10-11）
+## 2. 当前状态快照（截至 2026-10-12）
 
 > ⚠️ 快照会过时——**以 GitHub 为准**。每次里程碑/阶段收口后更新本表（§6 第 4 项）。
 
@@ -61,13 +61,24 @@ AI 任「**导引者**」，**纯文本运行 + 视觉占位框架**（D2：为�
 - **数据层**：`python3 tests/validate_data.py` → **79 个文件**（`data/system/**` + `data/worlds/**`（三册）+ `data/random_tables/**` + `data/scenarios/**`（15 册）+ `data/atlas/lexicon.json` + schema/registry）。
 - **回归**：`bash tests/run_all.sh` → **14 个脚本**（`test_atlas_compile` / `test_atlas_gen` / `test_atlas_kernel` / `test_atlas_ledger_pins` / `test_chron` / `test_commit_email_gate` / `test_content_firewall` / `test_data` / `test_notdnd_web` / `test_prism_core` / `test_prism_guide` / `test_repo_layout` / `test_state` / `test_ui_smoke`）。
 - **里程碑**：**M0–M6 主体 ✅（已完成历史，见 §4）**；**M6a ✅（Issue #123 / PR #127）· M6b ✅（Issue #124 / PR #128）**——M6 收口。官方路线自 **M7** 起见 `GDD-BASELINE.md` §5。
-- **M7 起实现首片（已合并）**：**M7-1 状态层内核 ✅（Issue #163 / PR #214）· M8-A1 提案与结果契约 ✅（Issue #202 / PR #213）· M9-C1 CHRON 内核 ✅（Issue #165 / PR #176）· M10-S1 房间与成员骨架 ✅（Issue #166 / PR #188）**。
-- **M4 前端切片（并行轨）**：**U0 ✅（Issue #164 / PR #177）· U1 ✅（Issue #206 / PR #233）· U3 ✅（Issue #204 / PR #215）· U4 ✅（Issue #201 / PR #221）· B1 ✅（Issue #203 / PR #219）· B2 ✅（Issue #205 / PR #224）**；U2 / U5 / U6 尚未开单。
+- **M7 起实现切片（已合并）**：
+  **M7** 状态层——M7-1 内核 ✅（Issue #163 / PR #214）· M7-2 快照与重放 ✅（Issue #267 / PR #272）· M7-3 存档接线与旧档迁移 ✅（Issue #276 / PR #281）；
+  **M8** 行动管线——A1 提案 / 结果契约 ✅（Issue #202 / PR #213）· A2 NL→提案 ✅（Issue #268 / PR #271）· A3 管线编排与写接口 ✅（Issue #282 / PR #290）；
+  **M9** CHRON——C1 内核 ✅（Issue #165 / PR #176）· C2 生命周期状态机 ✅（Issue #269 / PR #270）· C3 调度器 ✅（Issue #277 / PR #280）· C4 事件屏障与时间压缩 ✅（Issue #283 / PR #289）· C5 持久化与恢复接线 ✅（Issue #292 / PR #297）；
+  **M10** 多人——S1 房间与成员骨架 ✅（Issue #166 / PR #188）。
+- **M4 前端切片（并行轨）**：U0 ✅（Issue #164 / PR #177）· U1 ✅（Issue #206 / PR #233）· U2 主循环接线 ✅（Issue #266 / PR #273）· U3 ✅（Issue #204 / PR #215）· U4 ✅（Issue #201 / PR #221）· U5 对白拍与语音 ✅（Issue #278 / PR #279）· U6 视觉占位框架 ✅（Issue #284 / PR #288）· A4 行动管线前端接线 ✅（Issue #291 / PR #296）· B1 ✅（Issue #203 / PR #219）· B2 ✅（Issue #205 / PR #224）——**M4 已开切片全部合并**。
+- **世界主题规范 ✅**（Issue #274 / PR #295）：`UI-WORLD-THEMES.md` + 可离线评审原型 `docs/prototypes/ui-world-themes.html`（奇幻 / 现代 / 未来三主题；`world_type` 契约见 §5）。
+- **本轮实现推进（wave 1–4，2026-10-12；快照基线 `master` = `b04fac3`）**：13 切片全部 **MERGED**——M4-U2 / U5 / U6、M7-2 / M7-3、M8-A2 / A3、M9-C2 / C3 / C4、M4-A4、世界主题规范、M9-C5（逐片 PR 见上方各条）；
+  wave 1–3（10 切片）收口报告见 **Issue #294**，wave 4 = M4-A4 / 世界主题规范 / M9-C5；快照基线复验：`run_all` 14/14、内容防火墙 0 命中、`validate_data` 79 文件。
+  同一窗口治理 / 编排改进亦已合并：写动作在途守卫（Issue #218 / PR #241）、自主派发口径（Issue #242 / PR #247）、运行度量基线（Issue #246 / PR #248）、活动任务登记（Issue #244 / PR #249）、合并与清理分离（Issue #245 / PR #250）、可控失败与三轮上限演练（Issue #243 / PR #255）、清理待办跨会话发现（Issue #257 / PR #260）。
 - **GDD 基线**（PR #135）：`GDD.html`（v1.1 原件）与 `GDD-BASELINE.md` 入库；Markdown 版 `GDD.md`（Issue #139 / PR #150）。
 - **角色分工**（Issue #141 / PR #142，2026-10-10 人定）：Master Agent 只把控方向 / 拆单派发 / 审批，**不做实现**（不编辑 / 不 commit / 不 push / 不开 PR）；Execution Agent 严格按 Issue 执行、**一律不合并**（细则见 `AGENTS.md` §3）。
 - **设计单（六份全部入库）**：M7-a `STATE-DESIGN.md`（#136 / PR #152）· M8-a `ACTION-DESIGN.md`（#137 / PR #149）· M9-a `CHRON-DESIGN.md`（#138 / PR #151）· M10-a `MULTIPLAYER-DESIGN.md`（#143 / PR #146）· M4 正式 UI `UI-DESIGN.md`（#133 / PR #147，**含 D2 视觉占位框架要求**）。
 - **已关单**：**#110**（要点节点 cites 自引专名，PR #148）；**#140**（2026-10-10 角色边界复盘产物，按人决定「不重做、不审阅」关闭）——其内容重开为 **#144**（D2/D3 治理口径同步）与 **#145**（即为本快照单）。
-- **在办 / 待办**：**以 GitHub 为准**（`gh issue list --state open` / `gh pr list --state open`）——本快照不再逐条维护开放 Issue / PR 列表，避免下次漂移；待人拍板与待办项登记见 §5（#218 / #222 / #236）。
+- **在办 / 待办**：**以 GitHub 为准**（`gh issue list --state open` / `gh pr list --state open`）——本快照不逐条维护开放清单，避免下次漂移。当前开放 **7 条**：
+  **#222**（待人拍板）· **#275**（人依赖阻塞）· **#285 / #286 / #287**（跟踪单）· **#293**（本快照单）· **#294**（阶段跟踪）；
+  **下一波候选**（依赖已满足，待派发）：**M7-4** 只读状态视图 · **M10-S2** 事件流与断线重连 · **M9-C6** 接 M8 排程钩子与网页层 · **M8-A5** 排程钩子接入 CHRON；
+  `notdnd_web.py` 独占队列**串行**（C5 → B5 / M7-4 / S2 / S3…，见 #294 §6）；待人拍板与阻塞项登记见 §5。
 
 ---
 
@@ -259,7 +270,7 @@ bash tests/content_firewall.sh
   字样**不构成编辑授权**（旧口径已作废）。
 - **工程骨架补全**（2026-10-10）：前端 `static/` 三视图骨架（PR #118）与测试基座
   （`tests/_cdp.py` / `cleanup_servers.sh` / UI 冒烟 / `tests/README.md`，PR #117）已落地；
-  `run_all` 现有 **12 个脚本**。
+  `run_all` 现有 **14 个脚本**。
 - **M6 文档骨架（归档约定）**：`README.md` = 跑起来 → 结构取舍 → 测试 → 已知边界（含
   「别暴露到公网」警告）；`HANDOVER.md` = 每节答「为什么 + 踩过的坑」；测试约定见 `tests/README.md`。
 - **阶段收口**（2026-10-10）：**M1.4 剧本 / M2（a–d）/ M3a / ATLAS I1–I6（全部）/ 导引者 G0–G7 已完成**
@@ -299,13 +310,41 @@ bash tests/content_firewall.sh
   状态机 / 合并闸门 G1–G6 / 能力探测 C1–C4 / 阶段出口 E1–E5 入库；提示词库（`prompts/` 四份）落地；
   `AGENTS.md` §3 授权 Master Agent 自主调度 Execution Subagent；本文件接入模式选择 / 阶段循环 / 阶段汇报，
   并定义端到端验收与阶段收口清单。
-- **待办 / 待人拍板**（2026-10-11 登记，**以 GitHub 为准**）：
-  - **#222**（M4 新局空态「可选的战役入口」：列表范围与绑定语义）——**待人拍板**（列表范围 / 绑定语义 /
-    数据载体三问，含 UI 设计），拍板后开工。
-  - **#218**（M4 跨片写动作单一在途守卫，`UI-DESIGN.md` §2.0）——待办；把「单一在途」从各片自守升级为
-    `core.js` 层跨片统一守卫（前置 U3 已合并）。
-  - **#236**（口径收尾 2 · 「时段」旧义残留）——待办；`docs/system/03` 其余 + `04` 复查 + `data` 镜像
-    （Issue #168 的收尾延续）。
+- **实现推进 wave 1–4 关键口径**（2026-10-12；13 切片全部合并，wave 1–3 收口报告 **Issue #294**）：
+  - **存档布局 `campaigns/<sid>`**（M7-3，Issue #276 / PR #281）：一局落成 `<存档目录>/campaigns/<sid>/snapshot.json`
+    （+ `snapshot.json.bak` / `events.ndjson` / `idempotency.json`）；老档（旧单文件 `<sid>.json`）**惰性迁移**——
+    只读加载**不改写磁盘**，**第一次保存**才迁成新档并留原文备份 `snapshot.json.pre-v0.bak`；HTTP 响应形状不变。
+  - **写接口 `/api/action/*`**（M8-A3，Issue #282 / PR #290）：四条路由——`GET /api/action/catalog` 与
+    `POST /api/action/{propose,confirm,commit}`；`propose →（R2+ 确认令牌 `cf_<32hex>`）→ commit`
+    （`Idempotency-Key` + `base_seq` 乐观并发）；`result` 先于叙事、无 AI 时显式行动照常走通；
+    同键重放回首次结果、不重复副作用；旧 `POST /api/guide/turn` 行为不变。
+  - **`advance_to` 停点语义**（M9-C4，Issue #283 / PR #289）：停在**最早语义屏障之前**（B1/B3/B4）——
+    那一分钟的内容不执行、留给玩家；无屏障则停在最早到期（B8 结算点）；同一分钟**屏障优先**；
+    **抵达 ≠ 跨越**（停点 > 目标时推进到目标）；B2/B5 落在到期分钟上只标注、到期照常触发；
+    被压缩的时段**不产生**「被跳过」的事件（`compression_log` 只记真实触发）。
+  - **CHRON 持久化**（M9-C5，Issue #292 / PR #297）：`blocks.chron` 随检查点落盘，`chron.restore(handle)`
+    重启后与重启前**逐字段全等**（含到期顺序）；同 `idempotency_key` 重投 no-op；老档迁移补空块。
+  - **占位清单 `/assets.json`**（M4-U6，Issue #284 / PR #288）：`static/assets.json`（当前 `{}`）经**同源**
+    `GET /assets.json`（静态回落，零外链）挂到 `data-slot` 占位符；加文件 + 登记一行即生效，不改组件、不重新构建。
+  - **导引者状态点 / 会话失败错误卡**（M4-U2，Issue #266 / PR #273，含修复轮 1）：顶栏状态点读
+    `GET /api/guide/status` → `{chat, tts, configured}`（灰 = 未配置 / accent = 仅文字 / accent-2 = 文字与语音 / danger = 失败）；
+    会话加载失败 → 主画面**就地错误卡** + 输入区 / 行动区禁用，**不再**落演示数据。
+  - **行动管线前端接线**（M4-A4，Issue #291 / PR #296）：行动按钮与输入框接 `/api/action/*`，确认以服务端
+    `needs_confirm` 为准；整句口令（`淡出` / `跳过这段`）仍走旧 `/api/guide/turn`（它们不是一条行动）。
+- **世界主题契约**（2026-10-12，Issue #274 / PR #295）：`UI-WORLD-THEMES.md` 入库——主题选择只认结构化字段
+  `world_type ∈ {fantasy, modern, future}`、**缺省 `modern`**（现值即中性基线，主题化零回归）；不得从世界名 /
+  叙事文本 / 模型输出推断，也不得让 AI 每回合切主题；语义色（`--danger` / `--success`）不进世界主题块；
+  实现拆分建议 **W0**（`world_type` 数据 / 接口契约，前置）→ **W1** 令牌层 → **W2** 接线 → **W3** 不变式测试 → **W4** 可选；
+  未决项（字段名与落点、三个模组归属、`--scope-*` 登记处等）见该文 §12，**待拍板**。
+- **待办 / 待人拍板 / 阻塞**（2026-10-12 登记，**以 GitHub 为准**）：
+  - **#222**（M4 新局空态「可选的战役入口」：列表范围 / 绑定语义 / 数据载体三问）——**待人拍板**（含 UI 设计），
+    拍板后开工。
+  - **#275**（README 精简与三种世界 UI 概念图入库）——**人依赖阻塞**：两张概念图在仓库与执行环境均不可得，
+    需人提供图片 / 可访问路径（或附件）后开工；恢复条件 = 图片可获取。
+  - **#285 / #286 / #287**（开放跟踪单）：B5 narrate 落流的 beats（U5 后继）· U2x `--dock-h` 双写入方根因 ·
+    CHRON-DESIGN 回填（C2/C3 实现补充）。
+  - **下一波候选**（依赖已满足，待派发）：M7-4 / M10-S2 / M9-C6 / M8-A5 等；`notdnd_web.py` 独占队列**串行**
+    排程（C5 → B5 / M7-4 / S2 / S3…，见 Issue #294 §6）。
 - **全面检查**：每 1–2 阶段一次（§6）。
 
 ---
