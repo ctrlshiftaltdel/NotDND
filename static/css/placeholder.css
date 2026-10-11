@@ -26,13 +26,14 @@
 .ph[data-state="failed"] > img { display: none; }
 
 /* ── 接入点 · 角色卡（队伍面板）──────────────────────────
-   `portrait/<实体 id>`：贴在单位卡标题行最前，56px 方形（1:1 由 base.css
-   的 `.ph` 默认比例给）。只在有肖像位时把标题行的剩余宽度让给名字，
-   没有肖像位的卡片布局不变（`~` 只命中跟着位的那一个名字）。 */
+   `portrait/<实体 id>`：贴在单位卡标题行最前，72px 方形（1:1 由 base.css
+   的 `.ph` 默认比例给；参考稿 refs/boards.html 的肖像位也是 72px，够放下
+   角落的位 id）。只在有肖像位时把标题行的剩余宽度让给名字，没有肖像位的
+   卡片布局不变（`~` 只命中跟着位的那一个名字）。 */
 .unit-head > .ph {
   flex: 0 0 auto;
   align-self: center;
-  width: 56px;
+  width: 72px;
   margin: 0 var(--sp-2) 0 0;
 }
 .unit-head > .ph ~ .unit-name { flex: 1 1 auto; }

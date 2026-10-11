@@ -73,11 +73,17 @@ function phCleanManifest(raw) {
   return out;
 }
 
-/* 路径口径：相对 static/（清单所在目录）解析，只接受同源；外链返回空串。 */
+/* 路径口径：相对 static/（清单所在目录）解析，只接受同源；外链返回空串。
+   `new URL` 的 base 必须是**绝对** URL，所以先把清单地址对页面地址绝对化
+   （否则相对路径全部抛错 → 整表被丢掉，静默变空清单）。 */
 function phSameOriginPath(v) {
   if (typeof v !== 'string' || !v.trim()) return '';
   var url;
-  try { url = new URL(v.trim(), PH_MANIFEST_URL); } catch (e) { return ''; }
+  try {
+    url = new URL(v.trim(), new URL(PH_MANIFEST_URL, location.href));
+  } catch (e) {
+    return '';
+  }
   if (url.origin !== location.origin) return '';
   return url.pathname + url.search;
 }
