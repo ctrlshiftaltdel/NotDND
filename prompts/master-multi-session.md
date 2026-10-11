@@ -44,6 +44,9 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
      `DISPATCHED` 尚无 PR 的任务只在登记里可见；**没有 PR ≠ 没有活动任务**。
    - `gh pr list --state open --json number,title,isDraft,headRefName,mergeable`
    - 对每个 PR 读状态与评论 → 重建其 §2 状态与**当前锁表**（开放 PR 触及的文件集合 **∪** 活动登记声明的锁定路径）。
+   - **未完成清理项**（`AGENT-ORCHESTRATION.md` §2.1.1 / §3.3）：`gh issue list --state all --label '编排：待清理'`
+     → 对其中每个 Issue（**含已关闭**）读登记评论的 `cleanup` 字段。原 Issue 合并后常已因 `Closes #N`
+     自动关闭，**必须用 `--state all`**，否则待清理项会漏掉。
 4. **输出开工确认**（见 §3）。
 5. 按 §4 推进：能派发就派发、遇到开放 PR 就走审查与合并闸门、阶段收束即按 §7 汇报。
 
@@ -98,6 +101,8 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
   取消 / 合并**各更新一次**登记并刷新最近更新时间；合并 / 终止收尾后写终态以**释放锁**。
   合并事件须同时写入 `cleanup` 状态（`AGENT-ORCHESTRATION.md` §2.1.1）：确认合并置 `cleanup_pending`，
   删分支成功 / 分支已不存在置 `cleanup_complete`，权限 / 保护规则或重试耗尽置 `cleanup_blocked`。
+  **清理未完成时必须同时给关联 Issue 贴索引标签 `编排：待清理`**（允许贴到已关闭 Issue），置
+  `cleanup_complete` 时移除；否则原 Issue 自动关闭会让该待清理项从后续会话的恢复扫描中消失。
 - **恢复纪律**：每轮开始先读**所有**活动登记再重建锁表；**没有 PR ≠ 没有活动任务**；
   实例是否仍在运行**不明**时**不释放**锁；PR 关闭**不能**证明实例已停止；超时 / 状态不明 → 转显式 `BLOCKED`
   并按流程核实（§3.4）。
@@ -138,7 +143,8 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 并提示其他机器 `git fetch --prune`。
 **合并与清理分离**：`MERGED` 只以合并成功为准；删分支失败**不**回退状态、**不**重复合并——
 按 §2.1.1 处理（删除成功 / 分支已不存在 → `cleanup_complete`；暂时性错误有限重试；权限 /
-保护规则或重试耗尽 → `cleanup_blocked`，显式报告）。未完成的清理项必须保留在登记与汇报中。
+保护规则或重试耗尽 → `cleanup_blocked`，显式报告）。未完成的清理项必须保留在登记与汇报中；
+**清理未完成必须贴索引标签 `编排：待清理`**（§2.1.1；`cleanup_complete` 时移除）。
 
 ### 4.5 审查评论格式（四行，`AGENTS.md` §6 / `AGENT-ORCHESTRATION.md` §4.2）
 

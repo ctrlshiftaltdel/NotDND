@@ -89,12 +89,20 @@
 - [ ] **新会话恢复测试（无 PR 窗口）**：让一个任务停留在「**已登记、已派发、尚无 PR**」（`DISPATCHED`）阶段，
       再由一个**全新 Master 上下文**、**只读 GitHub**（`gh issue list` + 读取活动登记评论 + `gh pr list`）
       重建状态与锁表 → 必须**识别该活动任务的文件锁并阻止同路径重复派发**，**不得**据「无 PR」判为空闲。
+      **登记必须放在关联 Issue 的评论**（`AGENT-ORCHESTRATION.md` §3.4），**不得**用 PR 评论代替；
+      恢复**只**走标准启动流程，**不得**靠额外的全库搜索或旧会话记忆来弥补流程缺口。
+- [ ] **清理待办跨会话发现（原 Issue 已关闭）**：合并确认但远端分支删除失败、关联 Issue 已因 `Closes #N`
+      **自动关闭**时，新 Master 仍能通过 `gh issue list --state all --label '编排：待清理'` 发现该
+      `cleanup_pending` / `cleanup_blocked` 项（`AGENT-ORCHESTRATION.md` §2.1.1 / §3.3）；
+      **只扫开放 Issue 不得**作为唯一发现手段（这正是本项要防的缺口）。
 - [ ] 依赖是否满足的判据是「**依赖已合入 `master`**」，而非「已开 PR」。
 - [ ] 恢复流程可用 `AGENT-ORCHESTRATION.md` §3.3 的「需要恢复的信息 → 从何处恢复」映射逐条对上。
 
 **证据**：`git fetch --prune`、`gh issue list --state open`、`gh issue view <n> --comments`（读取活动登记）、
 `gh pr list --state open --json number,title,isDraft,headRefName,mergeable` 的实际输出，以及据此重建的状态 / 锁表；
-**新会话恢复测试**另附：被登记任务的锁定路径、重建后的锁表、以及「同路径重复派发被阻止」的判定与依据。
+**新会话恢复测试**另附：被登记任务的锁定路径、登记所在 Issue 评论的链接、重建后的锁表、以及「同路径重复派发被阻止」的判定与依据；
+**清理待办跨会话发现**另附：`gh issue list --state all --label '编排：待清理'` 的实际输出、被发现的**已关闭**
+Issue 编号与登记评论链接、以及「只扫开放 Issue 会漏掉该项」的对照说明。
 
 ### 3.2 安全并行
 
@@ -141,6 +149,9 @@
 - [ ] **合并后清理恢复（可控模拟）**：构造「**合并确认成功、分支删除失败**」的隔离演练，验证
       状态记录正确（`MERGED` + `cleanup_pending`），且后续**只执行清理恢复**（有限重试 / 幂等成功 /
       显式阻塞）——**不**回退 `MERGED`、**不**重新合并、**不**把已合并 PR 记为未合并。
+- [ ] **清理项跨会话可发现（原 Issue 已关闭）**：合并确认、删分支失败后关联 Issue 已自动关闭，
+      新 Master 仍能经索引标签 `编排：待清理`（`gh issue list --state all --label '编排：待清理'`）发现该
+      待清理项，并**只**恢复清理（核实 / 删除分支）→ 置 `cleanup_complete` **并移除标签**（§2.1.1）。
 - [ ] **幂等与不盲试**：分支**已不存在**按**幂等成功**处理（`cleanup_complete`）；**权限 / 保护规则**
       阻止删除时**显式报告并阻塞**（`cleanup_blocked`），**不**反复盲试。
 - [ ] 未完成的清理项（`cleanup_pending` / `cleanup_blocked`）在阶段汇报中**显式列出**，未被隐瞒。
@@ -149,7 +160,8 @@
 各闸门勾选、合并命令与**合并 SHA**、合并后验证命令与结果；
 **清理恢复演练**另附：合并确认证据、删分支失败命令与错误输出、有限重试记录、幂等删除记录、
 `cleanup` 状态记录（`cleanup_pending` → `cleanup_complete` / `cleanup_blocked`）、
-以及「未重新执行 merge」的判定依据。
+「未重新执行 merge」的判定依据，以及**跨会话发现**的 `gh issue list --state all --label '编排：待清理'`
+输出、被发现的**已关闭** Issue 编号与登记评论、以及最终「移除标签」的命令与结果。
 
 ### 3.6 阶段出口
 
@@ -260,11 +272,19 @@
 | 3 | 再删一次（分支**已不存在**）→ 按**幂等成功**处理（`cleanup_complete`），**不**报错、**不**重试 | 把「已不存在」当失败 |
 | 4 | 注入**暂时性失败**（如把 bare 仓库临时设为只读）→ **有限重试**（默认上限 3 次）；耗尽 → `cleanup_blocked` | 无限重试 / 无限盲试 |
 | 5 | 注入**权限 / 保护规则**类失败 → **立即显式阻塞**（`cleanup_blocked`），**不**盲试 | 反复重试权限错误 |
-| 6 | 全过程中**绝不**回退 `MERGED`、**绝不**重新执行 merge、**绝不**把已合并 PR 记为未合并 | 因删分支失败而重复合并 |
-| 7 | 演练资源（本地 bare 仓库 / 临时分支）**已清理**并记录清理结果 | 演练资源残留 / 触碰真实分支 |
+| 6 | 关联 Issue **已关闭**（模拟 `Closes #N` 自动关闭）后，新 Master 仍能经标签 `编排：待清理`（`gh issue list --state all --label '编排：待清理'`）**发现**该待清理项（含 `cleanup_pending` / `cleanup_blocked`） | 只扫开放 Issue → 已关闭 Issue 的待清理项漏掉（本文件的核验目标） |
+| 7 | 新 Master **只**核实 / 删除分支完成恢复 → 置 `cleanup_complete` **并移除标签**；**不**重复 merge、**不**回退 `MERGED` | 清理时重新 merge / 回退 `MERGED` / 不释放标签 |
+| 8 | 全过程中**绝不**回退 `MERGED`、**绝不**重新执行 merge、**绝不**把已合并 PR 记为未合并 | 因删分支失败而重复合并 |
+| 9 | 演练资源（本地 bare 仓库 / 临时分支 / 临时 Issue / 临时标签用途）**已清理**并记录清理结果 | 演练资源残留 / 触碰真实分支 |
+
+**跨会话要求**：步骤 6–7 的「发现」必须由**全新 Master 上下文**、**只**按 `AGENT-ORCHESTRATION.md`
+§3.3 的标准恢复流程完成，**不得**借旧会话记忆或额外的全库搜索；演练的**合并事实**用**本地 bare 仓库**
+内的真实 merge commit 表示（**不得**伪造真实 `origin` 上的合并），且**全程不触碰**任何真实功能分支。
 
 **证据**：演练命令与**真实输出**（删除成功、幂等删除、注入失败、重试计数、阻塞判定）、
-`cleanup` 状态迁移记录、以及「未重新执行 merge」的判定依据；演练资源清理命令与结果。
+`cleanup` 状态迁移记录、以及「未重新执行 merge」的判定依据；
+**跨会话发现**另附 `gh issue list --state all --label '编排：待清理'` 的真实输出与「只扫开放 Issue 会漏掉」
+的对照；演练资源清理命令与结果。
 
 ---
 
@@ -473,6 +493,185 @@
    「此类事件的识别与处置」路径**未验证**；`NEEDS_HUMAN_DECISION` 在本演练中**未触发**
    （另注：Issue #222 为真实待人拍板项、**不属本演练**）。
 4. **未降低标准 / 未伪造**：三轮中**未删改验收标准**、**未把未满足项写成已满足**；**无第 4 轮**。
+
+### 6.2 实录：2026-10-11 清理跨会话发现与标准活动锁恢复探针（Issue #257）
+
+> 本小节为 Issue #257 的**真实演练实录**，对应本文件 §3.1「清理待办跨会话发现（原 Issue 已关闭）」、
+> §3.5「清理项跨会话可发现（原 Issue 已关闭）」与 §5.4 步骤 6–9。
+> 数据来自**可核验事实**：GitHub（Issue / 评论 / 标签）与**本地 bare 仓库**（隔离「远端」）。
+> 每条均标注证据类型：**[真实执行] / [静态检查] / [设计推断] / [未验证]**。
+> **未实际发生的项一律写「未验证」，不得补写成通过**。权威定义引用 `AGENT-ORCHESTRATION.md`
+> （§2.1.1 清理状态与固定动作、§3.3 清理待办扫描、§3.4 活动任务登记、§2.3 第 7 条）。
+
+#### A. 基本信息
+
+- 日期：2026-10-11
+- 运行模式：**single-session 路径**；本演练的「**新 Master 上下文**」用**全新子会话**承载
+  （`subagent` 真实 spawn，见 B）。实现本记录的任务按单会话规则执行。
+- 运行平台标识：**OpenCode v2.0.26**；Linux 6.12.111+deb13-amd64 x86_64 · Python 3.13.5 · Node v24.21.0 · gh 2.102.0
+- 演练范围：`AGENT-ORCHESTRATION-ACCEPTANCE.md` §3.1 / §3.5 / §5.4（步骤 6–9）；
+  涉及 **Issue #257**（本单）、探针 **Issue #258**（活动锁）、探针 **Issue #259**（清理恢复）
+- 演练载体（**均为演练资源**，非真实任务）：探针 Issue #258 / #259；本地 bare 仓库 `/tmp/opencode/drill257/remote.git`
+
+#### B. 平台能力探测（`AGENT-ORCHESTRATION.md` §5.2 / §5.3）
+
+- C1 启动（spawn）：**具备** —— 依据：本演练用 `subagent` **真实启动两个全新上下文**并取得**可寻址句柄**
+  （探针 B = `ses_ed5e03afeffej1LLbZXgcCnpDJ`、探针 C = `ses_ed5dca725ffeCT2oT0yJqm403m`）。[真实执行]
+- C2 隔离上下文：**具备** —— 依据：两个子会话**无本会话记忆**，仅凭仓库规范 + GitHub 重建状态（B/C 报告均声明未用旧记忆）。[真实执行]
+- C3 等待 / 取回：**具备** —— 依据：两次 spawn 均**等待结束并取回**结论（锁表判定 / 清理恢复结果）。[真实执行]
+- C4 结果区分：**具备** —— 依据：取回内容可区分**发现 / 未发现 / 已完成恢复 / 受阻塞**。 [真实执行]
+- 探测结论：**可用（→ L3）**（与 §6.1 同一平台结论一致；本演练为该平台下的补充验收）。
+- 未验证能力标记：**无新增**；本演练**未发生**启动失败 / 超时 / 取消 / 结果不可判定事件（此项**未验证**，见 K）。
+
+#### C. 成熟度判定（本文件 §1）
+
+- 判定级别：**L3**（沿用 §6.1 在 OpenCode v2.0.26 上的真实 `spawn→wait→collect` 结论）。
+- 依据：本演练新增两次真实 spawn（B / C）；探针 B/C 的「新 Master」均为**真实全新上下文**。
+- 声明：本次**不**把 L1 / L2 冒充 L3；未验证能力已标记。[真实执行 + 设计推断]
+
+#### D. 被调度任务与 Issue / PR 对应
+
+| 任务 | Issue | 分支 | PR（记法） | 状态（§2） |
+|---|---|---|---|---|
+| 标准活动锁恢复探针 | #258 | `drill/orchestration-lock-probe`（**未创建**） | 尚未开 PR | `DISPATCHED` →（演练收尾）**已取消** |
+| 清理失败跨会话恢复探针 | #259 | `drill/cleanup-sim-20261011`（**仅本地 bare 仓库**） | 演练（**无真实 PR**） | `MERGED` + `cleanup_blocked` → `cleanup_complete` |
+| 本单实现（文档） | #257 | `fix/orchestration-cleanup-recovery` | 承载本记录的 PR（Issue #257） | `MASTER_REVIEW` |
+
+（两探针均为**演练 Issue**，**无真实 PR**、编号**未编造**；演练产物不合并。核验：`gh issue view 258/259` → `state=CLOSED`。）
+
+#### E. 并行 / 串行判定（§3.2）
+
+- 冲突检查命令与输出：`gh pr list --state open` → **0 个开放 PR**（开工复查）。[真实执行]
+- 探针锁定路径 `drill/orchestration-lock-probe/README.md`（仓库中不存在）与真实任务**无交集**；
+  本地 bare 仓库的演练分支**不在真实 `origin` 上**（见 H）。**允许并行：无**；须串行 / BLOCKED：无。
+
+#### F. 闸门结果（G1–G6，`AGENT-ORCHESTRATION.md` §4.4）
+
+> 本演练**无合并**（探针产物不合并），G1–G6 对探针**不适用**；本单实现的 G1–G6 在承载本记录的 PR 上逐门核验。
+> [静态检查 / 设计推断]
+
+#### G. 失败 / 修复循环（§5）
+
+- 不适用本演练：本演练目标是**清理恢复 + 锁恢复**，不是审查—修复往返；后者见 §6.1。[设计推断]
+
+#### H. 合并与清理（**本实录核心**）
+
+**H.1 隔离环境与合并事实**
+
+- 「远端」= 本地 bare 仓库 `/tmp/opencode/drill257/remote.git`（**非** GitHub `origin`）。
+- 合并事实 = 该 bare 仓库内的**真实 merge commit** `77cf7c4873c79cb9afcf4dfc230ce752f93ce71a`
+  （`git merge --no-ff` 产生，`git ls-remote --heads origin master` 可核验）。[真实执行]
+- 演练分支 = `drill/cleanup-sim-20261011`（head `7eb116db1fde506cec25e1a20989e584bdd2cd1d`），**仅存在于本地 bare 仓库**。
+
+**H.2 登记 + 索引 + 关闭（模拟合并后自动关闭）**
+
+- Issue **#259** 登记评论（**MERGED + cleanup_pending**）：`…/issues/259#issuecomment-6107249375`。[真实执行]
+  - `orchestration 状态：MERGED` · `分支名：drill/cleanup-sim-20261011` · `PR：演练（无真实 PR）；合并事实 = merge commit 77cf7c4…` · `清理状态（cleanup）：cleanup_pending`
+- 贴索引标签 `编排：待清理`（**允许贴到已关闭 Issue**），随后**关闭** Issue 模拟 `Closes #N` 自动关闭。[真实执行]
+
+```text
+$ gh issue edit 259 --add-label '编排：待清理'      # 索引
+$ gh issue close 259 --reason completed            # 模拟合并后自动关闭
+$ gh issue view 259 --json number,state,labels
+{"number":259,"state":"CLOSED","labels":["编排：待清理"]}
+```
+
+**H.3 删除失败（暂时性）→ 有限重试耗尽 → `cleanup_blocked`**
+
+- 注入：把 bare 仓库目录临时移走（远端不可用）→ `git push origin --delete …` 失败。[真实执行]
+
+```text
+$ git push origin --delete drill/cleanup-sim-20261011      # attempt 1/3
+fatal: '/tmp/opencode/drill257/remote.git' does not appear to be a git repository
+fatal: Could not read from remote repository.        exit=128
+# attempt 2/3、attempt 3/3 同；三次均 exit=128 → 有限重试耗尽
+```
+
+- 按 §2.1.1 第 2 条 → 登记更新为 `cleanup_blocked`：`…/issues/259#issuecomment-6107255510`。[真实执行]
+
+**H.4 跨会话发现（原 Issue 已关闭）**
+
+- 旧流程（只扫开放 Issue）**看不到** #259；新流程（§3.3「清理待办扫描」）**能看到**。[真实执行]
+
+```text
+$ gh issue list --state open --label '编排：待清理'          # 旧流程视角
+(empty)                                                    # ← 已关闭 Issue 被漏掉
+$ gh issue list --state all --label '编排：待清理' --json number,state
+{"number":259,"state":"CLOSED"}                            # ← 新索引命中
+```
+
+**H.5 新 Master 恢复（只核实 / 删除分支）**
+
+- 由**全新上下文**（`ses_ed5dca725ffeCT2oT0yJqm403m`，无旧记忆）仅按标准流程执行。[真实执行]
+
+```text
+$ git ls-remote --heads origin drill/cleanup-sim-20261011
+7eb116db1fde506cec25e1a20989e584bdd2cd1d	refs/heads/drill/cleanup-sim-20261011     # 分支存在
+$ git push origin --delete drill/cleanup-sim-20261011
+ - [deleted]         drill/cleanup-sim-20261011                                       # exit=0 删除成功
+$ git push origin --delete drill/cleanup-sim-20261011                                 # 幂等复核
+error: unable to delete '…': remote ref does not exist                                # 记为「幂等成功」，不重试
+$ git ls-remote --heads origin master
+77cf7c4873c79cb9afcf4dfc230ce752f93ce71a	refs/heads/master                            # 合并事实未变 → 未重新 merge
+```
+
+- 登记更新为 `cleanup_complete` 并**移除标签**：评论 `…/issues/259#issuecomment-6107269827`；`gh issue edit 259 --remove-label '编排：待清理'` → `labels: []`；标签索引查询 → **空**。[真实执行]
+
+**H.6 权限 / 保护规则类失败（不盲试）**
+
+- 独立机械复核（纯本地 bare 仓库，临时分支 `drill/cleanup-perm-20261011`）：[真实执行]
+
+```text
+$ git config -f remote.git/config receive.denyDeletes true
+$ git push origin --delete drill/cleanup-perm-20261011
+remote: error: denying ref deletion for refs/heads/drill/cleanup-perm-20261011
+ ! [remote rejected] drill/cleanup-perm-20261011 (deletion prohibited)     exit=1
+# → 立即判 cleanup_blocked，不做盲重试；解除障碍后再删 → - [deleted] … exit=0
+# → 再删一次 → remote ref does not exist（幂等成功）
+```
+
+**H.7 未触碰真实分支 / 未回退 `MERGED`**
+
+```text
+$ git ls-remote --heads origin 'refs/heads/drill/*'      # 真实 origin
+(empty)                                                  # 真实仓库无任何演练分支
+$ git -C <repo> ls-remote --heads origin refs/heads/master
+220e23039c23a941a73a0573714760ec04c33815                 # 真实 master 仍为开工基线，未被本演练改动
+```
+
+- **是否因清理失败回退 `MERGED` 或重复合并**：**否**（期望）——远端 `master` SHA 前后一致。[真实执行]
+- **合并后验证（`MERGED → VERIFIED`）**：**不适用**（演练为隔离环境、无真实合并）——**未验证**。
+
+#### I. 阶段出口（E1–E5，`AGENT-ORCHESTRATION.md` §6.1）
+
+> 本演练为 Issue #257 的**证据归档**，非阶段收口；E1–E5 由阶段收口汇报另行判定。[设计推断]
+> 就本演练范围：E2（依赖 #244/#245 已合入 `master`）、E4（演练无残留未完成清理项）成立；
+> E1/E3/E5 属阶段层面，本记录不主张。
+
+#### J. 阻塞与最终结论
+
+- 仍阻塞事项：**无**（探针 #259 已 `cleanup_complete`、#258 已终态释放锁，均已关闭）。[真实执行]
+- 未解决风险（新依赖 / 迁移 / 权限 / 环境变量 / 公开行为变化）：**无**。[真实执行]
+- 是否已降级为多会话交接：**否**（C1–C4 具备）。
+- 最终结论：**本演练验证了两条闭环**——
+  ① **标准活动锁恢复**：`DISPATCHED`、**无 PR**、登记在**关联 Issue 评论**（#258）时，
+     全新 Master **仅按标准启动流程**即识别该文件锁，并对同路径派发判 **`BLOCKED`**（未靠旧记忆或额外搜索）；
+  ② **清理待办跨会话发现**：合并确认、删除失败后原 Issue **已关闭**，#259 的 `cleanup_blocked` 仍能被
+     全新 Master 经标签 `编排：待清理`（`--state all`）发现，并**只**恢复清理 → `cleanup_complete` 并移除标签；
+     **未**重复 merge、**未**回退 `MERGED`、**未**触碰真实 `origin`。
+  人类需处理的动作：**无**（如认可，由 Master 合并承载本记录的 PR）。
+
+#### K. 未验证项、遗留风险与如实说明
+
+1. **未在真实 `origin` 制造删除失败**（安全要求）：删除失败以**本地 bare 仓库**模拟；
+   「GitHub 服务端因权限 / 保护规则拒绝删分支」的真实远端场景**未验证**（用 `receive.denyDeletes` **近似**）。
+2. **`cleanup_blocked` 的真人处置未演练**：由有权限者删除 / 调整保护规则的人工路径**未验证**。
+3. **索引纪律依赖**：标签 `编排：待清理` 需在合并时由 Master 贴上；规范已定为**硬步骤**并给出
+   「贴标签失败 → 清理跟踪 Issue 回退」，但「**忘记**贴标签」的人为失误后果**未验证**（属纪律，非机制）。
+4. **单机演练**：探针在**单实例**完成；跨机器 / 并发多 Master 的竞态**未验证**。
+5. **未发生的异常路径**：本演练**未**触发启动失败 / 超时 / 取消 / 结果不可判定（同 §6.1 声明），该路径**未验证**。
+6. **证据类型标注**：H 节为 **[真实执行]**（命令与输出）；B/C 的 spawn 为 **[真实执行]**；
+   F/I 为 **[静态检查 / 设计推断]**；其余**未验证**项已就地标注。
 
 ---
 
