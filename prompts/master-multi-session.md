@@ -44,6 +44,11 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
      `DISPATCHED` 尚无 PR 的任务只在登记里可见；**没有 PR ≠ 没有活动任务**。
    - `gh pr list --state open --json number,title,isDraft,headRefName,mergeable`
    - 对每个 PR 读状态与评论 → 重建其 §2 状态与**当前锁表**（开放 PR 触及的文件集合 **∪** 活动登记声明的锁定路径）。
+   - **未完成清理项**（`AGENT-ORCHESTRATION.md` §2.1.1 / §3.3）：`gh issue list --state all --label '编排：待清理'`
+     （**含已关闭**；`--state all` 必须用）→ 读各自最新登记评论的 `cleanup` 字段；**再扫开放 Issue 中标题以
+     `[清理跟踪]` 开头的跟踪 Issue**（标签不可用时的兜底）→ **取并集、按原 Issue 去重**。原 Issue 合并后
+     常已因 `Closes #N` 自动关闭。恢复时**先核验合并事实**（`gh pr view <n> --json state,mergedAt`），
+     **未合并者不得删分支**，**结果不明则保留索引并重试核验**。
 4. **输出开工确认**（见 §3）。
 5. 按 §4 推进：能派发就派发、遇到开放 PR 就走审查与合并闸门、阶段收束即按 §7 汇报。
 
@@ -98,6 +103,11 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
   取消 / 合并**各更新一次**登记并刷新最近更新时间；合并 / 终止收尾后写终态以**释放锁**。
   合并事件须同时写入 `cleanup` 状态（`AGENT-ORCHESTRATION.md` §2.1.1）：确认合并置 `cleanup_pending`，
   删分支成功 / 分支已不存在置 `cleanup_complete`，权限 / 保护规则或重试耗尽置 `cleanup_blocked`。
+  **合并前先预置** `cleanup_watch` + 索引（贴 `编排：待清理` 标签，或建 `[清理跟踪]` 跟踪 Issue），
+  **预置成功后才执行 merge**（预置失败 → 不得合并）；合并确认后保留索引，置 `cleanup_complete` 时移除；
+  **仅核验确认合并中止时**才撤销预置（`cleanup：不适用`），**结果不明（超时 / 断连）时保留索引并先核验
+  `state` / `mergedAt`**；标签贴不上时改用 `[清理跟踪]` 开放 Issue 作**纯指针**。否则原 Issue 自动关闭、
+  或「合并成功与建立索引之间」的中断，都会让该待清理项从后续会话的恢复扫描中消失。
 - **恢复纪律**：每轮开始先读**所有**活动登记再重建锁表；**没有 PR ≠ 没有活动任务**；
   实例是否仍在运行**不明**时**不释放**锁；PR 关闭**不能**证明实例已停止；超时 / 状态不明 → 转显式 `BLOCKED`
   并按流程核实（§3.4）。
@@ -138,7 +148,9 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 并提示其他机器 `git fetch --prune`。
 **合并与清理分离**：`MERGED` 只以合并成功为准；删分支失败**不**回退状态、**不**重复合并——
 按 §2.1.1 处理（删除成功 / 分支已不存在 → `cleanup_complete`；暂时性错误有限重试；权限 /
-保护规则或重试耗尽 → `cleanup_blocked`，显式报告）。未完成的清理项必须保留在登记与汇报中。
+保护规则或重试耗尽 → `cleanup_blocked`，显式报告）。未完成的清理项必须保留在登记与汇报中；
+**合并前必须先预置** `cleanup_watch` + 索引（标签 `编排：待清理` 或 `[清理跟踪]` 跟踪 Issue），
+**预置成功后才 merge**；**清理未完成必须保留索引**（§2.1.1；`cleanup_complete` 时移除）。
 
 ### 4.5 审查评论格式（四行，`AGENTS.md` §6 / `AGENT-ORCHESTRATION.md` §4.2）
 
@@ -173,14 +185,14 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 ```text
 1. 本阶段范围与状态：<范围 + 每个任务的状态>
 2. 已合并事项：<逐条 PR #N（Issue #M），并标注 cleanup 状态（§2.1.1）>
-3. 仍阻塞事项：<逐条 状态 / 原因 / 恢复条件，含未完成的清理项 cleanup_pending / cleanup_blocked；无则写“无”>
+3. 仍阻塞事项：<逐条 状态 / 原因 / 恢复条件，含未完成的清理项 cleanup_watch / cleanup_pending / cleanup_blocked；无则写“无”>
 4. 验证证据：<真跑过的命令 + 结果>
 5. 未解决风险：<新依赖 / 迁移 / 权限 / 环境变量 / 公开行为变化，含清理阻塞所需的权限 / 保护规则处置；无则写“无”>
 6. 下一阶段 / 人类需要处理的动作：<谁做什么；是否仍需多会话交接；cleanup_blocked 的人工处置>
 ```
 
 > 汇报贯穿全程的硬规则：**引用 PR 一律用 `PR #N（Issue #M）`；没有 PR 时写明当前状态（如「尚未开 PR」），不得编造编号。**
-> **不得隐瞒未完成的清理项**：`cleanup_pending` / `cleanup_blocked` 必须列出（`AGENT-ORCHESTRATION.md` §2.1.1 / §6.2）。
+> **不得隐瞒未完成的清理项**：`cleanup_watch` / `cleanup_pending` / `cleanup_blocked` 必须列出（`AGENT-ORCHESTRATION.md` §2.1.1 / §6.2）。
 
 ---
 
