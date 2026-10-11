@@ -91,6 +91,22 @@
   </main>
 
   <footer class="dock">
+    <!-- 回合输入区（U2，UI-DESIGN.md §1.3.2）：固定在工具条里，**不进滚动流**——
+         手机键盘弹起时，滚动流里的输入框会被顶到屏幕外。工具条高度由
+         core 的 --dock-h 实测回写，叙事流底部自动让位。
+         输入框的发送 / 换行 / 字数校验在 js/turn.js；这里只是结构挂点。 -->
+    <div id="turnComposer" class="composer" aria-busy="false">
+      <div class="composer-field">
+        <textarea id="turnInput" rows="1" aria-label="描述你要做的事"
+          placeholder="描述你要做的事，或直接说一句话……"
+          aria-describedby="turnCount" aria-invalid="false"></textarea>
+        <span id="turnCount" class="composer-count">还可写 2000 字</span>
+        <!-- 就地错误行（§1.3.10）：服务端 error 字段原文 + 可重试时给「重试」 -->
+        <p id="turnError" class="composer-error" role="alert" hidden></p>
+      </div>
+      <button id="turnSend" type="button" class="btn btn-primary">说 / 做</button>
+    </div>
+
     <nav class="tabs" role="tablist" aria-label="面板">
       <button class="tab is-on" data-panel="party" role="tab" aria-selected="true"><svg class="i" aria-hidden="true"><use href="#i-users"/></svg><span>队伍</span></button>
       <button class="tab" data-panel="scene" role="tab" aria-selected="false"><svg class="i" aria-hidden="true"><use href="#i-globe"/></svg><span>世界</span></button>
