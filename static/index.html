@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="/css/base.css">
 <link rel="stylesheet" href="/css/lobby.css">
 <link rel="stylesheet" href="/css/stream.css">
+<link rel="stylesheet" href="/css/atlas.css">
 </head>
 <body>
 
@@ -75,8 +76,13 @@
     <section id="actZone" class="act-zone" aria-label="当前场景行动">
       <div class="sec-title">你可以</div>
       <div id="actList" class="btn-grid"></div>
-      <div class="sec-title">前往</div>
-      <div id="exitList" class="btn-grid"></div>
+      <!-- 「前往」：出口来自 GET /api/atlas/exits。整块就是移动写动作的
+           「就地状态区」（aria-busy），小节标题与出口列表同块，重画不会丢标题。 -->
+      <section id="exitsSection" aria-label="前往" aria-busy="false">
+        <div class="sec-title">前往</div>
+        <div id="exitList" class="btn-grid"></div>
+        <div id="exitError" class="exit-error" hidden aria-live="polite"></div>
+      </section>
     </section>
   </main>
 
@@ -138,6 +144,19 @@
     <button id="btnAuxClose" class="ic" aria-label="关闭"><svg class="i" aria-hidden="true"><use href="#i-close"/></svg></button>
   </div>
   <div id="auxBody" class="sheet-body"></div>
+</div>
+
+<!-- ══════════ 浮层：危险移动确认（第 2 层）══════════ -->
+<!-- 片 U3（js/atlas.js）的 L2 确认框：点「危险穿越」出口时先点名目的地再确认，
+     不用 window.confirm（会打断 aria-live、手机不可样式化，见 UI-DESIGN.md §1.3.7）。
+     结构挂点 + 本片样式（css/atlas.css）自成一体，复用 #auxScrim/#auxSheet 的同层
+     视觉（scrim-top / sheet），但不共用 core 的浮层栈——那属 core.js，本片无权改。 -->
+<div id="exitConfirmScrim" class="scrim scrim-top" hidden></div>
+<div id="exitConfirm" class="sheet exit-confirm" hidden role="dialog" aria-modal="true" aria-labelledby="exitConfirmTitle">
+  <div class="sheet-head">
+    <b id="exitConfirmTitle">危险穿越</b>
+  </div>
+  <div id="exitConfirmBody" class="sheet-body"></div>
 </div>
 
 <!-- 提示条：aria-live 让读屏软件播报，视觉上短暂浮现 -->
