@@ -274,14 +274,20 @@ function activateWorldExit(i) {
 }
 
 /* 复用主画面出口动作：仅当 U3 的 ATLAS 状态存在时才认（否则 master 上的
-   pickExit 只吃占位 id，签名不同，不能乱调）。找到返回 true。 */
+   pickExit 只吃占位 id，签名不同，不能乱调）。按 (via, name) 唯一定位到
+   同一条才复用，避免指错目的地。找到返回 true。 */
 function delegateToMainExit(x) {
   if (typeof ATLAS === 'undefined' || !ATLAS || typeof pickExit !== 'function') return false;
   var list = ATLAS.exits || [];
+  var hit = -1;
   for (var i = 0; i < list.length; i++) {
-    if (list[i] && list[i].via === x.via && list[i].name === x.name) { pickExit(i); return true; }
+    if (!list[i] || list[i].via !== x.via || list[i].name !== x.name) continue;
+    if (hit >= 0) return false;   // 不唯一：交回本片自己按 via 走同一端点
+    hit = i;
   }
-  return false;
+  if (hit < 0) return false;
+  pickExit(hit);
+  return true;
 }
 
 function renderWorldConfirm() {
