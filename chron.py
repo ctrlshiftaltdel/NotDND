@@ -20,9 +20,16 @@
 - 时间压缩与事件屏障（§6）：`BARRIERS`（**B1–B8 机读判据**一张表）、`next_barrier`
   （下一个必须停的分钟）、`barriers_at`（该分钟上的屏障记录）、`advance_to` 的**屏障语义**
   （停在屏障之前 / 到期是结算点）、`compression_log`（**只记真实事件**，不产生「被跳过」的模拟事件）。
+- 持久化与恢复（§8，C5）：`chron` 存档块（`blocks.chron`，STATE §6.1 / §11）的双向搬运
+  （`new_block` / `block_from_scheduler` / `scheduler_from_block`）、惰性迁移与脏值降级
+  （`migrate_block`）、§8.2 的重启恢复时序（`restore`：快照 → 单调校验 → 折入事件 →
+  重建 `due_heap`；存储接口只用 `Handle.view` / `Handle.replay` / `Handle.commit`）、
+  幂等键表（`committed_seq` / `mark_committed` / `pending_events` / `commit_event`）、
+  裁剪（`prune_block`）与纯压缩留痕（`advance_event`）。
 
 **本单边界**：不判行动胜负（归 PRISM）、不关窗口（`window.closed` 归后续切片）、
-不判「谁在线」（`offline_advance` 只作入参回显，开关落 M10，§3.4）、不落库、不碰 IO；
+不判「谁在线」（`offline_advance` 只作入参回显，开关落 M10，§3.4）、**不落库、不碰 IO**
+（§8 的持久化一律经**传入的状态层句柄**，本模块不 import `state`、不读写文件）；
 不 import 任何业务模块（§7 依赖方向）。
 世界时间是一条**自战役纪元起的整数分钟轴，只增不减**（§3.2）。
 
@@ -143,6 +150,32 @@ __all__ = (
     "PAUSING_BARRIER_IDS",
     "barriers_at",
     "next_barrier",
+    # §8 持久化与恢复（C5）
+    "CHRON_BLOCK_NAME",
+    "CHRON_BLOCK_VERSION",
+    "CHRON_BLOCK_FIELDS",
+    "CHRON_FOLDED_NAME",
+    "CHRON_FOLDED_FIELDS",
+    "CHRON_BLOCK_ALL_FIELDS",
+    "IDEMPOTENCY_KEEP",
+    "CHRON_RULES_VERSION",
+    "CLOCK_ADVANCE_EVENT",
+    "new_block",
+    "block_from_scheduler",
+    "scheduler_from_block",
+    "migrate_block",
+    "world_time_minute",
+    "verify_clock",
+    "merge_blocks",
+    "restore",
+    "committed_seq",
+    "is_committed",
+    "mark_committed",
+    "pending_events",
+    "advance_event",
+    "block_changes",
+    "commit_event",
+    "prune_block",
 )
 
 
@@ -2138,3 +2171,697 @@ def _fire_one(state, due_minute, tracker):
                     events.append(window)
         events.append(_due_event(state["actions"][action_id], tracker.at(due_minute)))
     return events
+
+
+# ==========================================================================
+# §8 持久化与恢复（Persistence & Recovery）——M9-C5
+# ==========================================================================
+#
+# `chron` 是状态层快照里的**不透明块**（`blocks.chron`，STATE-DESIGN §6.1 / §11）：
+# 与 `rules` / `atlas` / `guide` 同级，`state.py` 原样存取、不解析（STATE S4 / S8）。
+# 本切片只做「块 ↔ 调度器状态」的搬运与 §8.2 的重启恢复时序：
+#
+#   blocks.chron  ──migrate_block──►  块（§8.1 的字段）
+#   block_from_scheduler  ⇄  scheduler_from_block      块 ↔ 调度器状态
+#   restore(handle)      = §8.2 第 1–4 步（快照 → 单调校验 → 折入事件 → 重建 due_heap）
+#
+# **不落盘**（派生索引，加载时重建）：`due_heap`（§5.1 / §8.2 第 4 步）、`blocks`
+# （依赖反向索引）与 `running`（在飞行动的冲突键）。
+#
+# 存储接口只用状态层的公开面（STATE §12.1）——`Handle.view()` / `Handle.replay()` /
+# `Handle.commit()`：本模块**不 import** `state`（§7 依赖方向），句柄以鸭子类型传入，
+# 也不新造存储接口。两点对齐说明：
+#
+# - `state.open_campaign` 打开时已把 `seq > snapshot.seq` 的尾部事件折进 `blocks`
+#   （其内部的 `_replay_events`），所以「按序号折入事件」对 `view()` 已经成立；
+# - `Handle.replay()` 给出**从创世**的纯日志折叠（STATE §6.2 / §12.1）；
+# - 两者在 `merge_blocks` 里按「日志是唯一真相」（STATE §7.4 同款口径）合并。
+
+#: 块名：状态层快照 `blocks` 里的键（STATE §6.1 / §11）。
+CHRON_BLOCK_NAME = "chron"
+
+#: §8.1 的块版本；STATE §3 S6 的版本分层——读到**更高**版本一律拒载，不静默降级。
+CHRON_BLOCK_VERSION = 1
+
+#: §8.1 的字段（顺序即落盘顺序）；`due_heap` **不在其中**（派生索引，加载时重建）。
+CHRON_BLOCK_FIELDS = ("version", "world_minute", "seq", "actions", "windows",
+                      "idempotency")
+
+#: §8.4 的折叠引用（终态行动裁剪后只留这一份**事件引用**；只增不改）。
+CHRON_FOLDED_NAME = "folded"
+CHRON_FOLDED_FIELDS = ("action_id", "status", "end_minute", "events")
+
+#: 块的全部顶层字段——`block_changes` 的搬运粒度（见该函数对「粗粒度」的解释）。
+CHRON_BLOCK_ALL_FIELDS = CHRON_BLOCK_FIELDS + (CHRON_FOLDED_NAME,)
+
+#: 幂等表裁剪的硬下限（条；镜像 STATE §7.3 的 `IDEM_KEEP` 口径）。
+IDEMPOTENCY_KEEP = 4096
+
+#: GDD §19.5「规则版本」的 CHRON 兜底值；真实值由调用方（网页层 / 规则包）给。
+CHRON_RULES_VERSION = "chron@m9"
+
+#: 纯压缩留痕的事件类型（STATE §5.1 的初始事件词表里已登记 `clock.advance`）。
+CLOCK_ADVANCE_EVENT = "clock.advance"
+
+#: 区分「字段缺席」与「字段值是 null」的哨兵（本模块不 import 任何模块）。
+_MISSING = object()
+
+
+def _clone(value):
+    """深拷贝一个 JSON 形值（字典 / 列表逐层复制）。
+
+    本模块**不 import 任何模块**（C1 起的硬约束），所以不用 `copy.deepcopy`；
+    调用方拿到的块与内部态因此永不共享可变对象。
+    """
+    if isinstance(value, dict):
+        return {key: _clone(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_clone(item) for item in value]
+    return value
+
+
+def _require_mapping(value, name):
+    """要求 value 是 dict（显式拒绝，不静默）。"""
+    if not isinstance(value, dict):
+        raise TypeError("%s 必须是 dict，得到 %s" % (name, type(value).__name__))
+    return value
+
+
+def _is_block_minute(value):
+    """块里的分钟 / 序号：非负整数（`bool` 不算——它是 `int` 的子类，属常见陷阱）。"""
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _last_event_ordinal(action):
+    """行动卡上**最后一条**事件的序号（取事件 id 尾部的数字；拿不到 → `-1`）。
+
+    与 `created_seq`（第一条）同源：事件 id 形如 `<action_id>:e000042`，序号越大越新。
+    合并快照块与日志折叠块时用它判「哪一边的卡更新」。
+    """
+    events = action.get("events") if isinstance(action, dict) else None
+    if not isinstance(events, list) or not events:
+        return -1
+    tail = str(events[-1]).rsplit(":", 1)[-1]
+    index = 0
+    while index < len(tail) and not tail[index].isdigit():
+        index += 1
+    if index >= len(tail):
+        return -1
+    return int(tail[index:])
+
+
+def _window_participant_count(window):
+    """窗口的参与者数量（脏值按 0 计；合并块时用它判「哪一边的窗口更完整」）。"""
+    participants = window.get("participants") if isinstance(window, dict) else None
+    return len(participants) if isinstance(participants, list) else 0
+
+
+# --------------------------------------------------------------------------
+# §8.1 块形状与搬运
+# --------------------------------------------------------------------------
+
+def new_block(world_minute=0, *, seq=0):
+    """§8.1 的 `chron` 存档块——**零参可调用**（老档 / 缺块的默认值工厂）。
+
+    `actions` / `windows` / `idempotency` / `folded` 每次现造一份新对象：默认值绝不
+    共享可变对象，否则一个存档的改动会顺着默认值漏进另一个存档（与网页层
+    `_LEGACY_DEFAULTS` 的「零参工厂」同款口径）。
+    """
+    return {
+        "version": CHRON_BLOCK_VERSION,
+        "world_minute": _require_non_negative(world_minute, "world_minute"),
+        "seq": _require_non_negative(seq, "seq"),
+        "actions": {},
+        "windows": [],
+        "idempotency": {},
+        CHRON_FOLDED_NAME: {},
+    }
+
+
+def block_from_scheduler(state, *, seq=None, folded=None):
+    """调度器状态 → §8.1 的存档块（派生索引**不落盘**，§5.1 / §8.1）。
+
+    - `seq` 缺省 = `state["seq"]`（调度器自己记的已提交事件序号）；刚跟状态层对齐过时
+      显式传 `handle.view()["seq"]` 更准（§8.1：`seq` = snapshot 顶层 `seq`）；
+    - `folded`（§8.4 折叠出的终态行动引用）缺省为空表；给了就逐字带上，使「裁剪 →
+      落盘 → 读回」无损。
+    """
+    _check_scheduler(state)
+    if folded is not None and not isinstance(folded, dict):
+        raise TypeError("folded 必须是 dict，得到 %s" % type(folded).__name__)
+    return {
+        "version": CHRON_BLOCK_VERSION,
+        "world_minute": state["world_minute"],
+        "seq": _require_non_negative(state["seq"] if seq is None else seq, "seq"),
+        "actions": _clone(state["actions"]),
+        "windows": _clone(state["windows"]),
+        "idempotency": _clone(state["keys"]),
+        CHRON_FOLDED_NAME: _clone(folded) if folded is not None else {},
+    }
+
+
+def migrate_block(raw, notes=None):
+    """§8.4 惰性迁移：缺块 → 默认；**只补不覆盖**；脏值降级；更高版本**拒载**。
+
+    - `raw is None`（老档没有 `chron` 块）→ 补默认（`world_minute = 0`，STATE §10.1）；
+    - 不是对象 / `version` 脏值 → 整体降级为默认块（一个坏形状不猜内容）；
+    - `version` **高于**本实现 → 抛 `ChronError`（STATE §3 S6：拒载，不静默降级）；
+    - 缺字段 → 只补该字段；已有的合法值**逐字保留**；单个脏字段只降级它自己，
+      不因一键坏掉整块。
+
+    返回**新块**（不改写 `raw`）。`notes` 给了就追加说明（与 `state.Handle.notes`
+    同款口径），供调用方回显「这里发生过一次迁移 / 降级」。
+    """
+    notes = [] if notes is None else notes
+    if raw is None:
+        notes.append("chron 块缺失：按惰性迁移补默认（world_minute=0，STATE §10.1）")
+        return new_block()
+    if not isinstance(raw, dict):
+        notes.append("chron 块形状非法（%s）：整体降级为默认块" % type(raw).__name__)
+        return new_block()
+    version = raw.get("version", CHRON_BLOCK_VERSION)
+    if not _is_block_minute(version):
+        notes.append("chron.version 脏值（%r）：整体降级为默认块" % (version,))
+        return new_block()
+    if version > CHRON_BLOCK_VERSION:
+        raise ChronError("拒载：chron 块 version=%d 高于本实现 %d（STATE §3 S6）"
+                         % (version, CHRON_BLOCK_VERSION))
+    if version < CHRON_BLOCK_VERSION:
+        notes.append("chron 块 version=%d 低于本实现 %d：已按惰性迁移补齐"
+                     % (version, CHRON_BLOCK_VERSION))
+
+    block = new_block()
+    minute = raw.get("world_minute", 0)
+    if not _is_block_minute(minute):
+        notes.append("chron.world_minute 脏值（%r）：降级为 0" % (minute,))
+        minute = 0
+    block["world_minute"] = minute
+    seq = raw.get("seq", 0)
+    if not _is_block_minute(seq):
+        notes.append("chron.seq 脏值（%r）：降级为 0" % (seq,))
+        seq = 0
+    block["seq"] = seq
+
+    actions = raw.get("actions", {})
+    if isinstance(actions, dict):
+        dropped = sorted(str(key) for key, card in actions.items()
+                         if not isinstance(card, dict))
+        if dropped:
+            notes.append("chron.actions 有 %d 张卡不是对象：已剔除（%s）"
+                         % (len(dropped), " / ".join(dropped)))
+        block["actions"] = _clone({key: card for key, card in actions.items()
+                                   if isinstance(card, dict)})
+    else:
+        notes.append("chron.actions 脏值（%s）：降级为空表" % type(actions).__name__)
+
+    windows = raw.get("windows", [])
+    if isinstance(windows, list):
+        kept = [window for window in windows if isinstance(window, dict)]
+        if len(kept) != len(windows):
+            notes.append("chron.windows 有 %d 条不是对象：已剔除"
+                         % (len(windows) - len(kept)))
+        block["windows"] = _clone(kept)
+    else:
+        notes.append("chron.windows 脏值（%s）：降级为空表" % type(windows).__name__)
+
+    idem = raw.get("idempotency", {})
+    if isinstance(idem, dict):
+        kept = {key: value for key, value in idem.items()
+                if isinstance(key, str) and _is_block_minute(value)}
+        if len(kept) != len(idem):
+            notes.append("chron.idempotency 有 %d 条记录形状非法：已剔除"
+                         % (len(idem) - len(kept)))
+        block["idempotency"] = _clone(kept)
+    else:
+        notes.append("chron.idempotency 脏值（%s）：降级为空表" % type(idem).__name__)
+
+    folded = raw.get(CHRON_FOLDED_NAME, {})
+    if isinstance(folded, dict):
+        block[CHRON_FOLDED_NAME] = _clone({key: item for key, item in folded.items()
+                                           if isinstance(item, dict)})
+    else:
+        notes.append("chron.folded 脏值（%s）：降级为空表" % type(folded).__name__)
+    return block
+
+
+def scheduler_from_block(block, notes=None):
+    """存档块 → 调度器状态（§8.2 第 4 步：派生索引与 `due_heap` **全部重建**）。
+
+    - `blocks`（§5.1 的 `deps`）由每张卡的 `depends_on` 重建（反向索引，单一真相是卡）；
+    - `running`（在飞行动的冲突键，§5.5 识别用）由「`status == running` 且 `conflict_key`
+      非空」重建（`scheduled` 还没开始，不进这张表——与 `_fire_one` 的登记时机一致）；
+    - `due_heap` 由 `rebuild_heap` 重建（§5.2 的稳定排序键，确定性）；
+    - `keys` = 块的 `idempotency`（§8.3 的幂等表）；
+    - §8.4 的**折叠引用不进 `actions`**：那张卡的终态事实留在事件日志里，调度器只认
+      还在场上的卡。（依赖被折叠的卡仍解析得到——`prune_block` 不会折掉还有人依赖的卡。）
+    """
+    block = migrate_block(block, notes)
+    state = new_scheduler(block["world_minute"])
+    state["actions"] = _clone(block["actions"])
+    state["windows"] = _clone(block["windows"])
+    state["seq"] = block["seq"]
+    state["keys"] = _clone(block["idempotency"])
+
+    blocks = {}
+    for action_id in sorted(state["actions"]):
+        deps = state["actions"][action_id].get("depends_on")
+        for dep in deps if isinstance(deps, list) else ():
+            dependents = blocks.setdefault(dep, [])
+            if action_id not in dependents:
+                dependents.append(action_id)
+    state["blocks"] = blocks
+
+    running = {}
+    for action_id in sorted(state["actions"]):
+        action = state["actions"][action_id]
+        # `running` 的语义 = 「**已开始**且还没换状态」——`_fire_one` 只在 scheduled →
+        # running 那一刻登记，`settle` / 级联在离开该状态时剔除，所以重建规则是
+        # 「status == running 且冲突键非空」（scheduled 还没开始，不进这张表）。
+        if action.get("status") != "running":
+            continue
+        key = conflict_key(action)
+        if key is not None:
+            running[action_id] = key
+    state["running"] = running
+
+    state["due_heap"] = rebuild_heap(state)
+    return state
+
+
+# --------------------------------------------------------------------------
+# §8.2 重启恢复时序
+# --------------------------------------------------------------------------
+
+def world_time_minute(world_time):
+    """从状态层的**不透明** `world_time` 里取权威分钟（拿不到 → `None`）。
+
+    形状由 §3.1 钉死（`{"world_minute", "day", "tod"}`）；`day` / `tod` 是派生只读，
+    这里只认 `world_minute`（`null` = 创世 / 尚未接入 CHRON，STATE §5.1 / S8）。
+    """
+    if not isinstance(world_time, dict):
+        return None
+    minute = world_time.get("world_minute")
+    return minute if _is_block_minute(minute) else None
+
+
+def verify_clock(block, world_time=None, notes=None):
+    """§8.2 第 2 步的单调校验：块时钟不得**超前**于最后一条已提交事件（§3.2）。
+
+    - 拿不到 `world_time` → 不校验，返回块自己的分钟；
+    - 块**落后**于日志（检查点滞后 / 块 staged 得早）→ 只记一条说明并返回**日志分钟**
+      （世界时间只增不减，「只补不退」，日志为准）；
+    - 块**超前** → 抛 `ChronError`（**拒载**：宁可拒载也不猜测，STATE §8.2 的口径）。
+      正常路径不会超前——世界时间只在提交事件时前进（§3.3），纯压缩也会提交一条
+      `clock.advance`（见 `advance_event`）。
+    """
+    notes = [] if notes is None else notes
+    block = migrate_block(block, notes)
+    minute = world_time_minute(world_time)
+    if minute is None:
+        return block["world_minute"]
+    if block["world_minute"] > minute:
+        raise ChronError("拒载：chron 块 world_minute=%d 超前于最后一条已提交事件的 %d"
+                         "（§3.2 单调性 / §8.2 第 2 步）"
+                         % (block["world_minute"], minute))
+    if block["world_minute"] < minute:
+        notes.append("chron 块 world_minute=%d 落后于最后一条已提交事件的 %d："
+                     "按「只增不减」抬到 %d" % (block["world_minute"], minute, minute))
+    return minute
+
+
+def merge_blocks(snapshot_block, log_block, notes=None):
+    """合并「快照块」与「事件日志折叠块」（§8.2 第 1 / 3 步），返回**新块**。
+
+    口径（对齐 STATE §7.4「日志是唯一真相」）：
+
+    - `world_minute` / `seq`：**取大**（世界时间只增不减，§3.2）；
+    - `actions`：按 `action_id` 并集；两边都有时比较**卡上最后一条事件的序号**，取更大
+      的一边（相等 → 日志为准）；只有一边有的卡照收——快照里 staged、日志里没有的卡
+      同样是事实；
+    - `windows`：按 `window_id` 并集，**首次出现的次序**保留（快照在前 → 与存活态的
+      追加顺序一致）；同一 id 取**参与者更多**的一边（C3 的「并入窗口」不进事件，
+      快照侧往往更完整），参与者一样多则日志为准；
+    - `idempotency`：**并集，只加不减**（幂等键丢一条 = 多一次重复副作用的机会）；
+    - `folded`（§8.4）：并集，且**折叠优先**——出现在任一边折叠引用里的行动不再进
+      `actions`（裁剪是调用方的显式决定，合并不得把它翻回来）。
+    """
+    notes = [] if notes is None else notes
+    snapshot = migrate_block(snapshot_block, notes)
+    logged = migrate_block(log_block, notes)
+    merged = new_block(max(snapshot["world_minute"], logged["world_minute"]))
+    merged["seq"] = max(snapshot["seq"], logged["seq"])
+
+    folded = _clone(logged[CHRON_FOLDED_NAME])
+    folded.update(_clone(snapshot[CHRON_FOLDED_NAME]))       # 快照侧的裁剪优先保留
+    merged[CHRON_FOLDED_NAME] = folded
+
+    actions = {}
+    for action_id in sorted(set(snapshot["actions"]) | set(logged["actions"])):
+        if action_id in folded:
+            continue
+        staged = snapshot["actions"].get(action_id)
+        committed = logged["actions"].get(action_id)
+        if staged is None:
+            actions[action_id] = _clone(committed)
+        elif committed is None:
+            actions[action_id] = _clone(staged)
+        elif _last_event_ordinal(committed) >= _last_event_ordinal(staged):
+            actions[action_id] = _clone(committed)
+        else:
+            actions[action_id] = _clone(staged)
+    merged["actions"] = actions
+
+    windows = {}
+    order = []
+    for window in snapshot["windows"] + logged["windows"]:
+        window_id = window.get("window_id")
+        if not isinstance(window_id, str) or not window_id:
+            continue
+        if window_id not in windows:
+            order.append(window_id)
+            windows[window_id] = _clone(window)
+            continue
+        # 同 id：取**参与者更多**的一边（C3 的「并入窗口」不进事件，快照侧往往更完整）；
+        # 参与者一样多则后者（日志）为准——两条都确定性，不随合并方向抖动。
+        current = windows[window_id]
+        candidate = _clone(window)
+        if _window_participant_count(candidate) >= _window_participant_count(current):
+            windows[window_id] = candidate
+    merged["windows"] = [windows[window_id] for window_id in order]
+
+    idempotency = _clone(snapshot["idempotency"])
+    idempotency.update(_clone(logged["idempotency"]))
+    merged["idempotency"] = idempotency
+    return merged
+
+
+def restore(handle, *, notes=None):
+    """§8.2 的重启恢复时序（第 1–4 步）：由状态层句柄恢复出块 + 调度器状态。
+
+    1. `handle.view()` → `blocks.chron`（缺 → 惰性补默认 `world_minute = 0`）；
+    2. 单调校验（`verify_clock`）：块时钟不得超前于最后一条已提交事件；
+    3. `handle.replay()`（STATE §6.2 / §12.1）折入事件 → `merge_blocks` 合并出
+       `actions` / `windows` / `idempotency`（`view()` 已含 `seq > snapshot.seq` 的尾部，
+       `replay()` 给从创世的纯日志折叠；两边按「日志为准」合并）；
+    4. `scheduler_from_block` 由 `actions` 重建 `due_heap`（§5.2 排序键）。
+
+    返回 `{"campaign_id", "block", "state", "world_minute", "seq", "notes"}`；
+    `block["seq"]` 恒为状态层已折入的最大事件序号（§8.1「恢复以状态层为准」），因此可直接
+    用作下一次 `Handle.commit(base_seq=…)` 的基线。
+
+    **只读**：不写事件、不落盘（要落盘由调用方 `Handle.stage` + `Handle.flush`）。
+    `notes` 给了就追加迁移 / 降级 / 抬钟说明。
+
+    恢复一律取**最新**状态（§8.2 是重启恢复，不是时间旅行）：要历史时点，直接用状态层的
+    `Handle.replay(upto_seq)` 读那一份纯日志折叠，再交给 `scheduler_from_block`——本函数
+    不接 `upto_seq`，免得把「现在」的快照与「过去」的日志混在一起。
+    """
+    notes = [] if notes is None else notes
+    view = handle.view()
+    if not isinstance(view, dict):
+        raise ChronError("状态层 view() 未返回视图：%r" % (view,))
+    blocks = view.get("blocks") if isinstance(view.get("blocks"), dict) else {}
+    snapshot_block = migrate_block(blocks.get(CHRON_BLOCK_NAME), notes)
+
+    replayed = handle.replay()
+    if not isinstance(replayed, dict):
+        raise ChronError("状态层 replay() 未返回状态：%r" % (replayed,))
+    log_blocks = replayed.get("blocks") if isinstance(replayed.get("blocks"), dict) else {}
+    log_block = migrate_block(log_blocks.get(CHRON_BLOCK_NAME), notes)
+
+    block = merge_blocks(snapshot_block, log_block, notes)
+    block["world_minute"] = verify_clock(block, view.get("world_time"), notes)
+    if _is_block_minute(view.get("seq")):
+        block["seq"] = view["seq"]
+    state = scheduler_from_block(block, notes)
+    return {"campaign_id": view.get("campaign_id"), "block": block, "state": state,
+            "world_minute": block["world_minute"], "seq": block["seq"], "notes": notes}
+
+
+# --------------------------------------------------------------------------
+# §8.3 幂等到期事件（幂等键表）
+# --------------------------------------------------------------------------
+
+def committed_seq(block, key):
+    """该幂等键已提交的事件序号；没记过 / 键非法 → `None`。
+
+    只读（不迁移、不拷贝）：脏块拿不到就按「没记过」处理，热路径上不整块克隆。
+    """
+    if not isinstance(key, str) or not key:
+        return None
+    idempotency = block.get("idempotency") if isinstance(block, dict) else None
+    if not isinstance(idempotency, dict):
+        return None
+    value = idempotency.get(key)
+    return value if _is_block_minute(value) else None
+
+
+def is_committed(block, key):
+    """该幂等键是否已提交（§8.3 的判定入口：`True` = 重投应当 no-op）。"""
+    return committed_seq(block, key) is not None
+
+
+def mark_committed(block, key, seq):
+    """记下「这个幂等键已提交」，返回**新块**（不改写入参）。
+
+    `key` 必须是非空字符串、`seq ≥ 0`；同键重复登记只在**序号更大**时更新
+    （同一键对应同一事实，取大保证单调、不因重放而回退）。
+    """
+    if not isinstance(key, str) or not key:
+        raise ValueError("幂等键必须是非空字符串：%r" % (key,))
+    updated = migrate_block(block)
+    current = updated["idempotency"].get(key)
+    if _is_block_minute(current) and current >= _require_non_negative(seq, "seq"):
+        return updated
+    updated["idempotency"][key] = _require_non_negative(seq, "seq")
+    return updated
+
+
+def pending_events(block, events):
+    """过滤掉**已提交过**的事件（§8.3：同键重投 no-op），返回按原序的待提交清单。"""
+    pending = []
+    for event in events:
+        _require_mapping(event, "event")
+        if committed_seq(block, event.get("idempotency_key")) is None:
+            pending.append(event)
+    return pending
+
+
+def advance_event(world_minute, *, cause=None):
+    """纯压缩（区间内没有到期、没有转换）的留痕：`clock.advance` 事件草稿。
+
+    世界时间**只在提交事件时前进**（§3.3）：压缩到某一分钟而区间内没有任何到期时，
+    提交一条 `clock.advance` 让「时间前进过」有事实留痕，§8.2 第 2 步的单调校验
+    （块时钟 ≤ 最后一条已提交事件的世界时间）因此恒成立。`type` 已在 STATE §5.1 的
+    初始事件词表里登记；`idempotency_key` 用 §8.3 的确定性形状
+    （`clock:<分钟>:clock.advance`）——同一分钟重投 = 同一次事实 = no-op。
+
+    草稿的 `changes` 是空的：本次提交的实际变更由 `commit_event` 按块差异生成
+    （`world_minute` 会随之落进事件日志）。
+    """
+    minute = _require_non_negative(world_minute, "world_minute")
+    return {
+        "event_id": "clock:adv%d" % minute,
+        "world_time": _world_time(minute),
+        "type": CLOCK_ADVANCE_EVENT,
+        "actor": "world",
+        "target": None,
+        "cause": None if cause is None else _require_str(cause, "cause"),
+        "changes": [],
+        "source": "system",
+        "reason": "time_compression",
+        "idempotency_key": "clock:%d:%s" % (minute, CLOCK_ADVANCE_EVENT),
+    }
+
+
+# --------------------------------------------------------------------------
+# §8.3 / §8.4 提交与裁剪
+# --------------------------------------------------------------------------
+
+def block_changes(before, after):
+    """把「事件前 → 事件后」的块差异折成声明式 `changes`（STATE §5.3）。
+
+    粒度 = 块的**顶层字段**（`CHRON_BLOCK_ALL_FIELDS`），每条 `op="set"`（字段在 `after`
+    里消失 → `op="unset"`），带 `before` / `after`（审计与反演用；状态层对 `set` 只取
+    `after`）。粗粒度是**刻意**的，两个理由：
+
+    1. **单段路径**：`set "/actions"` 这类单段路径在「块还不存在」的快照上也成立
+       （STATE §5.3 的容器自动创建只保证单段路径）；`set "/actions/<id>"` 会要求父级
+       已存在——老档（没有 `chron` 块）的第一次提交就会失败；
+    2. **replay == live**：块按整体搬运，`Handle.replay()` 逐事件折出的块与存活态相同
+       （STATE §6.2 的不变量），不依赖任何实现细节。
+    """
+    changes = []
+    for field in CHRON_BLOCK_ALL_FIELDS:
+        old = before.get(field, _MISSING) if isinstance(before, dict) else _MISSING
+        new = after.get(field, _MISSING) if isinstance(after, dict) else _MISSING
+        if old is _MISSING and new is _MISSING:
+            continue
+        if old is not _MISSING and new is not _MISSING and old == new:
+            continue
+        change = {"block": CHRON_BLOCK_NAME, "path": "/%s" % field,
+                  "before": None if old is _MISSING else _clone(old)}
+        if new is _MISSING:
+            change.update({"op": "unset", "after": None})
+        else:
+            change.update({"op": "set", "after": _clone(new)})
+        changes.append(change)
+    return changes
+
+
+def commit_event(handle, event, *, block, after_block=None, state=None,
+                 rules_version=CHRON_RULES_VERSION, base_seq=None, visibility=None,
+                 roll_refs=(), source=None):
+    """把一条 CHRON 事件交给状态层提交（§8.3：幂等键在**提交时**传给状态层）。
+
+    幂等两道闸（「同 `idempotency_key` 重投，副作用只发生一次」）：
+
+    1. **CHRON 侧**：键已在 `block.idempotency` 里 → 直接 no-op（`status = "skipped"`），
+       连状态层都不惊动；
+    2. **状态层侧**：`Handle.commit` 自带的幂等索引（STATE §7.3 / §8.1）——同键同载荷 →
+       `"replayed"`、同键异载荷 → `"conflict"`，两者都**不写事件**。
+
+    入参：
+
+    - `block`：**事件前**的块（`before_block` 的角色）；
+    - `state`：**事件后**的调度器状态——推荐给这个，事件后的块由 `block_from_scheduler`
+      折出（行动卡因此**总是完整的**，`_check_action` 能过；`seq` 按将要分配的事件号补齐、
+      幂等表与事件前的表取并集，事件日志因此能折出 `seq` 与幂等键）；同一步有多条事件时，
+      传该步**全部**事件应用后的状态即可（每条事件的提交各自幂等、各自原子）；
+    - `after_block`：直接给事件后的块（此时 `seq` / 幂等表由调用方自己保证；不给 `state`
+      时必须给）；
+    - `base_seq` 缺省 = `block["seq"]`（块与状态层对齐时即当前 `seq`）。
+
+    返回 `{"status", "result", "block", "seq", "changes"}`：`status` ∈ `committed` /
+    `replayed` / `skipped` / `conflict` / `rejected`；`result` 是状态层的 `CommitResult`
+    （`skipped` 时为 `None`——本次没提交）；`block` 是**新块**——提交成功时记下幂等键与
+    状态层的新 `seq`，可直接作为下一条事件的 `block`；`changes` 是本次**尝试**提交的
+    声明式变更（`block_changes` 的产物；`status` 不是 `committed` / `replayed` 时
+    状态层没有应用它们，`block` 也回到事件前）。
+    """
+    _require_mapping(block, "block")
+    _require_mapping(event, "event")
+    key = event.get("idempotency_key")
+    if not isinstance(key, str) or not key:
+        raise ValueError("CHRON 事件必须自带非空 idempotency_key（§8.3）：%r"
+                         % (event.get("event_id"),))
+    event_type = event.get("type")
+    actor = event.get("actor")
+    if not isinstance(event_type, str) or not event_type:
+        raise ValueError("事件缺少 type：%r" % (event,))
+    if not isinstance(actor, str) or not actor:
+        raise ValueError("事件缺少 actor：%r" % (event,))
+
+    base = migrate_block(block)
+    if is_committed(base, key):
+        return {"status": "skipped", "result": None, "block": base,
+                "seq": base["seq"], "changes": []}
+    if after_block is None:
+        if state is None:
+            raise ValueError("commit_event 需要 state 或 after_block：事件后的块从哪来")
+        # 事件后的块由调度器状态折出；`seq` / 幂等表在这里补齐（给了显式 `after_block`
+        # 的调用方自己负责这两样）：
+        #   · `seq` 按**将要分配**的事件号（一次成功提交只消耗一个 `seq`，A0）——
+        #     于是 `/seq` 也进事件日志，日志折出的块与存活态一致；
+        #   · 幂等表与事件前的表**取并集**（只加不减）：调度器状态的 `keys` 目前还没人
+        #     写（C3/C4 的派生字段），若直接采信它会**抹掉**已提交的键；
+        #   · 本键先记上预测号，提交成功后再按状态层返回的 `seq_to` 校正。
+        predicted_seq = base["seq"] + 1
+        after_block = block_from_scheduler(state, seq=predicted_seq,
+                                           folded=base[CHRON_FOLDED_NAME])
+        keys = dict(after_block["idempotency"])
+        keys.update(base["idempotency"])
+        keys[key] = predicted_seq
+        after_block["idempotency"] = keys
+    _require_mapping(after_block, "after_block")
+
+    changes = block_changes(base, after_block)
+    result = handle.commit(
+        base_seq=base["seq"] if base_seq is None else base_seq,
+        idempotency_key=key,
+        type=event_type,
+        actor=actor,
+        target=event.get("target"),
+        cause=event.get("cause"),
+        visibility=visibility,
+        changes=changes,
+        rules_version=rules_version,
+        roll_refs=list(roll_refs or ()),
+        world_time=event.get("world_time"),
+        source=source or event.get("source") or "system",
+    )
+    status = result.get("status") if isinstance(result, dict) else None
+    if status in ("committed", "replayed"):
+        updated = migrate_block(after_block)
+        if _is_block_minute(result.get("seq_to")):
+            updated["seq"] = result["seq_to"]
+        updated = mark_committed(updated, key, updated["seq"])
+    else:
+        # `conflict` / `rejected`：状态层**没写任何事件**，块必须回到事件前
+        # （预测的事件号与键都不算数）。
+        updated = base
+    return {"status": status, "result": result, "block": updated,
+            "seq": updated["seq"], "changes": changes}
+
+
+def prune_block(block, *, keep=IDEMPOTENCY_KEEP, fold_terminals_before=None, notes=None):
+    """§8.4 裁剪（返回**新块**）：幂等表保留最新 `keep` 条 + 终态行动折叠为事件引用。
+
+    - **幂等表**：按 `committed_seq` 保留最新 `keep` 条（镜像 STATE §7.3 的 `IDEM_KEEP`
+      硬下限）。它是**加速副本**：唯一真相在事件日志（STATE §7.4）——所以裁剪只省盘、
+      不改变语义边界（被裁掉的键在加载时可由日志重建，`restore` 正是这么做的）；
+    - **终态折叠**：`end_minute <= fold_terminals_before` 的终态行动（`completed` /
+      `failed` / `cancelled`）从 `actions` 移入 `folded`，只留一份**事件引用**
+      （`CHRON_FOLDED_FIELDS`；事实仍完整留在事件日志里，归档不删事实）。两条硬约束：
+      **还有非终态行动依赖它的不折**（`deps_satisfied` 必须查得到那张卡）、
+      **没有 `end_minute` 的终态卡不折**（脏数据不猜）。
+    - 「N 天」按**世界分钟**给（CHRON 只认世界时钟，§3.2；现实天数由调用方折算）；
+      `fold_terminals_before=None`（默认）不折叠。
+    - `keep` 非法（负数 / 非整数）→ 显式抛错，绝不静默当作「不裁剪」。
+    """
+    notes = [] if notes is None else notes
+    if not _is_block_minute(keep):
+        raise ValueError("keep 必须是 ≥ 0 的整数：%r" % (keep,))
+    cutoff = None if fold_terminals_before is None else _require_non_negative(
+        fold_terminals_before, "fold_terminals_before")
+
+    updated = migrate_block(block, notes)
+    idempotency = updated["idempotency"]
+    if len(idempotency) > keep:
+        ordered = sorted(idempotency.items(), key=lambda item: (item[1], item[0]))
+        kept = ordered[len(ordered) - keep:]
+        notes.append("幂等表裁剪：%d → %d 条（保留最新 %d 条；日志仍是唯一真相，"
+                     "需要时可重建）" % (len(ordered), len(kept), keep))
+        updated["idempotency"] = dict(kept)
+
+    if cutoff is None:
+        return updated
+    protected = set()
+    for card in updated["actions"].values():
+        deps = card.get("depends_on")
+        if card.get("status") in ACTION_TERMINAL_STATUSES:
+            continue
+        if isinstance(deps, list):
+            protected.update(deps)
+    folded_count = 0
+    for action_id in sorted(updated["actions"]):
+        card = updated["actions"][action_id]
+        if action_id in protected:
+            continue
+        if card.get("status") not in ACTION_TERMINAL_STATUSES:
+            continue
+        end = card.get("end_minute")
+        if not _is_block_minute(end) or end > cutoff:
+            continue
+        updated[CHRON_FOLDED_NAME][action_id] = {
+            "action_id": action_id,
+            "status": card["status"],
+            "end_minute": end,
+            "events": _clone(card.get("events")) if isinstance(card.get("events"), list) else [],
+        }
+        del updated["actions"][action_id]
+        folded_count += 1
+    if folded_count:
+        notes.append("终态行动折叠：%d 张卡移入 folded（world 分钟 ≤ %d；事实仍在事件日志）"
+                     % (folded_count, cutoff))
+    return updated

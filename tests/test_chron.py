@@ -34,6 +34,18 @@
 - 压缩**不产生**「被跳过的模拟」事件：压缩日志（`compression_log`）只引用真实事件；
 - `offline_advance` **只作入参**（默认 `False`，§3.4）——不判「谁在线」，也不改变推进结果。
 
+覆盖切片 C5 的验收标准（§8 持久化与恢复）：
+
+- `chron` 存档块（§8.1）尺寸 / 默认值工厂 / 惰性迁移（§8.4）：缺块补默认、脏值只降级它自己、
+  更高版本**拒载**、只补不覆盖；`due_heap` / `blocks` / `running` 三个派生索引由 `actions` 重建；
+- §8.2 重启时序：换句柄重开 → `restore` 之后 `world_minute`、到期顺序（`due_heap` 与下一次
+  推进的事件流）、行动卡、窗口、幂等表与重启前**全等**；
+- §8.3 幂等：同 `idempotency_key` 重投**副作用只发生一次**（CHRON 侧 `skipped` 闸 + 状态层侧
+  `replayed` 闸；事件日志不长一行）；
+- §8.4 裁剪：幂等表保留最新 `keep` 条、终态行动折叠为事件引用（还有人依赖的不折）；
+- 存储接口只用状态层的公开面（`Handle.view` / `Handle.replay` / `Handle.commit`）；
+  `chron.py` 仍**零 import、无 IO**（纯函数断言照旧）。
+
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_chron.py` 运行。
 """
 
@@ -41,7 +53,9 @@ import ast
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 
 TESTS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TESTS)
@@ -49,6 +63,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 import chron  # noqa: E402  (ROOT 已加入 sys.path)
+import state  # noqa: E402  (C5：块的落盘 / 重放走状态层的公开面)
 
 CHRON_PY = os.path.join(ROOT, "chron.py")
 WATCH_JSON = os.path.join(ROOT, "data", "system", "watch.json")
@@ -1651,6 +1666,462 @@ def check_compression_is_pure_and_validates_input():
 
 
 # --------------------------------------------------------------------------
+# §8 持久化与恢复（C5）
+# --------------------------------------------------------------------------
+
+# 迷你局的基准世界分钟（与 C2 / C3 / C4 的基准错开，互不牵动）。
+PERSIST_MINUTE = 0
+
+
+def _c5_store():
+    """C5 用例的临时存档根（随机目录；调用方负责收摊）。"""
+    return tempfile.mkdtemp(prefix="notdnd-chron-c5-")
+
+
+def _c5_snapshot_path(root, campaign_id):
+    """新档检查点路径（`campaigns/<id>/snapshot.json`，STATE §4.1）。"""
+    return os.path.join(root, "campaigns", campaign_id, state.SNAPSHOT_NAME)
+
+
+def _c5_read_json(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def _c5_event_lines(root, campaign_id):
+    """活动事件日志的行数（幂等用例：重投不得让日志变长）。"""
+    path = os.path.join(root, "campaigns", campaign_id, state.EVENTS_NAME)
+    with open(path, encoding="utf-8") as handle:
+        return len([line for line in handle if line.strip()])
+
+
+def _c5_steps(result):
+    """一步产出的事件摊平成列表（`settle` / `cascade_dependents` 给的是按行动分组的 dict）。"""
+    events = result["events"]
+    if isinstance(events, dict):
+        events = [event for action_id in sorted(events) for event in events[action_id]]
+    return events
+
+
+def _c5_commit(handle, block, result):
+    """把一步产出的事件逐条提交（§8.3：一条事件 = 一次提交），返回**提交后**的块。"""
+    for event in _c5_steps(result):
+        outcome = chron.commit_event(handle, event, block=block, state=result["state"])
+        assert outcome["status"] == "committed", (event["type"], outcome)
+        block = outcome["block"]
+    handle.stage(blocks={chron.CHRON_BLOCK_NAME: block})
+    handle.flush()
+    return block
+
+
+def _c5_scenario(handle):
+    """跑一遍「排程 → 到期 → 结算 → 纯压缩」的迷你局，返回 `(state, block)`。
+
+    留下 `c`（到期 300）没结算：恢复之后到期队列必须非空，才能验证「到期顺序全等」。
+    """
+    block = chron.new_block(PERSIST_MINUTE)
+    handle.stage(blocks={chron.CHRON_BLOCK_NAME: block})
+    handle.flush()
+
+    scheduler = chron.new_scheduler(PERSIST_MINUTE)
+    for draft in (chron.new_action("a1", "pc-1", "travel", 60, place="room"),
+                  chron.new_action("a2", "pc-2", "study", 60, place="room"),
+                  chron.new_action("b", "pc-3", "rest", 30, priority=5),
+                  chron.new_action("c", "pc-4", "travel", 300)):
+        result = chron.schedule(scheduler, draft, world_minute=scheduler["world_minute"])
+        scheduler = result["state"]
+        block = _c5_commit(handle, block, result)
+
+    result = chron.advance_to(scheduler, 30)
+    scheduler = result["state"]
+    block = _c5_commit(handle, block, result)
+    result = chron.settle(scheduler, "b", "completed", world_minute=30)
+    scheduler = result["state"]
+    block = _c5_commit(handle, block, result)
+    result = chron.advance_to(scheduler, 60)
+    scheduler = result["state"]
+    block = _c5_commit(handle, block, result)
+    for action_id in ("a1", "a2"):
+        result = chron.settle(scheduler, action_id, "completed", world_minute=60)
+        scheduler = result["state"]
+        block = _c5_commit(handle, block, result)
+
+    result = chron.advance_to(scheduler, 240)          # 纯压缩：区间内没有到期
+    scheduler = result["state"]
+    assert result["events"] == [], result["events"]
+    outcome = chron.commit_event(handle, chron.advance_event(scheduler["world_minute"]),
+                                 block=block, state=scheduler)
+    assert outcome["status"] == "committed", outcome
+    block = outcome["block"]
+    handle.stage(blocks={chron.CHRON_BLOCK_NAME: block})
+    handle.flush()
+    return scheduler, block
+
+
+def check_chron_block_shape():
+    """§8.1：块形状 / 默认值工厂 / 脏值降级 / 版本拒载，以及派生索引重建。"""
+    block = chron.new_block()
+    assert set(block) == set(chron.CHRON_BLOCK_FIELDS) | {chron.CHRON_FOLDED_NAME}, block
+    assert block["version"] == chron.CHRON_BLOCK_VERSION == 1
+    assert (block["world_minute"], block["seq"]) == (0, 0)
+    assert block["actions"] == {} and block["windows"] == []
+    assert block["idempotency"] == {} and block[chron.CHRON_FOLDED_NAME] == {}
+    assert chron.new_block(1440, seq=7)["world_minute"] == 1440
+    assert chron.new_block(1440, seq=7)["seq"] == 7
+    for bad in (-1, 1.5, True, "0"):
+        try:
+            chron.new_block(bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("new_block(%r) 应被拒绝" % (bad,))
+
+    # 默认值工厂：两次现造不共享可变对象（否则一个存档的改动会漏进另一个）。
+    first, second = chron.new_block(), chron.new_block()
+    first["actions"]["x"] = {"status": None}
+    first["idempotency"]["k"] = 1
+    assert second["actions"] == {} and second["idempotency"] == {}, second
+
+    # 缺块（老档）→ 补默认并留说明；已有值**逐字保留**（只补不覆盖）。
+    notes = []
+    assert chron.migrate_block(None, notes) == chron.new_block()
+    assert notes, "缺块必须留下一条迁移说明"
+    raw = {"version": 1, "world_minute": 500, "seq": 9, "actions": {},
+           "windows": [], "idempotency": {"k": 3}}
+    block = chron.migrate_block(raw, notes)
+    assert block["world_minute"] == 500 and block["seq"] == 9
+    assert block["idempotency"] == {"k": 3}
+    assert block[chron.CHRON_FOLDED_NAME] == {}, "缺的字段按惰性迁移补默认"
+    assert chron.CHRON_FOLDED_NAME not in raw, "迁移不得改写调用方的入参"
+
+    # 脏值降级：坏字段只降级它自己，不因一键丢掉整块。
+    notes = []
+    dirty = {"version": 1, "world_minute": "五百", "seq": -1, "actions": ["不是表"],
+             "windows": [{"window_id": "w"}, "不是对象"],
+             "idempotency": {"k": "3", "j": 4}}
+    block = chron.migrate_block(dirty, notes)
+    assert block["world_minute"] == 0 and block["seq"] == 0
+    assert block["actions"] == {}
+    assert block["windows"] == [{"window_id": "w"}], block["windows"]
+    assert block["idempotency"] == {"j": 4}, block["idempotency"]
+    assert len(notes) >= 4, notes
+    assert dirty["windows"] == [{"window_id": "w"}, "不是对象"], "迁移不得改写入参"
+
+    # 更高版本 → 拒载（STATE §3 S6：不静默降级）。
+    try:
+        chron.migrate_block({"version": chron.CHRON_BLOCK_VERSION + 1})
+    except chron.ChronError:
+        pass
+    else:
+        raise AssertionError("更高版本的 chron 块必须拒载")
+
+    # 块 ↔ 调度器状态：`due_heap` / `blocks` / `running` 全部按 `actions` 重建。
+    scheduler = chron.new_scheduler(SCHED_MINUTE)
+    scheduler = _schedule(scheduler, _draft_action("dep", actor="pc-1", time_cost=30,
+                                                   place="room"))
+    scheduler = _schedule(scheduler, _draft_action("child", actor="pc-2", time_cost=30,
+                                                   depends_on=("dep",), place="room"))
+    scheduler = _schedule(scheduler, _draft_action("solo", actor="pc-3", time_cost=10))
+    block = chron.block_from_scheduler(scheduler)
+    assert block["actions"] == scheduler["actions"], "行动卡逐字进块"
+    assert "due_heap" not in block, "due_heap 是派生索引，不落盘（§8.1）"
+
+    rebuilt = chron.scheduler_from_block(block)
+    assert rebuilt["world_minute"] == scheduler["world_minute"]
+    assert rebuilt["actions"] == scheduler["actions"]
+    assert rebuilt["windows"] == scheduler["windows"]
+    assert rebuilt["keys"] == scheduler["keys"]
+    assert rebuilt["due_heap"] == scheduler["due_heap"], "到期顺序必须与重启前全等"
+    assert rebuilt["blocks"] == scheduler["blocks"], "依赖反向索引按卡重建"
+    assert rebuilt["running"] == scheduler["running"], "在飞冲突键按卡重建"
+    assert chron.scheduler_from_block(block) == rebuilt, "重建必须确定性"
+
+    # 在飞行动的 `running`：开始之后才登记（`scheduled` 不算）。
+    flying = chron.new_scheduler(SCHED_MINUTE)
+    flying = _schedule(flying, _draft_action("f", actor="pc-1", time_cost=10,
+                                             place="room"))
+    flying = _schedule(flying, _draft_action("g", actor="pc-2", time_cost=10,
+                                             place="room"))
+    assert chron.scheduler_from_block(chron.block_from_scheduler(flying))["running"] == {}
+    started = chron.advance_to(flying, SCHED_MINUTE + 10)["state"]
+    assert started["running"] == {"f": "place:room", "g": "place:room"}, started["running"]
+    assert chron.scheduler_from_block(chron.block_from_scheduler(started))["running"] == \
+        started["running"]
+
+
+def check_merge_snapshot_and_log():
+    """§8.2 第 1 / 3 步的合并口径：日志为准、幂等表只加不减、折叠优先。"""
+    old_card = {"action_id": "x", "status": "scheduled", "events": ["x:e000001"],
+                "due_minute": 130, "priority": 0, "depends_on": []}
+    new_card = dict(old_card, status="running", events=["x:e000001", "x:e000002"])
+    folded = {"action_id": "y", "status": "completed", "end_minute": 90,
+              "events": ["y:e000001"]}
+
+    snapshot = chron.new_block(100)
+    snapshot["actions"]["x"] = old_card
+    snapshot["idempotency"]["k1"] = 1
+    log = chron.new_block(150)
+    log["actions"]["x"] = new_card
+    log["actions"]["y"] = {"action_id": "y", "status": "scheduled",
+                           "events": ["y:e000001"], "due_minute": 160, "priority": 0,
+                           "depends_on": []}
+    log["idempotency"]["k2"] = 2
+    log[chron.CHRON_FOLDED_NAME]["y"] = folded
+
+    merged = chron.merge_blocks(snapshot, log)
+    assert merged["world_minute"] == 150, "时钟取大（世界时间只增不减）"
+    assert merged["seq"] == max(snapshot["seq"], log["seq"])
+    assert merged["actions"]["x"] == new_card, "同一张卡取「最后一条事件序号」更大的一边"
+    assert "y" not in merged["actions"], "折叠优先：裁剪过的行动不得被翻回来"
+    assert merged[chron.CHRON_FOLDED_NAME]["y"] == folded
+    assert merged["idempotency"] == {"k1": 1, "k2": 2}, "幂等表只加不减"
+    # 只有一边有的卡照收（快照里 staged、日志里没有的同样是事实）。
+    snapshot["actions"]["z"] = {"action_id": "z", "status": "scheduled",
+                                "events": ["z:e000001"], "due_minute": 110,
+                                "priority": 0, "depends_on": []}
+    merged = chron.merge_blocks(snapshot, log)
+    assert merged["actions"]["z"] == snapshot["actions"]["z"]
+    # 窗口：按 `window_id` 去重，保留首次出现的次序；同一 id 取**参与者更多**的一边
+    # （C3 的「并入窗口」不进事件，快照侧往往更完整）。
+    snapshot["windows"] = [{"window_id": "2:b", "key": "b", "participants": ["x"]},
+                           {"window_id": "1:a", "key": "a", "participants": ["x", "y"]}]
+    log["windows"] = [{"window_id": "1:a", "key": "a", "participants": ["x"]}]
+    merged = chron.merge_blocks(snapshot, log)
+    assert [window["window_id"] for window in merged["windows"]] == ["2:b", "1:a"]
+    assert merged["windows"][1]["participants"] == ["x", "y"], merged["windows"]
+
+
+def check_restart_roundtrip():
+    """验收 1（§8.2 时序）：重启后 `world_minute` 与到期顺序与重启前**全等**。"""
+    root = _c5_store()
+    try:
+        handle = state.open_campaign("persist-a", base_dir=root)
+        live_state, live_block = _c5_scenario(handle)
+        assert live_state["world_minute"] == 240, live_state["world_minute"]
+        assert [entry[3] for entry in live_state["due_heap"]] == ["c"], live_state["due_heap"]
+
+        # 「重启前」的证据：块真的落在了检查点里（不是只在内存 / 只在日志里）。
+        snapshot = _c5_read_json(_c5_snapshot_path(root, "persist-a"))
+        assert snapshot["blocks"][chron.CHRON_BLOCK_NAME] == live_block, "块必须随检查点落盘"
+        seq_before = snapshot["seq"]
+        handle.close()
+
+        # 重启：新句柄 + §8.2 的恢复时序
+        again = state.open_campaign("persist-a", base_dir=root)
+        notes = []
+        restored = chron.restore(again, notes=notes)
+        assert notes == [], "正常档不该有迁移 / 降级 / 抬钟说明：%r" % (notes,)
+        assert restored["seq"] == again.view()["seq"] == seq_before
+        assert restored["world_minute"] == live_state["world_minute"]
+        assert restored["block"] == live_block, "恢复出的块必须与重启前全等"
+        for field in ("world_minute", "actions", "windows", "due_heap", "blocks", "running"):
+            assert restored["state"][field] == live_state[field], \
+                "调度器状态 %s 必须全等" % field
+        # `seq` / `keys` 以**块**（= 状态层已折入的事件序号 / 幂等表）为准（§8.1），
+        # 不是内存里那份调度器自己的（它只由调用方在提交后同步）。
+        assert restored["state"]["seq"] == restored["block"]["seq"] == seq_before
+        assert restored["state"]["keys"] == restored["block"]["idempotency"]
+        assert restored["block"]["idempotency"], "幂等表必须随块活下来"
+
+        # 到期顺序全等：用恢复出的状态继续推进，事件流与重启前一致。
+        live_next = chron.advance_to(live_state, 300)
+        restored_next = chron.advance_to(restored["state"], 300)
+        assert [event["idempotency_key"] for event in restored_next["events"]] == \
+            [event["idempotency_key"] for event in live_next["events"]]
+        assert [event["type"] for event in restored_next["events"]] == \
+            ["action.started", chron.ACTION_DUE_EVENT]
+        assert [event["target"] for event in restored_next["events"]] == ["c", "c"]
+        assert restored_next["state"]["world_minute"] == 300
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def check_idempotency_no_double_effect():
+    """验收 2（§8.3）：同 `idempotency_key` 重投，副作用只发生一次。"""
+    root = _c5_store()
+    try:
+        handle = state.open_campaign("persist-b", base_dir=root)
+        block = chron.new_block(PERSIST_MINUTE)
+        handle.stage(blocks={chron.CHRON_BLOCK_NAME: block})
+        handle.flush()
+
+        scheduler = chron.new_scheduler(PERSIST_MINUTE)
+        draft = chron.new_action("t1", "pc-1", "rest", 30)
+        result = chron.schedule(scheduler, draft, world_minute=PERSIST_MINUTE)
+        scheduler = result["state"]
+        block = _c5_commit(handle, block, result)
+
+        # 推进到到期：`scheduled → running` + `action.due` 两条事件；逐条提交并记下
+        # 每条事件**提交前**的块（下面要用同一条载荷复现状态层的重放结果）。
+        step = chron.advance_to(scheduler, 30)
+        scheduler = step["state"]
+        step_events = _c5_steps(step)
+        before_each = []
+        for event in step_events:
+            before_each.append(block)
+            outcome = chron.commit_event(handle, event, block=block, state=step["state"])
+            assert outcome["status"] == "committed", (event["type"], outcome)
+            block = outcome["block"]
+        handle.stage(blocks={chron.CHRON_BLOCK_NAME: block})
+        handle.flush()
+        due_index = [index for index, event in enumerate(step_events)
+                     if event["type"] == chron.ACTION_DUE_EVENT][0]
+        due = step_events[due_index]
+        seq_committed = handle.view()["seq"]
+        lines_committed = _c5_event_lines(root, "persist-b")
+
+        # ① CHRON 侧闸：键已在块里 → `skipped`，连状态层都不惊动。
+        outcome = chron.commit_event(handle, due, block=block, state=step["state"])
+        assert outcome["status"] == "skipped", outcome
+        assert handle.view()["seq"] == seq_committed, "重投不得再排一次事件号"
+        assert _c5_event_lines(root, "persist-b") == lines_committed, "重投不得写第二行事件"
+        assert chron.pending_events(block, step_events) == []
+        assert chron.committed_seq(block, due["idempotency_key"]) == seq_committed
+        assert chron.is_committed(block, due["idempotency_key"])
+
+        # ② 状态层侧闸（STATE §7.4）：块只是**加速副本**——把该键从副本里抹掉再投，
+        #    同键同载荷仍返回 `replayed`，不写事件、副作用只发生一次。
+        stripped = json.loads(json.dumps(before_each[due_index]))
+        assert due["idempotency_key"] not in stripped["idempotency"], "夹具应缺这条键"
+        outcome = chron.commit_event(handle, due, block=stripped, state=step["state"])
+        assert outcome["status"] == "replayed", outcome
+        assert handle.view()["seq"] == seq_committed
+        assert _c5_event_lines(root, "persist-b") == lines_committed
+        # 重放结果把键重新记回块里（自愈）。
+        assert outcome["block"]["idempotency"][due["idempotency_key"]] == seq_committed
+
+        # ③ 幂等表随块落盘：重启后仍在（`restore` 还能从日志折回来）。
+        handle.stage(blocks={chron.CHRON_BLOCK_NAME: outcome["block"]})
+        handle.flush()
+        handle.close()
+        restored = chron.restore(state.open_campaign("persist-b", base_dir=root))
+        assert restored["state"]["keys"] == outcome["block"]["idempotency"]
+        assert restored["block"]["idempotency"][due["idempotency_key"]] == seq_committed
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def check_missing_block_defaults_and_rewrite():
+    """验收 3（§8.4）：老档（无 `chron`）载入补默认 → 再存 → 新档可读。"""
+    root = _c5_store()
+    try:
+        # 老档形态：检查点里**没有** chron 块（其余不透明块都在）。
+        handle = state.open_campaign("persist-legacy", base_dir=root)
+        handle.stage(blocks={"rules": {"party": []}}, stream={"log": [], "cursor": 0})
+        handle.flush()
+        handle.close()
+        snapshot_path = _c5_snapshot_path(root, "persist-legacy")
+        assert chron.CHRON_BLOCK_NAME not in _c5_read_json(snapshot_path)["blocks"], \
+            "夹具应当没有 chron 块"
+
+        notes = []
+        restored = chron.restore(state.open_campaign("persist-legacy", base_dir=root),
+                                 notes=notes)
+        assert restored["block"] == chron.new_block(), restored["block"]
+        assert restored["world_minute"] == 0 and restored["seq"] == 0
+        assert restored["state"]["due_heap"] == [] and restored["state"]["actions"] == {}
+        assert any("缺失" in note for note in notes), notes
+
+        # 补默认 → 再存 → 新档可读（块随检查点落盘，形状仍是 §8.1 的那一块）。
+        again = state.open_campaign("persist-legacy", base_dir=root)
+        again.stage(blocks={chron.CHRON_BLOCK_NAME: restored["block"]})
+        again.flush()
+        again.close()
+        third = chron.restore(state.open_campaign("persist-legacy", base_dir=root),
+                              notes=[])
+        assert third["block"] == chron.new_block()
+        assert _c5_read_json(snapshot_path)["blocks"][chron.CHRON_BLOCK_NAME] == \
+            chron.new_block()
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def check_prune_and_fold():
+    """§8.4 裁剪：幂等表保留最新 `keep` 条；终态行动折叠为事件引用。"""
+    notes = []
+    block = chron.new_block(SCHED_MINUTE)
+    block["idempotency"] = {"k%d" % index: index for index in range(5)}
+    pruned = chron.prune_block(block, keep=2, notes=notes)
+    assert pruned["idempotency"] == {"k4": 4, "k3": 3}, pruned["idempotency"]
+    assert block["idempotency"] == {"k%d" % index: index for index in range(5)}, \
+        "裁剪不得改写调用方的入参"
+    assert notes, "裁剪必须留下说明"
+    for bad in (-1, True, "8"):
+        try:
+            chron.prune_block(block, keep=bad)
+        except (TypeError, ValueError):
+            continue
+        raise AssertionError("keep=%r 应被拒绝" % (bad,))
+
+    # 终态折叠：早结算的卡折成事件引用；**还有人依赖的卡不折**。
+    scheduler = chron.new_scheduler(SCHED_MINUTE)
+    scheduler = _schedule(scheduler, _draft_action("done", actor="pc-1", time_cost=10))
+    scheduler = _schedule(scheduler, _draft_action("heir", actor="pc-2", time_cost=10,
+                                                   depends_on=("done",),
+                                                   on_dep_fail="keep"))
+    scheduler = _schedule(scheduler, _draft_action("old", actor="pc-3", time_cost=10))
+    # 先推进到两者的到期分钟（到期即「开始」，`scheduled → running` 才能结算）。
+    scheduler = chron.advance_to(scheduler, SCHED_MINUTE + 10)["state"]
+    scheduler = chron.settle(scheduler, "old", "completed",
+                             world_minute=SCHED_MINUTE + 10)["state"]
+    scheduler = chron.settle(scheduler, "done", "completed",
+                             world_minute=SCHED_MINUTE + 20)["state"]
+    assert scheduler["actions"]["done"]["status"] == "completed"
+
+    folded = chron.prune_block(chron.block_from_scheduler(scheduler),
+                               fold_terminals_before=SCHED_MINUTE + 20, notes=notes)
+    assert "old" not in folded["actions"], "终态且无人依赖的卡应折叠"
+    assert folded[chron.CHRON_FOLDED_NAME]["old"] == {
+        "action_id": "old", "status": "completed", "end_minute": SCHED_MINUTE + 10,
+        "events": scheduler["actions"]["old"]["events"],
+    }, folded[chron.CHRON_FOLDED_NAME]["old"]
+    assert "done" in folded["actions"], "还有行动依赖它的卡不得折叠"
+    assert "heir" in folded["actions"], "非终态卡不得折叠"
+
+    # 折叠后的块仍是合法调度器状态的来源：依赖解析与到期队列都照常。
+    rebuilt = chron.scheduler_from_block(folded)
+    assert "old" not in rebuilt["actions"]
+    assert [entry[3] for entry in rebuilt["due_heap"]] == ["heir"], rebuilt["due_heap"]
+
+    # 没有 `end_minute` 的终态卡（脏数据）不折。
+    dirty = chron.block_from_scheduler(scheduler)
+    dirty["actions"]["old"] = dict(dirty["actions"]["old"], end_minute=None)
+    kept = chron.prune_block(dirty, fold_terminals_before=SCHED_MINUTE + 999)
+    assert "old" in kept["actions"], "拿不到 end_minute 的终态卡不猜、不折"
+
+
+def check_commit_changes_are_self_contained():
+    """§8.3：提交用的 `changes` 是**单段**路径（块还不存在时也成立），且不改写入参。"""
+    before = chron.new_block(0)
+    after = chron.new_block(60, seq=1)
+    after["actions"]["a"] = {"action_id": "a", "status": "running",
+                             "events": ["a:e000001"], "due_minute": 90, "priority": 0,
+                             "depends_on": []}
+    changes = chron.block_changes(before, after)
+    assert [change["path"] for change in changes] == ["/world_minute", "/seq", "/actions"], \
+        changes
+    for change in changes:
+        assert change["block"] == chron.CHRON_BLOCK_NAME
+        assert change["op"] == "set"
+        assert change["path"].count("/") == 1, "必须是**单段**路径：块不存在时也成立"
+        assert "before" in change and "after" in change
+    assert before == chron.new_block(0), "折 changes 不得改写事件前的块"
+    assert after["actions"]["a"]["status"] == "running", "折 changes 不得改写事件后的块"
+    # 字段在「事件后」消失 → `unset`（否则老块里的脏字段永远删不掉）。
+    shrunk = chron.new_block(0)
+    del shrunk["actions"]
+    removed = [change for change in chron.block_changes(after, shrunk)
+               if change["path"] == "/actions"]
+    assert removed and removed[0]["op"] == "unset" and removed[0]["after"] is None
+    # `advance_event` 是 §8.3 的确定性形状：同一分钟重投 = 同一次事实。
+    event = chron.advance_event(90)
+    assert event["type"] == chron.CLOCK_ADVANCE_EVENT
+    assert event["idempotency_key"] == "clock:90:%s" % chron.CLOCK_ADVANCE_EVENT
+    assert event["world_time"] == {"world_minute": 90, "day": 1, "tod": 90}
+    assert event["source"] == "system" and event["actor"] == "world"
+    assert chron.advance_event(90) == event
+
+
+# --------------------------------------------------------------------------
 # 纯函数（无依赖、无 IO）
 # --------------------------------------------------------------------------
 
@@ -1715,6 +2186,14 @@ def main():
         check_compression_log_records_only_real_events,
         check_offline_advance_is_input_only,
         check_compression_is_pure_and_validates_input,
+        # §8 持久化与恢复（C5）
+        check_chron_block_shape,
+        check_merge_snapshot_and_log,
+        check_restart_roundtrip,
+        check_idempotency_no_double_effect,
+        check_missing_block_defaults_and_rewrite,
+        check_prune_and_fold,
+        check_commit_changes_are_self_contained,
         check_module_is_pure,
     )
     failures = 0

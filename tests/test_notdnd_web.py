@@ -109,6 +109,7 @@ os.environ["NOTDND_SAVE"] = _TMP
 
 sys.path.insert(0, ROOT)                     # 让 tests/ 直接跑时也能 import 根模块
 import notdnd_web   # noqa: E402
+import chron        # noqa: E402
 import prism_core   # noqa: E402
 import prism_guide  # noqa: E402
 import state        # noqa: E402
@@ -3629,6 +3630,40 @@ def check_action_precondition_no_party():
     notdnd_web._sessions.pop(sid, None)
 
 
+def check_legacy_migration_adds_chron_block():
+    """M9-C5：老档（无 `chron` 块）迁移后自带一块**空** CHRON 块，且 CHRON 读得动。
+
+    `_LEGACY_DEFAULTS` 的「默认值工厂」是网页层唯一该管 CHRON 的地方：块形状归
+    `chron.new_block()`（本文件不另写一份字段名），老档缺块时由迁移补上；后续 save
+    只按块名覆盖 `rules` / `atlas` / `guide` / `room`，**不得**把这块抹掉（state.stage
+    的按块合并语义）。
+    """
+    sid = "legacy-chron-1"
+    _write_save(_save_path(sid), {"sid": sid, "created": 1700000000.0, "log": [], "seq": 0,
+                                  "save_name": "老档"})
+    session = notdnd_web.Session.load(sid)
+    assert session is not None, "老档必须能载入"
+    session.save()                                          # 第一次 save 落成新档
+    assert not os.path.exists(_save_path(sid)), "迁移成功后老档应被删掉"
+
+    handle = state.open_campaign(sid, base_dir=str(notdnd_web.SAVE_DIR))
+    assert handle.view()["blocks"]["chron"] == chron.new_block(), handle.view()["blocks"]
+    restored = chron.restore(handle)                        # C5 的加载路径读得动
+    assert restored["block"] == chron.new_block(0, seq=handle.view()["seq"]), restored["block"]
+    assert restored["block"]["actions"] == {} and restored["block"]["idempotency"] == {}
+    assert restored["world_minute"] == 0
+
+    # 再存一次：门面不改这块，engine 的按块合并也必须保住它。
+    notdnd_web._sessions.pop(sid, None)
+    again = notdnd_web.Session.load(sid)
+    assert again is not None
+    again.add_log("narrative", "重启后的一拍")
+    again.save()
+    after = state.open_campaign(sid, base_dir=str(notdnd_web.SAVE_DIR))
+    assert after.view()["blocks"]["chron"] == chron.new_block(), \
+        "后续 save 不得动 CHRON 块：%r" % (after.view()["blocks"]["chron"],)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -3637,6 +3672,7 @@ CHECKS = (
     check_legacy_save_lazy_migration,
     check_state_wiring_new_layout,
     check_legacy_migration_on_first_save,
+    check_legacy_migration_adds_chron_block,
     check_save_list_and_delete_new_layout,
     check_api_session_view,
     check_api_session_without_session_400,
