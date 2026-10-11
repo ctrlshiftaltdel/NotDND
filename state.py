@@ -26,6 +26,12 @@ M7-2（Issue #267）在既有实现上补齐 §6.3 检查点调度、§4.1 归�
 加载时按 §9 忽略 `seq ≤ 检查点 seq` 的重叠行、半写末行**落盘**截除
 （否则下一次提交会与半行粘成一行，加载时把新事件一起丢掉）。
 
+M7-3（Issue #276）在既有实现上补两块**接线所需**的能力（不改任何块的语义）：
+- §10 存档迁移 `migrate_legacy()`：老单文件 JSON → 新档文件族（含 `.bak`），
+  字段映射仍归调用方（§10.1 是网页层的旧格式知识），本模块只做落盘半边（§10.2 步骤 2–6）；
+- §11 门面态同步 `Handle.stage()` / `Handle.meta()`：`stream`（展示流）与不透明块
+  **不进事件溯源**，只能随检查点落盘——`commit()` 没有也不该有它们的入口。
+
 存储布局（§4.1）::
 
     <base_dir>/campaigns/<campaign_id>/
@@ -51,6 +57,7 @@ __all__ = [
     "StateError",
     "Handle",
     "open_campaign",
+    "migrate_legacy",
     "validate_event",
 ]
 
@@ -72,6 +79,9 @@ SNAPSHOT_BAK_NAME = "snapshot.json.bak"
 SNAPSHOT_TMP_NAME = "snapshot.json.tmp"
 EVENTS_NAME = "events.ndjson"
 IDEMPOTENCY_NAME = "idempotency.json"
+
+# 迁移备份（§10.2 步骤 2，GDD §19.4「不可逆迁移保留备份」）：老档**原文**存这里。
+LEGACY_BAK_NAME = "snapshot.json.pre-v0.bak"
 
 # 归档段（§4.1）：`events.<n>.ndjson`，序号升序即时间顺序（不删事实）。
 ARCHIVE_RE = re.compile(r"^events\.(\d+)\.ndjson$")
@@ -724,9 +734,15 @@ class Handle:
         self._seq = snapshot.get("seq", 0)
         self._world_time = snapshot.get("world_time")
         self._stream = copy.deepcopy(snapshot.get("stream") or {"log": [], "cursor": 0})
-        self._created = snapshot.get("created") or _now_ms()
+        # `created` 的 0 是合法值（§10.1：老档「未知」逐字搬），不能被 `or` 换成当前时间；
+        # 只有缺失 / 脏值才落到 `_now_ms()`。
+        created = snapshot.get("created")
+        self._created = created if _is_int(created) and created >= 0 else _now_ms()
         self._updated = snapshot.get("updated") or self._created
-        self._save_name = snapshot.get("save_name") or campaign_id
+        # 空串 `save_name` 是**合法值**（= 未命名，展示时按 `campaign_id` 回退，§6.1），
+        # 同样不能被 `or` 换成 `campaign_id`——否则门面重载后「未命名」会变成「已命名」。
+        save_name = snapshot.get("save_name")
+        self._save_name = save_name if isinstance(save_name, str) else campaign_id
         indexes = snapshot.get("indexes") or {}
         self._idem = copy.deepcopy(indexes.get("idempotency") or {})
         archived_upto = indexes.get("archived_upto")
@@ -748,6 +764,44 @@ class Handle:
                 "world_time": copy.deepcopy(self._world_time),
                 "blocks": copy.deepcopy(self._blocks),
                 "stream": copy.deepcopy(self._stream),
+            }
+
+    # ── 门面态同步（§11：展示流与不透明块不进事件溯源）──────────────────────
+    def stage(self, *, blocks=None, stream=None, save_name=None, created=None):
+        """把调用方（网页层门面）的内存态推入句柄——**不写事件**。
+
+        §11 把 `stream`（叙事流）与不透明块的权威留在调用方：它们不是事实，
+        与事件 `seq` 是**两条独立序列**（禁止互相赋值），只能随检查点落盘；
+        `commit()` 因此没有也不该有它们的入口。
+
+        `blocks` 按**块名**逐块覆盖（未提到的块原样保留，未来块不被旧调用方抹掉）；
+        `stream` 整体替换；`save_name` / `created`（毫秒，§6.1）给了才动。
+        同步本身不落盘——落盘由下一次检查点 / `flush()` 负责。
+        """
+        with self._lock:
+            if blocks:
+                for name, value in blocks.items():
+                    self._blocks[name] = copy.deepcopy(value)
+            if stream is not None:
+                self._stream = copy.deepcopy(stream)
+            if save_name is not None:
+                self._save_name = str(save_name)
+            if created is not None:
+                self._created = int(created)
+            self._updated = _now_ms()
+
+    def meta(self):
+        """只读元信息：`created` / `updated` / `save_name`（毫秒 / 毫秒 / 串）。
+
+        §12.1 的 `view()` 只含 {campaign_id, seq, world_time, blocks, stream}，
+        展示字段不在其中；门面重建需要它们，故单列一个只读入口（形参 / 返回值
+        都只是拷贝，句柄内部态不被外部改写）。
+        """
+        with self._lock:
+            return {
+                "created": self._created,
+                "updated": self._updated,
+                "save_name": self._save_name,
             }
 
     def replay(self, upto_seq=None):
@@ -1168,9 +1222,111 @@ def open_campaign(campaign_id, *, base_dir=None, save_name=None):
     handle = Handle(campaign_id, campaign_dir, snapshot)
     handle.notes.extend(notes)
     if fresh and not os.path.exists(events_path):
-        # 全新战役：落创世检查点 + 空日志（老档迁移属 M7-3，不在本单）。
+        # 全新战役：落创世检查点 + 空日志（老档迁移走 migrate_legacy()）。
         open(events_path, "a", encoding="utf-8").close()
         handle._last_checkpoint_ms = _now_ms()
         handle._last_checkpoint_bytes = 0
         handle._write_checkpoint()
+    return handle
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# migrate_legacy（§10.2：老档 → 新档文件族）
+# ════════════════════════════════════════════════════════════════════════════
+
+def _remove_legacy(path, notes):
+    """§10.2 步骤 5：删除老档；失败只记说明（新档已可用，老档留作兜底）。"""
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        notes.append("老档删除失败（新档已可用，不影响正确性）：%s" % exc)
+
+
+def migrate_legacy(campaign_id, legacy_path, *, blocks, stream=None,
+                   save_name=None, created=None, base_dir=None):
+    """§10.2：把老档（旧单文件 JSON）落成新档文件族，返回可用的 `Handle`。
+
+    §10.1 的**字段映射**（`sid` → `campaign_id`、`log` / `seq` → `stream`、秒 → 毫秒、
+    「只补不覆盖」……）是调用方（网页层）的旧格式知识，由调用方按表算好
+    `blocks` / `stream` / `save_name` / `created` 传进来；本函数只做**落盘半边**
+    （§10.2 步骤 2–6）：
+
+    2. 老档**原文**备份为 `snapshot.json.pre-v0.bak`（GDD §19.4：不可逆迁移留备份）；
+    3. 建检查点（事件 `seq = 0`）→ 写 `.tmp` + `os.replace` + **回读校验 `checksum`**；
+    4. 建空 `events.ndjson`——老档没有事实日志，历史自迁移点起算（§15 R4），不伪造；
+    5. 两个文件都成功之后才删老档（删不掉只记说明，**不滚回**：新档已可用）；
+    6. 记一条 `system.migration` 事件（`source="system"`），让「这里发生过一次迁移」可溯源。
+
+    崩溃安全 / 幂等：老档在**新检查点写成功之后**才删；若检查点已在盘上（上次迁移在
+    删除老档之前中断），直接返回既有战役并清掉残留老档——**不覆盖**已落盘的新档。
+    """
+    if not isinstance(campaign_id, str) or not CAMPAIGN_ID_RE.match(campaign_id):
+        raise StateError("非法 campaign_id（须匹配 ^[A-Za-z0-9_-]{1,64}$）：%r"
+                         % (campaign_id,))
+    root = os.path.join(base_dir or DEFAULT_SAVE_ROOT, CAMP_DIRNAME)
+    campaign_dir = os.path.join(root, campaign_id)
+    os.makedirs(campaign_dir, exist_ok=True)
+
+    if os.path.exists(os.path.join(campaign_dir, SNAPSHOT_NAME)):
+        handle = open_campaign(campaign_id, base_dir=base_dir)
+        _remove_legacy(legacy_path, handle.notes)
+        return handle
+
+    # ② 备份老档原文（逐字搬；不做任何再序列化）
+    try:
+        with open(legacy_path, "rb") as source:
+            raw = source.read()
+    except OSError as exc:
+        raise StateError("迁移读不到老档 %r：%s" % (legacy_path, exc))
+    _write_atomic_bytes(os.path.join(campaign_dir, LEGACY_BAK_NAME), raw)
+
+    # ③ 检查点（§6.1 字段；事件 seq = 0）。`created` 的 0 = 未知也是合法值，
+    #    只有缺失 / 脏值才降级成当前时间。
+    now = _now_ms()
+    payload = {
+        "schema_version": STATE_VERSION,
+        "kind": "state.snapshot",
+        "campaign_id": campaign_id,
+        "seq": 0,
+        "world_time": None,
+        "created": created if _is_int(created) and created >= 0 else now,
+        "updated": now,
+        "save_name": save_name if isinstance(save_name, str) else campaign_id,
+        "stream": copy.deepcopy(stream or {"log": [], "cursor": 0}),
+        "blocks": copy.deepcopy(blocks or _genesis_blocks()),
+        "indexes": {"idempotency": {}, "archived_upto": 0},
+    }
+    payload["checksum"] = _digest(payload)
+    snapshot_path = os.path.join(campaign_dir, SNAPSHOT_NAME)
+    _write_atomic(snapshot_path, _canonical(payload))
+    try:
+        written = _read_json(snapshot_path)
+    except (OSError, ValueError) as exc:
+        raise StateError("迁移回读失败（%s）：%s" % (campaign_id, exc))
+    problem = _verify_snapshot(written, campaign_id)
+    if problem:
+        raise StateError("迁移回读校验失败（%s）：%s" % (campaign_id, problem))
+
+    # ④ 空事件日志（老档没有事实日志，不伪造历史）
+    events_path = os.path.join(campaign_dir, EVENTS_NAME)
+    if not os.path.exists(events_path):
+        open(events_path, "a", encoding="utf-8").close()
+
+    handle = open_campaign(campaign_id, base_dir=base_dir)
+
+    # ⑤ 新档可用了才删老档（删不掉就留着，绝不滚回）
+    _remove_legacy(legacy_path, handle.notes)
+
+    # ⑥ 迁移事件：A0（一次提交一条事件），`changes` 为空——状态在检查点里，
+    #    这条事件只作「迁移发生过」的溯源锚点。`rules_version` 取老档格式版本
+    #    （§10.3：M7 只有 v0 → v1）；`type` 必须过 §5.1 的 `<domain>.<verb>`。
+    result = handle.commit(base_seq=0, idempotency_key=None,
+                           type="system.migration", actor="world",
+                           rules_version="v0", changes=[], source="system")
+    if result.get("status") != "committed":
+        handle.notes.append("迁移事件未落盘：%s" % (result.get("error"),))
     return handle
