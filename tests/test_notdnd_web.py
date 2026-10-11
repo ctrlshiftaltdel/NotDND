@@ -54,6 +54,14 @@
      畸形 JSON 体 → 400；落盘失败 → 500 且不返回误导性成功（与 #170 同一口径）；
      重载往返（服务重启后从磁盘重新载入）。既有 `X-Session` / `?sid=` 语义不变。
 
+ 12. 回合落会话日志（M4-B2，UI-DESIGN §1.3.5 / §7 缺口 B2）：`/api/guide/turn`
+     一回合结束后玩家的 `act`（自由文本或行动 label）、导引者 `narrate`（含
+     离线 / 上游失败的兜底句）与揭开的 `trace` 写进 `Session.log`（`seq` 单调、
+     锁内递增）；`GET /api/log?since=` 按 `seq` 增量取回；重载往返（回合日志已
+     落盘）；叙事记的是秘密门**涂掉之后**的字，被删内容不因落日志重新可见；
+     `result` 先于 `narration` 的既有事件顺序不变；离线 / 模块缺失 / 淡出 / 跳过
+     这些短路回合同样落 `act` + `narrate`（真子进程覆盖启动路径）。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -159,18 +167,23 @@ class _Server:
     测试因此能顺带验证「问服务端才知道存档写在哪」这条通路。
     """
 
-    def __init__(self):
+    def __init__(self, offline: bool = False):
         self.dir = tempfile.mkdtemp(prefix="notdnd-web-srv-")
         self.port = _free_port()
         self.log = os.path.join(self.dir, "server.log")
         self.proc = None
         self._log_handle = None
+        self.offline = offline
 
     def __enter__(self):
         env = dict(os.environ)
         env.update(NOTDND_SAVE=self.dir, NOTDND_HOST="127.0.0.1",
                    NOTDND_PORT=str(self.port), PYTHONUNBUFFERED="1",
                    PYTHONIOENCODING="utf-8")
+        if self.offline:
+            # `parse_env` 里 `os.environ` 优先于 `.env`，空值即「未配置」——
+            # 即便本机有 `.env`，这个子进程也确定离线，绝不真的出网。
+            env.update(BASE_URL="", MODEL="", API_KEY="")
         # 服务端输出落文件：管道写满会死锁，事后读文件还能拿到崩溃证据。
         self._log_handle = open(self.log, "w", encoding="utf-8")
         # start_new_session：让服务自成一个会话 / 进程组，收摊时按进程组杀，
@@ -2510,6 +2523,210 @@ def check_session_create_save_failure():
         notdnd_web._sessions.pop(sid, None)
 
 
+# --------------------------------------------------------------------------
+# 回合落会话日志（M4-B2，UI-DESIGN §1.3.5 / §7 缺口 B2）
+# --------------------------------------------------------------------------
+
+
+def check_turn_log_wiring():
+    """M4-B2：一回合的 `act` / `narrate`（涂掉之后）/ `trace` 进 `Session.log`。
+
+    走 G7 焦点变化回合（会揭开一条痕迹）：核对日志内容与顺序、`?since=` 增量、
+    秘密门对日志同样生效、以及重载往返（从磁盘重新载入日志仍在）。
+    """
+    sid = "b2-turn-log"
+    _guide_session(sid)
+    huo = _npc("yunji", "npc-01")
+    secret = huo["secret"]
+    window = secret[:prism_guide.SECRET_WINDOW]
+    narration = ("【裁决】判定：成功\n\n"
+                 "【叙事】霍砚低声说他是守钥人计霜的儿子。温苔：「灯还亮着。」\n\n"
+                 "【钩子】泉声还在响。")
+    with _LocalServer() as server:
+        _bind(server, sid)
+        # 回合 A：无焦点，只建立 scene 检查点（不记痕）。
+        with _guide_online(_ONLINE_ENV, _FakeTransport()):
+            assert server.post("/api/guide/turn", {"text": "我看看四周"},
+                               sid=sid)[0] == 200
+        # 回合 B：第一次设焦点 loc-02（previous 空 → 不算变化，不记痕）。
+        with _guide_online(_ONLINE_ENV,
+                           _FakeTransport([_BAD_JSON, _BAD_JSON,
+                                           _sse_reply(_OK_NARRATION)])):
+            assert server.post(
+                "/api/guide/turn",
+                {"text": "我走进白壁", "location_id": "loc-02"},
+                sid=sid)[0] == 200
+        # 回合 C：焦点 loc-02 → loc-05，是真正的「离开」。先埋一条未揭开的痕迹。
+        _set_guide(sid, {"traces": [{"at": "loc-02", "id": "npc-01",
+                                     "text": "他换了把新锁。", "revealed": False}]})
+        fake = _FakeTransport([_BAD_JSON, _BAD_JSON, _BAD_JSON,
+                               _sse_reply(narration)])
+        with _guide_online(_ONLINE_ENV, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn",
+                {"text": "我走进灰市", "location_id": "loc-05"}, sid=sid)
+        assert status == 200, status
+        event = dict(_parse_sse(raw))["narration"]
+        assert event["trace"] == "他换了把新锁。", event.get("trace")
+
+        # —— 内容与顺序：每回合 act → narrate，最后一回合多一条 trace ——
+        status, body = server.get("/api/log", sid=sid)
+        assert status == 200, (status, body)
+        entries = body["log"]
+        kinds = [e["kind"] for e in entries]
+        assert kinds.count("act") == 3 and kinds.count("narrate") == 3, kinds
+        assert kinds.count("trace") == 1, kinds
+        seqs = [e["seq"] for e in entries]
+        assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs), seqs
+        tail = entries[-3:]
+        assert [e["kind"] for e in tail] == ["act", "narrate", "trace"], tail
+        assert tail[0]["text"] == "我走进灰市", tail[0]
+        # `narrate` 记的就是玩家在 `narration` 事件里看到的**涂掉之后**那段。
+        assert tail[1]["text"] == event["text"], (tail[1]["text"], event["text"])
+        assert tail[2]["text"] == event["trace"], tail[2]
+        # 秘密门对日志同样生效：日志里的叙事不含秘密全文 / 连续 8 码位，仍有「……」。
+        assert secret not in tail[1]["text"], tail[1]["text"]
+        assert window not in tail[1]["text"], tail[1]["text"]
+        assert "……" in tail[1]["text"], tail[1]["text"]
+
+        # —— `?since=` 只回增量 ——
+        cursor = tail[0]["seq"] - 1
+        status, inc = server.get("/api/log?since=%d" % cursor, sid=sid)
+        assert status == 200, (status, inc)
+        assert [e["seq"] for e in inc["log"]] == \
+            seqs[seqs.index(tail[0]["seq"]):], inc
+        # 拉到队尾：没有新条目。
+        status, empty = server.get("/api/log?since=%d" % seqs[-1], sid=sid)
+        assert status == 200 and empty["log"] == [], empty
+
+    # —— 重载往返：摘掉内存缓存，从磁盘重新载入，日志仍在（回合已落盘） ——
+    notdnd_web._sessions.pop(sid, None)
+    reloaded = notdnd_web.Session.load(sid)
+    assert reloaded is not None, "回合必须把日志落盘"
+    assert [e["kind"] for e in reloaded.log] == kinds, reloaded.log
+    assert reloaded.log[-1]["text"] == event["trace"], reloaded.log[-1]
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_turn_log_offline_paths():
+    """M4-B2：无 AI 配置 / 短路回合的日志——离线兜底、模块缺失、淡出 / 跳过。"""
+    offline = {"BASE_URL": "", "MODEL": "mm", "API_KEY": ""}
+    with _LocalServer() as server:
+        # (a) 导引者在场但离线：走 SSE 兜底，`narrate` 记兜底句（含裁决），并落盘。
+        sid = "b2-log-offline"
+        _guide_session(sid)
+        fake = _FakeTransport()
+        with _guide_online(offline, fake):
+            status, _body, raw, _heads = server.post(
+                "/api/guide/turn", {"text": "我看看四周"}, sid=sid)
+        assert status == 200, status
+        assert fake.calls == [], "离线不得调用传输"
+        events = [name for name, _ in _parse_sse(raw)]
+        assert "fallback" in events and "done" in events, events
+        status, log = server.get("/api/log", sid=sid)
+        assert [e["kind"] for e in log["log"]] == ["act", "narrate"], log["log"]
+        narrate = log["log"][1]["text"]
+        assert narrate.startswith("【裁决】") and \
+            notdnd_web.FALLBACK_NARRATION in narrate, narrate
+        # 兜底路径也落了盘：摘缓存重载后日志还在。
+        notdnd_web._sessions.pop(sid, None)
+        assert [e["kind"] for e in notdnd_web.Session.load(sid).log] == \
+            ["act", "narrate"]
+
+        # (b) 淡出 / 跳过整句：非 SSE 的固定 JSON，同样记 `act` + `narrate`。
+        sid = "b2-log-fixed"
+        _guide_session(sid)
+        with _guide_online(offline, _FakeTransport()):
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn", {"text": "淡出", "action_id": "a-lock"},
+                sid=sid)
+            assert status == 200, status
+            assert body["narration"]["text"] == notdnd_web.GUIDE_FADE_TEXT, body
+            assert "event-stream" not in heads.get("content-type", "")
+            status, body, _raw, _heads = server.post(
+                "/api/guide/turn", {"text": "跳过这段"}, sid=sid)
+            assert status == 200 and body["narration"]["text"] == \
+                notdnd_web.GUIDE_SKIP_TEXT, body
+        status, log = server.get("/api/log", sid=sid)
+        assert [e["kind"] for e in log["log"]] == \
+            ["act", "narrate", "act", "narrate"], log["log"]
+        assert [e["text"] for e in log["log"]] == \
+            ["淡出", notdnd_web.GUIDE_FADE_TEXT,
+             "跳过这段", notdnd_web.GUIDE_SKIP_TEXT], log["log"]
+
+        # (c) 模块缺失的离线兜底：固定 JSON，兜底句照记。
+        sid = "b2-log-nomod"
+        _guide_session(sid)
+        saved_module = notdnd_web.prism_guide
+        notdnd_web.prism_guide = None
+        try:
+            status, body, _raw, heads = server.post(
+                "/api/guide/turn", {"text": "我按住门栓", "action_id": "a-lock"},
+                sid=sid)
+        finally:
+            notdnd_web.prism_guide = saved_module
+        assert status == 200, status
+        assert body["narration"]["text"] == notdnd_web.FALLBACK_NARRATION, body
+        assert "event-stream" not in heads.get("content-type", "")
+        status, log = server.get("/api/log", sid=sid)
+        assert [e["kind"] for e in log["log"]] == ["act", "narrate"], log["log"]
+        assert log["log"][0]["text"] == "我按住门栓", log["log"][0]
+        assert log["log"][1]["text"] == notdnd_web.FALLBACK_NARRATION, log["log"][1]
+    for done in ("b2-log-offline", "b2-log-fixed", "b2-log-nomod"):
+        notdnd_web._sessions.pop(done, None)
+
+
+def check_turn_log_action_only():
+    """M4-B2：只点行动按钮（无散文）时，`act` 记该行动的 `label`（§1.3.5）。"""
+    sid = "b2-log-actionid"
+    _guide_session(sid)
+    with _LocalServer() as server:
+        with _guide_online(_OFFLINE_ENV, _FakeTransport()):
+            status, _body, _raw, _heads = server.post(
+                "/api/guide/turn", {"action_id": "a-lock"}, sid=sid)
+        assert status == 200, status
+        status, log = server.get("/api/log", sid=sid)
+        assert [e["kind"] for e in log["log"]] == ["act", "narrate"], log["log"]
+        assert log["log"][0]["text"] == "撬锁", log["log"][0]
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_turn_log_subprocess():
+    """M4-B2：真子进程 + 随机端口 + 临时存档目录——离线回合的日志落盘。
+
+    这条不换传输层（离线本来就不出网），所以走**真子进程**，覆盖「从命令行
+    启动」这条路径；日志直接读服务端写出的存档 JSON，证明已持久化。
+    """
+    with _Server(offline=True) as server:
+        status, info = server.get("/api/saves")
+        assert status == 200, "服务未就绪：%s" % status
+        save_dir = info["save_dir"]
+
+        status, view = server.post("/api/session/create", {})
+        assert status == 200, (status, view)
+        sid = view["sid"]
+
+        status, _body = server.post("/api/guide/turn", {"text": "我看看四周"},
+                                    sid=sid)
+        assert status == 200, "离线回合应 200，实际 %s" % status
+
+        status, log = server.get("/api/log", sid=sid)
+        assert status == 200, (status, log)
+        kinds = [e["kind"] for e in log["log"]]
+        assert kinds == ["act", "narrate"], log["log"]
+        assert log["log"][0]["text"] == "我看看四周", log["log"][0]
+        assert notdnd_web.FALLBACK_NARRATION in log["log"][1]["text"], log["log"][1]
+        seqs = [e["seq"] for e in log["log"]]
+        assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs), seqs
+
+        # 落盘：直接读服务端写出的存档（不是内存缓存）。
+        with open(os.path.join(save_dir, "%s.json" % sid),
+                  encoding="utf-8") as handle:
+            saved = json.load(handle)
+        assert [e["kind"] for e in saved["log"]] == kinds, saved["log"]
+        assert saved["log"][0]["text"] == "我看看四周", saved["log"][0]
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -2561,6 +2778,10 @@ CHECKS = (
     check_session_create_offline,
     check_session_create_reload,
     check_session_create_save_failure,
+    check_turn_log_wiring,
+    check_turn_log_offline_paths,
+    check_turn_log_action_only,
+    check_turn_log_subprocess,
 )
 
 
