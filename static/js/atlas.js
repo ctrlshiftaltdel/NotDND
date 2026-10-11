@@ -41,20 +41,17 @@ function atlasSnapshot() {
 
 /* ── 小工具 ───────────────────────────────────────────── */
 
-/* 名义分钟 → 时段数。1 时段 = 360 名义分钟（BAND_MINUTES，§2.3），
-   与 UI-DESIGN.md §2.6 的「4 时段」口径一致；前端只显示、不参与判定。 */
-function shiftsFor(minutes) {
-  return Math.max(1, Math.round((minutes || 0) / 360));
-}
-
-/* 行程档文案：点名档位名（BAND_NAMES 口径），危险档单独标记。 */
+/* 行程档文案：点名档位名（BAND_NAMES 口径）+ 名义分钟（UI-DESIGN.md §2.6
+   定稿：`BAND_NAMES` 中文 + `minutes` +（不稳））；分钟为 0（门内）时不显示
+   时长。前端只显示、不参与判定，与服务端 `text` 的「· N 分钟」同口径。 */
 function bandInfo(exit) {
   var band = exit && exit.band;
-  var n = shiftsFor(exit && exit.minutes);
+  var minutes = (exit && exit.minutes) || 0;
   var names = { short: '短程', medium: '中程', long: '远程', dangerous: '危险穿越' };
   return {
     name: names[band] || '门内',
-    shifts: n,
+    minutes: minutes,
+    duration: minutes > 0 ? minutes + ' 分钟' : '',
     dangerous: band === 'dangerous'
   };
 }
@@ -121,9 +118,9 @@ function renderServerExits() {
     var b = bandInfo(x);
     return '<button class="btn act-btn act-btn-exit' + (b.dangerous ? ' is-danger' : '') +
       '" data-exit-index="' + i + '"' +
-      ' aria-label="' + esc((x.name || '') + '（' + b.name + ' · ' + b.shifts + ' 时段）') + '">' +
+      ' aria-label="' + esc((x.name || '') + '（' + b.name + (b.duration ? ' · ' + b.duration : '') + '）') + '">' +
       '<span class="act-label">' + esc(x.name || '') + '</span>' +
-      '<span class="act-hint exit-band">' + esc(b.shifts + ' 时段') + '</span>' +
+      '<span class="act-hint exit-band">' + esc(b.name + (b.duration ? ' · ' + b.duration : '')) + '</span>' +
       (b.dangerous ? '<span class="exit-danger">危险</span>' : '') +
       '</button>';
   }).join('') + '</div>';
@@ -215,7 +212,7 @@ function confirmExitMove(x) {
   $('#exitConfirmTitle').textContent = b.name;
   $('#exitConfirmBody').innerHTML =
     '<p class="confirm-line">前往「' + esc(x.name || '未知地点') + '」？</p>' +
-    '<p class="confirm-sub">危险穿越 · ' + b.shifts + ' 时段</p>' +
+    '<p class="confirm-sub">' + esc(b.name + (b.duration ? ' · ' + b.duration : '')) + '</p>' +
     '<div class="confirm-actions">' +
       '<button type="button" class="btn" data-exit-cancel="1">取消</button>' +
       '<button type="button" class="btn btn-primary" data-exit-go="1">继续穿越</button>' +
@@ -288,7 +285,7 @@ function applyMoveResult(view, x) {
   }
 
   // 「前往」列表整体替换为新 here 的 exits（下一个 renderExits 读 ATLAS.exits）。
-  toast('你到达了「' + name + '」（' + b.shifts + ' 时段）');
+  toast('你到达了「' + name + '」' + (b.duration ? '（' + b.duration + '）' : ''));
 }
 
 /* 移动后位置变了，规则层快照可能一起变：重取整局视图并整屏重画。
