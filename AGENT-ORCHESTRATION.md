@@ -94,9 +94,9 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 
 | 状态 | 含义 | 进入条件 | 退出事件 | 负责人 |
 |---|---|---|---|---|
-| `PLANNED` | 需求已收成 Issue，但尚不可执行 | Issue 已建：目标 / 验收标准 / 允许路径 / 禁改路径 / 依赖清楚 | 依赖满足且被人派单 → `READY` | Master |
-| `READY` | 可被派发执行 | 上述依赖全部满足；**无同文件的在办 PR / 活动任务**（§3.1）；分支基线（当前 `master` head）已知 | 人被派单、执行实例启动 → `DISPATCHED`（或能力不足 → `BLOCKED` / 降级，§5） | Master |
-| `DISPATCHED` | 执行实例已启动 | 派发成功且实例可寻址（§5.2 C1） | Draft PR 开出 → `PR_OPEN`；执行失败 → `FAILED` | Execution Subagent |
+| `PLANNED` | 需求已收成 Issue，但尚不可执行 | Issue 已建：目标 / 验收标准 / 允许路径 / 禁改路径 / 依赖清楚 | 依赖满足、Issue 目标 / 验收标准 / 允许路径明确，且**同文件无活动任务 / 开放 PR**（§3.1）→ `READY` | Master |
+| `READY` | 可被派发执行 | 上述依赖全部满足；**无同文件的在办 PR / 活动任务**（§3.1）；分支基线（当前 `master` head）已知 | **多会话**：人已启动（§5.4）；**单会话**：Master 在已授权（`AGENTS.md` §3）且 C1–C4 探测通过（§5.3）后**真实 spawn 成功**（§5.2 C1）→ `DISPATCHED`（或能力不足 → `BLOCKED` / 降级，§5） | Master |
+| `DISPATCHED` | 执行实例已启动 | **真实启动**成功且实例可寻址（§5.2 C1）——**多会话 = 人已启动；单会话 = spawn 成功**（§5.3 / §5.4） | Draft PR 开出 → `PR_OPEN`；执行失败 → `FAILED` | Execution Subagent |
 | `PR_OPEN` | Draft PR 存在，实现进行中 | 分支已推送，Draft PR 已开 | 作者宣布交回复核（已 rebase + 重跑回归）→ `MASTER_REVIEW` | Execution Subagent |
 | `MASTER_REVIEW` | 独立审查中 | PR 已有可复核的 head；CI 有结论 | 逐条通过 → `APPROVED`；有缺陷 → 退回 `DISPATCHED`（修复轮次 +1，§4.5）；超上限 → `BLOCKED` | **Master** |
 | `APPROVED` | 验收通过，可合并 | §4 全部闸门通过，且 `APPROVED` 时记录的 head SHA 与待合并 head 一致 | 合并 → `MERGED` | **Master** |
@@ -122,6 +122,10 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
    必须回到 `MASTER_REVIEW` 重新走闸门（§4.4）。
 4. **合并只能由 Master 执行**；Execution Subagent **不得**把状态写成 `APPROVED` / `MERGED` / `VERIFIED`。
 5. **未知状态 = 未完成**：无法确证已通过时，一律按未通过处理。
+6. **`DISPATCHED` 只在真实启动后成立**：**多会话** = 人已启动；**单会话** = C1–C4 探测通过后
+   **spawn 成功并返回可寻址句柄**（§5.2 C1 / §5.3）。**不得**把「已计划」「已产出交接包」
+   或「已发出文字指令」写成 `DISPATCHED`；单会话能力探测失败时必须走**多会话降级路径**（§5.4），
+   而**不是**假装已派发。
 
 ---
 
@@ -297,8 +301,8 @@ Master 只读 **Issue** 与 **PR**，并要求：
 ## 附录 A · 状态迁移速查
 
 ```text
-PLANNED ──依赖满足+派单──► READY
-READY ──派发成功──► DISPATCHED        READY ──能力缺失──► BLOCKED（降级为多会话交接）
+PLANNED ──依赖满足+目标/验收/路径明确+同文件空闲──► READY
+READY ──多会话:人已启动 / 单会话:spawn 成功──► DISPATCHED   READY ──能力缺失──► BLOCKED（降级为多会话交接）
 DISPATCHED ──开 Draft PR──► PR_OPEN    DISPATCHED ──实例失败/超时/取消──► FAILED
 PR_OPEN ──交回复核──► MASTER_REVIEW
 MASTER_REVIEW ──闸门通过──► APPROVED   MASTER_REVIEW ──有缺陷──► DISPATCHED（轮次 +1）
