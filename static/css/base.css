@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    棱镜 · 基础样式（重置 + 跨片共用件 + 浮层外壳 + 全局动效开关）
-   纯 CSS，无构建步骤、无外部字体、无图片资源。手机优先，
+   纯 CSS，无构建步骤、无外部字体、不引用位图。手机优先，
    320px 宽度下不产生横向溢出；宽屏时中间留一条 860px 的「桌面」。
 
    令牌一律引用 css/tokens.css（本文件不定义任何 --* 变量）；
@@ -31,17 +31,21 @@ body { overscroll-behavior: none; }
 /* 浮层打开时锁住底层滚动 */
 body.is-locked { overflow: hidden; }
 
-button, input { font-family: inherit; font-size: inherit; color: inherit; }
+button, input, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; border: none; background: none; }
 b { font-weight: 600; }
 p { margin: 0; }
 ul { margin: 0; padding-left: 1.2em; }
 
-/* 所有可交互元素保留「键盘可见焦点」，但不给鼠标点击留丑陋默认框 */
-button:focus-visible, input:focus-visible {
+/* 键盘可见焦点。开关的可见环画在滑轨上（见 .switch），
+   隐藏的 checkbox 不再另画一圈。 */
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible:not([type="checkbox"]):not([type="radio"]) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+.switch input:focus-visible { outline: none; }
 
 /* ── 图标 ─────────────────────────────────────────────── */
 .sprite { position: absolute; width: 0; height: 0; }
@@ -58,6 +62,7 @@ button:focus-visible, input:focus-visible {
   pointer-events: none;
 }
 .i-sm { width: var(--icon-sm); height: var(--icon-sm); }
+.brand .i { margin-right: var(--sp-1); }
 
 /* ── 视图系统：.view + .is-on ──────────────────────────
    显隐只由 .is-on 控制（测试断言 is-on），不靠 hidden 属性——
@@ -83,24 +88,126 @@ button:focus-visible, input:focus-visible {
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-width: 0; max-width: 100%;
   min-height: 44px; padding: 0 var(--sp-4);
   border: 1px solid var(--line-strong); border-radius: var(--r);
   background: var(--bg-2); color: var(--text-1);
   font-size: var(--fs-ui);
   transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.btn:hover { border-color: var(--accent); }
+.btn:hover:not(:disabled):not([aria-busy="true"]) { border-color: var(--accent); }
+.btn:active:not(:disabled):not([aria-busy="true"]) { background: var(--bg-3); }
 .btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.btn-primary:hover:not(:disabled):not([aria-busy="true"]) {
+  background: color-mix(in srgb, var(--accent) 86%, var(--text-1));
+}
+.btn-primary:active:not(:disabled):not([aria-busy="true"]) {
+  background: color-mix(in srgb, var(--accent) 78%, var(--bg-0));
+}
 .btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn-ghost:hover:not(:disabled):not([aria-busy="true"]) {
+  background: var(--bg-2); border-color: transparent; color: var(--text-1);
+}
 .btn-block { width: 100%; }
+.btn:disabled,
+.btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
+.btn[aria-disabled="true"] { pointer-events: none; }
+/* 提交中：字与图标让位给三点，按钮不可再点。不做循环动画。 */
+.btn[aria-busy="true"] {
+  position: relative;
+  color: transparent;
+  pointer-events: none;
+  cursor: progress;
+}
+.btn[aria-busy="true"]::after {
+  content: "···";
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-1);
+  letter-spacing: .2em;
+}
+.btn-primary[aria-busy="true"]::after { color: var(--on-accent); }
+.btn-ghost[aria-busy="true"]::after { color: var(--text-2); }
+.btn.is-error { border-color: var(--danger); color: var(--danger); }
 
 .ic {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 40px; height: 40px; border-radius: var(--r-sm);
+  width: 44px; height: 44px; border-radius: var(--r-sm);
   color: var(--text-2);
   transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.ic:hover { color: var(--text-1); background: var(--bg-2); }
+.ic:hover:not(:disabled) { color: var(--text-1); background: var(--bg-2); }
+.ic:active:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
+.ic:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 文本框。只点名会打字的类型，避免一长串 :not() 把
+   aria-invalid 的特异性压过去，也避免碰到开关里的 checkbox。 */
+input[type="text"],
+input[type="search"],
+input[type="email"],
+input[type="url"],
+input[type="password"],
+input[type="number"],
+input:not([type]),
+textarea {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--bg-0);
+  color: var(--text-1);
+  font-size: var(--fs-ui);
+  line-height: 1.45;
+}
+textarea {
+  min-height: calc(var(--fs-ui) * 2.9 + var(--sp-4));
+  resize: vertical;
+}
+::placeholder { color: var(--text-3); opacity: 1; }
+input:disabled,
+textarea:disabled { opacity: .5; cursor: not-allowed; }
+input[aria-invalid="true"],
+textarea[aria-invalid="true"] { border-color: var(--danger); }
+
+/* 状态点：灰 = 未配置，accent = 只有文字，accent-2 = 文字与语音都在，danger = 失败。
+   顶栏落点要等导引者状态接线，这里只提供可复用的点。 */
+.status-dot {
+  width: 8px; height: 8px; flex: 0 0 auto;
+  border-radius: var(--r-pill);
+  background: var(--text-3);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-3) 28%, transparent);
+}
+.status-dot[data-state="partial"] {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.status-dot[data-state="on"] {
+  background: var(--accent-2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-2) 28%, transparent);
+}
+.status-dot[data-state="danger"] {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+/* 就地错误卡：危险色只作左边，原因仍是正文色。 */
+.alert {
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--r);
+  background: var(--bg-1);
+  color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+.alert p { overflow-wrap: anywhere; }
 
 /* ── 顶栏 ─────────────────────────────────────────────── */
 .top {
@@ -113,7 +220,25 @@ button:focus-visible, input:focus-visible {
 .top-mid { flex: 1 1 auto; min-width: 0; }
 .top-line1 { font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top-line2 { font-size: var(--fs-sm); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.top-spacer { width: 40px; flex: 0 0 auto; }
+.top-spacer { width: 44px; flex: 0 0 auto; }
+
+/* 输入条外壳。真正的发送、换行与字数校验属 U2；这里只给可缩放的控件框。 */
+.composer {
+  display: flex; align-items: flex-end; gap: var(--sp-2);
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3) var(--sp-3);
+}
+.composer-field { flex: 1 1 auto; min-width: 0; }
+.composer textarea { width: 100%; }
+.composer-count {
+  display: block;
+  margin-top: var(--sp-1);
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  pointer-events: none;
+}
+.composer .btn { flex: 0 0 auto; }
 
 /* ── 底部工具条 / 标签页 ─────────────────────────────── */
 .dock {
@@ -126,21 +251,85 @@ button:focus-visible, input:focus-visible {
 .bar { display: flex; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
 .bar .btn { flex: 1 1 auto; }
 .tabs { display: flex; }
+.composer + .tabs { border-top: 1px solid var(--line); }
 .tab {
-  flex: 1 1 0; min-width: 56px; min-height: 56px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  position: relative; padding: 8px 6px 7px;
+  flex: 1 1 0; min-width: 0; min-height: 56px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-1);
+  position: relative; padding: var(--sp-2) var(--sp-1);
   font-size: var(--fs-sm); color: var(--text-3);
-  transition: color var(--dur) var(--ease);
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
-.tab.is-on { color: var(--accent); }
-.tab.is-on::before {
+.tab:hover:not(:disabled):not(.is-on) { color: var(--text-2); background: color-mix(in srgb, var(--bg-2) 70%, transparent); }
+.tab.is-on,
+.tab[aria-selected="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.tab.is-on::before,
+.tab[aria-selected="true"]::before {
   content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   width: 24px; height: 2px; border-radius: 0 0 2px 2px; background: var(--accent);
 }
+.tab:disabled { opacity: .5; cursor: not-allowed; }
 
 /* ── 共享空态 / 加载态（叙事流与存档列表共用）─────────── */
 .stream-empty, .boot { color: var(--text-3); font-size: var(--fs-sm); padding: var(--sp-3); text-align: center; }
+.boot::before {
+  content: "";
+  display: block;
+  width: 36px; height: 2px;
+  margin: 0 auto var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+
+/* 存档行的主按钮在列表片里。悬停与按下放在共用层，选中行加一条强调色。 */
+.save-main:hover { background: color-mix(in srgb, var(--bg-2) 65%, transparent); }
+.save-main:active { background: var(--bg-2); }
+.save-row.is-current { box-shadow: inset 3px 0 0 var(--accent); }
+
+/* ── 视觉占位（几何，不请求图片）────────────────────────
+   三态只看 data-state。清单加载与 <img> 回退脚本属 U6（js/ph.js）。
+   场景卡在未提供 / 失败时高度收成 0，避免把叙事往下推。
+   位 id 用 --text-2：--text-3 在 --bg-2 上低于 4.5:1。 */
+.ph {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: 0 0 var(--sp-3);
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  color: var(--text-2);
+}
+.ph[data-ratio="wide"] { aspect-ratio: 16 / 9; width: 100%; }
+.ph[data-ratio="square"],
+.ph:not([data-ratio]) { aspect-ratio: 1; }
+.ph-mark {
+  font-family: var(--font-serif);
+  font-size: var(--fs-lg);
+  letter-spacing: .14em;
+}
+.ph-id {
+  position: absolute; right: var(--sp-2); bottom: var(--sp-1);
+  max-width: calc(100% - var(--sp-4));
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-2);
+}
+.ph[data-state="loading"] { animation: ph-in 1.2s var(--ease) 1; }
+.ph[data-state="loading"] .ph-mark { opacity: .4; }
+.ph[data-state="failed"]::after {
+  content: "";
+  position: absolute; top: var(--sp-2); right: var(--sp-2);
+  width: 8px; height: 8px; border-radius: var(--r-pill);
+  background: var(--danger);
+}
+.ph > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scene-card > .ph[data-state="empty"],
+.scene-card > .ph[data-state="failed"] { display: none; }
+@keyframes ph-in { from { opacity: .4; } to { opacity: 1; } }
 
 /* ══════════════ 设置 ══════════════ */
 .settings-scroll {
@@ -166,15 +355,21 @@ button:focus-visible, input:focus-visible {
 .set-label small { display: block; color: var(--text-3); font-size: var(--fs-xs); }
 .set-value { color: var(--text-2); font-family: var(--font-mono); font-size: var(--fs-sm); max-width: 55%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; }
-.seg button { padding: 8px 14px; min-height: 40px; color: var(--text-2); font-size: var(--fs-ui); }
+.seg { display: inline-flex; max-width: 100%; min-width: 0; border: 1px solid var(--line-strong); border-radius: var(--r); overflow: hidden; }
+.seg button { flex: 1 1 auto; min-width: 44px; padding: 0 var(--sp-3); min-height: 44px; color: var(--text-2); font-size: var(--fs-ui); }
 .seg button + button { border-left: 1px solid var(--line-strong); }
-.seg button.is-on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.seg button:hover:not(.is-on):not(:disabled) { background: var(--bg-2); color: var(--text-1); }
+.seg button.is-on,
+.seg button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.seg button:disabled { opacity: .5; cursor: not-allowed; }
+/* 分段控件会裁切外扩的焦点环，所以环画在内侧。 */
+.seg button:focus-visible { outline-offset: -2px; }
 
-.switch { position: relative; flex: 0 0 auto; width: 46px; height: 28px; }
-.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; }
+.switch { position: relative; flex: 0 0 auto; width: 46px; height: 44px; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.switch input:disabled { cursor: not-allowed; }
 .switch i {
-  position: absolute; inset: 0; border-radius: var(--r-pill);
+  position: absolute; inset: 8px 0; border-radius: var(--r-pill);
   background: var(--bg-3); border: 1px solid var(--line-strong);
   transition: background var(--dur) var(--ease);
 }
@@ -186,11 +381,12 @@ button:focus-visible, input:focus-visible {
 .switch input:checked + i { background: color-mix(in srgb, var(--accent) 60%, var(--bg-3)); }
 .switch input:checked + i::after { transform: translateX(18px); background: var(--text-1); }
 .switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch input:disabled + i { opacity: .5; }
 
 /* ══════════════ 浮层 ══════════════ */
 .scrim {
   position: fixed; inset: 0;
-  background: rgba(5, 7, 12, .6);
+  background: var(--scrim);
   z-index: 50;
   animation: fade var(--dur) var(--ease);
 }
@@ -207,6 +403,7 @@ html.no-anim .scrim, html.no-anim .sheet, html.no-anim .drawer { animation: none
   z-index: 55;
   display: flex; flex-direction: column;
   background: var(--bg-1);
+  border-top: 2px solid var(--accent);
   border-right: 1px solid var(--line-strong);
   box-shadow: var(--elev-2);
   padding-top: var(--safe-t);
@@ -223,11 +420,15 @@ html.no-anim .scrim, html.no-anim .sheet, html.no-anim .drawer { animation: none
 .menu { display: flex; flex-direction: column; gap: var(--sp-1); }
 .menu-item {
   display: flex; align-items: center; gap: var(--sp-3);
+  min-height: 44px;
   padding: var(--sp-3); border-radius: var(--r);
   color: var(--text-2); font-size: var(--fs-ui); text-align: left;
   transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
 }
-.menu-item:hover { background: var(--bg-2); color: var(--text-1); }
+.menu-item:hover:not(:disabled) { background: var(--bg-2); color: var(--text-1); }
+.menu-item:active:not(:disabled) { background: var(--bg-3); color: var(--text-1); }
+.menu-item:disabled { opacity: .5; cursor: not-allowed; }
+.menu-item.is-on { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--text-1); }
 
 /* 通用辅助层：底部弹出的全宽面板（关于 / 帮助 / 未来的各片面板） */
 .sheet {
@@ -236,18 +437,31 @@ html.no-anim .scrim, html.no-anim .sheet, html.no-anim .drawer { animation: none
   max-height: 82dvh;
   display: flex; flex-direction: column;
   background: var(--bg-1);
-  border-top: 1px solid var(--line-strong);
+  border-top: 2px solid var(--accent);
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   box-shadow: var(--elev-2);
   padding-bottom: var(--safe-b);
   animation: slideUp var(--dur) var(--ease);
 }
+.sheet::before {
+  content: "";
+  position: absolute; top: var(--sp-2); left: 50%;
+  width: 36px; height: 4px;
+  transform: translateX(-50%);
+  border-radius: var(--r-pill);
+  /* --line-strong 在底上只有约 1.8:1，把手会消失。改用 --text-3（在 bg-1 上约 4.8:1）。 */
+  background: var(--text-3);
+  pointer-events: none;
+}
+/* 宽屏用 margin 居中，不用 transform：slideUp 的关键帧会改写 transform，
+   两者叠在同一属性上时，动画期间面板会偏离中线。 */
 @media (min-width: 900px) {
-  .sheet { left: 50%; right: auto; width: 860px; transform: translateX(-50%); }
+  .sheet { left: 50%; right: auto; width: 860px; margin-left: -430px; }
 }
 .sheet-head {
   flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sp-3); border-bottom: 1px solid var(--line);
+  padding: calc(var(--sp-3) + var(--sp-2)) var(--sp-3) var(--sp-3);
+  border-bottom: 1px solid var(--line);
 }
 .sheet-head b { font-family: var(--font-serif); font-size: var(--fs-lg); }
 .sheet-body {
@@ -269,14 +483,16 @@ html.no-anim .scrim, html.no-anim .sheet, html.no-anim .drawer { animation: none
   position: fixed; left: 50%; bottom: calc(var(--dock-h) + var(--safe-b) + var(--sp-3));
   transform: translateX(-50%);
   z-index: 70;
-  max-width: 90vw;
-  padding: 9px 18px;
+  max-width: min(28rem, calc(100vw - var(--sp-5)));
+  padding: var(--sp-2) var(--sp-4);
   border-radius: var(--r-pill);
-  background: var(--bg-3); border: 1px solid var(--accent);
+  background: var(--bg-1); border: 1px solid var(--accent);
   color: var(--text-1); font-size: var(--fs-sm); text-align: center;
   box-shadow: var(--elev-2);
+  overflow-wrap: anywhere;
   animation: slideUp var(--dur) var(--ease);
 }
+.toast.is-error { border-color: var(--danger); }
 
 /* ── 动效开关：系统偏好 + 设置里的「动效」都关掉过渡 ─── */
 @media (prefers-reduced-motion: reduce) {

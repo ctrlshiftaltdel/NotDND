@@ -1,0 +1,94 @@
+/* 视觉参考稿专用。运行时页面不链接本文件。
+   只补「参考稿里才有的示意排版」；按钮、浮层、令牌全部来自 css/。 */
+
+.ref-cap {
+  flex: 0 0 auto;
+  padding: var(--sp-1) var(--sp-3);
+  background: var(--bg-3);
+  color: var(--text-2);
+  font-size: var(--fs-xs);
+  letter-spacing: .06em;
+}
+
+.board { display: none; height: 100%; flex-direction: column; }
+html[data-board="lobby"] .board-lobby,
+html[data-board="play"] .board-play,
+html[data-board="aux"] .board-aux,
+html[data-board="states"] .board-states {
+  display: flex;
+  flex-direction: column;
+}
+
+.ref-unit {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line);
+}
+.ref-unit .ph { width: 72px; margin: 0; }
+.ref-unit h3 { margin: 0; font-family: var(--font-serif); font-size: var(--fs-lg); font-weight: 600; }
+.ref-meta { margin-top: var(--sp-1); color: var(--text-2); font-size: var(--fs-sm); }
+.ref-dims {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.ref-dim {
+  min-width: 0;
+  background: var(--bg-2);
+  border-radius: var(--r-sm);
+  padding: var(--sp-1) var(--sp-2);
+}
+.ref-dim b { display: block; font-family: var(--font-mono); color: var(--text-1); font-size: var(--fs-ui); }
+.ref-dim span { color: var(--text-2); font-size: var(--fs-xs); }
+.ref-bars { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); }
+.ref-bar-row { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; color: var(--text-2); font-size: var(--fs-xs); }
+.ref-bar-row b { flex: 0 0 auto; width: 2.5em; font-weight: 400; }
+.ref-bar { flex: 1 1 auto; height: 4px; border-radius: var(--r-pill); background: var(--bg-3); }
+.ref-bar i { display: block; height: 100%; border-radius: inherit; background: var(--danger); }
+.ref-bar.poise i { background: var(--accent); }
+.ref-badge {
+  display: inline-block;
+  margin-left: var(--sp-2);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-pill);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.ref-block { margin-top: var(--sp-4); }
+.ref-block h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-xs);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.ref-row { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.ref-row + .ref-row { margin-top: var(--sp-3); }
+.ref-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.ref-samples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+.ref-samples .ph { margin: 0; }
+.ref-samples figcaption { margin-top: var(--sp-1); color: var(--text-2); font-size: var(--fs-xs); }
+
+.board-states .settings-scroll { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* 状态页把提示条放进文档流，避免盖住下面的样张。运行时 .toast 仍是固定定位。 */
+.board-states .toast {
+  position: static;
+  left: auto; bottom: auto;
+  transform: none;
+  margin: var(--sp-4) auto 0;
+}
