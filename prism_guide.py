@@ -3517,7 +3517,8 @@ def _answer_clarify(rules, guide, text, clarify, answer, *, env=None,
 
     答案先按**选项 id / 选项标签**确定性对回（不叫模型）；对不上时带着草案再
     解析一次（`_reparse_with_answer`），但**只许补 `missing` 那一个字段**。
-    这条路径**永不**产出第二个澄清——仍定不下来就降级为拒绝。
+    这条路径**永不**产出第二个澄清——仍定不下来就降级为拒绝。`clarify_id`
+    若带上了就必须是 `^c_[0-9a-f]{32}$`（可缺省；生命周期归网页层）。
     """
     if not isinstance(clarify, dict):
         return _out_reject(PROPOSE_REJECTED)
@@ -3525,8 +3526,10 @@ def _answer_clarify(rules, guide, text, clarify, answer, *, env=None,
     options = clarify.get("options")
     draft = clarify.get("proposal_draft")
     answer = str(answer or "").strip()
+    clarify_id = str(clarify.get("clarify_id") or "")
     if missing not in CLARIFY_FIELDS or not isinstance(options, list) \
-            or not isinstance(draft, dict) or not answer:
+            or not isinstance(draft, dict) or not answer \
+            or (clarify_id and not CLARIFY_ID_RE.match(clarify_id)):
         return _out_reject(PROPOSE_REJECTED)
     value = ""
     for option in options:

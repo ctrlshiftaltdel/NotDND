@@ -2751,6 +2751,12 @@ def test_a2_clarify_once():
                          answer="npc-99", env=_A2_ENV,
                          transmit=_a2_send({})) == {
         "status": "reject", "type": "reject", "reason": pg.PROPOSE_NO_TARGET}
+    # 澄清 id 形状不对 → 拒绝（生命周期归网页层，但形状必须对）。
+    bad_id = dict(clarify)
+    bad_id["clarify_id"] = "c_不是十六进制"
+    assert pg.propose_nl(rules, guide, "我想说服那个人", clarify=bad_id,
+                         answer="npc-01", env=_A2_ENV,
+                         transmit=_a2_send({}))["reason"] == pg.PROPOSE_REJECTED
     for bad in ({"missing": "target"},
                 {"missing": "target", "options": [], "proposal_draft": {}},
                 {"missing": "target", "options": [{"id": "npc-01"}],
