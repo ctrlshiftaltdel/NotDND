@@ -84,11 +84,17 @@
 - [ ] 接手时**未依赖会话记忆**，先 `git fetch --prune`，再从 GitHub 重建状态。
 - [ ] 能从 **Issue 正文 + 标签**恢复：任务存在、目标、验收标准、可改 / 禁改路径、依赖。
 - [ ] 能从 **PR 状态与评论**恢复：任务当前状态（§2）、**审查轮次**、阻塞原因。
-- [ ] 能从**当前开放 PR 触及的文件集合**重建**文件锁表**。
+- [ ] 能从**当前开放 PR 触及的文件集合 ∪ 活动任务登记声明的锁定路径**重建**文件锁表**
+      （`AGENT-ORCHESTRATION.md` §3.4）；**没有 PR ≠ 没有活动任务**。
+- [ ] **新会话恢复测试（无 PR 窗口）**：让一个任务停留在「**已登记、已派发、尚无 PR**」（`DISPATCHED`）阶段，
+      再由一个**全新 Master 上下文**、**只读 GitHub**（`gh issue list` + 读取活动登记评论 + `gh pr list`）
+      重建状态与锁表 → 必须**识别该活动任务的文件锁并阻止同路径重复派发**，**不得**据「无 PR」判为空闲。
 - [ ] 依赖是否满足的判据是「**依赖已合入 `master`**」，而非「已开 PR」。
 - [ ] 恢复流程可用 `AGENT-ORCHESTRATION.md` §3.3 的「需要恢复的信息 → 从何处恢复」映射逐条对上。
 
-**证据**：`git fetch --prune`、`gh issue list --state open`、`gh pr list --state open --json number,title,isDraft,headRefName,mergeable` 的实际输出，以及据此重建的状态 / 锁表。
+**证据**：`git fetch --prune`、`gh issue list --state open`、`gh issue view <n> --comments`（读取活动登记）、
+`gh pr list --state open --json number,title,isDraft,headRefName,mergeable` 的实际输出，以及据此重建的状态 / 锁表；
+**新会话恢复测试**另附：被登记任务的锁定路径、重建后的锁表、以及「同路径重复派发被阻止」的判定与依据。
 
 ### 3.2 安全并行
 
