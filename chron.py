@@ -1838,6 +1838,8 @@ def _declared_barriers(state):
       `PAUSING_BARRIER_IDS`）：那一刻本来就是到期点（B8），窗口照常开出来。
 
     已到达的分钟也如实列出（调用方按 `> 起点` 过滤）——「到达过」不等于「不存在」。
+    依赖未成（暂不进 `due_heap`）的行动也算「已排期」：略早停一次是**安全**的
+    （代价只是少压缩，不会删因果）。
     """
     found = set()
     for action_id in sorted(state["actions"]):
