@@ -112,8 +112,8 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 
 | `cleanup` 值 | 含义 | 进入条件 | 恢复 / 前进条件 |
 |---|---|---|---|
-| `不适用` | 无清理待办 | 任务未进入合并闸门，或预置后合并中止 / 失败而**撤销** | — |
-| `cleanup_watch` | **合并尚未确认**，但已**预置**清理监视（合并成功后即需删除远端分支）——用于覆盖「合并成功与建立索引之间」的中断窗口 | 合并闸门通过、**执行 merge 之前**预置 | 合并确认 → `cleanup_pending`；合并中止 / 失败 → **撤销**（移除索引，回到 `不适用`） |
+| `不适用` | 无清理待办 | 任务未进入合并闸门，或预置后**经核验**确认合并中止 / 失败而**撤销** | — |
+| `cleanup_watch` | **合并尚未确认**，但已**预置**清理监视（合并成功后即需删除远端分支）——用于覆盖「合并成功与建立索引之间」的中断窗口 | 合并闸门通过、**执行 merge 之前**预置 | 合并确认 → `cleanup_pending`；合并**经核验**中止 / 失败 → **撤销**（移除索引，回到 `不适用`）；**结果不明 → 保留索引并先核验** |
 | `cleanup_pending` | 合并已确认，远端分支**尚未确认删除** | 合并成功，但删分支尚未执行 / 尚未成功 | 成功删除，或确认分支**本已不存在**（幂等成功）→ `cleanup_complete` |
 | `cleanup_complete` | 远端分支删除**已确认完成** | 删除成功，或分支**本已不存在**（幂等成功） | 终态 |
 | `cleanup_blocked` | 清理被**不可自愈**的障碍阻塞，需显式报告 | 权限不足 / 受保护分支规则阻止删除，或暂时性错误**有限重试耗尽** | 障碍消除（授权 / 调整保护规则 / 人工删除）→ `cleanup_complete` |
@@ -157,7 +157,10 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
      **预置成功后才执行 merge**。预置失败（登记写不进、标签与跟踪 Issue 都建不起）→ **不得合并**
      （否则该窗口不可恢复）。
   2. 执行 merge；**合并确认**后把登记更新为 `MERGED` + `cleanup：cleanup_pending`（**保留索引**），再清理。
-  3. 合并中止 / 失败 → **撤销预置**：登记 `cleanup` 回到 `不适用`，移除标签 / 关闭跟踪 Issue。
+  3. **仅在核验确认**「PR 未合并 / 合并被中止」时，才**撤销预置**（登记 `cleanup` 回到 `不适用`，
+     移除标签 / 关闭跟踪 Issue）。若 merge 命令**超时 / 连接中断 / 结果不明**，**不得**撤销预置——
+     必须**保留可检索索引**，先核验 GitHub 的 `state` / `mergedAt` 再决定（**未知状态 = 未完成**，
+     §2.3 第 5 条），否则不确定的结果会**重新制造丢失窗口**。
   - 于是即便 Master 在「merge 已成功、登记尚未更新」处中断，索引**早已存在**，新 Master 仍能发现该条目。
 - **可发现索引（标签）**：在**关联 Issue 上贴标签 `编排：待清理`**（**允许贴到已关闭 Issue**），
   当且仅当 `cleanup ∈ {cleanup_watch, cleanup_pending, cleanup_blocked}`。新 Master 用
@@ -183,6 +186,8 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
    - **未合并**（PR 仍开放，或已关闭但未合并）→ **停止清理、不得删除分支**（它可能仍是**在办功能分支**）；
      这是「合并被中断」的正常任务：按 §2 / §3.3 从 PR 重建状态并继续（其合并走**正常合并闸门**，
      **不是**「对已合并 PR 重复 merge」）。
+   - **结果不明**（命令超时 / 报错 / 返回不可判定）→ **保留索引**，**不得**据此撤销预置或删除分支；
+     重试核验，或转显式 `BLOCKED`（**未知状态 = 未完成**，§2.3 第 5 条）。
 3. `git ls-remote --heads origin <branch>` **核实**分支是否存在；不存在 → 幂等 `cleanup_complete`。
 4. 存在 → `git push origin --delete <branch>`；成功 → `cleanup_complete`。
 5. **绝不**重新执行 merge、**绝不**回退 `MERGED`、**绝不**把已合并 PR 记为未合并（§2.3 第 7 条）——
@@ -303,14 +308,14 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 
 - 登记类型：活动任务登记（AGENT-ORCHESTRATION.md §3.4）
 - Issue：#<n>
-- orchestration 状态：<READY（已登记，待真实启动）/ DISPATCHED / PR_OPEN / MASTER_REVIEW / BLOCKED / FAILED / NEEDS_HUMAN_DECISION / MERGED / VERIFIED>
+- orchestration 状态：<READY（已登记，待真实启动）/ DISPATCHED / PR_OPEN / MASTER_REVIEW / APPROVED / MERGED / VERIFIED / BLOCKED / FAILED / NEEDS_HUMAN_DECISION>
 - 运行模式：<single-session / multi-session>
 - 锁定文件路径集合（完整、仓库根相对，逐个列出）：
   - <path>
 - 执行实例标识 / 句柄：<平台句柄；平台不提供或未启动则写「不适用」>
 - 分支名：<分支名 / 尚未创建>
 - PR：<#<n> / 尚未开 PR>
-- 清理状态（cleanup）：<不适用（未合并）/ cleanup_pending / cleanup_complete / cleanup_blocked（见 §2.1.1）>
+- 清理状态（cleanup）：<不适用 / cleanup_watch（合并前预置）/ cleanup_pending / cleanup_complete / cleanup_blocked（见 §2.1.1）>
 - 派发时间：<YYYY-MM-DD HH:MM 时区>
 - 最近更新时间：<YYYY-MM-DD HH:MM 时区>
 - 当前阻塞 / 失败原因：<原因 / 无>
@@ -326,8 +331,9 @@ PLANNED → READY → DISPATCHED → PR_OPEN → MASTER_REVIEW → APPROVED → 
 4. **合并前预置（两阶段提交，覆盖中断窗口）**：合并闸门通过后、**执行 merge 之前**，先把登记更新为
    `orchestration 状态：APPROVED` + `cleanup：cleanup_watch`，并建立**可检索索引**（贴标签
    `编排：待清理`，或建 `[清理跟踪]` 跟踪 Issue）；**预置成功后才执行 merge**；合并确认后更新为
-   `MERGED` + `cleanup_pending`（**保留索引**）；合并中止 / 失败 → **撤销预置**（`cleanup` 回 `不适用`，
-   移除标签 / 关闭跟踪 Issue）。**预置失败 → 不得合并**（§2.1.1）。
+   `MERGED` + `cleanup_pending`（**保留索引**）；**仅当核验确认** PR 未合并 / 合并被中止时**撤销预置**
+   （`cleanup` 回 `不适用`，移除标签 / 关闭跟踪 Issue）；**merge 结果不明（超时 / 断连 / 返回不可判定）时
+   保留索引并先核验**（未知状态 = 未完成）。**预置失败 → 不得合并**（§2.1.1）。
 5. **事件更新**：交回复核（`MASTER_REVIEW`）、阻塞（`BLOCKED`）、失败（`FAILED`）、**取消**、
    合并（`MERGED`）等**每个事件都更新一次**登记，写明原因与最近更新时间。
    合并事件须同时写入 `cleanup` 状态（§2.1.1）——合并确认时置 `cleanup_pending`，
@@ -517,7 +523,7 @@ MASTER_REVIEW ──闸门通过──► APPROVED   MASTER_REVIEW ──有缺�
 MASTER_REVIEW ──轮次达上限 3──► BLOCKED
 APPROVED ──head 变更──► MASTER_REVIEW  APPROVED ──Master 合并成功──► MERGED
 MERGED ──合并后 master 验证──► VERIFIED
-APPROVED（闸门通过）──合并前预置 cleanup_watch + 索引──► 执行 merge ──确认──► MERGED（cleanup_pending）│ 合并中止 → 撤销预置
+APPROVED（闸门通过）──合并前预置 cleanup_watch + 索引──► 执行 merge ──确认──► MERGED（cleanup_pending）│ 核验中止 → 撤销预置；结果不明 → 保留索引先核验
 MERGED/VERIFIED ──cleanup 独立跟踪（§2.1.1，正交于任务状态）──► cleanup_pending → cleanup_complete（或 cleanup_blocked，待人工处置）
 MERGED + cleanup 未完成 ──留索引（标签 编排：待清理 或 [清理跟踪] 跟踪 Issue）──► 可跨会话发现（§2.1.1 / §3.3，含已关闭 Issue）── 先核验合并事实 → 只核实/删分支 ──► cleanup_complete（移除索引）
 任意状态 ──需人拍板──► NEEDS_HUMAN_DECISION ──人已决定──► 按其结论回到 READY / MASTER_REVIEW
