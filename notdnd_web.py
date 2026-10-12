@@ -43,7 +43,14 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     令牌只存 `sha256`，明文仅在创建 / 加入时回一次，永不落盘 / 写日志
   · CHRON 存档块（M9-C5）：`chron` 是又一块**不透明块**（CHRON-DESIGN §8.1）——
     本文件只提供它的默认值工厂（老档迁移时补空块）；块的加载 / 重放 / 重建 `due_heap` /
-    幂等表全归 `chron.py`（C5），排程驱动与网页接口归后续切片（C6），本文件不解析这块
+    幂等表全归 `chron.py`（C5），本文件不解析这块
+  · CHRON 排程闭环（M9-C6，CHRON-DESIGN §4.3 / ACTION-DESIGN §8）：`SCHEDULE_HOOK`
+    的默认实现是本文件的 **L1 适配器**（`_ChronScheduleHook`）——长行动
+    （`schedule_hint.can_defer` 或非空 `interrupt_conditions`）不再同步结算，
+    而是入 CHRON 队列（`POST /api/action/commit` 立即回 `scheduled` + `task_id`）；
+    世界时间由 `POST /api/chron/advance`（`advance_to`）推进，**到期才结算**并出结果 /
+    叙事；`GET /api/chron/next_barrier` 看下一个屏障，`POST /api/chron/cancel` 取消
+    已排程行动。即时行动（`can_defer = false`）保持 M8 的同步路径不变
   · 状态层只读视图（M7-4，STATE-DESIGN §16）：`GET /api/state` 回当前战役摘要
     （`campaign_id` / `seq` / `world_time` / 各块存在性，只回存在性不回块内容）；
     `GET /api/events?since=` 按事件 `seq` 增量拉取（只回 `seq > since`，跨归档段
@@ -229,6 +236,35 @@ ACTION_REJECT_CODES = {
     ACTION_NO_TARGET: 404,
     ACTION_FORBIDDEN: 403,
 }
+
+# ── CHRON 排程接线（M9-C6，CHRON-DESIGN §4.3 / ACTION-DESIGN §8）──────────
+#
+# L1（`ScheduleHook`，ACTION §8.2）与 L2（`chron.py` 的 `schedule` / `advance_to` /
+# `next_barrier` / 取消）是**两层**：L1 的默认适配器在 `_ChronScheduleHook`，
+# L2 的驱动入口在 `_chron_*` 函数与 `/api/chron/*` 路由。`can_defer = false`
+# 的即时行动**不进**队列（同步结算逐字节不变，§4.3 关键约定）。
+#
+# `time_cost` 的 `unit` → 世界分钟换算（§8.1：权威刻度 = 整数分钟）：
+# CHRON 只认整数分钟，换算在适配器里做；`watch` 取 `NOMINAL_WATCH_MINUTES`、
+# `day` 取 `MINUTES_PER_DAY`（CHRON-DESIGN §2.4），规则时间（`round` / `turn`）
+# 按最小排程步长（`MINOR_ACTION_MINUTES`）保守折算——规则包将来要更细的
+# 规则时间换算，另开单（CHRON-DESIGN §11 C6 末条），不在这里发明刻度。
+CHRON_TASK_PREFIX = "act_"
+CHRON_UNIT_MINUTES = {
+    "minute": 1,
+    "hour": chron.MINUTES_PER_HOUR,
+    "watch": chron.NOMINAL_WATCH_MINUTES,
+    "day": chron.MINUTES_PER_DAY,
+    "turn": chron.MINOR_ACTION_MINUTES,
+    "round": chron.MINOR_ACTION_MINUTES,
+}
+# `/api/chron/*` 的速率与行动管线同口径（每会话每 60 秒），固定短语只在
+# **状态行写出之前**用（与 §9.5 同款边界）。
+CHRON_ADVANCE_LIMIT = 12
+CHRON_CANCEL_LIMIT = 12
+CHRON_BAD_TARGET = "推进入参不合法"              # 400
+CHRON_TIME_BACKWARD = "世界时间只增不减"          # 400
+CHRON_NO_TASK = "没有这个任务"                    # 400
 
 # ── 多人房间（M10-S1）常量 ───────────────────────────────────────────────
 #
@@ -1431,10 +1467,73 @@ class _SyncOnlySchedule:
         return False
 
 
-# 排程钩子的**注入点**（§8.3）：M9 的适配器在启动时替换这个模块级常量
-# （「`chron` 可导入则用、否则回退空实现」，与 `prism_guide` 的可选导入同风格）。
-# 管线只认 §8.2 的协议，不 import `chron`。
-SCHEDULE_HOOK = _SyncOnlySchedule()
+class _ChronScheduleHook:
+    """L1 `ScheduleHook` 的 **CHRON 适配器**（ACTION §8.2 / CHRON §4.3）。
+
+    模块级注入点 `SCHEDULE_HOOK` 装的就是它；L1 的**返回键固定六个**
+    （`mode` / `task_id` / `start_at` / `expected_end_at` / `barrier` /
+    `resume_token`），M9 只在值上做文章：
+
+    - **即时行动**（`can_defer = false` 且无中断条件）→ `mode = "sync"`：
+      **不**调 `chron.schedule`、不碰磁盘（同步路径逐字节不变，§4.3 关键约定）；
+    - **长行动** → `mode = "async"`：由 `_chron_schedule` 折叠 `time_cost` /
+      `schedule_hint` / 中断条件入 CHRON 队列并**提交排程事件**，
+      `task_id` = CHRON 的行动 id（`act_<proposal 的 32hex>`）。
+
+    适配器本身**无绑定**（可被多线程共用）；本局上下文由管线用 `bind(session)`
+    取一份绑定副本，再调用——见 `_schedule_hook`。`draft` 参数对长行动是
+    `None`：排程发生在**结算之前**，那一刻还没有结果草案（§8.2 的调用时机
+    在同步路径上仍是「结算之后、提交之前」）。
+    """
+
+    def __init__(self, session=None):
+        self.session = session
+
+    def bind(self, session):
+        """返回一份**绑定本局**的适配器（不改动自己：单例可被并发请求共用）。"""
+        return _ChronScheduleHook(session) if session is not None else self
+
+    def enqueue(self, proposal, draft, *, base_seq):
+        """把一次已验证的行动交给时间线（§8.2 L1）。
+
+        长行动走 `_chron_schedule`（CHRON 的 L2 `schedule`）；即时行动（含
+        「没有绑定本局」的情形）只回 `mode = "sync"` 的固定形状——**不排程、
+        不碰磁盘**，调用方据此继续走 M8 的同步结算。
+        """
+        session = self.session
+        if session is None or not _action_is_deferred(proposal):
+            return _sync_hook_result(_chron_world_minute(session))
+        return _chron_schedule(session, proposal, base_seq=base_seq)
+
+    def cancel(self, task_id):
+        """取消一个已排程行动（§4.3 的 L1 ↔ L2 映射）：成功与否返回 bool。"""
+        if self.session is None:
+            return False
+        return _chron_cancel(self.session, task_id)
+
+
+def _sync_hook_result(world_minute) -> dict:
+    """`mode = "sync"` 的固定六键（§8.2）：即时行动不推进世界时间（§8.1）。"""
+    minute = _int_or(world_minute, ACTION_EPOCH_MINUTE)
+    return {"mode": "sync", "task_id": None, "start_at": minute,
+            "expected_end_at": minute, "barrier": False, "resume_token": None}
+
+
+# 排程钩子的**注入点**（§8.3）：默认 = CHRON 的 L1 适配器（M9 接入）；
+# 替换成别的实现（含 M8 的空实现）就整体走那一份——测试与自定义注入都走这里。
+SCHEDULE_HOOK = _ChronScheduleHook()
+
+
+def _schedule_hook(session):
+    """取本次调用该用的排程钩子（§8.3 的注入选择）。
+
+    默认适配器提供 `bind`：按**本局**取一份绑定副本（本局的句柄 / 锁）。
+    替换过的实现（测试的假钩子 / 自定义）没有 `bind`，**原样**使用——
+    与 A3 时代 `SCHEDULE_HOOK.enqueue(...)` 的调用面逐字一致。
+    """
+    bind = getattr(SCHEDULE_HOOK, "bind", None)
+    return bind(session) if callable(bind) else SCHEDULE_HOOK
+
 
 # 事件类型与规则版本（状态层事件封套的必填字段，STATE §5.1）：
 # `type` 走 `<domain>.<verb>`；`rules_version` 与 A1 的 `rule_ref.version` 同文。
@@ -1590,6 +1689,120 @@ def _action_target_ref(value):
     return {"kind": "npc", "id": entity_id} if entity_id else None
 
 
+# ── CHRON 排程的读面：提案 ↔ 行动卡（M9-C6，ACTION §8 / CHRON §4.3）────────
+
+
+def _action_is_deferred(proposal) -> bool:
+    """这一份提案是不是**长行动**（§4.3 关键约定）？
+
+    `schedule_hint.can_defer = true` **或**带非空 `interrupt_conditions` 才进
+    CHRON 队列；其余（含缺 `schedule_hint` 的默认值）走 M8 的同步结算。
+    """
+    proposal = proposal if isinstance(proposal, dict) else {}
+    hint = proposal.get("schedule_hint")
+    can_defer = bool(hint.get("can_defer")) if isinstance(hint, dict) else False
+    conditions = proposal.get("interrupt_conditions")
+    return can_defer or bool(conditions if isinstance(conditions, list) else [])
+
+
+def _chron_task_id(proposal) -> str:
+    """CHRON 的行动 id（= L1 的 `task_id`）：由 `proposal_id` 派生，同一提案恒定。
+
+    `p_<32hex>` → `act_<32hex>`：与结果契约的 `act_p_<32hex>`（A1 的
+    `new_action_id`）不同名，两套 id 不混；派生使「同一提案的重复请求得到同一
+    `task_id`」，也让到期结算能由 `task_id` 反推回 `proposal_id`（见
+    `_chron_proposal_id`）——排程与结算可能隔着重启，卡上就只有这个 id。
+    """
+    pid = str((proposal or {}).get("proposal_id") or "")
+    tail = pid[len("p_"):] if pid.startswith("p_") else pid
+    return CHRON_TASK_PREFIX + tail
+
+
+def _chron_proposal_id(task_id) -> str:
+    """`task_id` → 结算用的 `proposal_id`（`_chron_task_id` 的逆映射）。"""
+    task_id = str(task_id or "")
+    tail = task_id[len(CHRON_TASK_PREFIX):] if task_id.startswith(CHRON_TASK_PREFIX) \
+        else task_id
+    return "p_" + tail
+
+
+def _chron_time_minutes(proposal) -> int:
+    """`time_cost` → 整数分钟（§8.1 / CHRON §2.3）：CHRON 只认分钟（≥ 0）。"""
+    time_cost = proposal.get("time_cost") if isinstance(proposal, dict) else None
+    time_cost = time_cost if isinstance(time_cost, dict) else {}
+    value = time_cost.get("value")
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        return 0
+    unit = str(time_cost.get("unit") or "minute")
+    return value * CHRON_UNIT_MINUTES.get(unit, 1)
+
+
+def _chron_world_minute(session) -> int:
+    """本局当前世界分钟（§3.1）：**只读、不碰磁盘**。
+
+    状态层句柄已开就按它的 `world_time` 读（创世 / 未接入 CHRON 时是 `None`，
+    退回纪元 `ACTION_EPOCH_MINUTE`）；句柄没开就按纪元——`mode = "sync"` 的
+    回执**不值得**为读一个数去开句柄（开句柄会碰磁盘、还会迁移老档）。
+    """
+    handle = getattr(session, "_handle", None) if session is not None else None
+    if handle is None:
+        return ACTION_EPOCH_MINUTE
+    minute = chron.world_time_minute(handle.view().get("world_time"))
+    return ACTION_EPOCH_MINUTE if minute is None else minute
+
+
+def _chron_card(proposal) -> dict:
+    """提案 → CHRON 行动卡草稿（§4.1 / §4.3 的 L1 → L2 映射）。
+
+    - `kind` = `intent.verb`（当前场景的行动 id，§4.2）；`actor` = 提案的行动者；
+    - `time_cost` 折成整数分钟（`_chron_time_minutes`）；
+    - `priority` / `depends_on` 由 `schedule_hint` 透传（依赖是**其它 CHRON
+      行动 id**；缺失 / 形状不对按契约默认值）；
+    - `interrupt_conditions` 原样透传（CHRON 只读其中的 `kind`，§6.2 判据）；
+    - `idempotency_key` 留空：C5 的幂等以**事件键**（`<action_id>:e<序号>:<类型>`）
+      为准，卡上的该字段在 C3 / C4 不被读取——不在这里发明第二种键形。
+    - `place` / `resource`（§5.5 的冲突识别键）暂不接线：规则包还没有给这两个
+      维度的声明，**不臆造**（将来由规则包 / M10 给，另开单）。
+    """
+    hint = proposal.get("schedule_hint") if isinstance(proposal, dict) else None
+    hint = hint if isinstance(hint, dict) else {}
+    priority = hint.get("priority")
+    if not isinstance(priority, int) or isinstance(priority, bool):
+        priority = 0
+    deps = [str(dep) for dep in (hint.get("depends_on") or []) if str(dep)]
+    conditions = proposal.get("interrupt_conditions") \
+        if isinstance(proposal, dict) else None
+    return chron.new_action(
+        _chron_task_id(proposal),
+        actor=str((proposal.get("actor") or {}).get("id") or ""),
+        kind=str((proposal.get("intent") or {}).get("verb") or ""),
+        time_cost=_chron_time_minutes(proposal),
+        priority=priority, depends_on=deps,
+        interrupt_conditions=list(conditions if isinstance(conditions, list) else []),
+    )
+
+
+def _chron_proposal_from_card(card, session) -> dict:
+    """行动卡 → 到期结算用的提案（§4.2）：重启后也照常重建（不读进程内缓存）。
+
+    `desired` / `risk` 按**当前**场景行动表补齐（叙事与确认口径以结算那一刻的
+    规则为准）；`time_cost` 以卡上的整数分钟为准（单位回写成 `minute`）。
+    """
+    action_id = str(card.get("kind") or "")
+    entry = _action_scene_entry(session.rules, action_id) or {}
+    return prism_core.new_proposal(
+        proposal_id=_chron_proposal_id(card.get("action_id")),
+        actor={"kind": "player", "id": str(card.get("actor") or "")},
+        intent={"verb": action_id, "target": None,
+                "desired": str(entry.get("label") or action_id), "means": ""},
+        source="action",
+        risk=_action_risk(session.rules, action_id),
+        time_cost={"value": int(card.get("time_cost") or 0), "unit": "minute"},
+        interrupt_conditions=list(card.get("interrupt_conditions") or []),
+        created_at=_action_now_ms(),
+    )
+
+
 # ── 第 1 段（显式路径）与服务端重验 ─────────────────────────────────────
 
 
@@ -1600,6 +1813,12 @@ def _action_proposal_from_id(session, action_id, params) -> dict:
     `现在做不了`（§6.4 的前置条件面）。`params` 只透传 A1 契约里的
     `dc_override` / `items_used` 与一个可选 `target` / `desired` / `means`
     （§4.2 `params` 是**结构参数**，不是自由文本）。
+
+    排程相关的三个字段（`schedule_hint` / `interruptible` /
+    `interrupt_conditions`）是 §4.2 的**既有**提案字段，由行动表（世界规则包）
+    声明，这里**只读不造**：`schedule_hint` 形状不对按契约默认值
+    （`can_defer = false`，同步路径不变），中断条件只收对象 / 字符串项
+    （与 CHRON §6.2 的「只认 `kind`、其余形状忽略」同口径）。
     """
     entry = _action_scene_entry(session.rules, action_id)
     if entry is None:
@@ -1620,9 +1839,39 @@ def _action_proposal_from_id(session, action_id, params) -> dict:
         source="action",
         risk=_action_risk(session.rules, action_id),
         time_cost=_action_time_cost(entry),
+        schedule_hint=_action_schedule_hint(entry),
+        interruptible=entry.get("interruptible") is not False,
+        interrupt_conditions=_action_interrupt_conditions(entry),
         created_at=_action_now_ms(),
     )
     return proposal
+
+
+def _action_schedule_hint(entry) -> dict:
+    """行动表的 `schedule_hint`（§4.2）：缺失 / 形状不对 → 契约默认值。
+
+    默认 `can_defer = false`（M8 行为不变，§4.3 关键约定）；`depends_on`/
+    `priority` 只收合法形状（字符串列表 / 整数），脏值逐项丢弃，不猜。
+    """
+    raw = (entry or {}).get("schedule_hint")
+    raw = raw if isinstance(raw, dict) else {}
+    deps = raw.get("depends_on")
+    priority = raw.get("priority")
+    return {
+        "can_defer": bool(raw.get("can_defer")),
+        "depends_on": [str(dep) for dep in deps if str(dep)]
+        if isinstance(deps, list) else [],
+        "priority": priority if isinstance(priority, int)
+        and not isinstance(priority, bool) else 0,
+    }
+
+
+def _action_interrupt_conditions(entry) -> list:
+    """行动表的 `interrupt_conditions`（§4.2 / §8.4）：只收对象 / 字符串项。"""
+    raw = (entry or {}).get("interrupt_conditions")
+    if not isinstance(raw, list):
+        return []
+    return [item for item in raw if isinstance(item, (dict, str))]
 
 
 def _action_prepare_proposal(session, raw) -> dict:
@@ -1783,7 +2032,12 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
     失败都以 `_ActionError` 抛出。**已提交的结果不回滚**（§7.7）：落盘失败
     只把 `saved` 置假，由流末的 `done` 如实回报。
 
-    返回 `{"result":…, "snapshot":…, "saved": bool}`。
+    长行动（§4.3 关键约定）在**结算之前**就分叉：恰好一次 `enqueue`，返回
+    `scheduled` 回执，**不结算、不提交规则**——到期由推进入口结算
+    （`_chron_advance`）。即时行动走下面的同步路径，逐字节不变。
+
+    返回 `{"result":…, "snapshot":…, "saved": bool}`；长行动另加
+    `"scheduled": {…}`（`result` / `snapshot` 为 `None`）。
     """
     with session.lock:
         handle = session._handle or session._open_handle()   # 开句柄在锁内：并发不重开
@@ -1795,6 +2049,18 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
         entry = _action_scene_entry(session.rules, action_id)
         if entry is None:
             raise _ActionError(ACTION_NO_ACTION, 404)
+        # §4.3 关键约定：长行动（`can_defer` / 非空中断条件）**不**同步结算——
+        # 交给 CHRON 队列。钩子在这里被咨商**一次**（`draft = None`：结算尚未发生）；
+        # 它回 `sync`（替换过的实现 / 没有绑定本局）时按 M8 同步路径继续。
+        deferred = None
+        if _action_is_deferred(proposal):
+            deferred = _schedule_hook(session).enqueue(proposal, None,
+                                                       base_seq=base_seq)
+            deferred = deferred if isinstance(deferred, dict) else {}
+            if deferred.get("mode") == "async":
+                return {"result": None, "snapshot": None, "saved": True,
+                        "scheduled": _action_scheduled_payload(
+                            session, proposal, deferred, handle=handle)}
         # 4. 结算：PRISM 纯规则，一行模型都不调（§7.1）
         live = prism_core.RuleSession.from_snapshot(session.rules)
         try:
@@ -1812,7 +2078,9 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
             raise _ActionError(
                 "服务器内部错误：结果契约不成立（%s）" % "；".join(errors), 500)
         # §8.2：结算之后、**提交之前**，排程钩子恰好一次
-        SCHEDULE_HOOK.enqueue(proposal, result, base_seq=base_seq)
+        # （长行动已在上面咨商过，不重复调用——一次提案只 `enqueue` 一次）
+        if deferred is None:
+            _schedule_hook(session).enqueue(proposal, result, base_seq=base_seq)
         # 5. 提交：状态层是唯一能改世界事实的出口（§10.1）——一次提交 = 一条事件
         change = {"block": "rules", "op": "replace_block", "path": "",
                   "before": copy.deepcopy(session.rules),
@@ -1843,10 +2111,44 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
 # ── 第 6 段（叙事，可选后置）与进程内短期记忆 ─────────────────────────────
 
 
+def _action_scheduled_payload(session, proposal, hook_out, *, handle) -> dict:
+    """长行动的回合回执（`scheduled`）：L1 的六个键 + 客户端用得上的身份与基线。
+
+    §9.3 的 `result` / `narration` 属于**已结算**的行动，长行动这一回合还**没有**
+    结果——回执以 `status = "scheduled"` 标记「已排入时间线」，`task_id` 是后续
+    推进入口与取消入口的凭据（§4.3 的 `task_id` 即 CHRON 的 `action_id`）。
+    `base_seq` 是**排程事件提交后**的新序号（读自状态层，不是客户端带来的旧值）：
+    排程本身也消耗一个事件号，客户端下一次 `commit` 的乐观基线上移（§8.3）。
+    """
+    return {
+        "status": "scheduled",
+        "mode": "async",
+        "task_id": str(hook_out.get("task_id") or ""),
+        "action_id": str((proposal.get("intent") or {}).get("verb") or ""),
+        "proposal_id": str(proposal.get("proposal_id") or ""),
+        "start_at": _int_or(hook_out.get("start_at"), ACTION_EPOCH_MINUTE),
+        "expected_end_at": _int_or(hook_out.get("expected_end_at"),
+                                   ACTION_EPOCH_MINUTE),
+        "barrier": bool(hook_out.get("barrier")),
+        "resume_token": hook_out.get("resume_token"),
+        "world_minute": _chron_world_minute(session),
+        "base_seq": _int_or(handle.view().get("seq"), 0),
+    }
+
+
 def _action_seq_to(result):
     """结果里的提交版本（§7.5 `commit_ref.seq_to`）：叙事的归位基线。"""
     ref = result.get("commit_ref")
     return ref.get("seq_to") if isinstance(ref, dict) else None
+
+
+def _action_is_scheduled(payload) -> bool:
+    """这份幂等记录是**长行动的回执**（`scheduled`）而不是结算结果吗？
+
+    判据是 `task_id`：结果契约（§5.1）里没有这个键，而 `scheduled` 回执一定有
+    （§4.3 的 `task_id`）。同键重放据此回同一形状，不把排程回执塞进结果帧。
+    """
+    return isinstance(payload, dict) and bool(payload.get("task_id"))
 
 
 def _action_narrate(session, snapshot, result, text) -> dict:
@@ -2069,6 +2371,369 @@ def _action_mark_committed(sid, proposal_id) -> None:
         _action_committed[(str(sid), str(proposal_id))] = {"ts": now}
 
 
+# ── CHRON 排程闭环（M9-C6，CHRON-DESIGN §4.3 / §5 / §6 / §8）──────────────
+#
+# 这一节是 **L2 的驱动层**：把 `chron.py` 的纯函数接到本局的**状态层句柄**上，
+# 并用 §8.3 的幂等键口径提交事件（C5 的 `commit_event` 同款两道闸）。分工：
+#
+#   L1（`ScheduleHook`，ACTION §8.2）→ `_ChronScheduleHook` → `_chron_schedule`
+#   L2（`chron.py`）                 → `schedule` / `advance_to` / `next_barrier`
+#                                       + 取消（`settle(..., "cancelled")`）
+#   网页层推进入口                    → `POST /api/chron/advance`
+#
+# **结算发生在推进里**：`chron.advance_to` 只到「该结算了」（`action.due`，B8），
+# 判胜负仍走 PRISM（§8.4：与普通行动同一条管线，只是由 M9 触发），提交把
+# 「规则后果 + 行动卡新状态」放进**同一条事件**（A0：一次提交 = 一条事件，
+# 多项变更加进 `changes[]`，ACTION §7.4）。
+
+
+def _chron_restore(session, handle) -> dict:
+    """§8.2 的恢复时序（C5）：由状态层句柄恢复出 CHRON 块 + 调度器状态。
+
+    排程 / 推进 / 取消都从这一步开始——**不**在会话门面上缓存 CHRON 状态，
+    权威始终是状态层里的 `chron` 块（重启后照常恢复，§8.2）。
+    """
+    return chron.restore(handle)
+
+
+def _chron_commit(handle, event, *, block, state, base_seq, source=None,
+                  extra_changes=(), rules_version=ACTION_RULES_VERSION,
+                  roll_refs=()) -> dict:
+    """把一条 CHRON 事件交给状态层提交（§8.3），返回 `{status, result, block, seq}`。
+
+    **只有** `extra_changes` 非空的结算事件才走本地镜像；其余（排程 / 取消 /
+    纯压缩的 `clock.advance`）逐字委托 C5 的 `chron.commit_event`——两边同为
+    「幂等两道闸 + 块回写 + 预测序号校正」。
+
+    镜像的那一条与 `commit_event` 口径一致，差别只有一处：结算**同时**带着
+    别的块的变更（例如这次的规则快照）——一次提交承载多项变更（A0），因此
+    `changes = 块差异 + extra_changes`，块的搬运 / 幂等表 / `seq` 回写同款。
+    """
+    if not extra_changes:
+        out = chron.commit_event(handle, event, block=block, state=state,
+                                 base_seq=base_seq, source=source,
+                                 rules_version=rules_version,
+                                 roll_refs=list(roll_refs or ()))
+        return {"status": out["status"], "result": out["result"],
+                "block": out["block"], "seq": out["seq"]}
+    key = str(event.get("idempotency_key") or "")
+    base = chron.migrate_block(block)
+    if chron.is_committed(base, key):          # 第一道闸：CHRON 侧（同键 no-op）
+        return {"status": "skipped", "result": None, "block": base,
+                "seq": base["seq"]}
+    predicted = base_seq + 1
+    after = chron.block_from_scheduler(state, seq=predicted,
+                                       folded=base.get(chron.CHRON_FOLDED_NAME))
+    keys = dict(after["idempotency"])
+    keys.update(base["idempotency"])
+    keys[key] = predicted
+    after["idempotency"] = keys
+    result = handle.commit(
+        base_seq=base_seq, idempotency_key=key, type=event["type"],
+        actor=event["actor"], target=event.get("target"),
+        cause=event.get("cause"),
+        changes=chron.block_changes(base, after) + [dict(c) for c in extra_changes],
+        rules_version=rules_version, roll_refs=list(roll_refs or ()),
+        world_time=event.get("world_time"),
+        source=source or event.get("source") or "system")
+    status = str((result or {}).get("status") or "")
+    if status in ("committed", "replayed"):     # 第二道闸由状态层自己把关
+        updated = chron.migrate_block(after)
+        seq_to = result.get("seq_to")
+        if isinstance(seq_to, int) and not isinstance(seq_to, bool):
+            updated["seq"] = seq_to
+        updated = chron.mark_committed(updated, key, updated["seq"])
+    else:
+        updated = base                          # 没写事件 → 块回到事件前
+    return {"status": status, "result": result, "block": updated,
+            "seq": updated["seq"]}
+
+
+def _chron_require_commit(out) -> dict:
+    """排程 / 取消这类**必须先落**的 CHRON 提交：没落就抛 500（不谎报成功）。
+
+    与 A3 同步路径的 `_action_apply_commit` 同一口径：`conflict` /
+    `rejected` 一律不当作成功——客户端拿到的回执必须对应一条**已提交**的事件。
+    """
+    if str((out or {}).get("status") or "") not in ("committed", "replayed"):
+        result = (out or {}).get("result")
+        message = str((result or {}).get("message") or "") \
+            or str((out or {}).get("status") or "")
+        raise _ActionError(
+            "服务器内部错误：状态层拒绝提交（%s）" % (message or "未知原因"), 500)
+    return out
+
+
+def _chron_schedule(session, proposal, *, base_seq) -> dict:
+    """L1 `enqueue` 的落地：L2 `schedule` + 提交排程事件（§4.3 映射表）。
+
+    返回 §8.2 的**六个键**：`mode = "async"`、`task_id` = 行动 id、
+    `start_at` / `expected_end_at` = 世界分钟、`barrier` = 命中屏障与否
+    （`barriers_at`，§6.2）、`resume_token = None`（CHRON 当前不消费，§4.3）。
+
+    依赖有环 → `chron.schedule` 的 `rejected` 语义（§5.3）：**不**入队、不留卡，
+    翻成 409 `现在做不了`（前置条件不满足，§9.5）；依赖 id 不存在 / 自依赖 /
+    提交顺序类问题抛 `ScheduleError`，同样翻 409——两类都**不**落任何事件。
+    """
+    handle = session._handle or session._open_handle()
+    restored = _chron_restore(session, handle)
+    state = restored["state"]
+    now = state["world_minute"]
+    card = _chron_card(proposal)
+    try:
+        out = chron.schedule(state, card, world_minute=now, start_minute=now)
+    except chron.ScheduleError as exc:
+        raise _ActionError(ACTION_NOT_NOW, 409) from exc
+    if out["status"] == "rejected":                 # §5.3：依赖有环
+        raise _ActionError(ACTION_NOT_NOW, 409)
+    _chron_require_commit(_chron_commit(
+        handle, out["events"][-1], block=restored["block"], state=out["state"],
+        base_seq=base_seq, source="player"))
+    # 排期后的卡在**新状态**里（`chron.schedule` 不改写入参草稿）：start / due
+    # 从它读，别从草稿读（草稿的 `start_minute` 恒为 `None`）。
+    card = out["state"]["actions"][card["action_id"]]
+    start = card["start_minute"]
+    return {"mode": "async", "task_id": card["action_id"],
+            "start_at": int(start), "expected_end_at": int(card["due_minute"]),
+            "barrier": bool(chron.barriers_at(out["state"], start)),
+            "resume_token": None}
+
+
+def _chron_cancel(session, task_id) -> bool:
+    """L1 `cancel(task_id)` → L2 的取消入口（§4.3 映射表末行）。
+
+    C2 / C3 合并后的 L2 把「取消」表达为 `settle(state, action_id,
+    "cancelled", …)`（§4.2 全转换表的 `→ cancelled` 行），**没有**单独的
+    `cancel(action_id, at_minute)`；映射表的语义不变：`task_id` 即 `action_id`，
+    返回是否成功取消。取消只动行动卡（§4.4 的返还 / 风险口径归规则包，
+    C6 不实现返还——**不臆造**退款语义）。
+
+    **不改盘**：未迁移老档上没有 CHRON 状态、也没有可取消的行动——直接回
+    `False`，**不**开句柄（开 = 落盘迁移，§10.1）。
+    """
+    if _chron_legacy_unmigrated(session):
+        return False
+    with session.lock:
+        handle = session._handle or session._open_handle()
+        restored = _chron_restore(session, handle)
+        state = restored["state"]
+        card = state["actions"].get(str(task_id or ""))
+        if card is None or card["status"] in chron.ACTION_TERMINAL_STATUSES:
+            return False
+        out = chron.settle(state, card["action_id"], "cancelled",
+                           world_minute=state["world_minute"],
+                           reason="player_cancel")
+        event = out["events"][card["action_id"]][0]
+        _chron_require_commit(_chron_commit(
+            handle, event, block=restored["block"], state=out["state"],
+            base_seq=restored["seq"], source="player"))
+        return True
+
+
+def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
+    """一个到期点（`action.due`，B8）的结算：PRISM → `chron.settle` → 一次提交。
+
+    返回 `{"state", "block", "seq", "report"}`：状态 / 块 / 序号都要往下传
+    （同一次推进可能连着结几张卡）。`report` 是给推进入口的回执条目：
+
+    - 结算成功 → `{action_id, status, result, narration?}`；
+    - 行动已不在当前场景行动表 → 按 §4.2 的 `failed` 收尾（`reason =
+      action_unavailable`，只动行动卡，**不**产出结果）；
+    - 战斗锁 / 未知行动 → 卡留在 `running`，回执 `status = "pending"`：
+      这一轮**不**结算（下一次推进仍会到它）；
+    - 结果契约不过关（内部不变量） → 同样留待下一轮，回执写明原因。
+    """
+    action_id = str(event.get("target") or "")
+    card = state["actions"].get(action_id)
+    minute = chron.world_time_minute(event.get("world_time"))
+
+    def stuck(mark: str, reason: str) -> dict:
+        """这一轮不动它：状态 / 块 / 序号原样带回，只如实回报原因。"""
+        return {"state": state, "block": block, "seq": seq,
+                "report": {"action_id": action_id, "status": mark,
+                           "reason": reason}}
+
+    if card is None or minute is None:
+        return stuck("error", "行动卡缺失")
+    entry = _action_scene_entry(session.rules, card.get("kind"))
+    if entry is None:
+        # 场景行动表里已经没有这个名字（规则包换了行动表）：按 §4.2 的
+        # `failed` 收尾——只动行动卡，**不**产出结果（没有判定依据）。
+        try:
+            out = chron.settle(state, action_id, "failed", world_minute=minute,
+                               reason="action_unavailable")
+        except chron.ScheduleError:
+            return stuck("error", "无法结算")
+        settle_event = out["events"][action_id][0]
+        commit = _chron_commit(handle, settle_event, block=block,
+                               state=out["state"], base_seq=seq, source="player")
+        return {"state": out["state"], "block": commit["block"],
+                "seq": commit["seq"],
+                "report": {"action_id": action_id, "status": "failed",
+                           "reason": "action_unavailable"}}
+    live = prism_core.RuleSession.from_snapshot(session.rules)
+    try:
+        perf = prism_core.perform_action(live, card["kind"])
+    except prism_core.CombatLocked:
+        return stuck("pending", ACTION_COMBAT)
+    except ValueError:
+        return stuck("pending", ACTION_NO_ACTION)
+    status = prism_core.action_status(perf)
+    new_rules = live.snapshot()
+    proposal = _chron_proposal_from_card(card, session)
+    result = _action_result(proposal, perf, status, entry)
+    errors = prism_core.validate_result(result)
+    if errors:
+        # 结果契约不过关就**不进提交**（§7.7 同口径）：卡留在 running，
+        # 由回执如实回报，绝不把坏结果写进事实。
+        return stuck("error", "结果契约不成立")
+    to = "completed" if status in ("success", "partial") else "failed"
+    try:
+        settled = chron.settle(state, action_id, to, world_minute=minute)
+    except chron.ScheduleError:
+        return stuck("error", "无法结算")
+    settle_event = settled["events"][action_id][0]
+    roll_ref = str((result.get("rule_ref") or {}).get("roll_ref") or "")
+    change = {"block": "rules", "op": "replace_block", "path": "",
+              "before": copy.deepcopy(session.rules),
+              "after": copy.deepcopy(new_rules)}
+    commit = _chron_commit(handle, settle_event, block=block,
+                           state=settled["state"], base_seq=seq, source="player",
+                           extra_changes=[change],
+                           roll_refs=[roll_ref] if roll_ref else [])
+    if commit["status"] == "skipped":           # CHRON 侧同键 no-op：事实已落
+        result["committed"] = True
+    else:                                       # committed / replayed：同一路径回填
+        _action_apply_commit(session, result, commit["result"], new_rules)
+    committed_ids = (commit["result"] or {}).get("event_ids") \
+        if isinstance(commit["result"], dict) else None
+    record = {"event_id": (committed_ids or [settle_event["event_id"]])[0],
+              "type": settle_event["type"],
+              "world_time": settle_event["world_time"], "seq": commit["seq"]}
+    return {"state": settled["state"], "block": commit["block"],
+            "seq": commit["seq"], "event": record,
+            "report": {"action_id": action_id, "status": status,
+                       "result": result}}
+
+
+def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
+    """网页层推进入口（L2 `advance_to`）：推进世界时间并**在到期点结算**。
+
+    返回 `{world_minute, target, stopped_at, barriers, next_barrier, settled,
+    events, saved}`：
+
+    - `advance_to` 的停点由 §6.2 的屏障判据决定（B1–B8；停点不跨屏障）；
+    - 途中每个 `action.due`（B8）**逐条**结算（§6.3 硬约束：不批量绕过校验）；
+    - 结算事件各自带 §8.3 的确定的幂等键（`<action_id>:e<序号>:<类型>`）；
+    - 推进到目标而没有到期时提交一条 `clock.advance`（§8.2 第 2 步的单调校验
+      据此恒成立：块时钟不得超前于最后一条已提交事件的世界时间）；
+    - 叙事只读**提交点冻结快照**并写进会话日志（§7.5 / §9.3 的 `action_id`
+      与 `seq_to` 同样带着走）；离线时是 `fallback` + 既有兜底句（§7.3 / P4）。
+    """
+    target = target_minute
+    if isinstance(target, bool) or not isinstance(target, int) or target < 0:
+        raise _ActionError(CHRON_BAD_TARGET, 400)
+    with session.lock:
+        handle = session._handle or session._open_handle()
+        restored = _chron_restore(session, handle)
+        state, block, seq = restored["state"], restored["block"], restored["seq"]
+        try:
+            out = chron.advance_to(state, target,
+                                   offline_advance=bool(offline_advance))
+        except chron.ScheduleError:
+            # §3.2：世界时间只增不减——回拨一律是调用方的错，**不**静默夹住。
+            raise _ActionError(CHRON_TIME_BACKWARD, 400)
+        state = out["state"]
+        settled = []
+        events = []
+        for event in out["events"]:
+            if str(event.get("type") or "") != chron.ACTION_DUE_EVENT:
+                continue
+            step = _chron_settle_due(session, handle, state, block, event,
+                                     seq=seq)
+            state, block, seq = step["state"], step["block"], step["seq"]
+            settled.append(step["report"])
+            if step.get("event"):
+                events.append(step["event"])
+        # 世界时间前进过（纯压缩 / 停在屏障）就留一条 `clock.advance`（§3.3）：
+        # 否则下一次 `restore` 的单调校验会看到「块时钟超前于最后一条事件」。
+        if chron.world_time_minute(handle.view().get("world_time")) != \
+                state["world_minute"]:
+            clock = chron.advance_event(state["world_minute"])
+            commit = _chron_commit(handle, clock, block=block, state=state,
+                                   base_seq=seq, source="system")
+            block, seq = commit["block"], commit["seq"]
+            events.append({"event_id": clock["event_id"], "type": clock["type"],
+                           "world_time": clock["world_time"]})
+        # 第 6 段（叙事）在**锁外**跑（§7.4：模型调用不持锁）；先取冻结快照
+        # （提交点的那一份，§7.5）与要叙事的行动清单。
+        frozen = []
+        for report in settled:
+            result = report.get("result")
+            if isinstance(result, dict):
+                frozen.append((report, result, _action_snapshot(session.rules,
+                                                                session.guide)))
+        saved = True
+        try:
+            session.save()
+        except SaveError:
+            saved = False                        # 已提交的结果不回滚（§7.7）
+        minute = state["world_minute"]
+        next_barrier = chron.next_barrier(state)
+    for report, result, snapshot in frozen:
+        narration = _action_narrate(session, snapshot, result, "")
+        report["narration"] = {
+            "event": narration["event"],
+            "text": str(narration["payload"].get("text") or ""),
+            "action_id": result.get("action_id"),
+            "seq_to": _action_seq_to(result),
+        }
+        # `narrate` 日志 + L3 transcript（与同步路径同一口径）；内部各自 save()，
+        # 失败只置假，不回滚已提交的结算（§7.7）。
+        if not _action_store_narration(session, narration["event"],
+                                       narration["payload"]):
+            saved = False
+    return {"status": "ok", "world_minute": minute, "target": target,
+            "stopped_at": out["stopped_at"], "barriers": out["barriers"],
+            "next_barrier": next_barrier, "settled": settled, "events": events,
+            "saved": saved}
+
+
+def _chron_legacy_unmigrated(session) -> bool:
+    """这一局是不是**未迁移的老档**（读 CHRON 前先看这个）？
+
+    老档只有一份单文件 `<sid>.json`、还没有状态层句柄——此时「开句柄」=
+    `state.migrate_legacy(...)` **就地落盘迁移**（§10.1：迁移只发生在第一次
+    save）。只读 / 无操作的 CHRON 入口因此**不得**借读一个数把老档迁了
+    （M7-3「只读加载不改写磁盘」、M7-4 `state_view` 的明确规避同款）。
+    新档（已迁移布局）不受影响：开句柄只是纯读，照常走。
+    """
+    return getattr(session, "_handle", None) is None \
+        and getattr(session, "_legacy", None) is not None
+
+
+def _chron_next_barrier(session, from_minute=None) -> dict:
+    """只读：下一个必须停下的分钟（L2 `next_barrier`，§6.2 / §6.4）。
+
+    `from_minute` 省略 = 当前世界分钟；早于当前 → 400（世界时间只增不减）。
+    **不改盘**：未迁移老档上不开句柄（开 = 落盘迁移），直接回「没有屏障」。
+    """
+    if _chron_legacy_unmigrated(session):
+        # 老档还没有 CHRON 块（迁移时才补空块，§8.1）→ 没有屏障可看；也**不**
+        # 为读一个数把它迁了（§10.1 / M7-4 口径）。`from` 的入参校验在路由层。
+        return {"status": "ok", "world_minute": ACTION_EPOCH_MINUTE,
+                "next_barrier": None}
+    with session.lock:
+        handle = session._handle or session._open_handle()
+        state = _chron_restore(session, handle)["state"]
+        try:
+            minute = chron.next_barrier(state, from_minute)
+        except chron.ScheduleError as exc:
+            raise _ActionError(CHRON_TIME_BACKWARD, 400) from exc
+        return {"status": "ok", "world_minute": state["world_minute"],
+                "next_barrier": minute}
+
+
 def _wants_json(accept) -> bool:
     """`Accept: application/json`（且没点名 SSE）时回**非流式**结果（§9.3）。"""
     text = str(accept or "").lower()
@@ -2267,6 +2932,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/action/catalog":
                 # 当前可用行动单（§9.1）：只读，不结算也不开状态层句柄。
                 return self._action_catalog()
+            if path == "/api/chron/next_barrier":
+                # 下一个必须停下的分钟（M9-C6，CHRON §6.2）：只读，不推进时间。
+                return self._chron_next_barrier_route()
             if path == "/api/campaigns":
                 # 战役目录（Issue #222）：世界 → 该世界下的剧本。只读数据面，
                 # 不需要会话（新局空态在**还没有会话内容**时也要能列出来）。
@@ -2291,6 +2959,10 @@ class Handler(BaseHTTPRequestHandler):
         except state.StateError:
             # 状态层拒载 / 日志损坏（说明里可能带本机路径）：固定短语，
             # 不回显内部信息（§16 M7-4 的响应边界）。
+            self._err("状态读取失败", 500)
+        except chron.ChronError:
+            # CHRON 拒载（块时钟超前 / 块版本更高，§8.2 / §8.4）与状态层
+            # 同一响应边界：固定短语，不回显内部信息。
             self._err("状态读取失败", 500)
         except ValueError as e:
             self._err(str(e), 400)
@@ -2320,6 +2992,12 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/action/commit":
                 return self._action_commit(b)
+
+            if path == "/api/chron/advance":
+                return self._chron_advance_route(b)
+
+            if path == "/api/chron/cancel":
+                return self._chron_cancel_route(b)
 
             if path == "/api/room/create":
                 return self._room_create(b)
@@ -2408,6 +3086,9 @@ class Handler(BaseHTTPRequestHandler):
         except _ActionError as e:
             # 行动管线的固定错误（§9.5）：短语 + 仅状态行之前可用的码。
             self._err(e.phrase, e.code)
+        except chron.ChronError:
+            # CHRON 拒载 / 拒绝调度（§8.2 / §8.4）：与状态层同一响应边界。
+            self._err("状态读取失败", 500)
         except ValueError as e:
             self._err(str(e), 400)
         except Exception as e:  # noqa: BLE001
@@ -2867,6 +3548,9 @@ class Handler(BaseHTTPRequestHandler):
         replay = _action_idem_get(sid, key)
         if replay is not None:
             # §7.7：同会话 + 同键的重放**不结算、不写事件**，直接回首次结果。
+            # 长行动的首次回执是 `scheduled`：按同一形状重放（也不再排一次队）。
+            if _action_is_scheduled(replay):
+                return self._action_scheduled_respond(replay, replayed=True)
             return self._action_respond(session, {"result": replay, "snapshot": None,
                                                  "saved": True}, "", replayed=True)
         proposal = _action_prepare_proposal(session, body.get("proposal"))
@@ -2889,11 +3573,41 @@ class Handler(BaseHTTPRequestHandler):
             return self._err(ACTION_STALE_SEQ, 409)
         out = _action_settle_commit(session, proposal, base_seq=int(base_seq),
                                     idempotency_key=key)
+        scheduled = out.get("scheduled")
+        if isinstance(scheduled, dict):
+            # 长行动（§4.3）：本回合到此为止——到期由推进入口结算。
+            # 提案同样**消费掉**（换键不能重排一次），同键重放回同一份回执。
+            _action_idem_put(sid, key, scheduled)
+            _action_mark_committed(sid, proposal_id)
+            return self._action_scheduled_respond(scheduled, replayed=False)
         _action_idem_put(sid, key, out["result"])
         _action_mark_committed(sid, proposal_id)
         text = str(proposal.get("raw_text")
                    or (proposal.get("intent") or {}).get("desired") or "")
         return self._action_respond(session, out, text, replayed=False)
+
+    def _action_scheduled_respond(self, payload, *, replayed):
+        """长行动的回执（默认 SSE，`Accept: application/json` 回整段）。
+
+        SSE 形状：`scheduled` → `done`（`replayed` 时在 `done` 上标出）——
+        `scheduled` 是**已排入时间线**，不是结算，所以这一轮不发 `result` /
+        `narration`（它们属于到期结算那一回合，见 `POST /api/chron/advance`）。
+        """
+        if _wants_json(self.headers.get("Accept") or ""):
+            return self._json(payload)
+        try:
+            self._begin_stream()
+        except (BrokenPipeError, ConnectionResetError):
+            return
+        try:
+            self._sse("scheduled", payload)
+            if replayed:
+                self._sse("done", {"status": "ok", "replayed": True})
+            else:
+                self._sse("done", {"status": "ok"})
+            self._sse_close()
+        except (BrokenPipeError, ConnectionResetError):
+            pass                # 客户端中途断线不该让服务端报错
 
     def _action_respond(self, session, out, text, *, replayed):
         """把（已提交的）结果发回去：默认 SSE，`Accept: application/json` 回整段。
@@ -2929,6 +3643,63 @@ class Handler(BaseHTTPRequestHandler):
             self._sse_close()
         except (BrokenPipeError, ConnectionResetError):
             pass                # 客户端中途断线（锁屏 / 切网）不该让服务端报错
+
+    # ── CHRON 推进入口（M9-C6，CHRON-DESIGN §4.3 / §6）─────────────────
+    def _chron_advance_route(self, body: dict):
+        """`POST /api/chron/advance`：推进世界时间，**在到期点结算**（§6.3）。
+
+        请求体：`{"target_minute": <世界分钟>, "offline_advance": <bool，可选>}`。
+        `advance_to` 遇屏障就停（§6.2 B1–B8），途中每个 `action.due` 逐条走
+        「PRISM 判胜负 → 一条事件提交 → 叙事」；回执含 `world_minute` /
+        `stopped_at` / `barriers` / `next_barrier` / `settled`（每条含结果与
+        叙事，离线时是兜底句）/ `events` / `saved`。命名与形状由本单自定
+        （Issue #313 验收 3），形状稳定在此处写死，客户端据此驱动回合。
+        """
+        session = self._sess()
+        if not _rate_ok(session.sid, "chron_advance", CHRON_ADVANCE_LIMIT):
+            return self._err(ACTION_TOO_FREQUENT, 429)
+        return self._json(_chron_advance(
+            session, body.get("target_minute"),
+            offline_advance=bool(body.get("offline_advance"))))
+
+    def _chron_cancel_route(self, body: dict):
+        """`POST /api/chron/cancel`：取消一个已排程 / 进行中的行动（§4.3 映射表）。
+
+        请求体 `{"task_id": "act_<32hex>"}`（= 排程回执里的 `task_id`）。
+        取消是**幂等**的：不存在的 / 已终态的卡回 `cancelled: false`（200），
+        缺 `task_id` 才是 400 `没有这个任务`；**未迁移老档**上同样回
+        `cancelled: false` 且**不改盘**（不开句柄 = 不触发落盘迁移，§10.1）。
+        """
+        session = self._sess()
+        task_id = str(body.get("task_id") or "").strip()
+        if not task_id:
+            return self._err(CHRON_NO_TASK, 400)
+        if not _rate_ok(session.sid, "chron_cancel", CHRON_CANCEL_LIMIT):
+            return self._err(ACTION_TOO_FREQUENT, 429)
+        cancelled = _schedule_hook(session).cancel(task_id)
+        return self._json({"status": "ok", "task_id": task_id,
+                           "cancelled": bool(cancelled),
+                           "world_minute": _chron_world_minute(session)})
+
+    def _chron_next_barrier_route(self):
+        """`GET /api/chron/next_barrier[?from=<世界分钟>]`：下一个屏障 / 结算点。
+
+        只读（不落盘、不推进）：`from` 省略 = 当前世界分钟；非法 / 早于当前 →
+        400（世界时间只增不减，§3.2）。没有可停的分钟 → `next_barrier: null`；
+        **未迁移老档**上不开句柄（开 = 落盘迁移），同样回 `null`（§10.1）。
+        """
+        session = self._sess()
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        raw = str((q.get("from") or [""])[0]).strip()
+        from_minute = None
+        if raw:
+            try:
+                from_minute = int(raw)
+            except (TypeError, ValueError):
+                return self._err(CHRON_BAD_TARGET, 400)
+            if from_minute < 0:
+                return self._err(CHRON_BAD_TARGET, 400)
+        return self._json(_chron_next_barrier(session, from_minute))
 
     # ── 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）──────────
     def _session_create(self):
