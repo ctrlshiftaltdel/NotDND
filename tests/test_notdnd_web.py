@@ -3150,12 +3150,15 @@ def check_turn_log_subprocess():
 
 def _seed_action_session(save_dir: str, sid: str, *, risk: str = "R1",
                          party: bool = True, combat: bool = False,
-                         action_id: str = "a-lock", label: str = "撬锁") -> None:
+                         action_id: str = "a-lock", label: str = "撬锁",
+                         entry: dict | None = None) -> None:
     """在**指定存档目录**里造一局带一条行动的存档（子进程服务的目录也认）。
 
     `Session.save()` 读模块级 `SAVE_DIR`，所以先把常量指到目标目录再落盘——
     真子进程服务随后从磁盘载入这一局，新路由的「从命令行启动」路径也因此被
     覆盖。默认写成 R1（直通，不弹确认，§6.4）；要测确认就传 `risk="R3"`。
+    `entry` 额外覆盖行动表的字段（长行动用：`time_cost` / `schedule_hint` /
+    `interrupt_conditions` 都由行动表声明，§4.2）。
     """
     saved_dir = notdnd_web.SAVE_DIR
     notdnd_web.SAVE_DIR = pathlib.Path(save_dir)
@@ -3165,9 +3168,11 @@ def _seed_action_session(save_dir: str, sid: str, *, risk: str = "R1",
         if party:
             rules.party.append(prism_core.new_unit(
                 "u-1", "试炼者", attributes={"MGT": 6, "INS": 7}))
-        rules.scene = {"id": "sc-1", "actions": [
-            {"id": action_id, "label": label, "kind": "check", "df": 12,
-             "auto_pass": True, "on_pass": "锁簧弹开。", "risk": risk}]}
+        scene_entry = {"id": action_id, "label": label, "kind": "check", "df": 12,
+                       "auto_pass": True, "on_pass": "锁簧弹开。", "risk": risk}
+        if isinstance(entry, dict):
+            scene_entry.update(entry)
+        rules.scene = {"id": "sc-1", "actions": [scene_entry]}
         if combat:
             rules.combat = {"over": False}
         session.rules = rules.snapshot()
@@ -3832,6 +3837,556 @@ def check_legacy_migration_adds_chron_block():
 
 
 # --------------------------------------------------------------------------
+# CHRON 排程闭环（M9-C6，CHRON-DESIGN §4.3 / §6 / §8，Issue #313）
+# --------------------------------------------------------------------------
+
+
+def _long_entry(**over) -> dict:
+    """长行动的行动表条目：30 分钟、允许推迟（§4.2 的三个排程字段）。"""
+    entry = {"label": "守夜", "time_cost": {"value": 30, "unit": "minute"},
+             "schedule_hint": {"can_defer": True, "depends_on": [], "priority": 0}}
+    entry.update(over)
+    return entry
+
+
+def _chron_block(sid: str) -> dict:
+    """本局 CHRON 块的**调度器状态**（C5 的恢复时序；测试只读，不落盘）。"""
+    handle = state.open_campaign(sid, base_dir=str(notdnd_web.SAVE_DIR))
+    return chron.restore(handle)["state"]
+
+
+def _chron_card(sid: str, task_id: str) -> dict:
+    """CHRON 行动卡（§4.1）；没有这张卡 → 空 dict。"""
+    return _chron_block(sid)["actions"].get(task_id) or {}
+
+
+def _chron_event_types(sid: str) -> list:
+    """本局状态层事件类型（按 seq 升序）——「落了几条事件」的判据。"""
+    path = _campaign_file(sid, "events.ndjson")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as handle:
+        return [json.loads(line)["type"] for line in handle if line.strip()]
+
+
+def _schedule_long(server, sid, *, action_id="a-long", key="c6-long-key-0001"):
+    """提案 + 排程一个长行动：返回 (proposal, scheduled 回执)。"""
+    status, prop = _propose_action(server, sid, action_id=action_id)
+    assert status == 200, (status, prop)
+    status, body, raw, _heads = server.post(
+        "/api/action/commit", _commit_body(prop["proposal"], prop["base_seq"]),
+        sid=sid, headers={"Idempotency-Key": key})
+    assert status == 200, (status, body)
+    frames = _parse_sse(raw)
+    assert [name for name, _payload in frames] == ["scheduled", "done"], frames
+    return prop, frames[0][1]
+
+
+def check_chron_long_action_round():
+    """长行动：`commit` 立即回 `scheduled`；**推进到到期**才结算并出结果与叙事。
+
+    覆盖验收 2 / 3 / 4：`enqueue` 的 async 结构（`task_id` / 世界分钟 / 屏障）、
+    不锁玩家（这一回合不结算、不落规则事件）、推进入口（`advance_to` 与
+    `next_barrier`）、离线叙事走兜底句、**重启后**（丢掉进程内会话缓存）照常推进。
+    """
+    sid = "c6-long-round"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid, action_id="a-long")
+        assert status == 200, (status, prop)
+        proposal = prop["proposal"]
+        # 行动表的排程字段进了提案（§4.2 的既有字段，服务端只读不造）
+        assert proposal["schedule_hint"] == {"can_defer": True, "depends_on": [],
+                                             "priority": 0}, proposal
+        assert proposal["time_cost"] == {"value": 30, "unit": "minute"}, proposal
+        assert proposal["interrupt_conditions"] == [], proposal
+
+        status, body, raw, _heads = server.post(
+            "/api/action/commit", _commit_body(proposal, prop["base_seq"]),
+            sid=sid, headers={"Idempotency-Key": "c6-long-key-0001"})
+        assert status == 200, (status, body)
+        frames = _parse_sse(raw)
+        assert [name for name, _payload in frames] == ["scheduled", "done"], frames
+        scheduled, done = frames[0][1], frames[1][1]
+        assert done == {"status": "ok"}, done
+        assert scheduled["status"] == "scheduled", scheduled
+        assert scheduled["mode"] == "async", scheduled
+        assert scheduled["task_id"] == "act_" + proposal["proposal_id"][2:], scheduled
+        assert (scheduled["start_at"], scheduled["expected_end_at"]) == (0, 30), scheduled
+        assert scheduled["barrier"] is False, scheduled
+        assert scheduled["resume_token"] is None, scheduled
+        # 排程事件已消耗 seq 1：回执里的基线是**提交后**的新序号
+        assert scheduled["base_seq"] == 1, scheduled
+        # **不锁玩家**：这一回合没有结算、没有规则后果，只有一条排程事件
+        assert _chron_event_types(sid) == ["action.scheduled"], _chron_event_types(sid)
+        card = _chron_card(sid, scheduled["task_id"])
+        assert card["status"] == "scheduled" and card["due_minute"] == 30, card
+        assert card["kind"] == "a-long" and card["actor"] == "u-1", card
+        assert "done_actions" not in _read_save(sid)["rules"] or \
+            not _read_save(sid)["rules"]["done_actions"], "排程不该结算规则"
+
+        # 同键重放：同一份 `scheduled` 回执，不排第二次、不写事件
+        status, body, raw, _heads = server.post(
+            "/api/action/commit", _commit_body(proposal, prop["base_seq"]),
+            sid=sid, headers={"Idempotency-Key": "c6-long-key-0001"})
+        assert status == 200, (status, body)
+        again = _parse_sse(raw)
+        assert [name for name, _payload in again] == ["scheduled", "done"], again
+        assert again[0][1] == scheduled, again[0][1]
+        assert again[1][1] == {"status": "ok", "replayed": True}, again[1]
+        assert _chron_event_types(sid) == ["action.scheduled"], "重放不得写事件"
+        # 换键再提同一份提案 → 409 该提案已提交（提案已被排程消费）
+        status, body, _raw, _heads = server.post(
+            "/api/action/commit", _commit_body(proposal, prop["base_seq"]),
+            sid=sid, headers={"Idempotency-Key": "c6-long-key-0002"})
+        assert (status, body.get("error")) == (409, "该提案已提交"), (status, body)
+
+        # 推进入口覆盖 `next_barrier`：下一个可停的分钟就是到期点 30
+        status, barrier = server.get("/api/chron/next_barrier", sid=sid)
+        assert status == 200, (status, barrier)
+        assert barrier == {"status": "ok", "world_minute": 0,
+                           "next_barrier": 30}, barrier
+
+        # **重启**：丢掉进程内会话缓存（真实读盘 + C5 恢复时序）后照样推进结算
+        notdnd_web._sessions.pop(sid, None)
+        status, out, _raw, _heads = server.post("/api/chron/advance",
+                                                {"target_minute": 30}, sid=sid)
+        assert status == 200, (status, out)
+        assert out["world_minute"] == 30 and out["target"] == 30, out
+        assert out["next_barrier"] is None, out
+        assert [ev["type"] for ev in out["events"]] == ["action.completed"], out["events"]
+        assert len(out["settled"]) == 1, out["settled"]
+        report = out["settled"][0]
+        assert report["action_id"] == scheduled["task_id"], report
+        assert report["status"] == "success", report
+        result = report["result"]
+        assert prism_core.validate_result(result) == [], result
+        assert result["committed"] is True, result
+        assert result["status"] == "success", result
+        assert result["costs"] == [{"kind": "time", "value": 30, "unit": "minute"}], result
+        assert result["commit_ref"]["seq_to"] == 2, result        # 排程 1 + 结算 1
+        assert result["proposal_id"] == proposal["proposal_id"], result
+        # 离线（无 AI 配置）叙事走既有兜底句，不依赖模型（§7.3 / P4）
+        assert report["narration"]["event"] == "fallback", report
+        assert report["narration"]["text"] == notdnd_web.FALLBACK_NARRATION, report
+        assert report["narration"]["action_id"] == result["action_id"], report
+        assert report["narration"]["seq_to"] == 2, report
+        # 叙事落流：`/api/log?since=` 增量取得到这一拍
+        status, log = server.get("/api/log?since=0", sid=sid)
+        assert status == 200, (status, log)
+        assert [entry["kind"] for entry in log["log"]] == ["narrate"], log
+        assert log["log"][0]["text"] == notdnd_web.FALLBACK_NARRATION, log
+        # 事件落库：排程 + 结算各一条；卡到终态、写实际结束分钟
+        assert _chron_event_types(sid) == ["action.scheduled", "action.completed"], \
+            _chron_event_types(sid)
+        card = _chron_card(sid, scheduled["task_id"])
+        assert card["status"] == "completed" and card["end_minute"] == 30, card
+        # 规则真结算（离线也要真改世界）：`done_actions` 进了存档
+        assert "a-long" in _read_save(sid)["rules"]["done_actions"], \
+            _read_save(sid)["rules"].get("done_actions")
+
+        # 再推到 60：区间内没有到期 → 只有一条 `clock.advance`（纯压缩留痕），
+        # 世界时间前进且不重复结算（§3.3 / §8.2 第 2 步）
+        status, out2, _raw, _heads = server.post("/api/chron/advance",
+                                                 {"target_minute": 60}, sid=sid)
+        assert status == 200, (status, out2)
+        assert out2["settled"] == [] and out2["world_minute"] == 60, out2
+        assert [ev["type"] for ev in out2["events"]] == ["clock.advance"], out2["events"]
+        assert _chron_event_types(sid) == ["action.scheduled", "action.completed",
+                                          "clock.advance"], _chron_event_types(sid)
+        status, view = server.get("/api/state", sid=sid)
+        assert view["world_time"]["world_minute"] == 60, view
+        # 推进入参：回拨 → 400 `世界时间只增不减`；垃圾 → 400 `推进入参不合法`
+        status, body = _post(server, "/api/chron/advance", {"target_minute": 30}, sid)
+        assert (status, body.get("error")) == (400, "世界时间只增不减"), (status, body)
+        for bad in (True, "30", None, -1, 1.5):
+            status, body = _post(server, "/api/chron/advance",
+                                 {"target_minute": bad}, sid)
+            assert (status, body.get("error")) == (400, "推进入参不合法"), (bad, status, body)
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_chron_long_action_barrier():
+    """屏障置位（验收 2）：`kind` / 中断条件命中 §6.2 的判据时 `barrier = true`。
+
+    两条路径都进队列：① `can_defer = true`，且**行动名**是 CHRON 认得的
+    `combat`（`KIND_BARRIERS` 的 B1：进入战斗）；② 没有 `schedule_hint`，
+    但中断条件带 `enemy_appears`（B1 的中断侧）。CHRON 的 `kind` 取
+    `intent.verb`（= 场景行动 id）：它既是 PRISM 结算的入口
+    （`perform_action` 只认它），也是屏障判据认的「行动名」——按 CHRON §6.2
+    「只认名字，名字由规则包给」。
+    """
+    sid = "c6-barrier"
+    _seed_action_session(
+        notdnd_web.SAVE_DIR, sid, action_id="combat",
+        entry={"label": "迎战", "kind": "check", "auto_pass": True,
+               "on_pass": "挡下了。", "time_cost": {"value": 10, "unit": "minute"},
+               "schedule_hint": {"can_defer": True, "depends_on": [], "priority": 0}})
+    with _LocalServer() as server:
+        _prop, scheduled = _schedule_long(server, sid, action_id="combat",
+                                         key="c6-barrier-key-0001")
+        assert scheduled["barrier"] is True, scheduled
+        assert (scheduled["start_at"], scheduled["expected_end_at"]) == (0, 10), scheduled
+        card = _chron_card(sid, scheduled["task_id"])
+        assert card["kind"] == "combat", card
+        # 取消掉，别让它挂着（取消也顺带覆盖 §4.3 的映射）
+        status, body = _post(server, "/api/chron/cancel",
+                             {"task_id": scheduled["task_id"]}, sid)
+        assert (status, body["cancelled"]) == (200, True), (status, body)
+    notdnd_web._sessions.pop(sid, None)
+
+    sid = "c6-interrupt"
+    _seed_action_session(
+        notdnd_web.SAVE_DIR, sid, action_id="a-watch",
+        entry={"label": "盯梢", "time_cost": {"value": 30, "unit": "minute"},
+               "interrupt_conditions": [{"kind": "enemy_appears"}]})
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid, action_id="a-watch")
+        assert status == 200, (status, prop)
+        # 没有 schedule_hint：默认 `can_defer = false`，但中断条件把它推进队列
+        assert prop["proposal"]["schedule_hint"] == {"can_defer": False,
+                                                     "depends_on": [],
+                                                     "priority": 0}, prop
+        assert prop["proposal"]["interrupt_conditions"] == [{"kind": "enemy_appears"}], prop
+        status, body, raw, _heads = server.post(
+            "/api/action/commit",
+            _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+            headers={"Idempotency-Key": "c6-interrupt-key-0001"})
+        assert status == 200, (status, body)
+        scheduled = _parse_sse(raw)[0][1]
+        assert scheduled["status"] == "scheduled", scheduled
+        assert scheduled["barrier"] is True, scheduled
+        card = _chron_card(sid, scheduled["task_id"])
+        assert card["interrupt_conditions"] == [{"kind": "enemy_appears"}], card
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_chron_cancel_mapping():
+    """`cancel` 对齐（验收 5）：L1 `cancel(task_id)` ↔ L2 的取消入口可用且有测试。
+
+    L2 的取消入口是 `settle(state, action_id, "cancelled", …)`（§4.2 的
+    `→ cancelled` 行），不是 §4.3 表里的 `cancel(action_id, at_minute)` —— 映射
+    语义不变（`task_id` 即 `action_id`，返回 bool）。取消写一条 `action.cancelled`
+    事件；幂等（再取消回 `cancelled: false`）。
+    """
+    sid = "c6-cancel"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    session = notdnd_web.Session.load(sid)
+    assert session is not None
+    hook = notdnd_web._schedule_hook(session)
+    assert hook.cancel("act_ffffffffffffffffffffffffffffffff") is False, \
+        "没有这张卡：L1 `cancel` 回 False（§4.3 映射表末行）"
+    notdnd_web._sessions.pop(sid, None)
+
+    with _LocalServer() as server:
+        _prop, scheduled = _schedule_long(server, sid, action_id="a-long",
+                                          key="c6-cancel-key-0001")
+        task_id = scheduled["task_id"]
+        # 缺 `task_id` → 400 固定短语
+        status, body = _post(server, "/api/chron/cancel", {}, sid)
+        assert (status, body.get("error")) == (400, "没有这个任务"), (status, body)
+        status, body = _post(server, "/api/chron/cancel", {"task_id": task_id}, sid)
+        assert status == 200, (status, body)
+        assert body == {"status": "ok", "task_id": task_id, "cancelled": True,
+                        "world_minute": 0}, body
+        card = _chron_card(sid, task_id)
+        assert card["status"] == "cancelled" and card["end_minute"] == 0, card
+        assert _chron_event_types(sid) == ["action.scheduled", "action.cancelled"], \
+            _chron_event_types(sid)
+        # 幂等：再取消回 `cancelled: false`，不写新事件
+        status, body = _post(server, "/api/chron/cancel", {"task_id": task_id}, sid)
+        assert status == 200 and body["cancelled"] is False, (status, body)
+        assert _chron_event_types(sid) == ["action.scheduled", "action.cancelled"], \
+            _chron_event_types(sid)
+        # 取消之后没有可停的分钟，推进也不再结算它
+        status, barrier = server.get("/api/chron/next_barrier", sid=sid)
+        assert barrier["next_barrier"] is None, barrier
+        status, out, _raw, _heads = server.post("/api/chron/advance",
+                                                {"target_minute": 30}, sid=sid)
+        assert status == 200 and out["settled"] == [], out
+        assert _chron_event_types(sid)[-1] == "clock.advance", _chron_event_types(sid)
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_chron_hook_injection():
+    """L1 适配器与注入选择（§8.3）：默认 = CHRON 适配器；替换过的实现原样用。
+
+    单元面：`mode = "sync"` 的六键形状（含 `start_at` = 当前世界分钟）、
+    `bind` 只对默认适配器生效、`_action_is_deferred` 的真值表、
+    `time_cost` → 分钟的换算表（§8.1 只锁枚举，换算在适配器里）。
+    """
+    assert isinstance(notdnd_web.SCHEDULE_HOOK, notdnd_web._ChronScheduleHook), \
+        "默认注入点是 CHRON 的 L1 适配器（§8.3）"
+    assert hasattr(notdnd_web.SCHEDULE_HOOK, "bind"), notdnd_web.SCHEDULE_HOOK
+
+    sid = "c6-inject"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    session = notdnd_web.Session.load(sid)
+    assert session is not None
+    hook = notdnd_web._schedule_hook(session)
+    assert isinstance(hook, notdnd_web._ChronScheduleHook) and hook is not session, hook
+    assert hook.session is session, "bind 取的是**本局**的绑定副本"
+    out = hook.enqueue({"proposal_id": "p_x", "schedule_hint": {"can_defer": False}},
+                       None, base_seq=0)
+    assert set(out) == {"mode", "task_id", "start_at", "expected_end_at",
+                        "barrier", "resume_token"}, out
+    assert out == {"mode": "sync", "task_id": None, "start_at": 0,
+                   "expected_end_at": 0, "barrier": False,
+                   "resume_token": None}, out
+    # 没有绑定本局（模块级单例 / session=None）也回 sync：绝不**悄悄**排程
+    assert notdnd_web.SCHEDULE_HOOK.enqueue({"proposal_id": "p_x"}, None,
+                                            base_seq=0)["mode"] == "sync"
+
+    class BareHook:
+        """没有 `bind` 的替换实现（A3 假钩子同款）：原样使用，不再包一层。"""
+
+        def enqueue(self, proposal, draft, *, base_seq):
+            return {"mode": "sync", "task_id": None, "start_at": 0,
+                    "expected_end_at": 0, "barrier": False, "resume_token": None}
+
+        def cancel(self, task_id):
+            return False
+
+    saved = notdnd_web.SCHEDULE_HOOK
+    bare = BareHook()
+    notdnd_web.SCHEDULE_HOOK = bare
+    try:
+        assert notdnd_web._schedule_hook(session) is bare, "替换过的实现原样使用"
+    finally:
+        notdnd_web.SCHEDULE_HOOK = saved
+    notdnd_web._sessions.pop(sid, None)
+
+    # `_action_is_deferred`：`can_defer` 或非空中断条件（§4.3 关键约定）
+    assert notdnd_web._action_is_deferred({}) is False
+    assert notdnd_web._action_is_deferred({"schedule_hint": {}}) is False
+    assert notdnd_web._action_is_deferred(
+        {"schedule_hint": {"can_defer": False}, "interrupt_conditions": []}) is False
+    assert notdnd_web._action_is_deferred({"schedule_hint": {"can_defer": True}}) is True
+    assert notdnd_web._action_is_deferred(
+        {"interrupt_conditions": [{"kind": "hazard"}]}) is True
+    # `time_cost` → 整数分钟（§8.1 的枚举 → §2.4 的刻度，都在 CHRON 里）
+    assert notdnd_web._chron_time_minutes(
+        {"time_cost": {"value": 5, "unit": "minute"}}) == 5
+    assert notdnd_web._chron_time_minutes(
+        {"time_cost": {"value": 2, "unit": "hour"}}) == 120
+    assert notdnd_web._chron_time_minutes(
+        {"time_cost": {"value": 1, "unit": "watch"}}) == chron.NOMINAL_WATCH_MINUTES
+    assert notdnd_web._chron_time_minutes(
+        {"time_cost": {"value": 1, "unit": "day"}}) == chron.MINUTES_PER_DAY
+    assert notdnd_web._chron_time_minutes(
+        {"time_cost": {"value": 3, "unit": "turn"}}) == 3 * chron.MINOR_ACTION_MINUTES
+    assert notdnd_web._chron_time_minutes({}) == 0
+    # `task_id` ↔ `proposal_id` 的派生是双向的（结算时由卡反推提案）
+    proposal_id = "p_" + "a" * 32
+    task_id = notdnd_web._chron_task_id({"proposal_id": proposal_id})
+    assert task_id == "act_" + "a" * 32, task_id
+    assert notdnd_web._chron_proposal_id(task_id) == proposal_id
+
+
+def check_chron_dependency_semantics():
+    """依赖语义（验收 2）：`depends_on` 透传到位；**拒单**翻 409 且不留痕（§5.3）。
+
+    - 真路径：依赖 id 不存在 → `chron.schedule` 抛 `ScheduleError` → 409
+      `现在做不了`（前置条件不满足，§9.5），**不落事件、不留卡**；
+    - `rejected`（§5.3 的「依赖有环」）：C3 的 `deps_satisfied` 不变式要求
+      已排期卡片的依赖**必须存在**，两卡互依赖的第二张永远进不了调度器——
+      所以这条在**落盘状态**里不可构造。这里用替身把映射钉死：适配器必须把
+      `rejected` 翻成同一个 409，**不落事件、不留卡**，绝不静默忽略。
+    """
+    sid = "c6-deps"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    with _LocalServer() as server:
+        ghost = prism_core.new_proposal(
+            proposal_id="p_" + "d" * 32,
+            actor={"kind": "player", "id": "u-1"},
+            intent={"verb": "a-long", "target": None, "desired": "守夜", "means": ""},
+            source="action", risk="R1",
+            time_cost={"value": 30, "unit": "minute"},
+            schedule_hint={"can_defer": True, "depends_on": ["act_nope"],
+                           "priority": 0})
+        status, body = _post(server, "/api/action/commit",
+                             _commit_body(ghost, 0), sid,
+                             headers={"Idempotency-Key": "c6-deps-key-0001"})
+        assert (status, body.get("error")) == (409, "现在做不了"), (status, body)
+        assert _chron_event_types(sid) == [], _chron_event_types(sid)
+        assert _chron_block(sid)["actions"] == {}, _chron_block(sid)
+
+        saved_schedule = chron.schedule
+        def fake_schedule(state, draft, **kwargs):
+            """替身：无论输入都回 `rejected`（§5.3 有环的语义形状）。"""
+            return {"status": "rejected", "action_id": draft["action_id"],
+                    "cycle": [draft["action_id"]], "state": state, "events": []}
+        chron.schedule = fake_schedule
+        try:
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(_cycled_proposal("e"), 0), sid,
+                headers={"Idempotency-Key": "c6-deps-key-0002"})
+        finally:
+            chron.schedule = saved_schedule
+        assert (status, body.get("error")) == (409, "现在做不了"), (status, body)
+        assert b"event:" not in raw, "拒单不许开 SSE"
+        assert _chron_event_types(sid) == [], _chron_event_types(sid)
+        assert _chron_block(sid)["actions"] == {}, _chron_block(sid)
+    notdnd_web._sessions.pop(sid, None)
+
+
+def _cycled_proposal(hex_digit: str, **over) -> dict:
+    """造一份**可推迟**的提案（`can_defer`，`intent.verb = a-long`）。"""
+    proposal = prism_core.new_proposal(
+        proposal_id="p_" + hex_digit * 32,
+        actor={"kind": "player", "id": "u-1"},
+        intent={"verb": "a-long", "target": None, "desired": "守夜", "means": ""},
+        source="action", risk="R1",
+        time_cost={"value": 30, "unit": "minute"},
+        schedule_hint={"can_defer": True, "depends_on": ["act_x"], "priority": 0})
+    proposal.update(over)
+    assert prism_core.validate_proposal(proposal) == [], proposal
+    return proposal
+
+
+def check_chron_dependency_chain():
+    """依赖**串行**：`depends_on` 到位前不进到期堆，前者结算后自动放行（§5.3）。
+
+    这是 `schedule_hint.depends_on` **真的折进 CHRON** 的正向证据：第二张卡
+    排得进去但**不进堆**；第一张到期结算后 `rebuild_heap` 放行第二张，
+    下一次推进才结算它。
+    """
+    sid = "c6-chain"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    with _LocalServer() as server:
+        _prop, first = _schedule_long(server, sid, action_id="a-long",
+                                      key="c6-chain-key-0001")
+        second = _cycled_proposal("f",
+                                  schedule_hint={"can_defer": True,
+                                                 "depends_on": [first["task_id"]],
+                                                 "priority": 0})
+        status, body, raw, _heads = server.post(
+            "/api/action/commit", _commit_body(second, first["base_seq"]), sid,
+            headers={"Idempotency-Key": "c6-chain-key-0002"})
+        assert status == 200, (status, body)
+        scheduled = _parse_sse(raw)[0][1]
+        assert scheduled["status"] == "scheduled", scheduled
+        card = _chron_card(sid, scheduled["task_id"])
+        assert card["depends_on"] == [first["task_id"]], card
+        # 第二张卡与第一张**同刻安排**（start = 调度那一刻 0），但依赖未成：
+        # 它**不进**到期堆（§5.3 首条），所以要等到第一张结算才被放行。
+        state_now = _chron_block(sid)
+        assert [entry[3] for entry in state_now["due_heap"]] == [first["task_id"]], \
+            state_now["due_heap"]
+        assert state_now["actions"][scheduled["task_id"]]["due_minute"] == 30, \
+            state_now["actions"][scheduled["task_id"]]
+        status, barrier = server.get("/api/chron/next_barrier", sid=sid)
+        assert barrier["next_barrier"] == 30, barrier          # 只看到第一张的到期
+
+        # 第一张到期结算 → `rebuild_heap` 放行第二张（放行时已到期 → 立即待办）
+        status, out, _raw, _heads = server.post("/api/chron/advance",
+                                                {"target_minute": 30}, sid=sid)
+        assert status == 200, (status, out)
+        assert [report["action_id"] for report in out["settled"]] == \
+            [first["task_id"]], out["settled"]
+        state_now = _chron_block(sid)
+        assert [entry[3] for entry in state_now["due_heap"]] == \
+            [scheduled["task_id"]], state_now["due_heap"]
+        status, barrier = server.get("/api/chron/next_barrier", sid=sid)
+        assert barrier["next_barrier"] == 30, barrier
+
+        # 第二次推进才结算第二张：到期（B8）就是结算点，停在那一分钟
+        status, out2, _raw, _heads = server.post("/api/chron/advance",
+                                                 {"target_minute": 60}, sid=sid)
+        assert status == 200, (status, out2)
+        assert (out2["world_minute"], out2["stopped_at"]) == (30, 30), out2
+        assert [report["action_id"] for report in out2["settled"]] == \
+            [scheduled["task_id"]], out2["settled"]
+        assert out2["settled"][0]["status"] == "success", out2["settled"]
+        assert out2["settled"][0]["result"]["commit_ref"]["seq_to"] == 4, \
+            out2["settled"][0]["result"]
+        # 再推一次才到 60：区间里没有到期 → 一条 `clock.advance`
+        status, out3, _raw, _heads = server.post("/api/chron/advance",
+                                                 {"target_minute": 60}, sid=sid)
+        assert status == 200 and out3["world_minute"] == 60, out3
+        assert [ev["type"] for ev in out3["events"]] == ["clock.advance"], out3["events"]
+        assert _chron_event_types(sid) == ["action.scheduled", "action.scheduled",
+                                          "action.completed", "action.completed",
+                                          "clock.advance"], _chron_event_types(sid)
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_chron_immediate_action_unchanged():
+    """验收 1 的**同步对照**：`can_defer = false` 的即时行动仍走 M8 同步路径。
+
+    A3 的既有用例（`check_action_*`）逐条盯着同步路径的响应形状；这里额外断言
+    适配器对即时行动**不排程**：提交之后没有 `action.scheduled` 事件、没有
+    CHRON 行动卡、没有世界时间推进，`result` 与 A3 时代同形（`mode` 概念只出现
+    在钩子回执里，不进 `result` / `/api/action/*` 的响应）。
+    """
+    sid = "c6-immediate"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    with _LocalServer() as server:
+        status, prop = _propose_action(server, sid)
+        assert status == 200, (status, prop)
+        assert prop["proposal"]["schedule_hint"] == {"can_defer": False,
+                                                     "depends_on": [],
+                                                     "priority": 0}, prop
+        status, body, raw, _heads = server.post(
+            "/api/action/commit",
+            _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+            headers={"Idempotency-Key": "c6-immediate-key-0001"})
+        assert status == 200, (status, body)
+        frames = _parse_sse(raw)
+        assert [name for name, _payload in frames] == ["result", "fallback", "done"], frames
+        result = frames[0][1]
+        assert result["committed"] is True and result["status"] == "success", result
+        assert "task_id" not in result and "mode" not in result, "结果契约不变（§5.1）"
+        # 同步行动**不推进世界时间**（§8.1「M8 语义」）：CHRON 一条事件都没落
+        assert _chron_event_types(sid) == ["action.commit"], _chron_event_types(sid)
+        assert _chron_block(sid)["world_minute"] == 0, _chron_block(sid)["world_minute"]
+        assert _chron_block(sid)["actions"] == {}, _chron_block(sid)["actions"]
+    notdnd_web._sessions.pop(sid, None)
+
+
+def check_chron_advance_barrier_stop():
+    """推进遇屏障就停（§6.2 / §6.3）：目标远在屏障之后也**不跨**。
+
+    到期（B8）本身就是结算点：`target_minute = 100` 而到期在 30 → 结算 30 那一分钟
+    的行动、`world_minute = 30`、`stopped_at = 30`，`barriers` 里能看到 B8 记录。
+    """
+    sid = "c6-barrier-stop"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    with _LocalServer() as server:
+        _prop, scheduled = _schedule_long(server, sid, action_id="a-long",
+                                          key="c6-stop-key-0001")
+        status, out, _raw, _heads = server.post("/api/chron/advance",
+                                                {"target_minute": 100}, sid=sid)
+        assert status == 200, (status, out)
+        assert out["world_minute"] == 30, out
+        assert out["stopped_at"] == 30, out
+        assert any(record.get("id") == "B8" for record in out["barriers"]), out["barriers"]
+        assert [ev["type"] for ev in out["events"]] == ["action.completed"], out["events"]
+        assert out["settled"][0]["action_id"] == scheduled["task_id"], out["settled"]
+        # 屏障到达之后再次推进：这次能到 100（已到达的屏障不再拦）
+        status, out2, _raw, _heads = server.post("/api/chron/advance",
+                                                 {"target_minute": 100}, sid=sid)
+        assert status == 200 and out2["world_minute"] == 100, out2
+        assert out2["settled"] == [], out2
+        # `next_barrier` 的入参面：非法 → 400；早于当前 → 400（§3.2）
+        for bad in ("abc", "-3", "1.5"):
+            status, body = server.get("/api/chron/next_barrier?from=" + bad, sid=sid)
+            assert (status, body.get("error")) == (400, "推进入参不合法"), \
+                (bad, status, body)
+        status, body = server.get("/api/chron/next_barrier?from=99", sid=sid)
+        assert (status, body.get("error")) == (400, "世界时间只增不减"), (status, body)
+        status, ok = server.get("/api/chron/next_barrier?from=100", sid=sid)
+        assert ok["next_barrier"] is None and ok["world_minute"] == 100, ok
+    notdnd_web._sessions.pop(sid, None)
+
+
+# --------------------------------------------------------------------------
 # 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
 # --------------------------------------------------------------------------
 
@@ -4129,6 +4684,14 @@ CHECKS = (
     check_action_narration_failure_keeps_result,
     check_action_save_failure_keeps_result,
     check_action_commit_json_accept,
+    check_chron_hook_injection,
+    check_chron_immediate_action_unchanged,
+    check_chron_long_action_round,
+    check_chron_long_action_barrier,
+    check_chron_advance_barrier_stop,
+    check_chron_cancel_mapping,
+    check_chron_dependency_semantics,
+    check_chron_dependency_chain,
     check_api_state_view,
     check_api_events_incremental,
     check_api_events_across_archives,
