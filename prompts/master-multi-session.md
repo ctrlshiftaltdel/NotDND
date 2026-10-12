@@ -63,6 +63,8 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 范围：<阶段> —— 涉及 Issue：<列表>
 依赖检查：<依赖是否已合入 master；未满足的列为 BLOCKED>
 锁表：<当前开放 PR 各占用哪些文件>
+路由：<按交付物选择——code_implementation → @builder；image_prompt_authoring → @promptor；
+      external_image_generation → 不派发，由用户在 OpenCode 之外出图；交接包已携带建议调用名与工作边界>
 本轮计划：<要派发/审查/合并哪些任务，串行/并行关系>
 降级声明：本模式即 AGENT-ORCHESTRATION.md §5.4 的多会话交接形态；
           我不等待执行会话，状态靠 GitHub 重建。
@@ -74,12 +76,19 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 
 ### 4.1 派发（生成自包含交接包）
 
-对每个 `READY` 任务，产出**可直接复制到新会话**的交接包。交接包**不得依赖当前聊天上下文或记忆**：
+对每个 `READY` 任务，产出**可直接复制到新会话**的交接包。交接包**不得依赖当前聊天上下文或记忆**。
+**先按交付物路由**（§8；`AGENT-ORCHESTRATION.md` §1.5）——`code_implementation` → `@builder`；
+`image_prompt_authoring` → `@promptor`；`external_image_generation` **不进入交接包**（用户自行出图）。
+**调用名只是建议**：`@builder` / `@promptor` 来自**运行时配置**，本规范不定义、不假定其存在。
 
 ```text
-你是 Execution Agent，处理 Issue #<issue>。
+你是 Execution Agent（建议调用名：<@builder / @promptor>），处理 Issue #<issue>。
 
-【规范】先读 AGENTS.md → AGENT-ORCHESTRATION.md（§1.2 角色边界、§4.1 证据要求）。
+【规范】先读 AGENTS.md → AGENT-ORCHESTRATION.md（§1.2 角色边界、§1.5 交付物路由与任务包契约、§4.1 证据要求）。
+【交付物类型】<code_implementation / image_prompt_authoring；external_image_generation 不由本流程派发>
+【职责与工作边界】<只做本类交付物；不越界完成另一类；不改允许路径之外的文件>
+【输入要求】<写清本任务开始前必须拿到的输入；缺失即 BLOCKED>
+【预期产物】<代码 / 测试 / 提示词或素材清单文档；external_image_generation 的图片不在此列>
 【Issue】#<issue> —— <标题>（目标 / 验收标准逐条见 Issue 正文）。
 【可改路径】<逐条列出>
 【禁改路径】<逐条列出，形如：其它全部>
@@ -89,9 +98,32 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
                标题格式：<type>(<scope>): <摘要>（Issue #<issue>）；正文含 Closes #<issue>。
 【验收证据】真跑过的命令 + 结果；只写“已测试”视为未验证。
 【回报格式】做了什么 / 怎么验证的 / 没做什么 / 风险（对应 AGENT-ORCHESTRATION.md §4.1）。
+【调用名确认】开始前先确认本调用名在你的 OpenCode 运行时**可用**；不可用 → 停下报告 `BLOCKED`
+             （写明恢复条件 = 由人指派可用的对应角色），**不得**静默换角色或越界完成另一类交付物。
 【纪律】只改允许路径；超范围先停下报告；一律不合并。
 ```
 
+**`image_prompt_authoring` 交接包**（在基础交接包上补下列字段；`@promptor` 只交付**提示词 / 素材清单文档**）：
+
+```text
+【资产 ID / 槽位】<沿用既有契约；未定义则填「待确认」并先停下确认——不得擅自发明运行时槽位>
+【素材用途 / 出现位置】<角色、场景、物品、地点或指定界面位置；说明为何需要>
+【世界主题与风格约束】<fantasy / modern / future 等已批准风格；引用对应设计规范>
+【目标文件名 / 路径】<已有既定口径时填写；未确定标「待确认」>
+【规格】<宽高比、像素尺寸、格式、透明背景、文件大小限制（若已确定）>
+【验收标准 / 禁止内容】<逐条；禁止内容如：水印、随机文字、品牌标识、未授权第三方角色 / 世界>
+【范围提示】可改路径仅含提示词 / 素材清单文档（由 Issue 指定）；static/assets.json 与资产槽位不在范围内，除非 Issue 明确批准。
+【不做】不生成图像、不导入图片、不改生产代码或资产映射；实际出图由用户在 OpenCode 之外完成（external_image_generation）。
+```
+
+- **调用名不可用 → 显式阻塞**：执行会话若确认该调用名不可用（或本机配置与交接包不符），
+  必须**停下报告 `BLOCKED`**，写明原因与恢复条件（由**人**指派可用角色 / 改走其他合规路径）；
+  **不得**假装调用、**不得**静默换角色，**不假定**不同机器拥有相同的 OpenCode 配置。
+- **混合交付物（提示词 + 代码）**：**拆成独立任务 / 交接包**（各自可改路径、分支与 PR），或写明
+  **显式串行依赖**（依赖已合入 `master` 才算满足）；**不得**让单个 Subagent 越界完成另一类工作，
+  **不得**借路由**暗中扩大**任一 Issue 的允许路径——跨类改动一律走「追加范围 / 新开 Issue」的正规路径。
+- **缺图不阻塞代码**：正式素材未批准 / 未入库时，`code_implementation` 继续用既有占位框架、
+  CSS / 字符 / 内联 SVG 或纯色实现，主要功能照常交付与验证。
 - 派发前**必须**做冲突检查（`AGENT-ORCHESTRATION.md` §3.1）：任务可改路径与**开放 PR 触及文件或
   活动登记锁定路径**相交 → 不派发，标 `BLOCKED` 并说明等其合并。
 - **先登记，再派发**（`AGENT-ORCHESTRATION.md` §3.4）：产出交接包**之前 / 同时**在 Issue 上贴出
@@ -127,6 +159,9 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 - 核对**可合并性**：`mergeable` 不为 `CONFLICTING`。
 - 核对**证据真实性**：命令真跑过、有输出可复现。
 - 核对 **CI 以当前 head SHA 为准**：`gh pr checks <n>` 必须对应**当前待合并的 head**；head 变更即作废重跑。
+- 按**交付物**核对（`AGENT-ORCHESTRATION.md` §1.5）：`code_implementation` 看代码 / 测试与占位回退；`image_prompt_authoring`
+  只看**提示词文档**是否满足任务包契约（信息齐全、槽位与路径不臆造、不越界改代码 / 映射）——
+  **不得**因缺图把代码类任务判失败，**不得**把提示词文档当作图片交付物来验收。
 
 有缺陷 → 退回 `DISPATCHED`（**修复轮次 +1**）；**默认重试上限 3 轮**（`AGENT-ORCHESTRATION.md` §4.5），达到上限 → `BLOCKED` 并向人汇报「卡在哪条验收 / 已尝试什么 / 建议下一步」。**禁止**为跑通而降低验收标准或伪造证据。
 
@@ -198,7 +233,11 @@ Execution Agent。你不等待这些会话——状态一律靠 GitHub 重建
 
 ## 8. 复用与引用
 
-- 执行任务交给 **`prompts/execution-subagent.md`**（在另一会话启动）。
+- 执行任务交给 **`prompts/execution-subagent.md`**（在另一会话启动）；按**交付物**选择建议调用名：
+  `code_implementation` → **`@builder`**；`image_prompt_authoring` → **`@promptor`**；
+  `external_image_generation`（外部模型**实际出图**）由**用户**在 OpenCode 之外完成，**不派发**
+  （`AGENT-ORCHESTRATION.md` §1.5）。正式素材的批准 / 入库以对应资产政策 Issue 合并后的规范为准；
+  缺图不阻塞代码。
 - 需要第二意见时，可另起会话使用 **`prompts/reviewer-subagent.md`**（只出意见，不改变你的验收责任）。
 - 本文件只声明 `multi-session` 一种模式。需要单会话自动编排请改用 **`prompts/master-single-session.md`**，
   **不得**在同一会话里同时承诺两种运行方式。
