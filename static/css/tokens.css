@@ -3,13 +3,20 @@
    纯 CSS，无构建步骤、无外部字体。界面框架不引用位图；
    测试样张放在 static/assets/demo/，本文件不加载它们。
 
-   约定（UI-DESIGN.md §3.1 原则 3「令牌先行」）：
+   约定（UI-DESIGN.md §3.1 原则 3「令牌先行」；世界层见
+   UI-WORLD-THEMES.md §4.7）：
      · 组件只引用 :root 变量，任何 .css / .html 里都不写死颜色；
      · 换主题 / 换档位只动本文件，其余文件零改动；
      · 明色是**新增的令牌值覆盖**，用 @media (prefers-color-scheme: light)
        覆盖同一批令牌名——**只改令牌名，不改任何选择器**。
      · 未设置 data-theme 时跟随系统。参考稿可加 data-theme="dark|light"
        强制一套令牌；应用本身不写这个属性（手动三档仍属后续切片）。
+     · data-world（fantasy | modern | future）与明暗正交。:root 即 html，
+       所以 html[data-world] 与 :root[data-world] 是同一钩子。未设置、
+       modern、以及未知取值都落在基础令牌上（现代中性基线，零回归）。
+     · 世界块只覆盖 A 层（底色 / 文字 / 强调 / 分隔 / 遮罩）与 C 层装饰。
+       B 层 --danger / --success 只出现在基础块与明暗块，世界块故意不写。
+       --scope-* 落点未拍板，本文件不登记。
    ═══════════════════════════════════════════════════════════ */
 
 :root {
@@ -33,6 +40,15 @@
   /* 浮层遮罩。跟主题走，避免明色页面被一块固定黑罩涂死。 */
   --scrim: rgba(5, 7, 12, .62);
   color-scheme: dark;
+
+  /* C 层 · 现代装饰（中性基线：无母题。明色继承，不随明暗改字形）。
+     生产组件尚未取用这些名字（接线属后续切片）；取值在此，避免缺省。 */
+  --wt-motif-ink: transparent;
+  --wt-motif: none;
+  --wt-motif-size: auto;
+  --wt-title-font: var(--font-serif);
+  --wt-title-track: .01em;
+  --wt-edge: none;
 
   /* 字体 */
   --font-sans: -apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
@@ -128,6 +144,165 @@
   --scrim: rgba(22, 24, 31, .38);
   --elev-1: 0 1px 2px rgba(22, 24, 31, .06), 0 4px 12px rgba(22, 24, 31, .05);
   --elev-2: 0 10px 28px rgba(22, 24, 31, .14);
+}
+
+/* ── 世界主题 · 暗（UI-WORLD-THEMES.md §4.5 / §4.7）──────────
+   选择器不看 data-theme：暗色是世界的默认值。系统为明色、或
+   data-theme="light" 时，由后面的明色块按属性覆盖回来。
+   B 层（--danger / --success / --scope-*）在本段全部缺席。
+   --elev-* 不在此覆盖：阴影跟明暗走，沿用上面的现代明 / 暗值。
+   现代不另写 [data-world="modern"]，这样「缺属性」与显式 modern 同一套计算值。 */
+
+:root[data-world="fantasy"] {
+  color-scheme: dark;
+  --bg-0: #0d1410;
+  --bg-1: #131d17;
+  --bg-2: #1a261e;
+  --bg-3: #223027;
+  --text-1: #ece5d4;
+  --text-2: #b9b3a2;
+  --text-3: #8d8a78;
+  --accent: #dcb45f;
+  --accent-2: #93cc9f;
+  --on-accent: #16110a;
+  --line: #2c3a30;
+  --line-strong: #40543f;
+  --bg-frame: #080d0a;
+  --scrim: rgba(6, 10, 8, .64);
+  /* 等高线：细密横线，只作为令牌。墨色 alpha .10 ≤ .12。 */
+  --wt-motif-ink: rgba(220, 180, 95, .10);
+  --wt-motif: repeating-linear-gradient(0deg, var(--wt-motif-ink) 0 1px, transparent 1px 5px);
+  --wt-motif-size: auto;
+  --wt-title-font: var(--font-serif);
+  --wt-title-track: .01em;
+  --wt-edge: none;
+}
+
+:root[data-world="future"] {
+  color-scheme: dark;
+  --bg-0: #05080f;
+  --bg-1: #0a1020;
+  --bg-2: #101a2e;
+  --bg-3: #17253f;
+  --text-1: #dfe8f4;
+  --text-2: #a9b7cc;
+  --text-3: #7a8aa4;
+  --accent: #5fd8e8;
+  --accent-2: #b39cff;
+  --on-accent: #04121a;
+  --line: #1c2a44;
+  --line-strong: #2d4363;
+  --bg-frame: #03060b;
+  --scrim: rgba(3, 6, 12, .68);
+  /* 细网格 12px。墨色 alpha .10 ≤ .12。不做闪烁或霓虹。 */
+  --wt-motif-ink: rgba(95, 216, 232, .10);
+  --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px),
+              linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
+  --wt-motif-size: 12px 12px;
+  --wt-title-font: var(--font-sans);
+  --wt-title-track: .04em;
+  --wt-edge: orbit;
+}
+
+/* ── 世界主题 · 明：跟随系统 ─────────────────────────────────
+   :not([data-theme="dark"]) 让参考稿能在明色系统上强制暗色。 */
+@media (prefers-color-scheme: light) {
+  :root[data-world="fantasy"]:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg-0: #f7f5ed;
+    --bg-1: #fffdf6;
+    --bg-2: #ece8da;
+    --bg-3: #e0dccc;
+    --text-1: #1b1913;
+    --text-2: #4d4a3c;
+    --text-3: #6d6a56;
+    --accent: #71540d;
+    --accent-2: #1d6a49;
+    --on-accent: #fffdf6;
+    --line: #ddd8c6;
+    --line-strong: #c1bca6;
+    --bg-frame: #e8e4d6;
+    --scrim: rgba(27, 25, 19, .40);
+    --wt-motif-ink: rgba(113, 84, 13, .10);
+    --wt-motif: repeating-linear-gradient(0deg, var(--wt-motif-ink) 0 1px, transparent 1px 5px);
+    --wt-motif-size: auto;
+    --wt-title-font: var(--font-serif);
+    --wt-title-track: .01em;
+    --wt-edge: none;
+  }
+  :root[data-world="future"]:not([data-theme="dark"]) {
+    color-scheme: light;
+    --bg-0: #f1f5fa;
+    --bg-1: #ffffff;
+    --bg-2: #e6edf6;
+    --bg-3: #d8e3f1;
+    --text-1: #0f1520;
+    --text-2: #414f63;
+    --text-3: #5c6a80;
+    --accent: #0b6c7a;
+    --accent-2: #5b3fb8;
+    --on-accent: #ffffff;
+    --line: #d4dfec;
+    --line-strong: #b6c6d9;
+    --bg-frame: #e3ebf5;
+    --scrim: rgba(15, 21, 32, .40);
+    --wt-motif-ink: rgba(11, 108, 122, .12);
+    --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px),
+                linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
+    --wt-motif-size: 12px 12px;
+    --wt-title-font: var(--font-sans);
+    --wt-title-track: .04em;
+    --wt-edge: orbit;
+  }
+}
+
+/* 参考稿在暗色系统上强制明色。与上一块同值。 */
+:root[data-world="fantasy"][data-theme="light"] {
+  color-scheme: light;
+  --bg-0: #f7f5ed;
+  --bg-1: #fffdf6;
+  --bg-2: #ece8da;
+  --bg-3: #e0dccc;
+  --text-1: #1b1913;
+  --text-2: #4d4a3c;
+  --text-3: #6d6a56;
+  --accent: #71540d;
+  --accent-2: #1d6a49;
+  --on-accent: #fffdf6;
+  --line: #ddd8c6;
+  --line-strong: #c1bca6;
+  --bg-frame: #e8e4d6;
+  --scrim: rgba(27, 25, 19, .40);
+  --wt-motif-ink: rgba(113, 84, 13, .10);
+  --wt-motif: repeating-linear-gradient(0deg, var(--wt-motif-ink) 0 1px, transparent 1px 5px);
+  --wt-motif-size: auto;
+  --wt-title-font: var(--font-serif);
+  --wt-title-track: .01em;
+  --wt-edge: none;
+}
+:root[data-world="future"][data-theme="light"] {
+  color-scheme: light;
+  --bg-0: #f1f5fa;
+  --bg-1: #ffffff;
+  --bg-2: #e6edf6;
+  --bg-3: #d8e3f1;
+  --text-1: #0f1520;
+  --text-2: #414f63;
+  --text-3: #5c6a80;
+  --accent: #0b6c7a;
+  --accent-2: #5b3fb8;
+  --on-accent: #ffffff;
+  --line: #d4dfec;
+  --line-strong: #b6c6d9;
+  --bg-frame: #e3ebf5;
+  --scrim: rgba(15, 21, 32, .40);
+  --wt-motif-ink: rgba(11, 108, 122, .12);
+  --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px),
+              linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
+  --wt-motif-size: 12px 12px;
+  --wt-title-font: var(--font-sans);
+  --wt-title-track: .04em;
+  --wt-edge: orbit;
 }
 
 /* 字号档位：只改字号令牌，布局与 --dock-h 会跟着实测自适应 */
