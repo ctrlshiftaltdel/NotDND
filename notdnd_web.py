@@ -44,6 +44,11 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
   · CHRON 存档块（M9-C5）：`chron` 是又一块**不透明块**（CHRON-DESIGN §8.1）——
     本文件只提供它的默认值工厂（老档迁移时补空块）；块的加载 / 重放 / 重建 `due_heap` /
     幂等表全归 `chron.py`（C5），排程驱动与网页接口归后续切片（C6），本文件不解析这块
+  · 状态层只读视图（M7-4，STATE-DESIGN §16）：`GET /api/state` 回当前战役摘要
+    （`campaign_id` / `seq` / `world_time` / 各块存在性，只回存在性不回块内容）；
+    `GET /api/events?since=` 按事件 `seq` 增量拉取（只回 `seq > since`，跨归档段
+    由状态层拼接校验）。两条都**只读**：不落盘、不触发检查点、不为未迁移老档开
+    句柄（老档在同一形状下按内存门面派生，`seq` 为 0）；非法 `since` → 400 固定短语。
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -1304,6 +1309,80 @@ def rules_view(session: Session) -> dict:
 
 
 # --------------------------------------------------------------------------
+# 状态层只读视图（M7-4，STATE-DESIGN §16）：GET /api/state 与 GET /api/events
+#
+# 两条都**只读**：不 save()、不触发检查点、不改状态（存档文件指纹不变），
+# 也不为「尚未迁移的老档」开句柄——开句柄本身就会落盘迁移（§10.2）。
+# --------------------------------------------------------------------------
+
+
+def _block_presence(blocks) -> dict:
+    """块存在性：块名 → 值是否非 `null`（只回存在性，**不回**块内容）。"""
+    if not isinstance(blocks, dict):
+        return {}
+    return {name: blocks[name] is not None for name in sorted(blocks)}
+
+
+def state_view(session: Session) -> dict:
+    """`GET /api/state` 的响应体：当前战役的状态层只读摘要（STATE §16 M7-4）。
+
+    `campaign_id` / `seq` / `world_time` 原样取自状态层（`world_time` 是不透明
+    字段，形状归 M9）；`blocks` 只回**存在性**（`view()['blocks']` 的各键是否非
+    `null`），不回块内容。
+
+    有句柄（新档 / 已迁移老档）时取 `handle.view()`；老档尚未迁移时**不**开句柄
+    （开 = 落盘迁移），改从内存门面派生同一形状——此时状态层还没有这条战役的
+    事件日志，`seq` 恒为 0、`world_time` 为 null。
+    """
+    with session.lock:
+        handle = session._handle
+        if handle is not None:
+            view = handle.view()
+            return {
+                "campaign_id": view.get("campaign_id") or session.sid,
+                "seq": max(0, _int_or(view.get("seq"), 0)),
+                "world_time": view.get("world_time"),
+                "blocks": _block_presence(view.get("blocks")),
+            }
+        return {
+            "campaign_id": session.sid,
+            "seq": 0,
+            "world_time": None,
+            "blocks": _block_presence(session._blocks_view()),
+        }
+
+
+def events_view(session: Session, since: int) -> dict:
+    """`GET /api/events?since=` 的响应体：只回 `seq > since` 的事件（STATE §16 M7-4）。
+
+    读取 / 链校验 / 跨归档段拼接全在状态层（`Handle.events_since`，§9），本层不
+    复制一套归档逻辑；老档尚未迁移时状态层还没有事件日志 → 空列表。事件封套
+    原样透出（§5.1），不做可见性过滤（那是 M10 权限模型的事，§12.4）。
+    """
+    with session.lock:
+        handle = session._handle
+        if handle is None:
+            return {"events": []}
+        return {"events": handle.events_since(since)}
+
+
+def _since_param(path: str) -> int:
+    """解析 `?since=`（STATE §16 M7-4）：缺省 / 空 = 0（与 `/api/log?since=` 同口径）。
+
+    合法值 = 纯十进制数字串（1–18 位；上限防超长整数撞 `int()` 的位数保护）；
+    `-1` / `1.5` / `1e2` / 带空白等一律抛 `ValueError` → 400 固定短语，
+    **不**静默当 0（那是 `/api/log` 的历史行为，本接口不沿用非法值兜底）。
+    """
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(path).query)
+    raw = (query.get("since") or [""])[0]
+    if raw == "":
+        return 0
+    if not re.fullmatch(r"[0-9]{1,18}", raw):
+        raise ValueError("since 需为非负整数")
+    return int(raw)
+
+
+# --------------------------------------------------------------------------
 # 行动管线（M8-A3，ACTION-DESIGN §3.3 / §7 / §8 / §9）
 #
 # 六段（§3.3）：解析（`propose` 的第 1 段）→ 检索 → 验证 → 结算 → 提交
@@ -2174,6 +2253,17 @@ class Handler(BaseHTTPRequestHandler):
                 with s.lock:
                     view = rules_view(s)
                 return self._json(view)
+            if path == "/api/state":
+                # 状态层只读摘要（M7-4，STATE §16）：只回存在性，不回块内容 /
+                # 元信息；不开未迁移老档的句柄（开句柄 = 落盘迁移）。
+                s = self._sess()
+                return self._json(state_view(s))
+            if path == "/api/events":
+                # 状态层事件增量（M7-4）：只回 seq > since；缺省 since = 0。
+                # 非法 since → 400 固定短语（不静默当 0）。
+                s = self._sess()
+                since = _since_param(self.path)
+                return self._json(events_view(s, since))
             if path == "/api/action/catalog":
                 # 当前可用行动单（§9.1）：只读，不结算也不开状态层句柄。
                 return self._action_catalog()
@@ -2198,6 +2288,10 @@ class Handler(BaseHTTPRequestHandler):
         except SaveError:
             # 存档落盘失败（含开句柄 / 老档迁移）：如实回报，不谎报成功。
             self._err("保存失败，请重试", 500)
+        except state.StateError:
+            # 状态层拒载 / 日志损坏（说明里可能带本机路径）：固定短语，
+            # 不回显内部信息（§16 M7-4 的响应边界）。
+            self._err("状态读取失败", 500)
         except ValueError as e:
             self._err(str(e), 400)
         except Exception as e:  # noqa: BLE001 — 单个请求出错不该带走整个服务

@@ -87,6 +87,15 @@
      绑定 400「世界对不上」且视图不变；正确绑定后会话视图带上世界 / 剧本名。
      全程在 `_Server(offline=True)`（无 AI 配置）下成立。
 
+ 16. 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）：`GET /api/state`
+     回当前战役摘要（`campaign_id` / `seq` / `world_time` / 各块**存在性**，
+     不回块内容与元信息）；`GET /api/events?since=` 只回 `seq > since` 的事件，
+     严格递增、不重不漏，跨归档段（`events.<n>.ndjson` + 活动日志）拼接正确；
+     `since` 缺省 / 空 = 0、非法 → 400 固定短语；无会话 → 与 `/api/session`
+     同口径的 400。两条都**只读**：调用前后存档目录指纹（size + mtime +
+     sha256）不变、不触发检查点、内存态 `seq` 不变；老档（未迁移）不因这两条
+     路由提前落盘迁移，响应里无密钥、无本机路径。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -95,6 +104,7 @@
 import base64
 import builtins
 import contextlib
+import hashlib
 import http.client
 import json
 import os
@@ -3821,6 +3831,230 @@ def check_legacy_migration_adds_chron_block():
         "后续 save 不得动 CHRON 块：%r" % (after.view()["blocks"]["chron"],)
 
 
+# --------------------------------------------------------------------------
+# 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
+# --------------------------------------------------------------------------
+
+
+def _files_fingerprint(root: str) -> dict:
+    """目录树只读指纹：相对路径 → (size, mtime_ns, sha256)。
+
+    「只读不改盘」的判据——size + mtime + 内容摘要三者一起比对，任何
+    检查点 / 归档 / 截除都会在这里现形。
+    """
+    prints = {}
+    for base, _dirs, files in os.walk(root):
+        for name in files:
+            path = os.path.join(base, name)
+            with open(path, "rb") as handle:
+                raw = handle.read()
+            prints[os.path.relpath(path, root)] = (
+                len(raw), os.stat(path).st_mtime_ns,
+                hashlib.sha256(raw).hexdigest())
+    return prints
+
+
+@contextlib.contextmanager
+def _state_thresholds(**overrides):
+    """临时改写 `state` 的常量（归档 / 检查点阈值），退出时逐项还原。"""
+    saved = {name: getattr(state, name) for name in overrides}
+    for name, value in overrides.items():
+        setattr(state, name, value)
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            setattr(state, name, value)
+
+
+def _campaign_dir(sid: str) -> str:
+    """新档目录（`campaigns/<sid>/`）——测试进程里 `SAVE_DIR` 就是临时目录。"""
+    return os.path.dirname(_campaign_file(sid, state.SNAPSHOT_NAME))
+
+
+def _commit_state_event(handle, index: int) -> None:
+    """往状态层句柄提交一条真事件（供增量接口断言；`n` 即 seq）。"""
+    result = handle.commit(
+        base_seq=handle.view()["seq"], idempotency_key="m74-k-%d" % index,
+        type="core.commit", actor="pc-1",
+        changes=[{"block": "rules", "path": "/n", "op": "set",
+                  "before": None, "after": index}],
+        rules_version="prism@data-79", source="player")
+    assert result["status"] == "committed", result
+
+
+def check_api_state_view():
+    """M7-4：GET /api/state —— 只读摘要（campaign_id / seq / world_time / 块存在性）。
+
+    真起子进程服务：新局摘要是固定的 200 形状（只回存在性，不回块内容 /
+    元信息 / 本机路径）；无 X-Session / 没开过的 sid → 与 `/api/session`
+    同口径的 400 固定短语。
+    """
+    with _Server() as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        save_dir = server.get("/api/saves")[1]["save_dir"]
+
+        status, view = server.get("/api/state", sid=sid)
+        assert status == 200, "已开会话应 200，实际 %s / %s" % (status, view)
+        assert view["campaign_id"] == sid, "campaign_id 应与存档 sid 对齐"
+        assert isinstance(view["seq"], int) and view["seq"] >= 0, view["seq"]
+        assert view["world_time"] is None, "M7 还没有世界时间（M9 起才有值）"
+        assert view["blocks"] == {"atlas": False, "guide": True,
+                                  "room": True, "rules": True}, view["blocks"]
+        raw = json.dumps(view, ensure_ascii=False)
+        assert "salt" not in raw and "party" not in raw, "只回存在性，不回块内容"
+        assert save_dir not in raw, "响应不得回本机路径"
+
+        # 无 X-Session / 没开过的 sid：与 /api/session 同口径（400 + 固定短语）
+        status, body = server.get("/api/state")
+        assert status == 400 and body.get("error"), (status, body)
+        status, unknown = server.get("/api/state", sid="never-opened")
+        assert status == 400 and unknown.get("error"), (status, unknown)
+        status, reference = server.get("/api/session")
+        assert status == 400 and body.get("error") == reference.get("error"), \
+            "「找不到会话」的语义与 /api/session 同口径"
+
+
+def check_api_events_incremental():
+    """M7-4：GET /api/events?since= —— 只回 `seq > since`；严格递增、不重不漏。
+
+    缺省 / 空 `since` = 0（与 `/api/log?since=` 同口径，全量）；非法 `since`
+    → 400 固定短语（不静默当 0）。走本进程服务，直接往会话句柄提交真事件。
+    """
+    with _LocalServer() as server:
+        status, created, _raw, _heads = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        handle = notdnd_web._sessions[sid]._handle
+        for index in range(3):
+            _commit_state_event(handle, index)
+
+        status, body = server.get("/api/events?since=0", sid=sid)
+        assert status == 200, (status, body)
+        assert [ev["seq"] for ev in body["events"]] == [1, 2, 3]
+        assert all(ev["campaign_id"] == sid for ev in body["events"])
+        status, body = server.get("/api/events?since=2", sid=sid)
+        assert [ev["seq"] for ev in body["events"]] == [3]
+        for since in (3, 99):
+            status, body = server.get("/api/events?since=%d" % since, sid=sid)
+            assert status == 200 and body["events"] == [], (since, status, body)
+
+        # 缺省 / 空 = 0：与 /api/log?since= 同口径（全量）
+        for path in ("/api/events", "/api/events?since="):
+            status, body = server.get(path, sid=sid)
+            assert status == 200, (path, status, body)
+            assert [ev["seq"] for ev in body["events"]] == [1, 2, 3], path
+
+        # 非法 since → 400 固定短语
+        for bad in ("abc", "-1", "1.5", "1e2", "%203"):
+            status, body = server.get("/api/events?since=" + bad, sid=sid)
+            assert (status, body.get("error")) == (400, "since 需为非负整数"), \
+                (bad, status, body)
+
+        # 无会话：与 /api/session 同口径的 400
+        status, body = server.get("/api/events?since=0")
+        assert status == 400 and body.get("error"), (status, body)
+
+
+def check_api_events_across_archives():
+    """M7-4：跨归档段 —— `events.<n>.ndjson` + 活动日志拼接后仍不重不漏（§4.1 / §9）。"""
+    with _LocalServer() as server:
+        status, created, _raw, _heads = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        handle = notdnd_web._sessions[sid]._handle
+        with _state_thresholds(CHECKPOINT_EVERY=10 ** 9,
+                               CHECKPOINT_MAX_AGE_S=1e9,
+                               CHECKPOINT_MAX_LOG_BYTES=10 ** 18,
+                               EVENT_ARCHIVE_THRESHOLD=4):
+            for index in range(6):
+                _commit_state_event(handle, index)
+            handle.flush()                          # 归档段：seq 1..6
+            for index in range(6, 9):               # 活动日志：seq 7..9
+                _commit_state_event(handle, index)
+            camp = _files_fingerprint(_campaign_dir(sid))
+            assert any(name.startswith("events.") and name.endswith(".ndjson")
+                       for name in camp), "归档应真的发生：%r" % camp
+
+            status, body = server.get("/api/events?since=0", sid=sid)
+            assert status == 200, (status, body)
+            assert [ev["seq"] for ev in body["events"]] == list(range(1, 10))
+            status, body = server.get("/api/events?since=5", sid=sid)
+            assert [ev["seq"] for ev in body["events"]] == [6, 7, 8, 9]
+
+        # 重新载入（丢掉内存缓存）：跨归档拼接不依赖任何内存副本
+        notdnd_web._sessions.pop(sid, None)
+        status, body = server.get("/api/events?since=5", sid=sid)
+        assert status == 200, (status, body)
+        assert [ev["seq"] for ev in body["events"]] == [6, 7, 8, 9]
+
+
+def check_api_state_readonly():
+    """M7-4：两条接口**只读** —— 调用前后存档目录指纹不变、不触发检查点、
+    内存态 `seq` 不变（验收 4）。"""
+    with _LocalServer() as server:
+        status, created, _raw, _heads = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        handle = notdnd_web._sessions[sid]._handle
+        for index in range(2):
+            _commit_state_event(handle, index)
+
+        camp = _campaign_dir(sid)
+        before = _files_fingerprint(camp)
+        seq_before = handle.view()["seq"]
+
+        status, view = server.get("/api/state", sid=sid)
+        assert status == 200 and view["seq"] == seq_before, (status, view)
+        for since in (0, 1, 2, 99):
+            status, body = server.get("/api/events?since=%d" % since, sid=sid)
+            assert status == 200, (since, status, body)
+            assert str(notdnd_web.SAVE_DIR) not in json.dumps(body, ensure_ascii=False), \
+                "响应不得回本机路径"
+
+        assert _files_fingerprint(camp) == before, \
+            "只读接口不得改盘（size / mtime / sha256 指纹必须不变）"
+        assert handle.view()["seq"] == seq_before, "只读接口不得改内存态 seq"
+        assert str(notdnd_web.SAVE_DIR) not in json.dumps(view, ensure_ascii=False)
+
+
+def check_api_state_legacy_readonly():
+    """M7-4：老档（未迁移）→ 同一形状的 200；**不**触发惰性迁移、不改写磁盘。
+
+    老档没有状态层句柄：摘要按内存门面派生（`seq` 为 0——状态层还没有这条
+    战役的事件日志），拒绝为读一个数落盘迁移（§10.1 的惰性迁移只发生在
+    第一次 save）。
+    """
+    sid = "m74-legacy-1"
+    legacy = {"sid": sid, "created": 1700000000.0,
+              "log": [{"seq": 1, "kind": "narrative", "text": "旧档旁白", "ts": 1}],
+              "seq": 1, "save_name": "旧档"}
+    with _Server() as server:
+        save_dir = server.get("/api/saves")[1]["save_dir"]
+        path = os.path.join(save_dir, "%s.json" % sid)
+        _write_save(path, legacy)
+        with open(path, "rb") as handle:
+            before = handle.read()
+
+        status, view = server.get("/api/state", sid=sid)
+        assert status == 200, (status, view)
+        assert view["campaign_id"] == sid
+        assert view["seq"] == 0, "状态层还没有这条战役的事件日志"
+        assert view["world_time"] is None
+        assert view["blocks"] == {"atlas": False, "guide": True,
+                                  "room": True, "rules": True}, view["blocks"]
+
+        status, body = server.get("/api/events?since=0", sid=sid)
+        assert status == 200 and body["events"] == [], (status, body)
+
+        with open(path, "rb") as handle:
+            assert handle.read() == before, "只读接口不得改写老档"
+        assert not os.path.exists(_campaign_file(sid, "snapshot.json", save_dir)), \
+            "只读接口不得触发老档迁移（不落盘）"
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -3895,6 +4129,11 @@ CHECKS = (
     check_action_narration_failure_keeps_result,
     check_action_save_failure_keeps_result,
     check_action_commit_json_accept,
+    check_api_state_view,
+    check_api_events_incremental,
+    check_api_events_across_archives,
+    check_api_state_readonly,
+    check_api_state_legacy_readonly,
 )
 
 

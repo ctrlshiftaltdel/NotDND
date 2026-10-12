@@ -20,11 +20,15 @@
   归档不删事实、重放仍可拼回）；改名失败不丢事实；§6.3 三个触发条件（事件数 / 时间 /
   日志体积）与 `flush()` 优雅退出。
 - **结构**断言：`import state` 不触碰磁盘；源码无业务模块 import；`seq` 无空洞。
+- **只读增量**（M7-4，Issue #312）：`events_since(since)` 只回 `seq > since`、
+  严格递增不重不漏；跨归档段拼接正确；只读不改盘（size + mtime + sha256 指纹不变）、
+  不触发检查点；非法 `since` 抛 `StateError`；归档重叠段按「已出现过即跳过」去重。
 
 零依赖：仅 Python 3 标准库。临时存档目录一律落 `tempfile.mkdtemp()`，退出前收摊。
 时钟与检查点时机用**进程内注入**（`state._now_ms` / 模块常量）控制，不靠等待。
 """
 
+import hashlib
 import inspect
 import json
 import os
@@ -723,6 +727,8 @@ def check_archive_overlap_ignored_below_checkpoint():
 
         reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)           # 不拒载
         assert reloaded.view()["seq"] == 3
+        # 只读增量对 §9 允许的重叠段按「已出现过即跳过」处理：不拒载、不重复
+        assert [ev["seq"] for ev in reloaded.events_since(0)] == [1, 2, 3]
         assert _canon(reloaded.view()["blocks"]) == _canon(live["blocks"])
         assert [item["id"] for item in reloaded.view()["blocks"]["rules"]["party"]] == [
             "pc-0", "pc-1", "pc-2"]                    # 重叠行只折入一次
@@ -1189,6 +1195,90 @@ def check_view_is_deep_copy():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+# ════════════════════════════════════════════════════════════════════════════
+# 只读增量 `events_since`（M7-4，STATE §16）
+# ════════════════════════════════════════════════════════════════════════════
+
+def _fingerprints(campaign_dir):
+    """目录树指纹：相对路径 → (size, mtime_ns, sha256)——证明「只读不改盘」。"""
+    prints = {}
+    for base, _dirs, files in os.walk(campaign_dir):
+        for name in files:
+            path = os.path.join(base, name)
+            with open(path, "rb") as handle:
+                raw = handle.read()
+            prints[os.path.relpath(path, campaign_dir)] = (
+                len(raw), os.stat(path).st_mtime_ns,
+                hashlib.sha256(raw).hexdigest())
+    return prints
+
+
+def check_events_since_incremental():
+    """只回 `seq > since`；严格递增、不重不漏；只读（指纹 / 内存 seq 不变）。"""
+    tmp = tempfile.mkdtemp()
+    try:
+        handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+        for index in range(3):
+            _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+        handle.flush()
+        before = _fingerprints(_camp_dir(tmp))
+        live_seq = handle.view()["seq"]
+
+        assert [ev["seq"] for ev in handle.events_since(0)] == [1, 2, 3]
+        assert [ev["seq"] for ev in handle.events_since(1)] == [2, 3]
+        assert [ev["seq"] for ev in handle.events_since(2)] == [3]
+        assert handle.events_since(3) == [] and handle.events_since(99) == []
+        # 事件封套原样透出（与日志里的行逐字一致），不是重造的壳
+        assert handle.events_since(0)[0] == _event_lines(tmp)[0]
+        seqs = [ev["seq"] for ev in handle.events_since(0)]
+        assert seqs == sorted(set(seqs)) == list(range(1, len(seqs) + 1))
+
+        # 只读：不改盘（size + mtime + sha256）、不触发检查点、内存态 seq 不变
+        assert _fingerprints(_camp_dir(tmp)) == before
+        assert handle.view()["seq"] == live_seq
+
+        # 非法 since → StateError（与 replay(upto_seq=…) 同口径）
+        for bad in (-1, "1", None, 1.0, True):
+            try:
+                handle.events_since(bad)
+            except state.StateError:
+                pass
+            else:
+                raise AssertionError("非法 since 应抛 StateError：%r" % (bad,))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def check_events_since_across_archives():
+    """跨归档段：`events.<n>.ndjson` + 活动日志拼接后仍不重不漏（§4.1 / §9）。"""
+    tmp = tempfile.mkdtemp()
+    with _Thresholds(CHECKPOINT_EVERY=10 ** 9, CHECKPOINT_MAX_AGE_S=1e9,
+                     CHECKPOINT_MAX_LOG_BYTES=10 ** 18,
+                     EVENT_ARCHIVE_THRESHOLD=4):
+        try:
+            handle = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            for index in range(6):
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            handle.flush()                               # 归档段 1：seq 1..6
+            assert [ev["seq"] for ev in _lines_at(_archive_path(tmp))] == [1, 2, 3, 4, 5, 6]
+            assert _event_lines(tmp) == []
+            for index in range(6, 9):                    # 活动日志：seq 7..9
+                _commit(handle, key="k-%d" % index, changes=_append_party("pc-%d" % index))
+            before = _fingerprints(_camp_dir(tmp))
+
+            assert [ev["seq"] for ev in handle.events_since(0)] == list(range(1, 10))
+            assert [ev["seq"] for ev in handle.events_since(5)] == [6, 7, 8, 9]
+            assert [ev["seq"] for ev in handle.events_since(9)] == []
+
+            # 重新加载出的句柄给出同一份增量（不依赖内存里的任何缓存）
+            reloaded = state.open_campaign(CAMPAIGN, base_dir=tmp)
+            assert [ev["seq"] for ev in reloaded.events_since(5)] == [6, 7, 8, 9]
+            assert _canon(reloaded.events_since(0)) == _canon(handle.events_since(0))
+            assert _fingerprints(_camp_dir(tmp)) == before
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 def check_r7_requires_idempotency_key():
     """R7：非系统提交缺幂等键 → rejected（不写事件）。"""
     tmp = tempfile.mkdtemp()
@@ -1243,6 +1333,8 @@ CHECKS = (
     check_flush_forces_checkpoint,
     check_seq_no_gaps,
     check_view_is_deep_copy,
+    check_events_since_incremental,
+    check_events_since_across_archives,
     check_r7_requires_idempotency_key,
     check_stage_state_and_meta_roundtrip,
     check_migrate_legacy_writes_new_layout,
