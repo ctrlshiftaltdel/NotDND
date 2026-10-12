@@ -216,11 +216,15 @@ function renderSceneCard() {
   var world = (ST && ST.world) || {};
   var scenario = (ST && ST.scenario) || {};
   var scene = (ST && ST.scene) || {};
+  // 未绑定（没有世界 / 剧本）时，场景卡的空态是「这一局还没有选战役」；
+  // 行动区的战役入口归片 U-CAMP（js/campaign.js）。
+  var bound = !!(scenario.id || scenario.name);
   var crumb = [world.name, scenario.name].filter(Boolean).join(' · ');
   $('#sceneCard').innerHTML =
     (crumb ? '<div class="sc-crumb">' + esc(crumb) + '</div>' : '') +
     '<div class="sc-name">' + esc(scene.name || scene.id || '—') + '</div>' +
-    (scene.read ? '<p class="sc-read">' + esc(scene.read) + '</p>' : '');
+    (scene.read ? '<p class="sc-read">' + esc(scene.read) + '</p>' : '') +
+    (bound ? '' : '<p class="sc-note">这一局还没有选战役</p>');
   // 视觉占位框架（U6，js/ph.js）：渲染后的**可选**装饰钩子——ph.js 不在
   // （或算不出资产位）时什么都不发生，本函数其余逻辑与选择器语义不变。
   if (typeof phDecorateSceneCard === 'function') phDecorateSceneCard();
@@ -235,6 +239,9 @@ function applyState(s) {
   renderStream();      // 片 U2 / U5（js/turn.js）
   renderActions();     // 片 U2（js/turn.js）
   renderExits();       // 片 U3（js/atlas.js）
+  // 片 U-CAMP（js/campaign.js）：未绑定的新局在行动区画战役入口。可选切片
+  // （ph.js 同款钩子）：文件不在时什么都不发生，其余渲染不变。
+  if (typeof renderCampaignEntry === 'function') renderCampaignEntry();
   scrollToLatest();
 }
 

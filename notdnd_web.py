@@ -542,6 +542,120 @@ def _load_world(world_key: str) -> dict:
         return world
 
 
+# ── 战役目录与绑定简报（M4，UI-DESIGN §2.1 / Issue #222）────────────────────
+#
+# 「先选世界，再选该世界下的剧本」的只读数据面：世界 = `data/worlds/**` 的
+# 世界模组（key / name），剧本 = `data/scenarios/**` 里 `meta.world` 与所选
+# 世界 key **逐字相等**的那批——与 `prism_guide.bind` 的「世界对不上」同一
+# 口径（列表与绑定都按世界过滤）。只投影白名单字段，剧本正文（含秘密）永远
+# 不出现在这里。
+
+_SCENARIO_META_CACHE: dict[str, dict | None] = {}
+
+
+def _scenario_meta(scenario_id: str) -> dict | None:
+    """读 data/scenarios/<id>.json 的 `meta`（惰性 + 缓存；读不了回 None）。
+
+    id 走与 sid 相同的白名单（它要拼进文件路径，杜绝 ../ 探测）。本函数只
+    服务**只读展示**；绑定语义仍归 `prism_guide.bind`（它自己验文件与
+    `meta.world`）。
+    """
+    if not SID_RE.fullmatch(scenario_id or ""):
+        return None
+    with _DATA_LOCK:
+        if scenario_id in _SCENARIO_META_CACHE:
+            return _SCENARIO_META_CACHE[scenario_id]
+        path = HERE / "data" / "scenarios" / f"{scenario_id}.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = None
+        meta = data.get("meta") if isinstance(data, dict) else None
+        meta = meta if isinstance(meta, dict) else None
+        _SCENARIO_META_CACHE[scenario_id] = meta
+        return meta
+
+
+def campaign_catalog() -> dict:
+    """`GET /api/campaigns` 的响应体：世界 → 该世界下的剧本（只读）。
+
+    口径（Issue #222 的拍板结论）：
+
+    · 世界 = `data/worlds/*.json` 的世界模组，按 `world.key` 字典序；
+    · 剧本 = `data/scenarios/*.json` 中 `meta.world` 与该世界 `key` 逐字相等
+      的那批，按文件名主干字典序；
+    · `meta.world` 不在 `data/worlds/` 里的剧本**不出现**（没有对应世界，
+      绑定必然「世界对不上」，不列出来）；「科幻剧本不能用于奇幻世界」就是
+      这条过滤 + `prism_guide.bind` 的同一校验；
+    · 每条剧本只投影 `id` / `campaign` / `engine` 与可选的 `party_level` /
+      `party_size` / `tone_pack`（`meta` 里已有字段，不发明格式）；
+      剧本正文不出现。
+    """
+    worlds: list[dict] = []
+    by_key: dict[str, dict] = {}
+    for path in sorted((HERE / "data" / "worlds").glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        block = data.get("world") if isinstance(data, dict) else None
+        block = block if isinstance(block, dict) else {}
+        key = str(block.get("key") or path.stem)
+        if key in by_key:
+            continue
+        entry = {"key": key,
+                 "name": str(block.get("name") or key),
+                 "scenarios": []}
+        by_key[key] = entry
+        worlds.append(entry)
+    for path in sorted((HERE / "data" / "scenarios").glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        meta = data.get("meta") if isinstance(data, dict) else None
+        meta = meta if isinstance(meta, dict) else {}
+        world = by_key.get(str(meta.get("world") or ""))
+        if world is None:
+            continue
+        scenario = {"id": path.stem,
+                    "campaign": str(meta.get("campaign") or path.stem),
+                    "engine": str(meta.get("engine") or "")}
+        for field in ("party_level", "party_size", "tone_pack"):
+            value = meta.get(field)
+            if value is not None:
+                scenario[field] = value
+        world["scenarios"].append(scenario)
+    return {"worlds": worlds}
+
+
+def campaign_briefs(session: Session) -> dict:
+    """会话当前绑定的只读简报：`world` / `scenario` 两个块（场景卡用）。
+
+    未绑定（`guide` 里没有 key / id）时为两个空块 `{}`。名字来自数据文件；
+    读不到时回退成 key / id 本身——**不编造名字**，也不读 `docs/`。只投影
+    key / name 两个字段，`guide` 的其余内容（salt / 秘密 / 转录）永不出现。
+    """
+    guide = session.guide if isinstance(session.guide, dict) else {}
+    world_key = str(guide.get("world_key") or "")
+    scenario_id = str(guide.get("scenario_id") or "")
+    world: dict = {}
+    if world_key:
+        try:
+            data = _load_world(world_key)
+        except (ValueError, OSError):
+            data = None
+        block = data.get("world") if isinstance(data, dict) else None
+        block = block if isinstance(block, dict) else {}
+        world = {"key": world_key, "name": str(block.get("name") or world_key)}
+    scenario: dict = {}
+    if scenario_id:
+        meta = _scenario_meta(scenario_id) or {}
+        scenario = {"id": scenario_id,
+                    "name": str(meta.get("campaign") or scenario_id)}
+    return {"world": world, "scenario": scenario}
+
+
 def _default_world_key() -> str:
     """默认世界 = data/worlds/ 下字典序第一份世界模组。
 
@@ -1168,8 +1282,10 @@ def rules_view(session: Session) -> dict:
     这里只做深拷贝——存档层另立一套字段名就必然与规则层漂移。可见性由
     规则层决定：当前还没有需要隐藏的内部字段，故不做额外裁剪。
 
-    额外附一个 `save` 块：规则视图本身不带展示名 / 日志游标，前端拿到
-    整局视图时不必再多打一次 /api/saves。
+    额外附两个块：`save`（展示名 / 日志游标，前端不必再多打一次 /api/saves）
+    与 `world` / `scenario`（当前绑定；未绑定为空块，见 `campaign_briefs`，
+    UI-DESIGN §7 的「快照里没有 world / scenario」缺口在此补齐——只读派生，
+    不写回存档）。
     """
     rules = session.rules if isinstance(session.rules, dict) else {}
     view = copy.deepcopy(rules)
@@ -1181,6 +1297,9 @@ def rules_view(session: Session) -> dict:
         "seq": session.seq,
         "log_count": len(session.log),
     }
+    briefs = campaign_briefs(session)
+    view["world"] = briefs["world"]
+    view["scenario"] = briefs["scenario"]
     return view
 
 
@@ -2058,6 +2177,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/action/catalog":
                 # 当前可用行动单（§9.1）：只读，不结算也不开状态层句柄。
                 return self._action_catalog()
+            if path == "/api/campaigns":
+                # 战役目录（Issue #222）：世界 → 该世界下的剧本。只读数据面，
+                # 不需要会话（新局空态在**还没有会话内容**时也要能列出来）。
+                return self._json(campaign_catalog())
             if path == "/api/atlas/exits":
                 # 查看当前地点的出口：返回文本出口列表（不是图片，§2）。
                 # 只读接口：不 save()，不改写存档。

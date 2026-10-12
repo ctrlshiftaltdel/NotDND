@@ -39,6 +39,8 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
   border-left: 2px solid var(--accent);
 }
 .sc-read::first-letter { font-size: 1.3em; color: var(--accent); }
+/* 未绑定（还没有选战役）的场景卡空态：一句提示，行动区给战役入口。 */
+.sc-note { color: var(--text-3); font-size: var(--fs-sm); margin-top: var(--sp-1); }
 
 /* 叙事流 */
 .stream { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-3) 0; }
@@ -71,6 +73,45 @@ html.no-anim .play-scroll { scroll-behavior: auto; }
 }
 .act-label { flex: 1 1 auto; }
 .act-hint { flex: 0 0 auto; font-size: var(--fs-xs); color: var(--text-3); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 1px 8px; }
+
+/* ── 战役入口：新局空态的行动区（片 U-CAMP，Issue #222）────
+   只在「未绑定且没有行动」时画在 #actList（btn-grid）里；绑定后让位给
+   行动按钮。整块横跨网格，内部自成一列：世界 → 剧本 → 预览 → 确认。 */
+.camp-entry {
+  grid-column: 1 / -1;            /* 横跨 #actList 的全部网格列 */
+  display: flex; flex-direction: column; gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px dashed var(--line-strong); border-radius: var(--r);
+  background: color-mix(in srgb, var(--bg-2) 45%, transparent);
+}
+.camp-hint { margin: 0; color: var(--text-2); font-size: var(--fs-sm); }
+.camp-worlds, .camp-scenarios { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.camp-world, .camp-scenario { flex: 0 1 auto; padding: 0 var(--sp-3); }
+.camp-world.is-on, .camp-scenario.is-on {
+  border-color: var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-2));
+}
+.camp-scenario {
+  flex-direction: column; align-items: flex-start; gap: 1px;
+  padding: var(--sp-1) var(--sp-3);
+}
+.camp-scenario-meta { font-size: var(--fs-xs); color: var(--text-3); }
+.camp-preview {
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  margin-top: var(--sp-1); padding: var(--sp-3);
+  border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--bg-2) 85%, transparent);
+}
+.camp-preview-title {
+  font-family: var(--font-serif); font-size: var(--fs-lg);
+  color: var(--text-1); margin-bottom: var(--sp-1);
+}
+.camp-row { display: flex; gap: var(--sp-2); font-size: var(--fs-sm); }
+.camp-k { flex: 0 0 auto; min-width: 4em; color: var(--text-3); }
+.camp-v { color: var(--text-1); overflow-wrap: anywhere; }
+.camp-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-2); }
+.camp-error { margin: var(--sp-1) 0 0; color: var(--danger); font-size: var(--fs-sm); }
 
 /* ── 叙事条目：U2 补齐的 kind（§3.5.1 的完整映射表）─────
    narrate / act / note 三条在上一节；这里是 check（规则判定）与

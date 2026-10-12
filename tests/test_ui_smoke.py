@@ -41,10 +41,15 @@
 
 测试期依赖从简：只用标准库 + websocket-client（经 `_cdp` 使用）。
 
-除整页级不变量外，本脚本另跑一组**行动管线接线**（M8-A4，ACTION-DESIGN §9）的
-浏览器断言：R0/R1 直通、R2+ 先弹确认、澄清只问一个问题、无 AI 时显式行动仍可用。
-它们需要一局带场景行动的存档（在临时存档目录里现造）与一个**假上游**（澄清那条
-路径要模型回一份封套），所以只在真浏览器可用时执行。
+除整页级不变量外，本脚本另跑两组接线断言（都只在真浏览器可用时执行）：
+
+  · **新局空态战役入口**（M4，Issue #222）：大厅「开始新的一局」→ 空态行动区
+    先选世界、再选该世界下的剧本（逐世界核对与真实数据一致）→ 预览里有世界 /
+    剧本信息（预览**不**写绑定）→ 确认后绑定生效、场景卡变「世界 · 剧本」，
+    重进这一局仍在；全程在无 AI 配置的服务上跑。
+  · **行动管线接线**（M8-A4，ACTION-DESIGN §9）：R0/R1 直通、R2+ 先弹确认、
+    澄清只问一个问题、无 AI 时显式行动仍可用。它们需要一局带场景行动的存档
+    （在临时存档目录里现造）与一个**假上游**（澄清那条路径要模型回一份封套）。
 
 直接运行：python3 tests/test_ui_smoke.py
 强制运行：NOTDND_UI_SMOKE_MANDATORY=1 python3 tests/test_ui_smoke.py
@@ -330,10 +335,13 @@ def _seed_action_session(save_dir, sid, actions):
     notdnd_web._sessions.pop(sid, None)     # 丢掉本进程缓存（本进程本来也不服务它）
 
 
-def _get_json(port, path):
-    """取一次只读 JSON（本脚本只在播种前读 `/api/saves` 拿存档目录）。"""
-    url = "http://127.0.0.1:%d%s" % (port, path)
-    with urllib.request.urlopen(url, timeout=5) as resp:
+def _get_json(port, path, sid=""):
+    """取一次只读 JSON（本脚本在播种前读 `/api/saves` 拿存档目录用）。
+    `sid` 非空时带 `X-Session` 头（问某一局的状态，如绑定）。"""
+    request = urllib.request.Request("http://127.0.0.1:%d%s" % (port, path))
+    if sid:
+        request.add_header("X-Session", sid)
+    with urllib.request.urlopen(request, timeout=5) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -390,6 +398,137 @@ def _sheet(page):
         "         questions: body.querySelectorAll('.confirm-line').length,"
         "         options: body.querySelectorAll('[data-clarify-option]').length,"
         "         text: body.textContent || '' };")
+
+
+def _check_campaign_entry(page, server):
+    """M4 新局空态战役入口（Issue #222）：先世界、后剧本，预览后确认绑定。
+
+    全程在**无 AI 配置**的服务上跑：目录（GET /api/campaigns）与绑定
+    （POST /api/guide/bind）都不碰 AI。断言的是玩家真正看到的：场景卡空态、
+    入口按世界过滤（只列属于该世界的剧本）、预览能看到世界 / 剧本信息且
+    **不写**绑定、确认后才绑定、绑定后场景卡变成「世界 · 剧本」，重进仍在。
+    """
+    worlds = {}
+    for path in sorted((pathlib.Path(ROOT) / "data" / "worlds").glob("*.json")):
+        block = json.loads(path.read_text(encoding="utf-8"))["world"]
+        worlds[str(block["key"])] = str(block["name"])
+    scenarios_by_world = {}
+    for path in sorted((pathlib.Path(ROOT) / "data" / "scenarios").glob("*.json")):
+        meta = json.loads(path.read_text(encoding="utf-8")).get("meta") or {}
+        world = str(meta.get("world") or "")
+        if world in worlds:
+            scenarios_by_world.setdefault(world, {})[path.stem] = \
+                str(meta.get("campaign") or path.stem)
+    assert worlds and any(scenarios_by_world.values()), "真实数据里应当有世界与剧本"
+
+    # 从干净的列表回大厅（前面的用例可能改过 localStorage）。
+    page.js("localStorage.removeItem('prism.sid'); return 1;")
+    page.navigate("/")
+    new_game = page.wait_for(
+        "return !!document.querySelector('[data-new-game]');", timeout=15)
+    check("C1：大厅有「开始新的一局」", new_game,
+          "lobby=%r" % page.js(
+              "const b = document.querySelector('#lobbySaves');"
+              "return b ? b.textContent.slice(0, 80) : null;"))
+    if not new_game:
+        return
+    _click(page, "[data-new-game]")
+
+    ready = page.wait_for(
+        "return !!(window.__CAMPAIGN && window.__CAMPAIGN().loaded"
+        " && window.__CAMPAIGN().worlds === %d"
+        " && document.querySelectorAll('#actList [data-camp-world]').length === %d);"
+        % (len(worlds), len(worlds)), timeout=20)
+    check("C1：建局后空态先给世界入口（数量与真实数据一致）", ready,
+          "campaign=%r" % (page.js("return window.__CAMPAIGN ? window.__CAMPAIGN() : null;"),))
+    if not ready:
+        return
+    note = page.js(
+        "const n = document.querySelector('#sceneCard .sc-note');"
+        "return n ? n.textContent : '';")
+    check("C1：场景卡显示「这一局还没有选战役」",
+          note == "这一局还没有选战役", "note=%r" % note)
+    sid = page.js("return localStorage.getItem('prism.sid') || '';")
+    check("C1：建局后 localStorage 里有这一局", bool(sid), "sid=%r" % sid)
+    if not sid:
+        return
+
+    # 逐个世界核对：选一个世界后，列出的剧本恰好是数据里属于它的那批。
+    for key in sorted(worlds):
+        _click(page, '#actList [data-camp-world="%s"]' % key)
+        want = json.dumps(sorted(scenarios_by_world.get(key, {})))
+        got = page.wait_for(
+            "const ids = Array.prototype.map.call("
+            "  document.querySelectorAll('#actList [data-camp-scenario]'),"
+            "  function (b) { return b.dataset.campScenario; });"
+            "const want = %s;"
+            "return ids.length === want.length"
+            " && want.every(function (w) { return ids.indexOf(w) >= 0; });" % want,
+            timeout=10)
+        check("C1：%s 只列该世界下的剧本（%d 则）"
+              % (worlds[key], len(scenarios_by_world.get(key, {}))), got,
+              "ids=%r" % page.js(
+                  "return Array.prototype.map.call("
+                  "  document.querySelectorAll('#actList [data-camp-scenario]'),"
+                  "  function (b) { return b.dataset.campScenario; });"))
+
+    chosen_world = next(key for key in sorted(worlds) if scenarios_by_world.get(key))
+    chosen_scenario = sorted(scenarios_by_world[chosen_world])[0]
+    world_name = worlds[chosen_world]
+    scenario_name = scenarios_by_world[chosen_world][chosen_scenario]
+    _click(page, '#actList [data-camp-world="%s"]' % chosen_world)
+    _click(page, '#actList [data-camp-scenario="%s"]' % chosen_scenario)
+    preview = page.wait_for(
+        "const p = document.querySelector('#actList [data-camp-preview]');"
+        "if (!p) return false;"
+        "const t = p.textContent;"
+        "return t.indexOf(%s) >= 0 && t.indexOf(%s) >= 0"
+        " && t.indexOf('确认绑定') >= 0;" % (json.dumps(world_name),
+                                             json.dumps(scenario_name)),
+        timeout=10)
+    check("C2：剧本入口先给预览（世界 / 剧本信息 + 确认绑定）", preview,
+          "preview=%r" % page.js(
+              "const p = document.querySelector('#actList [data-camp-preview]');"
+              "return p ? p.textContent : null;"))
+    if not preview:
+        return
+    view = _get_json(server.port, "/api/session", sid=sid)
+    check("C2：预览阶段服务端仍是未绑定（预览不写绑定）",
+          view.get("scenario") == {} and view.get("world") == {},
+          "world=%r scenario=%r" % (view.get("world"), view.get("scenario")))
+
+    _click(page, "#actList [data-camp-confirm]")
+    crumb_text = json.dumps(world_name + " · " + scenario_name)
+    bound = page.wait_for(
+        "const c = document.querySelector('#sceneCard .sc-crumb');"
+        "return !!(c && c.textContent === %s)"
+        " && !document.querySelector('#actList [data-camp]');" % crumb_text,
+        timeout=20)
+    check("C3：确认后绑定生效（场景卡变「世界 · 剧本」、入口收起）", bound,
+          "crumb=%r campaign=%r" % (
+              page.js(
+                  "const c = document.querySelector('#sceneCard .sc-crumb');"
+                  "return c ? c.textContent : null;"),
+              page.js("return window.__CAMPAIGN ? window.__CAMPAIGN() : null;")))
+    view = _get_json(server.port, "/api/session", sid=sid)
+    check("C3：服务端绑定到刚选的世界 / 剧本",
+          view.get("world", {}).get("key") == chosen_world
+          and view.get("scenario", {}).get("id") == chosen_scenario,
+          "world=%r scenario=%r" % (view.get("world"), view.get("scenario")))
+
+    # 重进这一局：绑定仍在（不回到空态）。
+    page.navigate("/")
+    again = page.wait_for(
+        "const c = document.querySelector('#sceneCard .sc-crumb');"
+        "return !!(c && c.textContent === %s)"
+        " && !document.querySelector('#actList [data-camp]');" % crumb_text,
+        timeout=15)
+    check("C3：重进会话仍带着已绑定的世界 / 剧本", again,
+          "crumb=%r" % page.js(
+              "const c = document.querySelector('#sceneCard .sc-crumb');"
+              "return c ? c.textContent : null;"))
+    errs = page.js("return window.__ERRS || [];")
+    check("C1–C3：全流程没有未捕获错误", not errs, "errs=%r" % (errs,))
 
 
 def _check_offline_actions(page, server):
@@ -702,6 +841,8 @@ def _smoke():
             check("写请求完成后：统一守卫恢复（可再次写）",
                   bool(guard) and guard.get("recovered") is True,
                   "guard=%r" % (guard,))
+            # M4：新局空态战役入口（Issue #222，先世界、后剧本，预览后确认绑定）。
+            _check_campaign_entry(page, server)
             # M8-A4：行动管线接线（R0/R1 直通 / R2+ 确认 / 澄清 / 离线）。
             _check_offline_actions(page, server)
             _check_clarify(page)

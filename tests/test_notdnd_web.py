@@ -80,6 +80,13 @@
      回首次结果、无重复副作用；同 `proposal_id` 换键 → 409）与排程钩子（M8
      空实现 `mode == "sync"`、恰好一次）各自成条。
 
+ 15. 战役入口（M4，UI-DESIGN §2.1，Issue #222）：`GET /api/campaigns` 列出
+     世界模组（`data/worlds/**`）与**属于该世界**的剧本（`meta.world` 逐字相等，
+     与 `prism_guide.bind` 同一口径）；目录与真实数据两头核对（不多、不少、
+     只投影白名单字段），未绑定会话视图的 `world` / `scenario` 为空块；跨世界
+     绑定 400「世界对不上」且视图不变；正确绑定后会话视图带上世界 / 剧本名。
+     全程在 `_Server(offline=True)`（无 AI 配置）下成立。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -2777,6 +2784,95 @@ def check_session_create_save_failure():
 
 
 # --------------------------------------------------------------------------
+# 战役入口（M4，UI-DESIGN §2.1，Issue #222）
+# --------------------------------------------------------------------------
+
+
+def check_campaign_catalog_and_bind():
+    """`GET /api/campaigns` 与绑定流程：口径与真实数据一致（Issue #222）。
+
+    口径（人的拍板结论）：先选世界（`data/worlds/**`），只列**属于该世界**的
+    剧本（`meta.world` 与 `world.key` 逐字相等）；列表与绑定都按世界过滤。
+    断言两头都核对：目录里的每条剧本都能在 `data/scenarios/**` 找到出处，
+    反过来，真实数据里属于世界模组的剧本一条不少（不多、不少）。随后在
+    真子进程 + 无 AI 配置（offline）下走完绑定流程：未绑定视图为空块 →
+    跨世界 400「世界对不上」→ 正确绑定 200 → 视图带上世界 / 剧本名。
+    """
+    real_worlds = {}
+    for path in sorted((pathlib.Path(ROOT) / "data" / "worlds").glob("*.json")):
+        block = json.loads(path.read_text(encoding="utf-8"))["world"]
+        real_worlds[block["key"]] = block["name"]
+    real_scenarios = {}
+    for path in sorted((pathlib.Path(ROOT) / "data" / "scenarios").glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        real_scenarios[path.stem] = data.get("meta") or {}
+    assert real_worlds, "data/worlds/ 下应当有世界模组"
+
+    allowed = {"id", "campaign", "engine", "party_level", "party_size", "tone_pack"}
+    with _Server(offline=True) as server:
+        # 不需要会话：新局空态在**还没有会话内容**时也要能列目录。
+        status, body = server.get("/api/campaigns")
+        assert status == 200 and isinstance(body.get("worlds"), list), (status, body)
+        listed_worlds = {w["key"]: w for w in body["worlds"]}
+        assert list(listed_worlds) == sorted(real_worlds), \
+            (list(listed_worlds), sorted(real_worlds))
+
+        listed = {}
+        for key, world in listed_worlds.items():
+            assert world["name"] == real_worlds[key], (key, world)
+            assert isinstance(world["scenarios"], list), world
+            for row in world["scenarios"]:
+                assert set(row) <= allowed, ("目录只许投影白名单字段", row)
+                meta = real_scenarios.get(row["id"])
+                assert meta is not None, row
+                assert meta.get("world") == key, ("剧本必须属于该世界", row, meta)
+                assert row["campaign"] == meta.get("campaign"), row
+                assert row["engine"] == meta.get("engine"), row
+                for opt in ("party_level", "party_size", "tone_pack"):
+                    if opt in meta:
+                        assert row.get(opt) == meta[opt], (row, opt)
+                    else:
+                        assert opt not in row, (row, opt)
+                assert row["id"] not in listed, "同一剧本不得出现在两个世界"
+                listed[row["id"]] = key
+
+        # 反方向：真实数据里 `meta.world` 命中世界模组的剧本一条不少；
+        # 其余剧本（没有对应世界模组）**不**出现在目录里。
+        expected = {scenario_id: meta.get("world")
+                    for scenario_id, meta in real_scenarios.items()
+                    if meta.get("world") in real_worlds}
+        assert listed == expected, (sorted(listed), sorted(expected))
+        assert expected, "真实数据里应当至少有一则属于世界模组的剧本"
+
+        # 绑定流程（离线）：建局 → 未绑定视图为空块。
+        status, view = server.post("/api/session/create", {})
+        assert status == 200, (status, view)
+        sid = view["sid"]
+        assert view["world"] == {} and view["scenario"] == {}, view
+
+        # 跨世界：阈界都市不认熵网的剧本 → 400「世界对不上」，视图不变。
+        status, bad = server.post("/api/guide/bind",
+                                  {"world_key": "threshold",
+                                   "scenario_id": "backup_forty_one"}, sid=sid)
+        assert status == 400 and bad.get("error") == "世界对不上", (status, bad)
+        status, still = server.get("/api/session", sid=sid)
+        assert still["world"] == {} and still["scenario"] == {}, still
+
+        # 正确绑定 → 200；会话视图带上世界 / 剧本名（场景卡直接用）。
+        status, ok = server.post("/api/guide/bind",
+                                 {"world_key": "entropic-net",
+                                  "scenario_id": "backup_forty_one"}, sid=sid)
+        assert status == 200 and ok.get("scenario_id") == "backup_forty_one", \
+            (status, ok)
+        status, bound = server.get("/api/session", sid=sid)
+        assert status == 200, (status, bound)
+        assert bound["world"] == {"key": "entropic-net", "name": "熵网"}, \
+            bound["world"]
+        assert bound["scenario"] == {"id": "backup_forty_one",
+                                     "name": "第 41 次备份"}, bound["scenario"]
+
+
+# --------------------------------------------------------------------------
 # 回合落会话日志（M4-B2，UI-DESIGN §1.3.5 / §7 缺口 B2）
 # --------------------------------------------------------------------------
 
@@ -3780,6 +3876,7 @@ CHECKS = (
     check_session_create_offline,
     check_session_create_reload,
     check_session_create_save_failure,
+    check_campaign_catalog_and_bind,
     check_turn_log_wiring,
     check_turn_log_narration_beats,
     check_turn_log_offline_paths,
