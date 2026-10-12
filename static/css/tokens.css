@@ -196,8 +196,7 @@
   --scrim: rgba(3, 6, 12, .68);
   /* 细网格 12px。墨色 alpha .10 ≤ .12。不做闪烁或霓虹。 */
   --wt-motif-ink: rgba(95, 216, 232, .10);
-  --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px),
-              linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
+  --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px), linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
   --wt-motif-size: 12px 12px;
   --wt-title-font: var(--font-sans);
   --wt-title-track: .04em;
@@ -247,8 +246,7 @@
     --bg-frame: #e3ebf5;
     --scrim: rgba(15, 21, 32, .40);
     --wt-motif-ink: rgba(11, 108, 122, .12);
-    --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px),
-                linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
+    --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px), linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
     --wt-motif-size: 12px 12px;
     --wt-title-font: var(--font-sans);
     --wt-title-track: .04em;
@@ -297,8 +295,7 @@
   --bg-frame: #e3ebf5;
   --scrim: rgba(15, 21, 32, .40);
   --wt-motif-ink: rgba(11, 108, 122, .12);
-  --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px),
-              linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
+  --wt-motif: linear-gradient(90deg, var(--wt-motif-ink) 1px, transparent 1px), linear-gradient(0deg, var(--wt-motif-ink) 1px, transparent 1px);
   --wt-motif-size: 12px 12px;
   --wt-title-font: var(--font-sans);
   --wt-title-track: .04em;
