@@ -70,6 +70,8 @@ NOTDND_UI_SMOKE_MANDATORY=1 python3 tests/test_ui_smoke.py   # 取值 1/true/yes
 `.github/workflows/ci.yml` 的回归门会安装无头浏览器与 `websocket-client`（装法见
 该文件），并置 `NOTDND_UI_SMOKE_MANDATORY=1`。
 
+`test_ui_world_themes.py`（世界主题语义不变式，`UI-WORLD-THEMES.md` §6）同款：前置缺失默认 `skip`，可用 `NOTDND_UI_WORLD_THEMES_MANDATORY=1` 强制真实执行。
+
 `test_ui_smoke.py` 的 `main()` 还会先跑一段**自测**：用子进程重跑自己、注入
 「缺前置」，分别验证「强制 → 非零」「默认 → 零」两条处置路径——于是「前置缺失」
 这条路径本身也有针对性测试，且不依赖运行环境。
