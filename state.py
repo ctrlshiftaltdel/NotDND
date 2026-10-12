@@ -15,7 +15,8 @@
 - 加载顺序与重放（§9，含 `.bak` 回退、末行丢弃、中间断裂拒载、`.tmp` 清理）；
 - 重建规则（§6.2：`replay == live` 在规范化 JSON 下逐字节相等）；
 - 零依赖校验器（§5.4 `validate_event`）；
-- 接口（§12.1 `open_campaign` / `Handle`，含 `replay()` / `flush()`）。
+- 接口（§12.1 `open_campaign` / `Handle`，含 `replay()` / `flush()` 与
+  M7-4 的只读增量 `events_since()`）。
 
 **`import state` 不触碰磁盘**（沿用 no-side-effects-on-import 口径，
 `GDD-BASELINE.md` §6.5）：本模块顶层只做常量与函数定义。
@@ -765,6 +766,37 @@ class Handle:
                 "blocks": copy.deepcopy(self._blocks),
                 "stream": copy.deepcopy(self._stream),
             }
+
+    def events_since(self, since=0):
+        """只读增量：返回 `seq > since` 的事件（M7-4，STATE §16）。
+
+        - 读「归档段（升序）→ 活动日志」拼出完整历史（`_read_all_events`，§9），
+          跨归档段不重不漏：重复只可能来自 §9 允许的「归档重叠段」
+          （`seq ≤ 检查点 seq`），按「已出现过即跳过」处理，**不**复制一套归档逻辑；
+        - 链校验与**加载路径同口径**（`_validate_chain(events, self._seq)`）：
+          `seq > self._seq` 的区间仍严格递增（跳号 / 回退 / 重放区间内重复 → 拒载）；
+        - `since` 必须是 ≥ 0 的整数（与 `replay(upto_seq=…)` 同口径）；
+        - **只读**：不落盘、不触发检查点、不写「截除点」——半写末行只丢弃
+          （落盘截除是加载路径 `open_campaign` 的职责，本入口不碰写路径）。
+
+        返回值是本次读盘解析出来的事件（不共享句柄内部态），按文件顺序、
+        `seq` 严格递增。
+        """
+        if not _is_int(since) or since < 0:
+            raise StateError("since 必须是 ≥ 0 的整数：%r" % (since,))
+        with self._lock:
+            notes = []                      # 读过程的说明只留本地：本入口不改句柄状态
+            events, _archived_hint, _live_cut = _read_all_events(self._dir, notes)
+            _validate_chain(events, self._seq)
+            picked = []
+            highest = since
+            for event in events:
+                seq = event["seq"]
+                if seq <= highest:
+                    continue        # ≤ since，或归档重叠段的重复行（§9 允许的重复）
+                picked.append(event)
+                highest = seq
+            return picked
 
     # ── 门面态同步（§11：展示流与不透明块不进事件溯源）──────────────────────
     def stage(self, *, blocks=None, stream=None, save_name=None, created=None):
