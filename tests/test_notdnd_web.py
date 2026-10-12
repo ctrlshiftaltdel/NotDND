@@ -96,6 +96,18 @@
      sha256）不变、不触发检查点、内存态 `seq` 不变；老档（未迁移）不因这两条
      路由提前落盘迁移，响应里无密钥、无本机路径。
 
+ 17. 房间事件流与断线重连（M10-S2，MPI §5.4 / §5.5，Issue #314）：
+     `GET /api/room/stream?since=` 复用导引者的 `_begin_stream` / `_chunk` 口径，
+     帧 = `id: <seq>` + `event: <频道>` + 一行 `data: {seq,type,event,audience}`；
+     补发按「`seq > since` 读事件 + 与广播同一 `visibility` 判据过滤」——重连
+     **不重不漏**（T5）、也只给本人有权看的（`public` → `world` 给全房、
+     `team` → `party`、`private` → `tell` 只给 `subjects` 点名角色、`gm` 不下发）；
+     默认心跳 15s 一行 `: keepalive`（注释行、不是帧）、socket 写超时 90s = 判死
+     关流；出站队列**有界**（默认 256 帧），灌满 → 断流 → 客户端重连补发重建，
+     最终与全量读取一致（T13：无丢事件）；`Accept: application/json` 时**同一条
+     路径**回一次性读取（降级短轮询，与流式逐帧一致）。鉴权与写接口同一条链
+     （401 / 403 不开流）；非法的 `since` → 400。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -2177,6 +2189,191 @@ def _save_bytes(save_dir: str, sid: str) -> str:
     return "".join(out)
 
 
+# --------------------------------------------------------------------------
+# 房间事件流（M10-S2，MPI §5.4 / §5.5）脚手架
+# --------------------------------------------------------------------------
+
+
+@contextlib.contextmanager
+def _stream_tuning(*, heartbeat=None, dead=None, queue_max=None):
+    """把房间流的**模块常量**临时改小，让「心跳 / 判死 / 队列满」秒级可复现。
+
+    跑的还是同一条代码路径（常量都在调用点读），改的只是值；15s / 90s / 256 帧
+    的**默认值**由 `check_room_stream_heartbeat_and_dead` 单独断言，不靠这里。
+    """
+    saved = (notdnd_web.ROOM_STREAM_HEARTBEAT_SECONDS,
+             notdnd_web.ROOM_STREAM_DEAD_SECONDS,
+             notdnd_web.ROOM_STREAM_QUEUE_MAX)
+    if heartbeat is not None:
+        notdnd_web.ROOM_STREAM_HEARTBEAT_SECONDS = heartbeat
+    if dead is not None:
+        notdnd_web.ROOM_STREAM_DEAD_SECONDS = dead
+    if queue_max is not None:
+        notdnd_web.ROOM_STREAM_QUEUE_MAX = queue_max
+    try:
+        yield
+    finally:
+        (notdnd_web.ROOM_STREAM_HEARTBEAT_SECONDS,
+         notdnd_web.ROOM_STREAM_DEAD_SECONDS,
+         notdnd_web.ROOM_STREAM_QUEUE_MAX) = saved
+
+
+class _RoomStreamClient:
+    """裸 socket 的房间推送流客户端：能读**增量**，也能读到**服务端断流**。
+
+    `http.client` 读分块体要读到连接关闭才返回——流是长连接，用它会挂死，
+    所以这里自己建连接、自己 `recv`：`wait_*` 都带期限，`ids` / `frames` 从
+    已收到的字节里解析 `id:` / `event:` / `data:`（尾帧没收全就整帧丢弃）。
+    `rcvbuf` 用来造**慢客户端**：接收缓冲压到最小 + 不读 = 服务端的写会阻塞。
+    """
+
+    def __init__(self, port: int, room_id: str, member_id: str, token: str,
+                 since: int = 0, rcvbuf: int | None = None):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if rcvbuf:
+            # 必须在 connect 之前设：窗口在握手时就按它通告。
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, int(rcvbuf))
+        self.sock.settimeout(15)
+        self.sock.connect(("127.0.0.1", port))
+        self.raw = b""
+        self.eof = False
+        self.head = b""
+        self.status = 0
+        self.sock.sendall(
+            ("GET /api/room/stream?since=%d HTTP/1.1\r\nHost: 127.0.0.1\r\n"
+             "X-Room: %s\r\nX-Member: %s\r\nAuthorization: Bearer %s\r\n"
+             "Accept: text/event-stream\r\nConnection: close\r\n\r\n"
+             % (since, room_id, member_id, token)).encode("utf-8"))
+        self._read_head()
+
+    # ── 读 ─────────────────────────────────────────────────
+    def _recv(self, timeout: float) -> bool:
+        """收一段；返回是否收到字节（对端关闭 → `self.eof`）。"""
+        self.sock.settimeout(timeout)
+        try:
+            piece = self.sock.recv(65536)
+        except socket.timeout:
+            return False
+        if not piece:
+            self.eof = True
+            return False
+        self.raw += piece
+        return True
+
+    def _read_head(self, deadline: float = 10.0):
+        end = time.time() + deadline
+        while b"\r\n\r\n" not in self.raw:
+            if time.time() > end:
+                raise AssertionError("流响应头未在期限内到达：%r" % self.raw[:200])
+            if not self._recv(1.0):
+                break
+        self.head = self.raw.split(b"\r\n\r\n", 1)[0]
+        self.status = int(self.head.split(b" ", 2)[1]) if self.head else 0
+
+    def body(self) -> str:
+        """已收到的**解块**体（不完整的尾帧留在里面，由解析方丢弃）。"""
+        return _dechunk(self.raw).decode("utf-8", "replace")
+
+    def ids(self) -> list:
+        """已收到的帧号（按到达顺序）。"""
+        out = []
+        for line in self.body().replace("\r", "").split("\n"):
+            if line.startswith("id:"):
+                out.append(int(line[3:].strip()))
+        return out
+
+    def frames(self) -> list:
+        """已收到的**完整**帧 `[{id, event, data}]`（尾帧没收全就丢整帧）。"""
+        out, cur = [], None
+        for line in self.body().replace("\r", "").split("\n"):
+            if line.startswith("id:"):
+                cur = {"id": int(line[3:].strip())}
+            elif line.startswith("event:") and cur is not None:
+                cur["event"] = line[6:].strip()
+            elif line.startswith("data:") and cur is not None:
+                try:
+                    cur["data"] = json.loads(line[5:].strip() or "{}")
+                except ValueError:
+                    cur = None              # 这一帧还没收全：整帧丢弃
+                    continue
+                out.append(cur)
+                cur = None
+        return out
+
+    def wait_frames(self, count: int, deadline: float = 8.0) -> list:
+        """等到至少 `count` 个**完整**帧（或超时 / 对端关闭）。"""
+        end = time.time() + deadline
+        while len(self.frames()) < count and time.time() < end and not self.eof:
+            self._recv(0.1)
+        return self.frames()
+
+    def wait_ids(self, count: int, deadline: float = 8.0) -> list:
+        """等到至少 `count` 个帧号（或超时 / 对端关闭）——慢客户端用。"""
+        end = time.time() + deadline
+        while len(self.ids()) < count and time.time() < end and not self.eof:
+            self._recv(0.1)
+        return self.ids()
+
+    def wait_eof(self, deadline: float = 15.0) -> bool:
+        """持续读到服务端收尾（EOF）；返回是否真的读到。"""
+        end = time.time() + deadline
+        while not self.eof and time.time() < end:
+            self._recv(0.2)
+        return self.eof
+
+    def close(self):
+        try:
+            self.sock.close()
+        except OSError:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.close()
+        return False
+
+
+def _new_room(server, room_id: str, *, character_id: str = "pc-host",
+              display_name: str = "房主") -> dict:
+    """建一个房间，返回房主的 `{member_id, token}`（唯一一次明文令牌，§4.1）。"""
+    status, host = _post(server, "/api/room/create",
+                         {"room_id": room_id, "display_name": display_name,
+                          "character_id": character_id})
+    assert status == 200, "%s / %s" % (status, host)
+    return host
+
+
+def _join_room(server, room_id: str, *, character_id: str = "pc-b",
+               display_name: str = "乙") -> dict:
+    """加入一个已存在的房间，返回 `{member_id, token}`（§4.1 鉴权链）。"""
+    status, member = _post(server, "/api/room/join",
+                           {"display_name": display_name,
+                            "character_id": character_id},
+                           headers={"X-Room": room_id})
+    assert status == 200, "%s / %s" % (status, member)
+    return member
+
+
+def _room_event(session, *, key: str, visibility: dict | None = None) -> int:
+    """落一条事件并按**提交后的扇出**投递（夹具）。
+
+    事件走状态层的 `commit()`——行动管线 / CHRON 写事件用的是**同一个**出口；
+    随后调 `_room_publish_after_commit`，也就是两条提交路径在提交点之后跑的那一步。
+    返回事件的 `seq`。
+    """
+    handle = session._handle or session._open_handle()
+    result = handle.commit(
+        base_seq=handle.view()["seq"], idempotency_key=key, type="core.commit",
+        actor="world", changes=[], rules_version="prism@test",
+        visibility=dict(visibility or {"scope": "public", "subjects": []}),
+        source="system")
+    assert result["status"] == "committed", result
+    notdnd_web._room_publish_after_commit(handle, result, session.sid)
+    return result["seq_to"]
+
+
 class _InterleavingLock:
     """测试用锁代理：在第 N 次 `with` **取到锁之前**插入一次确定性交错。
 
@@ -2663,6 +2860,278 @@ def check_room_create_save_failure():
         assert body.get("token") and body.get("role") == "host", body
         assert notdnd_web._save_exists(rid)
     notdnd_web._sessions.pop(rid, None)
+
+
+# --------------------------------------------------------------------------
+# 房间事件流与断线重连（M10-S2，MPI §5.4 / §5.5）
+# --------------------------------------------------------------------------
+
+
+def check_room_stream_frames_and_filter():
+    """§5.4 / §6.1（S2 最小口径）：帧形状、频道映射、无权看的帧**一条都不出现**。
+
+    `public` → `world`（房内人人有）；`private` → `tell`、`team` → `party`
+    （只给 `visibility.subjects` 点名的角色）；`gm`（导引者内部）对谁都不下发。
+    """
+    rid = "room-stream-1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+        host = _new_room(server, rid, character_id="pc-host")
+        other = _join_room(server, rid, character_id="pc-b")
+        session = notdnd_web.get_session(rid)
+        _room_event(session, key="f1")                     # seq 1 世界事件
+        _room_event(session, key="f2",                     # seq 2 只给房主的私聊
+                    visibility={"scope": "private", "subjects": ["pc-host"]})
+        _room_event(session, key="f3",                     # seq 3 队伍范围
+                    visibility={"scope": "team", "subjects": ["pc-host"]})
+        _room_event(session, key="f4",                     # seq 4 导引者内部
+                    visibility={"scope": "gm", "subjects": []})
+        _room_event(session, key="f5",                     # seq 5 只给乙的私聊
+                    visibility={"scope": "private", "subjects": ["pc-b"]})
+
+        with _RoomStreamClient(server.port, rid, host["member_id"],
+                               host["token"], since=0) as stream:
+            frames = stream.wait_frames(3)
+            assert [f["id"] for f in frames[:3]] == [1, 2, 3], frames
+            # 帧 = `id: <seq>` + `event: <频道>` + `data: {seq,type,event,audience}`
+            first = frames[0]
+            assert first["event"] == "world", first
+            assert set(first["data"]) == {"seq", "type", "event", "audience"}, first
+            assert first["data"]["seq"] == first["id"] == first["data"]["event"]["seq"]
+            assert first["data"]["type"] == first["data"]["audience"] == "world"
+            assert first["data"]["event"]["event_id"] == "%s:e000000000001" % rid
+            assert [f["event"] for f in frames[:3]] == ["world", "tell", "party"]
+            assert frames[2]["data"]["event"]["visibility"]["scope"] == "team", frames[2]
+            # `gm` 的那条（4）与给乙的私聊（5）在**补发**里就不该出现
+            time.sleep(0.4)
+            assert [f["id"] for f in stream.frames()] == [1, 2, 3], stream.frames()
+
+        with _RoomStreamClient(server.port, rid, other["member_id"],
+                               other["token"], since=0) as stream_b:
+            frames_b = stream_b.wait_frames(2)
+            assert [f["id"] for f in frames_b[:2]] == [1, 5], frames_b
+            assert [f["event"] for f in frames_b[:2]] == ["world", "tell"], frames_b
+            # 房主那条私聊的内容一个字都不给乙（越权不是「前端隐藏」）
+            assert "pc-host" not in json.dumps(frames_b, ensure_ascii=False)
+
+
+def check_room_stream_t5_reconnect_backfill():
+    """T5：提交后断线，重连 `since=seq` 补齐错过的 `world` 事件；不重、不漏、不越权。
+
+    §6.4 的口径：补发 = 「按 `seq > since` 读事件 + 与广播**同一** `visibility`
+    判据过滤」，**绝不**因为「这是重连」而多给。
+    """
+    rid = "room-stream-t5-1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+        host = _new_room(server, rid, character_id="pc-host")
+        other = _join_room(server, rid, character_id="pc-b")
+        session = notdnd_web.get_session(rid)
+        _room_event(session, key="t5-1")
+        _room_event(session, key="t5-2")
+        # 第一条流：拿到前两条就断线（手机切网 / 锁屏）
+        first = _RoomStreamClient(server.port, rid, host["member_id"],
+                                  host["token"], since=0)
+        assert [f["id"] for f in first.wait_frames(2)] == [1, 2]
+        first.close()
+
+        # 断线期间：世界事件 → 给房主的秘密 → 给乙的秘密 → 又一条世界事件
+        _room_event(session, key="t5-3")
+        _room_event(session, key="t5-4",
+                    visibility={"scope": "private", "subjects": ["pc-host"]})
+        _room_event(session, key="t5-5",
+                    visibility={"scope": "private", "subjects": ["pc-b"]})
+        _room_event(session, key="t5-6")
+
+        # 重连 `since=2`：恰好补齐 3 / 4 / 6——世界事件一条不少，乙的秘密（5）一步不给
+        with _RoomStreamClient(server.port, rid, host["member_id"],
+                               host["token"], since=2) as again:
+            frames = again.wait_frames(3)
+            assert [f["id"] for f in frames[:3]] == [3, 4, 6], frames
+            assert [f["event"] for f in frames[:3]] == ["world", "tell", "world"], frames
+            time.sleep(0.4)
+            assert [f["id"] for f in again.frames()] == [3, 4, 6], again.frames()
+        # 乙的那条：1 / 2 / 3 / 5 / 6——房主的秘密（4）不出现
+        with _RoomStreamClient(server.port, rid, other["member_id"],
+                               other["token"], since=0) as stream_b:
+            frames_b = stream_b.wait_frames(5)
+            assert [f["id"] for f in frames_b[:5]] == [1, 2, 3, 5, 6], frames_b
+
+
+def check_room_stream_poll_equivalence():
+    """§5.5 降级：**同一条路径**的短轮询（`Accept: application/json`）与流式逐帧一致。"""
+    rid = "room-stream-poll-1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+        host = _new_room(server, rid, character_id="pc-host")
+        session = notdnd_web.get_session(rid)
+        for index in range(1, 4):
+            _room_event(session, key="poll-%d" % index)
+        _room_event(session, key="poll-4",
+                    visibility={"scope": "private", "subjects": ["pc-host"]})
+
+        with _RoomStreamClient(server.port, rid, host["member_id"],
+                               host["token"], since=1) as stream:
+            frames = [f for f in stream.wait_frames(3)[:3]]
+            assert [f["id"] for f in frames] == [2, 3, 4], frames
+
+        headers = dict(_room_headers(rid, host["member_id"], host["token"]),
+                       Accept="application/json")
+        status, poll = server.get("/api/room/stream?since=1", headers=headers)
+        assert status == 200, (status, poll)
+        # 同一 `since`、同一判据：轮询拿到的就是流式那三帧的 `data`
+        assert poll["frames"] == [f["data"] for f in frames], poll
+        assert poll["seq"] == 4, poll
+
+        status, empty = server.get("/api/room/stream?since=4", headers=headers)
+        assert status == 200 and empty == {"frames": [], "seq": 4}, (status, empty)
+
+
+def check_room_stream_auth_and_since():
+    """§4.1 / §5.1：流与轮询走同一条鉴权链；非法 `since` → 400（不静默当 0）。"""
+    rid = "room-stream-auth-1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+        host = _new_room(server, rid, character_id="pc-host")
+        status, body = server.get("/api/room/stream?since=0")
+        assert status == 401 and body.get("reason") == "token_invalid", (status, body)
+        status, bad = server.get("/api/room/stream?since=0",
+                                 headers=_room_headers(rid, host["member_id"], "0" * 64))
+        assert status == 401 and bad == body, (status, bad)
+        status, bad = server.get("/api/room/stream?since=-1",
+                                 headers=_room_headers(rid, host["member_id"],
+                                                       host["token"]))
+        assert status == 400 and "since" in (bad.get("error") or ""), (status, bad)
+
+        status, left = _post(server, "/api/room/leave", {},
+                             headers=_room_headers(rid, host["member_id"],
+                                                   host["token"]))
+        assert status == 200, (status, left)
+        status, gone = server.get("/api/room/stream?since=0",
+                                  headers=_room_headers(rid, host["member_id"],
+                                                        host["token"]))
+        assert status == 403 and gone.get("reason") == "member_left", (status, gone)
+
+
+def check_room_stream_heartbeat_and_dead():
+    """§5.5：默认 15s 心跳 / 90s 判死；心跳是注释行（无 `data`）；写不动 → 服务端关流。"""
+    assert notdnd_web.ROOM_STREAM_HEARTBEAT_SECONDS == 15.0, "心跳默认 15s（§5.5）"
+    assert notdnd_web.ROOM_STREAM_DEAD_SECONDS == 90.0, "判死默认 90s（§5.5）"
+    assert notdnd_web.ROOM_STREAM_QUEUE_MAX > 0, "出站队列必须有界（§5.5）"
+    rid = "room-stream-heartbeat-1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.15, dead=1.0):
+        # 小**发送**缓冲（服务端监听套接字）+ 客户端不读 = 服务端的写会阻塞：
+        # 「判死」必须由服务端触发，不能靠测试关连接来假造。
+        server.server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4096)
+        host = _new_room(server, rid, character_id="pc-host")
+        session = notdnd_web.get_session(rid)
+
+        # ① 心跳：没有事件也每 0.15s 一行 `: keepalive`；它不是帧（没有 `data`）
+        with _RoomStreamClient(server.port, rid, host["member_id"],
+                               host["token"], since=0) as stream:
+            end = time.time() + 5
+            while ": keepalive" not in stream.body() and time.time() < end:
+                stream._recv(0.2)
+            assert ": keepalive" in stream.body(), stream.body()[:200]
+            assert stream.frames() == [], "心跳不该被当成帧（§5.4：注释行、无 data）"
+
+        # ② 判死：客户端不读 → 补发的写阻塞 → socket 写超时（这里改成 1.0s）→ 关流
+        for index in range(1, 61):
+            _room_event(session, key="hb-%d" % index)
+        dead = _RoomStreamClient(server.port, rid, host["member_id"],
+                                 host["token"], since=0, rcvbuf=1024)
+        time.sleep(2.0)         # 故意不读：写阻塞满 1.0s → 服务端判死关流
+        assert dead.wait_eof(deadline=10.0), "写不动的流必须被服务端关掉（§5.5）"
+        ids = dead.ids()
+        assert ids == list(range(1, len(ids) + 1)), "断流前收到的必须是连续前缀：%r" % ids
+        assert 0 < len(ids) < 60, "要么一帧没写、要么全写完，都不是判死用例的形态：%d" % len(ids)
+        dead.close()
+
+
+def check_room_stream_t13_slow_client():
+    """T13：出站队列灌满的慢客户端 → 断流 → 重连补发，最终与快照一致（无丢事件）。"""
+    rid = "room-stream-t13-1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.05, dead=30.0,
+                                                  queue_max=2):
+        # 小发送缓冲（服务端）+ 小接收缓冲（客户端）+ 不读 → 写线程阻塞，
+        # 队列因此灌满；上限调到 2 让「灌满」秒级可复现（默认 256 由心跳那条断言）。
+        server.server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4096)
+        host = _new_room(server, rid, character_id="pc-host")
+        session = notdnd_web.get_session(rid)
+        slow = _RoomStreamClient(server.port, rid, host["member_id"],
+                                 host["token"], since=0, rcvbuf=1024)
+        streams = [s for s in notdnd_web._room_stream_list(rid)
+                   if s.member_id == host["member_id"]]
+        assert len(streams) == 1, streams
+        stream = streams[0]
+
+        for index in range(1, 61):
+            _room_event(session, key="t13-%d" % index)
+        end = time.time() + 10
+        while not stream.overflowed and time.time() < end:
+            time.sleep(0.05)
+        assert stream.overflowed, "慢客户端没把有界队列灌满（queue=%d）" % len(stream.queue)
+
+        # 客户端开始读 → 写线程解阻塞 → 队列满被写线程看到 → 结束分块（断流）
+        assert slow.wait_eof(deadline=15.0), "队列满之后该断流"
+        ids = slow.ids()
+        assert ids == list(range(1, len(ids) + 1)), "断流前收到的必须是连续前缀：%r" % ids
+        slow.close()
+        end = time.time() + 5
+        while notdnd_web._room_stream_list(rid) and time.time() < end:
+            time.sleep(0.05)
+        assert notdnd_web._room_stream_list(rid) == [], "断流后流引用必须摘干净"
+
+        # 重连：`since=last_seq` 补齐剩下的（不重不漏）
+        with _RoomStreamClient(server.port, rid, host["member_id"], host["token"],
+                               since=ids[-1]) as again:
+            again.wait_frames(60 - len(ids))
+            got = again.ids()
+        merged = sorted(set(ids) | set(got))
+        # 「最终与快照一致」：与同一条路径的全量读取（`since=0`）逐号对齐
+        status, whole = server.get("/api/room/stream?since=0", headers=dict(
+            _room_headers(rid, host["member_id"], host["token"]),
+            Accept="application/json"))
+        assert status == 200, (status, whole)
+        assert merged == list(range(1, 61)), "1..60 一条都不能少：%r" % merged
+        assert merged == [f["seq"] for f in whole["frames"]], "补发重建必须与快照一致"
+
+
+def check_room_stream_live_push():
+    """§5.5 提交后扇出：走**真写接口**（`/api/action/commit`）的一回合也进流。"""
+    rid = "room-stream-live-1"
+    saved_available = notdnd_web._action_guide_available
+    notdnd_web._action_guide_available = lambda: False      # 叙事段离线：不碰网络
+    try:
+        with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+            host = _new_room(server, rid, character_id="pc-host")
+            session = notdnd_web.get_session(rid)
+            rules = prism_core.RuleSession(rid)
+            rules.party.append(prism_core.new_unit("u-1", "试炼者",
+                                                   attributes={"MGT": 6, "INS": 7}))
+            rules.scene = {"id": "sc-1", "actions": [
+                {"id": "a-lock", "label": "撬锁", "kind": "check", "df": 12,
+                 "auto_pass": True, "on_pass": "锁簧弹开。", "risk": "R1"}]}
+            session.rules = rules.snapshot()
+            session.save()
+
+            with _RoomStreamClient(server.port, rid, host["member_id"],
+                                   host["token"], since=0) as stream:
+                status, prop = _propose_action(server, rid)
+                assert status == 200, (status, prop)
+                status, out = _post(server, "/api/action/commit",
+                                    _commit_body(prop["proposal"], prop["base_seq"]),
+                                    sid=rid, headers={
+                                        "Accept": "application/json",
+                                        "Idempotency-Key": "s2-live-push-0001"})
+                assert status == 200 and out.get("committed") is True, (status, out)
+                frames = stream.wait_frames(1)
+                assert [f["id"] for f in frames[:1]] == [1], frames
+                payload = frames[0]["data"]
+                assert payload["type"] == "world" and payload["audience"] == "world"
+                # 推出去的就是**日志里那条信封**（逐字相等）——推送不改写事实
+                status, events = server.get("/api/events?since=0", sid=rid)
+                assert status == 200 and len(events["events"]) == 1, events
+                assert payload["event"] == events["events"][0], payload
+                assert payload["event"]["type"] == notdnd_web.ACTION_EVENT_TYPE
+    finally:
+        notdnd_web._action_guide_available = saved_available
 
 
 # --------------------------------------------------------------------------
@@ -4737,6 +5206,13 @@ CHECKS = (
     check_room_kick_authorization,
     check_room_kick_host_check_is_atomic,
     check_room_auth_chain,
+    check_room_stream_frames_and_filter,
+    check_room_stream_t5_reconnect_backfill,
+    check_room_stream_poll_equivalence,
+    check_room_stream_auth_and_since,
+    check_room_stream_heartbeat_and_dead,
+    check_room_stream_t13_slow_client,
+    check_room_stream_live_push,
     check_session_create_endpoint,
     check_session_create_offline,
     check_session_create_reload,

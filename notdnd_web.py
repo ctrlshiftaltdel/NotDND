@@ -41,6 +41,13 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     `join` / `leave` / `kick` 走 `Authorization: Bearer` + `X-Room` / `X-Member`
     鉴权链（§4.1）；房间级角色矩阵（§4.2）与 6 人上限（容量满 → `409 room_full`）；
     令牌只存 `sha256`，明文仅在创建 / 加入时回一次，永不落盘 / 写日志
+  · 房间事件流与断线重连（M10-S2，MULTIPLAYER-DESIGN.md §5.4 / §5.5）：
+    `GET /api/room/stream?since=` 按 `seq > since` 补发 + 活流推送（复用导引者
+    的 `_begin_stream` / `_chunk` 口径；帧 = `id: <seq>` + `event: <type>` +
+    一行 `data:`）；心跳每 15s 一行 `: keepalive`，socket 写超时 90s = 判死关流；
+    每流一个**有界**出站队列，满则断开该流由客户端重连补发重建（不丢事件）；
+    `Accept: application/json` 时同路径回一次性读取（降级短轮询，过滤与 `since`
+    语义与流式一致）。补发与广播一律按事件的 `visibility` 过滤（§6.1 / §6.4）
   · CHRON 存档块（M9-C5）：`chron` 是又一块**不透明块**（CHRON-DESIGN §8.1）——
     本文件只提供它的默认值工厂（老档迁移时补空块）；块的加载 / 重放 / 重建 `due_heap` /
     幂等表全归 `chron.py`（C5），本文件不解析这块
@@ -279,6 +286,10 @@ ROOM_TOKEN_BYTES = 32                   # 32 字节 → 64 位十六进制；只
 ROOM_ROLES = ("host", "player", "observer")
 # §6.1 频道表；S1 只落常量，分流 / 扇出的实现归 S3。
 ROOM_CHANNELS = ("world", "party", "org", "ooc", "host")
+# §5.5 的推送流参数（模块常量：测试可覆写成小值，真跑「心跳 / 判死 / 队列满」）。
+ROOM_STREAM_HEARTBEAT_SECONDS = 15.0    # 每 15s 一行注释 `: keepalive`
+ROOM_STREAM_DEAD_SECONDS = 90.0         # 90s 无任何帧（含心跳）→ 服务端关流
+ROOM_STREAM_QUEUE_MAX = 256             # 每流出站队列（**帧数**）上限；满则断流
 
 
 def _hash_token(token: str) -> str:
@@ -395,6 +406,211 @@ def _room_seats(room: dict) -> list:
     return [m for m in members.values()
             if isinstance(m, dict) and m.get("state") == "active"
             and m.get("role") in ("host", "player")]
+
+
+# ── 房间事件流（M10-S2，MULTIPLAYER-DESIGN §5.4 / §5.5）────────────────────
+#
+# 推送对外的**合同**只有两件：`seq`（战役全序，来自状态层事件日志）与
+# **按 `visibility` 过滤后的事件封套**；SSE 只是编码（§5.4）。「流」= 一条
+# 连接：有界出站队列 + 判活。流的引用 / 队列是**内存态**（§3.3），不进 `room`
+# 块——那块只放可持久化的房间事实（§3.2，且要能 JSON 落盘）。
+
+# §5.4 的 `visibility.scope` → 推送频道（§6.1 的最小口径；完整分流归 S3）。
+ROOM_SCOPE_CHANNELS = {"public": "world", "team": "party", "private": "tell"}
+
+
+def _room_event_channel(event) -> str:
+    """事件封套 → 推送频道名（§5.4 / §6.1）。
+
+    `public` → `world`（房内全部成员）、`team` → `party`、`private` → `tell`。
+    `gm`（导引者内部）与未知 scope 一律回**空串 = 不下发**（失败关闭）：
+    S2 没有「导引者内部内容可以给谁看」的口径，宁可少发也不越权（§6.2）。
+    """
+    visibility = event.get("visibility") if isinstance(event, dict) else None
+    if not isinstance(visibility, dict):
+        return ""
+    return ROOM_SCOPE_CHANNELS.get(visibility.get("scope"), "")
+
+
+def _room_event_visible(event, character_id: str) -> bool:
+    """这条事件该不该推给持有该角色的成员（§6.1 / §6.4）。
+
+    `world` 对房内所有人可见；`party` / `tell` 只对 `visibility.subjects` 里
+    点名的角色可见（S1 还没有队伍模型，`team` 暂以 `subjects` 为名单——S3
+    落队伍归属后按队伍判）；其余（`gm` / 未知）对谁都不下发。
+    """
+    channel = _room_event_channel(event)
+    if channel == "world":
+        return True
+    if channel not in ("party", "tell"):
+        return False
+    subjects = event.get("visibility", {}).get("subjects") \
+        if isinstance(event.get("visibility"), dict) else None
+    if not isinstance(subjects, list):
+        return False
+    return bool(character_id) and character_id in subjects
+
+
+def _room_frame(event) -> dict:
+    """§5.4 的 `data:` 载荷：`{seq, type, event, audience}`。
+
+    `type` / `audience` 都是频道名（§5.4 的示例即同值），`event` 是事件封套
+    **原样**透出——换传输（WS / 轮询）时只换编码，不改这里的语义。
+    """
+    channel = _room_event_channel(event)
+    return {"seq": _int_or(event.get("seq"), 0), "type": channel,
+            "event": event, "audience": channel}
+
+
+def _room_frames(session: Session, character_id: str, since: int) -> list:
+    """`seq > since` 里该成员**有权看**的帧（§6.4：按序号读事件 + 同一判据过滤）。
+
+    读取 / 链校验 / 跨归档拼接全在状态层（`Handle.events_since`，M7-4）；本层
+    只做受众过滤——重连**绝不**因为「是补发」而多给（§6.4）。状态层拒载时
+    异常照常上抛（调用方翻成既有的固定 500），不静默当空。
+    """
+    with session.lock:
+        handle = session._handle
+        if handle is None:
+            return []                       # 还没有状态层日志（未迁移老档）
+        events = handle.events_since(since)
+    return [_room_frame(event) for event in events
+            if _room_event_visible(event, character_id)]
+
+
+class _RoomStream:
+    """一条推送流的运行时态：**有界**出站队列 + 判活（§5.5）。
+
+    - `queue` 只装**活流**要推的帧；补发（`seq > since`）由读线程直接读日志
+      写出，不进队列——补发是「追平」，队列管的是「别让慢客户端把内存撑爆」；
+    - 队列满 → `overflowed`：写线程收尾断流（结束分块），客户端重连用
+      `since=last_seq` 补发重建（T13：不丢事件）；
+    - `last_sent` = **已写进 socket** 的最大 `seq`，是去重的唯一依据：补发与
+      活流队列可能重叠（登记与补发读之间提交的事件），同一条事件绝不写两遍；
+    - §5.5 的「每成员一个有界队列」按**每流**落地：一个慢标签页只断自己那条
+      流，不会把同一成员另一条流的帧冲掉（多标签页 = 多条流）。
+    """
+
+    def __init__(self, room_id: str, member_id: str, character_id: str,
+                 since: int):
+        self.room_id = room_id
+        self.member_id = member_id
+        self.character_id = character_id
+        self.since = since
+        self.last_sent = since              # 未写到任何一帧前，游标就是 since
+        self.queue: list[dict] = []
+        self.cond = threading.Condition()
+        self.overflowed = False
+        self.closed = False
+
+    def enqueue(self, frame: dict) -> None:
+        """投递一帧；队列满 → 标 `overflowed`（由写线程断流）。"""
+        with self.cond:
+            if self.closed or self.overflowed:
+                return
+            if len(self.queue) >= ROOM_STREAM_QUEUE_MAX:
+                self.overflowed = True
+                self.cond.notify_all()
+                return
+            self.queue.append(frame)
+            self.cond.notify_all()
+
+    def drain(self, timeout: float) -> tuple[list, bool]:
+        """取一批待写帧：`(batch, stop)`——`stop=True` = 该收尾断流。
+
+        空批 + `stop=False` = 等超时（写线程据此发心跳）。
+        """
+        with self.cond:
+            if self.overflowed or self.closed:
+                return [], True
+            if not self.queue:
+                self.cond.wait(timeout)
+            if self.overflowed:
+                return [], True
+            batch, self.queue = self.queue, []
+            return batch, bool(self.closed)
+
+    def close(self) -> None:
+        """收尾：清队列、唤醒写线程（连接结束后不留残余引用）。"""
+        with self.cond:
+            self.closed = True
+            self.queue = []
+            self.cond.notify_all()
+
+
+_room_streams: dict[str, dict[str, list]] = {}       # room_id → member_id → [流]
+_room_streams_lock = threading.Lock()
+
+
+def _room_stream_register(stream: _RoomStream) -> None:
+    """登记一条流：**先登记再补发**，登记与补发读之间的事件因此进队列不漏。"""
+    with _room_streams_lock:
+        bucket = _room_streams.setdefault(stream.room_id, {})
+        bucket.setdefault(stream.member_id, []).append(stream)
+
+
+def _room_stream_unregister(stream: _RoomStream) -> None:
+    """摘除一条流；空桶一并清掉（房间不再有流时不留下空条目）。"""
+    with _room_streams_lock:
+        bucket = _room_streams.get(stream.room_id)
+        if not bucket:
+            return
+        streams = bucket.get(stream.member_id)
+        if streams and stream in streams:
+            streams.remove(stream)
+        if not streams:
+            bucket.pop(stream.member_id, None)
+        if not bucket:
+            _room_streams.pop(stream.room_id, None)
+
+
+def _room_stream_list(room_id: str) -> list:
+    """本房间当前所有活流的快照（调用方拿拷贝，不在锁里做推送）。"""
+    with _room_streams_lock:
+        bucket = _room_streams.get(room_id) or {}
+        return [stream for streams in bucket.values() for stream in streams]
+
+
+def _room_publish(room_id: str, events) -> None:
+    """提交成功后按受众扇出（§5.5）：一条事件只投给有权看的流。
+
+    这里读 `stream.last_sent` 只是**少投一次**的优化（无锁读，可能与写线程
+    的更新交错）；真正管「不重」的是写线程写帧时的去重（`_write_room_frame`）。
+    """
+    targets = _room_stream_list(room_id)
+    if not targets or not events:
+        return
+    for stream in targets:
+        for event in events:
+            seq = _int_or(event.get("seq"), 0)
+            if seq <= stream.last_sent:
+                continue        # 已经写进 socket（补发 / 上一批）：不重发
+            if not _room_event_visible(event, stream.character_id):
+                continue        # 无权看：**绝不下发**（§6.1）
+            stream.enqueue(_room_frame(event))
+
+
+def _room_publish_after_commit(handle, commit, room_id: str = "") -> None:
+    """一次提交之后的扇出（§5.5：提交**成功**之后）。
+
+    `room_id` 缺省取句柄的 `campaign_id`：M-11（`room_id == sid == campaign_id`）
+    是 S1 已落的不变式，排程 / 推进那几处因此不必把 `session` 一路传进来。
+    推送只是**交付**：读日志 / 投递失败都不影响已提交的事实（客户端靠
+    `since` 补发自愈），所以这里恒定不抛。
+    """
+    if handle is None:
+        return
+    seq_from = _int_or((commit or {}).get("seq_from"), 0)
+    if seq_from <= 0:
+        return              # conflict / rejected / 幂等重放未落事件：没有新事实
+    room_id = room_id or str(getattr(handle, "campaign_id", "") or "")
+    if not _room_stream_list(room_id):
+        return
+    try:
+        events = handle.events_since(seq_from - 1)
+    except state.StateError:
+        return              # 读日志失败只影响这一轮推送：不打断提交路径
+    _room_publish(room_id, events)
 
 
 class _RoomAuthError(Exception):
@@ -2094,6 +2310,8 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
             roll_refs=[result["rule_ref"]["roll_ref"]]
             if result["rule_ref"].get("roll_ref") else [],
             source="player")
+        # §5.5：**提交成功之后**扇出（M10-S2）——推送只是交付，不影响提交。
+        _room_publish_after_commit(handle, commit, session.sid)
         _action_apply_commit(session, result, commit, new_rules)
         # 6. 的输入：**提交点**的冻结快照（§7.5）——叙事只读这份副本
         snapshot = _action_snapshot(session.rules, session.guide)
@@ -2414,6 +2632,9 @@ def _chron_commit(handle, event, *, block, state, base_seq, source=None,
                                  base_seq=base_seq, source=source,
                                  rules_version=rules_version,
                                  roll_refs=list(roll_refs or ()))
+        # §5.5：排程 / 取消 / 纯时钟推进也是房间事件（M10-S2）；`room_id` 缺省
+        # 取句柄的 `campaign_id`——M-11 保证它 == 房间号（`Session.sid`）。
+        _room_publish_after_commit(handle, out["result"])
         return {"status": out["status"], "result": out["result"],
                 "block": out["block"], "seq": out["seq"]}
     key = str(event.get("idempotency_key") or "")
@@ -2438,6 +2659,7 @@ def _chron_commit(handle, event, *, block, state, base_seq, source=None,
         source=source or event.get("source") or "system")
     status = str((result or {}).get("status") or "")
     if status in ("committed", "replayed"):     # 第二道闸由状态层自己把关
+        _room_publish_after_commit(handle, result)      # §5.5：提交后扇出（M10-S2）
         updated = chron.migrate_block(after)
         seq_to = result.get("seq_to")
         if isinstance(seq_to, int) and not isinstance(seq_to, bool):
@@ -2871,6 +3093,17 @@ class Handler(BaseHTTPRequestHandler):
                    % (event, json.dumps(obj, ensure_ascii=False)))
         self._chunk(payload.encode("utf-8"))
 
+    def _sse_frame(self, seq: int, event: str, obj) -> None:
+        """写一个带 `id:` 的 SSE 帧（§5.4：`id: <seq>` + `event: <type>` + `data:`）。
+
+        与 `_sse` 只差那行 `id:`——房间流的断线补发靠它：客户端记下最后一个
+        `id`（=`seq`），重连时作为 `?since=` 送回。房间流之外的流（导引者回合）
+        保持 `_sse` 不动，响应形状逐字节不变。
+        """""
+        payload = ("id: %d\nevent: %s\ndata: %s\n\n"
+                   % (seq, event, json.dumps(obj, ensure_ascii=False)))
+        self._chunk(payload.encode("utf-8"))
+
     def _sse_close(self) -> None:
         """写零长度块收尾——**不再**发第二行 HTTP 状态（§5.2）。"""
         self.wfile.write(b"0\r\n\r\n")
@@ -2944,6 +3177,10 @@ class Handler(BaseHTTPRequestHandler):
                 # 只读接口：不 save()，不改写存档。
                 s = self._sess()
                 return self._json(s.atlas_view())
+            if path == "/api/room/stream":
+                # 房间事件流（M10-S2，§5.1 / §5.4 / §5.5）：SSE 推送 + 同一路径
+                # 的短轮询降级；鉴权 / 补发 / 过滤全在 _room_stream_route 里。
+                return self._room_stream_route()
             # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
@@ -3959,6 +4196,83 @@ class Handler(BaseHTTPRequestHandler):
                 return self._err("保存失败，请重试", 500)
         return self._json({"status": "ok", "room_id": room_id,
                            "member_id": target_id})
+
+    # ── 房间事件流（M10-S2，§5.4 / §5.5）────────────────────
+    def _room_stream_route(self):
+        """`GET /api/room/stream?since=`：事件流（SSE）+ **同一路径**的短轮询降级。
+
+        缺省回 `text/event-stream`（复用导引者的 `_begin_stream` / `_chunk` 口径）；
+        `Accept: application/json`（且没点名 SSE）时回一次性读取——降级短轮询用
+        （§5.5），过滤判据与 `since` 语义与流式**完全一致**，客户端换的只是怎么取。
+        鉴权与写接口同一条链（§4.1）：坏令牌 / 缺成员头 / 已离开 → 401 / 403，
+        **不开流**。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        since = _since_param(self.path)
+        character_id = str(member.get("character_id") or "")
+        if _wants_json(self.headers.get("Accept")):
+            frames = _room_frames(session, character_id, since)
+            return self._json({"frames": frames,
+                               "seq": frames[-1]["seq"] if frames else since})
+        self._room_stream(session, member, since)
+
+    def _room_stream(self, session: Session, member: dict, since: int) -> None:
+        """一条推送流的服务端：补发 → 活流（心跳 / 队列）→ 断流收尾。
+
+        - **先登记再补发**：登记与补发读之间提交的事件进队列，写线程按
+          `last_sent` 去重——两条路径都不漏，也不重（§6.4 / T5）；
+        - 心跳：每 `ROOM_STREAM_HEARTBEAT_SECONDS` 一行注释 `: keepalive`（无 `data`）；
+        - 判死：socket **写超时** = `ROOM_STREAM_DEAD_SECONDS`。「90s 无任何帧
+          （含心跳）」只可能发生在一个写不动的连接上（写阻塞 = 帧没出去），
+          写超时抛错即关流（§5.5）；客户端侧的「90s 没收到帧就重连」是前端
+          判活（`static/**`，不在本单范围）；
+        - 队列满：`drain` 回 `stop=True` → 正常结束分块（零长度块），客户端
+          照常重连补发（T13）。
+        """
+        stream = _RoomStream(str(session.sid),
+                             str(member.get("member_id") or ""),
+                             str(member.get("character_id") or ""), since)
+        _room_stream_register(stream)
+        try:
+            try:
+                frames = _room_frames(session, stream.character_id, since)
+            except state.StateError:
+                # 状态行还没写：按既有「状态读取失败」回 500，**不**开一条空流。
+                return self._err("状态读取失败", 500)
+            try:
+                self._begin_stream()
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                return                  # 客户端在开流前就断了：静默收尾
+            self.connection.settimeout(ROOM_STREAM_DEAD_SECONDS)
+            for frame in frames:
+                self._write_room_frame(stream, frame)
+            while True:
+                batch, stop = stream.drain(ROOM_STREAM_HEARTBEAT_SECONDS)
+                if stop:
+                    break               # 队列满 / 已收尾：结束分块，让客户端重连
+                for frame in batch:
+                    self._write_room_frame(stream, frame)
+                if not batch:
+                    self._chunk(b": keepalive\n\n")     # §5.5 心跳：无 data
+            self._sse_close()
+        except (BrokenPipeError, ConnectionResetError, socket.timeout,
+                TimeoutError, OSError):
+            pass            # 客户端断线 / 90s 写不动：收尾即可，不再动 HTTP 状态
+        finally:
+            stream.close()
+            _room_stream_unregister(stream)
+
+    def _write_room_frame(self, stream: _RoomStream, frame: dict) -> None:
+        """写一帧（§5.4）；`seq ≤ last_sent` 不重写（补发 / 队列重叠时去重）。"""
+        seq = _int_or(frame.get("seq"), 0)
+        if seq <= stream.last_sent:
+            return
+        self._sse_frame(seq, str(frame.get("type") or ""), frame)
+        stream.last_sent = seq
 
 
 def lan_ip() -> str:
