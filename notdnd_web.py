@@ -2507,7 +2507,12 @@ def _chron_cancel(session, task_id) -> bool:
     `cancel(action_id, at_minute)`；映射表的语义不变：`task_id` 即 `action_id`，
     返回是否成功取消。取消只动行动卡（§4.4 的返还 / 风险口径归规则包，
     C6 不实现返还——**不臆造**退款语义）。
+
+    **不改盘**：未迁移老档上没有 CHRON 状态、也没有可取消的行动——直接回
+    `False`，**不**开句柄（开 = 落盘迁移，§10.1）。
     """
+    if _chron_legacy_unmigrated(session):
+        return False
     with session.lock:
         handle = session._handle or session._open_handle()
         restored = _chron_restore(session, handle)
@@ -2694,11 +2699,30 @@ def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
             "saved": saved}
 
 
+def _chron_legacy_unmigrated(session) -> bool:
+    """这一局是不是**未迁移的老档**（读 CHRON 前先看这个）？
+
+    老档只有一份单文件 `<sid>.json`、还没有状态层句柄——此时「开句柄」=
+    `state.migrate_legacy(...)` **就地落盘迁移**（§10.1：迁移只发生在第一次
+    save）。只读 / 无操作的 CHRON 入口因此**不得**借读一个数把老档迁了
+    （M7-3「只读加载不改写磁盘」、M7-4 `state_view` 的明确规避同款）。
+    新档（已迁移布局）不受影响：开句柄只是纯读，照常走。
+    """
+    return getattr(session, "_handle", None) is None \
+        and getattr(session, "_legacy", None) is not None
+
+
 def _chron_next_barrier(session, from_minute=None) -> dict:
     """只读：下一个必须停下的分钟（L2 `next_barrier`，§6.2 / §6.4）。
 
     `from_minute` 省略 = 当前世界分钟；早于当前 → 400（世界时间只增不减）。
+    **不改盘**：未迁移老档上不开句柄（开 = 落盘迁移），直接回「没有屏障」。
     """
+    if _chron_legacy_unmigrated(session):
+        # 老档还没有 CHRON 块（迁移时才补空块，§8.1）→ 没有屏障可看；也**不**
+        # 为读一个数把它迁了（§10.1 / M7-4 口径）。`from` 的入参校验在路由层。
+        return {"status": "ok", "world_minute": ACTION_EPOCH_MINUTE,
+                "next_barrier": None}
     with session.lock:
         handle = session._handle or session._open_handle()
         state = _chron_restore(session, handle)["state"]
@@ -3643,7 +3667,8 @@ class Handler(BaseHTTPRequestHandler):
 
         请求体 `{"task_id": "act_<32hex>"}`（= 排程回执里的 `task_id`）。
         取消是**幂等**的：不存在的 / 已终态的卡回 `cancelled: false`（200），
-        缺 `task_id` 才是 400 `没有这个任务`。
+        缺 `task_id` 才是 400 `没有这个任务`；**未迁移老档**上同样回
+        `cancelled: false` 且**不改盘**（不开句柄 = 不触发落盘迁移，§10.1）。
         """
         session = self._sess()
         task_id = str(body.get("task_id") or "").strip()
@@ -3660,7 +3685,8 @@ class Handler(BaseHTTPRequestHandler):
         """`GET /api/chron/next_barrier[?from=<世界分钟>]`：下一个屏障 / 结算点。
 
         只读（不落盘、不推进）：`from` 省略 = 当前世界分钟；非法 / 早于当前 →
-        400（世界时间只增不减，§3.2）。没有可停的分钟 → `next_barrier: null`。
+        400（世界时间只增不减，§3.2）。没有可停的分钟 → `next_barrier: null`；
+        **未迁移老档**上不开句柄（开 = 落盘迁移），同样回 `null`（§10.1）。
         """
         session = self._sess()
         q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)

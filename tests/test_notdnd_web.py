@@ -4386,6 +4386,82 @@ def check_chron_advance_barrier_stop():
     notdnd_web._sessions.pop(sid, None)
 
 
+def check_chron_next_barrier_legacy_readonly():
+    """老档边界（修复轮 1）：只读 / 无操作的 CHRON 入口**不得**落盘迁移。
+
+    `state_view`（M7-4）明确规避的那条边界：老档只有 `<sid>.json`，开状态层
+    句柄 = `state.migrate_legacy(...)` 就地落盘迁移（§10.1：迁移只发生在第一次
+    save）。`GET /api/chron/next_barrier` 与 `POST /api/chron/cancel` 都不该
+    借读一个数把老档迁了——老档文件字节不变、`campaigns/<sid>/` 不出现。
+    """
+    sid = "c6-legacy-readonly"
+    legacy = {"sid": sid, "created": 1700000000.0,
+              "log": [{"seq": 1, "kind": "narrative", "text": "旧档旁白", "ts": 1}],
+              "seq": 1, "save_name": "旧档"}
+    with _Server() as server:
+        save_dir = server.get("/api/saves")[1]["save_dir"]
+        path = os.path.join(save_dir, "%s.json" % sid)
+        _write_save(path, legacy)
+        with open(path, "rb") as handle:
+            before = handle.read()
+
+        # 老档没有 CHRON 状态 → 没有屏障；200 且形状与「真的有句柄但没到期」一致
+        status, body = server.get("/api/chron/next_barrier", sid=sid)
+        assert (status, body) == (200, {"status": "ok", "world_minute": 0,
+                                        "next_barrier": None}), (status, body)
+        with open(path, "rb") as handle:
+            assert handle.read() == before, "只读路由不得改写老档"
+        assert not os.path.exists(_campaign_file(sid, "snapshot.json", save_dir)), \
+            "只读路由不得触发老档迁移（不落盘）"
+
+        # 无操作取消：同样不改盘、不迁移
+        status, body = _post(server, "/api/chron/cancel",
+                             {"task_id": "act_" + "a" * 32}, sid)
+        assert (status, body) == (200, {"status": "ok", "task_id": "act_" + "a" * 32,
+                                        "cancelled": False, "world_minute": 0}), \
+            (status, body)
+        with open(path, "rb") as handle:
+            assert handle.read() == before, "无操作取消不得改写老档"
+        assert not os.path.exists(_campaign_file(sid, "snapshot.json", save_dir)), \
+            "无操作取消不得触发老档迁移（不落盘）"
+
+
+def check_chron_new_layout_guard_control():
+    """守卫的**对照**（修复轮 1）：新档（已迁移布局）上照常算屏障 / 取消。
+
+    「未迁移老档」的判据是 `_handle is None` **且** `_legacy is not None`；
+    新档尚未开句柄时开句柄只是纯读，**不得**被守卫误伤——这里造一局已落盘的
+    新档（排了一张 30 分钟的卡）、把门面换成**未开句柄**的那一份，走 HTTP
+    验证 `next_barrier` 与 `cancel` 照常生效。
+    """
+    sid = "c6-new-layout"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    session = notdnd_web.Session.load(sid)
+    assert session is not None
+    proposal = notdnd_web._action_proposal_from_id(session, "a-long", {})
+    scheduled = notdnd_web._chron_schedule(session, proposal, base_seq=0)
+    task_id = scheduled["task_id"]
+    notdnd_web._sessions.pop(sid, None)
+
+    fresh = notdnd_web.Session(sid)          # 新档布局：未开句柄、也没有老档
+    assert fresh._handle is None and fresh._legacy is None, (fresh._handle,
+                                                             fresh._legacy)
+    notdnd_web._sessions[sid] = fresh
+    with _LocalServer() as server:
+        status, body = server.get("/api/chron/next_barrier", sid=sid)
+        assert (status, body) == (200, {"status": "ok", "world_minute": 0,
+                                        "next_barrier": 30}), (status, body)
+        assert fresh._handle is not None, "新档路径照常开句柄（纯读，不是迁移）"
+        status, body = _post(server, "/api/chron/cancel", {"task_id": task_id}, sid)
+        assert (status, body) == (200, {"status": "ok", "task_id": task_id,
+                                        "cancelled": True, "world_minute": 0}), \
+            (status, body)
+        card = _chron_card(sid, task_id)
+        assert card["status"] == "cancelled", card
+    notdnd_web._sessions.pop(sid, None)
+
+
 # --------------------------------------------------------------------------
 # 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
 # --------------------------------------------------------------------------
@@ -4692,6 +4768,8 @@ CHECKS = (
     check_chron_cancel_mapping,
     check_chron_dependency_semantics,
     check_chron_dependency_chain,
+    check_chron_next_barrier_legacy_readonly,
+    check_chron_new_layout_guard_control,
     check_api_state_view,
     check_api_events_incremental,
     check_api_events_across_archives,
