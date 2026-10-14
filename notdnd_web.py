@@ -4358,9 +4358,9 @@ class Handler(BaseHTTPRequestHandler):
         members = [str(m) for m in raw_members] if isinstance(raw_members, list) else []
         if channel == "host" and member.get("role") != "host":
             return self._err("只有房主能发管理消息", 403, "not_authorized")
-        if channel == "tell" and target not in _room_active_members(session.room):
-            return self._err("对象不在房间", 404, "member_not_found")
         with session.lock:
+            if channel == "tell" and target not in _room_active_members(session.room):
+                return self._err("对象不在房间", 404, "member_not_found")
             scope, subjects = _room_chat_audience(session.room, member, channel,
                                                   target, members)
             if not scope:
