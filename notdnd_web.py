@@ -284,8 +284,25 @@ ROOM_ID_RE = SID_RE                     # 复用存档 sid 白名单（同一条
 MEMBER_ID_RE = re.compile(r"m-[A-Za-z0-9]{8,32}")
 ROOM_TOKEN_BYTES = 32                   # 32 字节 → 64 位十六进制；只存 sha256
 ROOM_ROLES = ("host", "player", "observer")
-# §6.1 频道表；S1 只落常量，分流 / 扇出的实现归 S3。
-ROOM_CHANNELS = ("world", "party", "org", "ooc", "host")
+# §6.1 频道表（S3 落完整分流）：`world / party / org / tell / npc / ooc / host`。
+# 「私聊 / 私谈」在事件类型里以 `chat.tell` / `chat.npc` 表达（§5.4 的 `event:` 名）。
+ROOM_CHANNELS = ("world", "party", "org", "tell", "npc", "ooc", "host")
+# §6.1 频道 → **冻结受众**的 `visibility.scope`（STATE §5.1：public / team / private / gm）。
+# `world` / `ooc` 对房内全部成员（public）；`party` / `org` 为队 / 组织范围（team）；
+# `tell` / `npc` 只给点名成员（private）；`host` 只给房主（gm，管理消息）。
+ROOM_CHANNEL_SCOPES = {
+    "world": "public",
+    "ooc": "public",
+    "party": "team",
+    "org": "team",
+    "tell": "private",
+    "npc": "private",
+    "host": "gm",
+}
+# 聊天事件（§6.1）：`type = chat.<频道>`，正文是玩家原话；上下限各一。
+ROOM_CHAT_EVENT_PREFIX = "chat."
+ROOM_CHAT_TEXT_MAX = 2000
+ROOM_CHAT_RULES_VERSION = "prism@room-chat"
 # §5.5 的推送流参数（模块常量：测试可覆写成小值，真跑「心跳 / 判死 / 队列满」）。
 ROOM_STREAM_HEARTBEAT_SECONDS = 15.0    # 每 15s 一行注释 `: keepalive`
 ROOM_STREAM_DEAD_SECONDS = 90.0         # 90s 无任何帧（含心跳）→ 服务端关流
@@ -415,40 +432,49 @@ def _room_seats(room: dict) -> list:
 # 连接：有界出站队列 + 判活。流的引用 / 队列是**内存态**（§3.3），不进 `room`
 # 块——那块只放可持久化的房间事实（§3.2，且要能 JSON 落盘）。
 
-# §5.4 的 `visibility.scope` → 推送频道（§6.1 的最小口径；完整分流归 S3）。
+# §5.4 的 `visibility.scope` → 推送频道（**S2 兼容**：`chat.*` 之外的事件按 scope 兜底）。
 ROOM_SCOPE_CHANNELS = {"public": "world", "team": "party", "private": "tell"}
 
 
 def _room_event_channel(event) -> str:
     """事件封套 → 推送频道名（§5.4 / §6.1）。
 
-    `public` → `world`（房内全部成员）、`team` → `party`、`private` → `tell`。
-    `gm`（导引者内部）与未知 scope 一律回**空串 = 不下发**（失败关闭）：
-    S2 没有「导引者内部内容可以给谁看」的口径，宁可少发也不越权（§6.2）。
+    S3 的频道由事件 `type` 前缀显式标注：`chat.<频道>` → 该频道名（§5.4 的
+    `event:` 即频道名）。没有频道标注的老事件（S2、行动 / CHRON 提交）按
+    `visibility.scope` 兜底：`public` → `world`、`team` → `party`、`private` → `tell`。
+    未知 scope / 未知频道一律回**空串 = 不下发**（失败关闭，§6.2）。
     """
+    if isinstance(event, dict):
+        ev_type = event.get("type")
+        if isinstance(ev_type, str) and ev_type.startswith(ROOM_CHAT_EVENT_PREFIX):
+            channel = ev_type[len(ROOM_CHAT_EVENT_PREFIX):]
+            return channel if channel in ROOM_CHANNELS else ""
     visibility = event.get("visibility") if isinstance(event, dict) else None
     if not isinstance(visibility, dict):
         return ""
     return ROOM_SCOPE_CHANNELS.get(visibility.get("scope"), "")
 
 
-def _room_event_visible(event, character_id: str) -> bool:
-    """这条事件该不该推给持有该角色的成员（§6.1 / §6.4）。
+def _room_event_visible(event, member_id: str, character_id: str) -> bool:
+    """这条事件该不该推给该**成员**（§6.1 / §6.4 每成员视角过滤）。
 
-    `world` 对房内所有人可见；`party` / `tell` 只对 `visibility.subjects` 里
-    点名的角色可见（S1 还没有队伍模型，`team` 暂以 `subjects` 为名单——S3
-    落队伍归属后按队伍判）；其余（`gm` / 未知）对谁都不下发。
+    `world` / `ooc` 对房内全部成员可见；`party` / `org` / `tell` / `npc` / `host`
+    只对 `visibility.subjects` 点名的成员可见——`subjects` 在**提交时冻结**，
+    重连沿用同一份名单（§6.4）。成员 id 与角色 id 都可作点名（S2 事件点名角色、
+    S3 聊天点名成员），任一命中即可见。`gm`（导引者内部）没有点名时对谁都不下发
+    （失败关闭）；`host` 管理消息即 `gm` + 房主点名（只给房主）。
     """
     channel = _room_event_channel(event)
-    if channel == "world":
-        return True
-    if channel not in ("party", "tell"):
+    if not channel:
         return False
-    subjects = event.get("visibility", {}).get("subjects") \
-        if isinstance(event.get("visibility"), dict) else None
+    if channel in ("world", "ooc"):
+        return True
+    visibility = event.get("visibility") if isinstance(event, dict) else None
+    subjects = visibility.get("subjects") if isinstance(visibility, dict) else None
     if not isinstance(subjects, list):
         return False
-    return bool(character_id) and character_id in subjects
+    mine = {str(x) for x in (member_id, character_id) if x}
+    return bool(mine & {str(s) for s in subjects})
 
 
 def _room_frame(event) -> dict:
@@ -456,26 +482,130 @@ def _room_frame(event) -> dict:
 
     `type` / `audience` 都是频道名（§5.4 的示例即同值），`event` 是事件封套
     **原样**透出——换传输（WS / 轮询）时只换编码，不改这里的语义。
+    成员视角的秘密门（§6.2）在 `_room_member_frame` 里过，不在这一层。
     """
     channel = _room_event_channel(event)
     return {"seq": _int_or(event.get("seq"), 0), "type": channel,
             "event": event, "audience": channel}
 
 
-def _room_frames(session: Session, character_id: str, since: int) -> list:
+def _room_active_members(room: dict) -> dict:
+    """房内 `state=active` 的成员：`{member_id: member}`（§4.4：离开 / 被踢不计）。"""
+    members = room.get("members") if isinstance(room, dict) else None
+    if not isinstance(members, dict):
+        return {}
+    return {str(mid): m for mid, m in members.items()
+            if isinstance(m, dict) and m.get("state") == "active"}
+
+
+def _room_member_knows(session: Session, member: dict) -> list:
+    """本成员角色的 `knows`（§6.2「本成员的角色 knows 集」）。
+
+    从规则快照的 `party` 里按 `character_id` 找到该成员的角色卡，取 `knows`；
+    找不到 / 没填 → 空集（不是「全知」）。秘密门把它与其他可见性输入并起来。
+    """
+    cid = str((member or {}).get("character_id") or "")
+    if not cid:
+        return []
+    rules = session.rules if isinstance(session.rules, dict) else {}
+    for unit in rules.get("party") or []:
+        if isinstance(unit, dict) and str(unit.get("id") or "") == cid:
+            knows = unit.get("knows")
+            return [str(x) for x in knows] if isinstance(knows, list) else []
+    return []
+
+
+# §6.2：内容**按成员各算**的频道（可见范围不同 = 各成员各过一遍秘密门）。
+ROOM_PER_MEMBER_CHANNELS = ("tell", "npc", "org")
+
+
+def _room_member_frame(session: Session, member: dict, event) -> dict:
+    """按**该成员**的视角出一帧（§6.2 / §6.3）。
+
+    聊天正文可能含 NPC 秘密，交付前过一遍秘密门，未放行的片段涂成「……」：
+    - `tell` / `npc` / `org`：**按成员各过一遍**（本成员角色 `knows` 集 + 目击 +
+      被告知，`redact_for_member`）——同一事件对不同成员给出不同可见部分；
+    - `world` / `ooc` / `host`：**只过一次**（对所有人相同，复用 `redact_narration`）。
+    非聊天事件原样透出；秘密内容只按该成员的可见部分进帧（§6.3：服务端只推自己那份）。
+    """
+    channel = _room_event_channel(event)
+    if (prism_guide is None or not channel or not isinstance(event, dict)
+            or not str(event.get("type") or "").startswith(ROOM_CHAT_EVENT_PREFIX)):
+        return _room_frame(event)
+    text = event.get("cause")
+    if not isinstance(text, str) or not text:
+        return _room_frame(event)
+    guide = session.guide if isinstance(session.guide, dict) else {}
+    if channel in ROOM_PER_MEMBER_CHANNELS:
+        redacted = prism_guide.redact_for_member(
+            text, guide, knows=_room_member_knows(session, member))
+    else:
+        redacted = prism_guide.redact_narration(text, guide)
+    if redacted == text:
+        return _room_frame(event)
+    safe = dict(event)
+    safe["cause"] = redacted
+    return _room_frame(safe)
+
+
+def _room_frames(session: Session, member: dict, since: int) -> list:
     """`seq > since` 里该成员**有权看**的帧（§6.4：按序号读事件 + 同一判据过滤）。
 
     读取 / 链校验 / 跨归档拼接全在状态层（`Handle.events_since`，M7-4）；本层
-    只做受众过滤——重连**绝不**因为「是补发」而多给（§6.4）。状态层拒载时
-    异常照常上抛（调用方翻成既有的固定 500），不静默当空。
+    只做受众过滤——重连**绝不**因为「是补发」而多给（§6.4）；再按该成员的视角
+    过一遍秘密门（§6.2）。状态层拒载时异常照常上抛（调用方翻成既有的固定 500）。
     """
+    member_id = str((member or {}).get("member_id") or "")
+    character_id = str((member or {}).get("character_id") or "")
     with session.lock:
         handle = session._handle
         if handle is None:
             return []                       # 还没有状态层日志（未迁移老档）
         events = handle.events_since(since)
-    return [_room_frame(event) for event in events
-            if _room_event_visible(event, character_id)]
+    return [_room_member_frame(session, member, event) for event in events
+            if _room_event_visible(event, member_id, character_id)]
+
+
+def _room_chat_audience(room: dict, member: dict, channel: str,
+                        target: str, members) -> tuple:
+    """按频道算出**提交时冻结**的 `(scope, subjects)`（§6.1；subjects = 成员 id）。
+
+    - `world` / `ooc`：房内全部成员（`public`，不点名）；
+    - `party`：同队成员——S3 无独立队伍模型，取房内**在座**成员（`host` / `player`，
+      与 `world` 的区别在 observer：observer 看 `world` 不看 `party`，§4.2）；
+    - `org`：该组织成员**且显式授权可见**——由请求里 `members` 点名（组织共享 ≠
+      全部秘密共享，GDD §7.2），并总是带发送者；
+    - `tell`：仅收发双方（`target` 必须是房内在座成员）；
+    - `npc`：与 NPC 私谈的参与者 + 合法目击 / 监听者——发送者 + 请求 `members` 里的目击者；
+    - `host`：房主（管理消息）。
+    非法频道 / 缺目标 → 回 `("", [])`（调用方翻成 400）。
+    """
+    active = _room_active_members(room)
+    sender_id = str((member or {}).get("member_id") or "")
+    scope = ROOM_CHANNEL_SCOPES.get(channel, "")
+    if not scope:
+        return "", []
+    if channel in ("world", "ooc"):
+        return scope, []
+    if channel == "party":
+        seated = [mid for mid, m in active.items()
+                  if m.get("role") in ("host", "player")]
+        return scope, (seated or [sender_id])
+    if channel in ("org", "npc"):
+        ids = [sender_id] if sender_id else []
+        for mid in members or []:
+            mid = str(mid)
+            if mid in active and mid not in ids:
+                ids.append(mid)
+        return scope, ids
+    if channel == "tell":
+        ids = [sender_id] if sender_id else []
+        if str(target) in active and str(target) != sender_id:
+            ids.append(str(target))
+        return scope, ids
+    # 只剩 `host`（其余频道已在上文处理）。
+    hosts = [mid for mid, m in active.items() if m.get("role") == "host"]
+    return scope, (hosts or [sender_id])
 
 
 class _RoomStream:
@@ -571,30 +701,37 @@ def _room_stream_list(room_id: str) -> list:
         return [stream for streams in bucket.values() for stream in streams]
 
 
-def _room_publish(room_id: str, events) -> None:
+def _room_publish(session: Session, events) -> None:
     """提交成功后按受众扇出（§5.5）：一条事件只投给有权看的流。
 
-    这里读 `stream.last_sent` 只是**少投一次**的优化（无锁读，可能与写线程
-    的更新交错）；真正管「不重」的是写线程写帧时的去重（`_write_room_frame`）。
+    受众过滤（§6.1）与**每成员视角**的秘密门（§6.2）都按该流的成员算——所以
+    这里要拿到 `session`（成员记录 / 规则快照）。读 `stream.last_sent` 只是
+    **少投一次**的优化（无锁读，可能与写线程的更新交错）；真正管「不重」的是
+    写线程写帧时的去重（`_write_room_frame`）。
     """
-    targets = _room_stream_list(room_id)
+    rid = str(getattr(session, "sid", "") or "")
+    targets = _room_stream_list(rid)
     if not targets or not events:
         return
+    members = _room_active_members(session.room)
     for stream in targets:
+        member = members.get(stream.member_id) or {"member_id": stream.member_id,
+                                                   "character_id": stream.character_id}
         for event in events:
             seq = _int_or(event.get("seq"), 0)
             if seq <= stream.last_sent:
                 continue        # 已经写进 socket（补发 / 上一批）：不重发
-            if not _room_event_visible(event, stream.character_id):
+            if not _room_event_visible(event, stream.member_id, stream.character_id):
                 continue        # 无权看：**绝不下发**（§6.1）
-            stream.enqueue(_room_frame(event))
+            stream.enqueue(_room_member_frame(session, member, event))
 
 
 def _room_publish_after_commit(handle, commit, room_id: str = "") -> None:
     """一次提交之后的扇出（§5.5：提交**成功**之后）。
 
     `room_id` 缺省取句柄的 `campaign_id`：M-11（`room_id == sid == campaign_id`）
-    是 S1 已落的不变式，排程 / 推进那几处因此不必把 `session` 一路传进来。
+    是 S1 已落的不变式，排程 / 推进那几处因此不必把 `session` 一路传进来；
+    扇出要按成员过滤（§6.1 / §6.2），故由 `room_id` 取回会话（取不到就只当没有流）。
     推送只是**交付**：读日志 / 投递失败都不影响已提交的事实（客户端靠
     `since` 补发自愈），所以这里恒定不抛。
     """
@@ -606,11 +743,14 @@ def _room_publish_after_commit(handle, commit, room_id: str = "") -> None:
     room_id = room_id or str(getattr(handle, "campaign_id", "") or "")
     if not _room_stream_list(room_id):
         return
+    session = get_session(room_id)
+    if session is None:
+        return
     try:
         events = handle.events_since(seq_from - 1)
     except state.StateError:
         return              # 读日志失败只影响这一轮推送：不打断提交路径
-    _room_publish(room_id, events)
+    _room_publish(session, events)
 
 
 class _RoomAuthError(Exception):
@@ -3248,6 +3388,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/room/kick":
                 return self._room_kick(b)
 
+            if path == "/api/room/chat":
+                return self._room_chat(b)
+
             if path == "/api/session/create":
                 # 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）：还没有会话时要能开一局，
                 # 所以**不**调 _sess()——本路由不读 X-Session，只回一个新 sid。
@@ -4197,6 +4340,67 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"status": "ok", "room_id": room_id,
                            "member_id": target_id})
 
+    def _room_chat(self, body: dict):
+        """`POST /api/room/chat`：按频道发一条消息并**广播**（§6.1 / §6.2 / §6.4）。
+
+        体：`{channel, text, target?, members?}`——`channel` ∈ §6.1 的七个频道；
+        `target`（`tell` 用）是收件成员 id；`members`（`org` / `npc` 用）是显式
+        点名的成员 id 列表。服务端在**提交时算出并冻结受众**（`visibility` 的
+        `scope` / `subjects`，写进事件封套）；聊天正文放在事件 `cause`（事件封套无
+        自由文本字段，STATE §5.1），且不变更任何世界块（`changes=[]`：聊天内容
+        **不自动成为世界事实**，GDD §7.7）。
+        提交成功后再按受众扇出（§5.5）；每个成员收到的是**自己那份**（§6.3）。
+        observer 只读 → `403`（§4.2）。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        channel = str(body.get("channel") or "").strip().lower()
+        if channel not in ROOM_CHANNELS:
+            return self._err("频道不合法", 400, "bad_channel")
+        if member.get("role") == "observer":
+            return self._err("观察者只读", 403, "not_authorized")
+        text = _text_or(body.get("text"), ROOM_CHAT_TEXT_MAX).strip()
+        if not text:
+            return self._err("消息不能为空", 400, "bad_text")
+        target = str(body.get("target") or "").strip()
+        raw_members = body.get("members")
+        members = [str(m) for m in raw_members] if isinstance(raw_members, list) else []
+        if channel == "host" and member.get("role") != "host":
+            return self._err("只有房主能发管理消息", 403, "not_authorized")
+        with session.lock:
+            if channel == "tell" and target not in _room_active_members(session.room):
+                return self._err("对象不在房间", 404, "member_not_found")
+            scope, subjects = _room_chat_audience(session.room, member, channel,
+                                                  target, members)
+            if not scope:
+                return self._err("频道不合法", 400, "bad_channel")
+            handle = session._handle or session._open_handle()
+            base_seq = _int_or(handle.view().get("seq"), 0)
+            # 幂等键：优先 `Idempotency-Key` 头（§7.2）；缺省由服务端补一个，
+            # 真正的重放去重归 S4（本切片只保证一次提交 = 一条事件）。
+            key = str(self.headers.get("Idempotency-Key") or "").strip()
+            if not ACTION_IDEM_KEY_RE.fullmatch(key):
+                key = "chat_" + secrets.token_hex(16)
+            commit = handle.commit(
+                base_seq=base_seq, idempotency_key=key,
+                type=ROOM_CHAT_EVENT_PREFIX + channel,
+                actor=str(member.get("member_id") or ""),
+                target=(target or None), cause=text, changes=[],
+                rules_version=ROOM_CHAT_RULES_VERSION,
+                visibility={"scope": scope, "subjects": subjects},
+                source="player")
+            status = str((commit or {}).get("status") or "")
+            if status not in ("committed", "replayed"):
+                return self._err("状态已变，请重试", 409, "commit_conflict")
+        # §5.5：**提交成功之后**扇出——推送只是交付，不影响已提交的事实。
+        _room_publish_after_commit(handle, commit, session.sid)
+        return self._json({"status": "ok", "room_id": room_id,
+                           "channel": channel, "seq": commit.get("seq_to"),
+                           "scope": scope, "subjects": subjects})
+
     # ── 房间事件流（M10-S2，§5.4 / §5.5）────────────────────
     def _room_stream_route(self):
         """`GET /api/room/stream?since=`：事件流（SSE）+ **同一路径**的短轮询降级。
@@ -4213,9 +4417,8 @@ class Handler(BaseHTTPRequestHandler):
         except _RoomAuthError as exc:
             return self._err(exc.msg, exc.code, exc.reason)
         since = _since_param(self.path)
-        character_id = str(member.get("character_id") or "")
         if _wants_json(self.headers.get("Accept")):
-            frames = _room_frames(session, character_id, since)
+            frames = _room_frames(session, member, since)
             return self._json({"frames": frames,
                                "seq": frames[-1]["seq"] if frames else since})
         self._room_stream(session, member, since)
@@ -4239,7 +4442,7 @@ class Handler(BaseHTTPRequestHandler):
         _room_stream_register(stream)
         try:
             try:
-                frames = _room_frames(session, stream.character_id, since)
+                frames = _room_frames(session, member, since)
             except state.StateError:
                 # 状态行还没写：按既有「状态读取失败」回 500，**不**开一条空流。
                 return self._err("状态读取失败", 500)
