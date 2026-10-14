@@ -55,6 +55,13 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     `409 conflict` + 当前 `seq`，不写事件）+ 单写者串行；行动者取该成员绑定的
     角色，结算复用 M8 管线（一次提交 = 一条事件）。`POST /api/room/chat` 同一套
     口径（认 `Idempotency-Key` 与可选 `base_seq`），两条房间写路径一致
+  · 运行模式、暂停与 PvP（M10-S5，MULTIPLAYER-DESIGN §5.6 / §7.3 / §7.4）：
+    `paused` / `pvp_mode` / `mode`（`free` 自由 / `event` 事件 / `manage` 管理）
+    落在 `blocks.room`。房主 `POST /api/room/pause` 暂停 / 恢复；暂停期间新的
+    世界变更类提交 `409 room_paused`，只读与聊天不受影响。对另一名玩家角色的
+    敌意行动：`off` → `403 pvp_disabled`，`consent` 无该次同意令牌 →
+    `403 pvp_needs_consent`，`on` 放行并照常结算。事件模式本单只保证串行提交，
+    **不开** CHRON 局部同步窗口（见 `_room_mode_settlement`）
   · CHRON 存档块（M9-C5）：`chron` 是又一块**不透明块**（CHRON-DESIGN §8.1）——
     本文件只提供它的默认值工厂（老档迁移时补空块）；块的加载 / 重放 / 重建 `due_heap` /
     幂等表全归 `chron.py`（C5），本文件不解析这块
@@ -314,6 +321,21 @@ ROOM_CHAT_RULES_VERSION = "prism@room-chat"
 ROOM_STREAM_HEARTBEAT_SECONDS = 15.0    # 每 15s 一行注释 `: keepalive`
 ROOM_STREAM_DEAD_SECONDS = 90.0         # 90s 无任何帧（含心跳）→ 服务端关流
 ROOM_STREAM_QUEUE_MAX = 256             # 每流出站队列（**帧数**）上限；满则断流
+# §5.6 / §7.3：运行模式落盘键是 `room.mode`（§3.2 未列；房间层拥有块形状，
+# 不另起第二套字段）。取值沿用设计用语的英文机器码：自由 / 事件 / 管理。
+ROOM_MODES = ("free", "event", "manage")
+ROOM_PVP_MODES = ("off", "consent", "on")
+ROOM_HOST_EVENT_PREFIX = "host."        # 高权限留痕（§9）：`host.pause` 等
+ROOM_HOST_RULES_VERSION = "prism@room-host"
+ROOM_PAUSED_ERROR = "房主已暂停"          # 409 room_paused（§7.4，前端照这句显示）
+ROOM_PVP_DISABLED = "本房间未开启玩家对抗"   # 403 pvp_disabled
+ROOM_PVP_NEEDS_CONSENT = "需要对方同意这次对抗"  # 403 pvp_needs_consent
+# 敌意标记（房间层读场景行动表，不猜文案）：`hostile: true`，或 `tags` 里
+# 这些类别。PRISM 的 `kind` 仍只是 narrate/check，敌意不靠 kind 推断。
+ROOM_HOSTILE_TAGS = frozenset({"hostile", "pvp", "attack", "steal", "poison"})
+# §7.4 consent：对方对该次行动的一次性确认令牌（明文只回一次；服务端存 hash）。
+ROOM_PVP_CONSENT_TTL_S = 300.0
+ROOM_PVP_CONSENT_RE = re.compile(r"^pvpc_[0-9a-f]{32}$")
 
 
 def _hash_token(token: str) -> str:
@@ -343,8 +365,10 @@ def _empty_room(sid: str = "") -> dict:
         "host_member_id": "",
         "capacity": ROOM_MAX_MEMBERS,
         "created_at": 0.0,
-        "paused": False,                # 房主暂停（GDD §7.6）；S1 只落字段
+        "paused": False,                # 房主暂停（GDD §7.6 / §7.4）
         "pvp_mode": "consent",          # "off" | "consent" | "on"（GDD §7.5）
+        # 自由 / 事件 / 管理（§5.6）。缺省自由 = 行动各自提交（既有路径）。
+        "mode": "free",
         "world_key": "",                # 复用现有世界键；空 = 尚未绑定
         "scenario_id": "",              # 复用现有剧本键，可为空
         "settings": {
@@ -381,7 +405,8 @@ def _room_from(raw: object, sid: str) -> dict:
     room = _empty_room(sid)
     if isinstance(raw, dict):
         for key in ("host_member_id", "created_at", "paused", "pvp_mode",
-                    "world_key", "scenario_id", "settings", "seq", "members"):
+                    "mode", "world_key", "scenario_id", "settings", "seq",
+                    "members"):
             if key in raw:
                 room[key] = raw[key]
     # 契约常量 / 规范清洗（不属于玩家值，永远对齐）。
@@ -390,8 +415,10 @@ def _room_from(raw: object, sid: str) -> dict:
     room["capacity"] = ROOM_MAX_MEMBERS
     if not isinstance(room.get("paused"), bool):
         room["paused"] = False
-    if room.get("pvp_mode") not in ("off", "consent", "on"):
+    if room.get("pvp_mode") not in ROOM_PVP_MODES:
         room["pvp_mode"] = "consent"
+    if room.get("mode") not in ROOM_MODES:
+        room["mode"] = "free"
     if not isinstance(room.get("settings"), dict):
         room["settings"] = _empty_room(sid)["settings"]
     if not isinstance(room.get("host_member_id"), str):
@@ -432,6 +459,252 @@ def _room_seats(room: dict) -> list:
             and m.get("role") in ("host", "player")]
 
 
+def _room_caller_is_host(room: dict, member: dict) -> bool:
+    """锁内读到的当前值：在座房主，且房主位仍指向本人（与踢人同一判据）。"""
+    return (isinstance(member, dict) and isinstance(room, dict)
+            and member.get("role") == "host"
+            and member.get("state") == "active"
+            and room.get("host_member_id") == member.get("member_id"))
+
+
+def _room_event_seq(session) -> int:
+    """状态层战役 `seq`（还没开句柄 → 0，不为读数去开句柄）。"""
+    handle = getattr(session, "_handle", None)
+    if handle is None:
+        return 0
+    return _int_or(handle.view().get("seq"), 0)
+
+
+def _room_mode_settlement(mode: str) -> dict:
+    """三种模式的结算口径（§5.6 / §7.3b / §8.2）——给调用方的**合同**，不是窗口。
+
+    M9（`chron.py` C1–C6）已在 master：局部同步窗口由 CHRON 在 `advance_to`
+    里、于两张及以上**进行中**行动共享 `place` / `resource` 时打开
+    （`window.opened`）。本单不改 `chron.py`，房间层也不裁决时间（§8.2）：
+    即时行动仍走 §7.2 的单写者串行提交，**不**开窗口、**不**承诺真同时。
+    管理只落盘模式，不在这里建长期项目。`chron_window` 恒为假，避免把
+    「模式已记下」说成「窗口已打开」。
+    """
+    return {
+        "settlement": "serial" if mode == "event" else "independent",
+        "chron_window": False,
+    }
+
+
+def _room_switch_body(session) -> dict:
+    """暂停 / 模式 / PvP 开关的回执：三块都回当前落盘值。"""
+    room = session.room if isinstance(getattr(session, "room", None), dict) else {}
+    mode = room.get("mode") if room.get("mode") in ROOM_MODES else "free"
+    body = {
+        "status": "ok",
+        "room_id": str(room.get("room_id") or getattr(session, "sid", "") or ""),
+        "paused": room.get("paused") is True,
+        "pvp_mode": room.get("pvp_mode") if room.get("pvp_mode") in ROOM_PVP_MODES
+        else "consent",
+        "mode": mode,
+        "seq": _room_event_seq(session),
+    }
+    body.update(_room_mode_settlement(mode))
+    return body
+
+
+def _room_is_paused(session) -> bool:
+    """房间是否处于房主暂停（缺块 / 脏值按未暂停，与 `_room_from` 同口径）。"""
+    room = getattr(session, "room", None)
+    return isinstance(room, dict) and room.get("paused") is True
+
+
+def _room_commit_host(session, member, *, event_type: str, cause: str,
+                      changes: list) -> dict:
+    """高权限留痕（§9）：一条 `host.*` 事件。调用方持有 `session.lock`。
+
+    `changes` 把开关写进事件，日志重放才能恢复（检查点只是加速副本，§9）。
+    随机幂等键：每一次真实切换是一次新提交，不与玩家行动键混用。
+    """
+    handle = session._handle or session._open_handle()
+    view = handle.view()
+    host_id = str(session.room.get("host_member_id") or member.get("member_id") or "")
+    return handle.commit(
+        base_seq=_int_or(view.get("seq"), 0),
+        idempotency_key="host_" + secrets.token_hex(16),
+        type=event_type,
+        actor=str(member.get("member_id") or ""),
+        cause=cause,
+        changes=list(changes),
+        rules_version=ROOM_HOST_RULES_VERSION,
+        visibility={"scope": "gm", "subjects": [host_id] if host_id else []},
+        source="player",
+        # 留痕不推进世界钟：沿用提交时的 `world_time`，避免把时钟写成 null。
+        world_time=view.get("world_time"),
+    )
+
+
+def _room_finish_host_change(session, member, previous, *, event_type: str,
+                             cause: str, changes: list):
+    """提交留痕并 `save()`。成功回 `(commit, None)`；失败回 `(None, 错误三元组)`。
+
+    提交失败：房间块拨回 `previous`（磁盘未改）。提交已成功但检查点失败：
+    **不**拨回——事件已是事实，重放能把开关补上；内存保持新值，调用方回 500。
+    """
+    try:
+        commit = _room_commit_host(session, member, event_type=event_type,
+                                   cause=cause, changes=changes)
+    except SaveError:
+        session.room = previous
+        return None, ("保存失败，请重试", 500, "")
+    status = str((commit or {}).get("status") or "")
+    if status not in ("committed", "replayed"):
+        session.room = previous
+        if status == "conflict":
+            return None, ("状态已变，请重试", 409, "conflict")
+        return None, ("保存失败，请重试", 500, "")
+    try:
+        session.save()
+    except SaveError:
+        return commit, ("保存失败，请重试", 500, "")
+    return commit, None
+
+
+def _room_action_is_hostile(entry) -> bool:
+    """场景行动是不是敌意（攻击 / 偷 / 下毒这一类）。不看 label 文案。"""
+    if not isinstance(entry, dict):
+        return False
+    if entry.get("hostile") is True:
+        return True
+    tags = entry.get("tags")
+    if not isinstance(tags, list):
+        return False
+    return any(str(tag) in ROOM_HOSTILE_TAGS for tag in tags)
+
+
+def _room_pvp_subject(session, member, action_id, params):
+    """对**另一名在座玩家角色**的敌意行动 → 该角色 id；否则 `None`（门不适用）。"""
+    entry = _action_scene_entry(session.rules, action_id)
+    if not _room_action_is_hostile(entry):
+        return None
+    target = _action_target_ref((params or {}).get("target"))
+    target_id = str((target or {}).get("id") or "") if isinstance(target, dict) else ""
+    if not target_id:
+        return None
+    actor_id = str((member or {}).get("member_id") or "")
+    actor_character = str((member or {}).get("character_id") or "")
+    if target_id == actor_character:
+        return None
+    for other in _room_active_members(session.room).values():
+        if str(other.get("member_id") or "") == actor_id:
+            continue
+        if other.get("role") not in ("host", "player"):
+            continue
+        if str(other.get("character_id") or "") == target_id:
+            return target_id
+    return None
+
+
+# 一次性 PvP 同意：hash → 记录。明文不进这张表、不落盘（§7.4 / 铁律 3）。
+_pvp_consents: dict[str, dict] = {}
+_pvp_consents_lock = threading.Lock()
+
+
+def _room_pvp_consent_issue(room_id: str, issuer_member_id: str,
+                            actor_member_id: str, action_id: str,
+                            target_character_id: str) -> tuple:
+    """发一枚该次同意令牌。返回 `(明文, expires_at)`；库里只留 hash。"""
+    token = "pvpc_" + secrets.token_hex(16)
+    expires_at = time.time() + ROOM_PVP_CONSENT_TTL_S
+    record = {
+        "room_id": str(room_id),
+        "issuer_member_id": str(issuer_member_id),
+        "actor_member_id": str(actor_member_id),
+        "action_id": str(action_id),
+        "target_character_id": str(target_character_id),
+        "expires_at": expires_at,
+    }
+    now = time.time()
+    with _pvp_consents_lock:
+        dead = [key for key, item in _pvp_consents.items()
+                if float(item.get("expires_at") or 0) <= now]
+        for key in dead:
+            _pvp_consents.pop(key, None)
+        _pvp_consents[_hash_token(token)] = record
+    return token, expires_at
+
+
+def _room_pvp_consent_matched(room_id: str, actor_member_id: str, action_id: str,
+                              target_character_id: str, token: str, *,
+                              consume: bool) -> bool:
+    """这枚令牌是不是该次同意。不匹配不消耗；`consume` 为真时匹配则一次性作废。"""
+    if not ROOM_PVP_CONSENT_RE.fullmatch(str(token or "")):
+        return False
+    digest = _hash_token(str(token))
+    now = time.time()
+    with _pvp_consents_lock:
+        record = _pvp_consents.get(digest)
+        if not isinstance(record, dict) or float(record.get("expires_at") or 0) <= now:
+            _pvp_consents.pop(digest, None)
+            return False
+        matched = (record.get("room_id") == str(room_id)
+                   and record.get("actor_member_id") == str(actor_member_id)
+                   and record.get("action_id") == str(action_id)
+                   and record.get("target_character_id") == str(target_character_id))
+        if not matched:
+            return False
+        if consume:
+            _pvp_consents.pop(digest, None)
+        return True
+
+
+def _room_pvp_consent_take(room_id: str, actor_member_id: str, action_id: str,
+                           target_character_id: str, token: str) -> bool:
+    """核销该次同意。不匹配不消耗（防止拿别人的令牌去烧掉）；匹配则一次性作废。"""
+    return _room_pvp_consent_matched(
+        room_id, actor_member_id, action_id, target_character_id, token,
+        consume=True)
+
+
+def _room_pvp_decision(session, member, action_id, params, consent_token: str,
+                       *, consume: bool = True):
+    """PvP 门（§7.4）。`None` = 放行；否则 `(人话, reason)`。拒绝不结算。
+
+    `off` 不看令牌；`on` 不需要令牌；`consent` 只认**该次**令牌。
+    `consume` 为假时只预览（给配额让路）；为真时匹配才核销。
+    """
+    subject = _room_pvp_subject(session, member, action_id, params)
+    if subject is None:
+        return None
+    mode = session.room.get("pvp_mode")
+    if mode not in ROOM_PVP_MODES:
+        mode = "consent"
+    if mode == "off":
+        return (ROOM_PVP_DISABLED, "pvp_disabled")
+    if mode == "on":
+        return None
+    if _room_pvp_consent_matched(str(getattr(session, "sid", "") or ""),
+                                 str(member.get("member_id") or ""),
+                                 str(action_id), subject, consent_token,
+                                 consume=consume):
+        return None
+    return (ROOM_PVP_NEEDS_CONSENT, "pvp_needs_consent")
+
+
+def _room_set_change(path: str, before, after) -> dict:
+    """房间块上的一条 `set`（§9：before / after 都要在，重放以 after 为准）。"""
+    return {"block": "room", "path": path, "op": "set",
+            "before": before, "after": after}
+
+
+def _room_member_by_character(room, character_id: str):
+    """在座的 host / player 里，绑定了该角色的那一位；没有则 `None`。"""
+    wanted = str(character_id or "")
+    if not wanted:
+        return None
+    for member in _room_active_members(room).values():
+        if member.get("role") not in ("host", "player"):
+            continue
+        if str(member.get("character_id") or "") == wanted:
+            return member
+    return None
+
+
 # ── 房间事件流（M10-S2，MULTIPLAYER-DESIGN §5.4 / §5.5）────────────────────
 #
 # 推送对外的**合同**只有两件：`seq`（战役全序，来自状态层事件日志）与
@@ -456,6 +729,10 @@ def _room_event_channel(event) -> str:
         if isinstance(ev_type, str) and ev_type.startswith(ROOM_CHAT_EVENT_PREFIX):
             channel = ev_type[len(ROOM_CHAT_EVENT_PREFIX):]
             return channel if channel in ROOM_CHANNELS else ""
+        # 高权限留痕（§9）不是聊天：`host.pause` / `host.resume` / `host.mode` /
+        # `host.pvp` 走 `host` 频道，只推给 `visibility.subjects` 里的房主。
+        if isinstance(ev_type, str) and ev_type.startswith(ROOM_HOST_EVENT_PREFIX):
+            return "host" if ev_type[len(ROOM_HOST_EVENT_PREFIX):] else ""
     visibility = event.get("visibility") if isinstance(event, dict) else None
     if not isinstance(visibility, dict):
         return ""
@@ -1798,10 +2075,11 @@ class _ActionError(Exception):
     唯一一行状态（正文 `{"error": <固定短语>}`）。
     """
 
-    def __init__(self, phrase: str, code: int):
+    def __init__(self, phrase: str, code: int, reason: str = ""):
         super().__init__(phrase)
         self.phrase = phrase
         self.code = code
+        self.reason = reason
 
 
 class _SyncOnlySchedule:
@@ -3025,6 +3303,9 @@ def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
     if isinstance(target, bool) or not isinstance(target, int) or target < 0:
         raise _ActionError(CHRON_BAD_TARGET, 400)
     with session.lock:
+        if _room_is_paused(session):
+            # 推进会改世界时间 / 结算到期行动：暂停时整段不做（§7.4）。
+            raise _ActionError(ROOM_PAUSED_ERROR, 409, "room_paused")
         handle = session._handle or session._open_handle()
         restored = _chron_restore(session, handle)
         state, block, seq = restored["state"], restored["block"], restored["seq"]
@@ -3358,7 +3639,8 @@ class Handler(BaseHTTPRequestHandler):
             self._err("未知路径", 404)
         except _ActionError as e:
             # 行动管线的固定错误（§9.5）：短语 + 仅状态行之前可用的码。
-            self._err(e.phrase, e.code)
+            # `reason` 缺省为空，既有端点的响应形状不变；暂停门才带上。
+            self._err(e.phrase, e.code, e.reason)
         except SaveError:
             # 存档落盘失败（含开句柄 / 老档迁移）：如实回报，不谎报成功。
             self._err("保存失败，请重试", 500)
@@ -3423,6 +3705,15 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/room/action":
                 return self._room_action(b)
 
+            if path == "/api/room/pause":
+                return self._room_pause(b)
+
+            if path == "/api/room/settings":
+                return self._room_settings(b)
+
+            if path == "/api/room/pvp/consent":
+                return self._room_pvp_consent(b)
+
             if path == "/api/session/create":
                 # 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）：还没有会话时要能开一局，
                 # 所以**不**调 _sess()——本路由不读 X-Session，只回一个新 sid。
@@ -3478,9 +3769,15 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/atlas/move":
                 # 沿 via 移动队伍：返回行程档 + 名义分钟 + 新位置的出口视图。
                 # 方向不存在 / 没有该出口时 atlas_move 抛 ValueError → 400。
+                # 暂停时不编译地图、不挪队伍（世界变更，§7.4）。
                 s = self._sess()
+                with s.lock:
+                    if _room_is_paused(s):
+                        return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
                 s.ensure_atlas()        # 先编译好地图，位置快照才是真实的起点
                 with s.lock:
+                    if _room_is_paused(s):
+                        return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
                     previous_locus = copy.deepcopy(s._locus)
                 result = s.atlas_move(b.get("via"))
                 try:
@@ -3497,7 +3794,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._err("未知接口", 404)
         except _ActionError as e:
             # 行动管线的固定错误（§9.5）：短语 + 仅状态行之前可用的码。
-            self._err(e.phrase, e.code)
+            # `reason` 缺省为空，既有端点的响应形状不变；暂停门才带上。
+            self._err(e.phrase, e.code, e.reason)
         except chron.ChronError:
             # CHRON 拒载 / 拒绝调度（§8.2 / §8.4）：与状态层同一响应边界。
             self._err("状态读取失败", 500)
@@ -3620,7 +3918,11 @@ class Handler(BaseHTTPRequestHandler):
 
         result = None
         if action_id:
+            # 带 `action_id` 的回合会结算世界（§5.2）。淡出 / 跳过 / 离线已在
+            # 上面返回，纯叙事（没有 action_id）不是房间提交，不进这道门。
             with session.lock:
+                if _room_is_paused(session):
+                    return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
                 previous_rules = copy.deepcopy(session.rules)
             try:
                 result = prism_guide.settle(session, action_id)
@@ -3965,6 +4267,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._action_scheduled_respond(replay, replayed=True)
             return self._action_respond(session, {"result": replay, "snapshot": None,
                                                  "saved": True}, "", replayed=True)
+        # 暂停挡新的世界变更，不吃行动配额；同键重放已在上面放行（§7.4 / §7.7）。
+        if _room_is_paused(session):
+            return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
         proposal = _action_prepare_proposal(session, body.get("proposal"))
         if not _rate_ok(sid, "action_commit", ACTION_COMMIT_LIMIT):
             return self._err(ACTION_TOO_FREQUENT, 429)
@@ -3983,8 +4288,27 @@ class Handler(BaseHTTPRequestHandler):
             # §9.3 的 `base_seq` 是「提交方读到的最新 seq」——回 `propose` 给的
             # 那一个；缺 / 不是整数一律按过期处理（重读状态再提，§7.4）。
             return self._err(ACTION_STALE_SEQ, 409)
-        out = _action_settle_commit(session, proposal, base_seq=int(base_seq),
-                                    idempotency_key=key)
+        # 锁内再看一次暂停，并在 `base_seq` 对齐之后才核销 PvP 同意（拒绝不结算）。
+        # 单人局没有在座玩家，`_room_member_by_character` 为 None，这道门不触发。
+        pvp_token = str(self.headers.get("X-Pvp-Consent") or "").strip()
+        with session.lock:
+            if _room_is_paused(session):
+                return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
+            handle = session._handle or session._open_handle()
+            if int(base_seq) != _int_or(handle.view().get("seq"), 0):
+                return self._err(ACTION_STALE_SEQ, 409)
+            actor_id = str((proposal.get("actor") or {}).get("id") or "")
+            actor_member = _room_member_by_character(session.room, actor_id)
+            if actor_member is not None:
+                decision = _room_pvp_decision(
+                    session, actor_member,
+                    str((proposal.get("intent") or {}).get("verb") or ""),
+                    {"target": (proposal.get("intent") or {}).get("target")},
+                    pvp_token)
+                if decision:
+                    return self._err(decision[0], 403, decision[1])
+            out = _action_settle_commit(session, proposal, base_seq=int(base_seq),
+                                        idempotency_key=key)
         scheduled = out.get("scheduled")
         if isinstance(scheduled, dict):
             # 长行动（§4.3）：本回合到此为止——到期由推进入口结算。
@@ -4068,6 +4392,9 @@ class Handler(BaseHTTPRequestHandler):
         （Issue #313 验收 3），形状稳定在此处写死，客户端据此驱动回合。
         """
         session = self._sess()
+        # 暂停不吃推进配额；锁内 `_chron_advance` 会再查一次（并发恢复 / 暂停）。
+        if _room_is_paused(session):
+            return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
         if not _rate_ok(session.sid, "chron_advance", CHRON_ADVANCE_LIMIT):
             return self._err(ACTION_TOO_FREQUENT, 429)
         return self._json(_chron_advance(
@@ -4086,9 +4413,12 @@ class Handler(BaseHTTPRequestHandler):
         task_id = str(body.get("task_id") or "").strip()
         if not task_id:
             return self._err(CHRON_NO_TASK, 400)
-        if not _rate_ok(session.sid, "chron_cancel", CHRON_CANCEL_LIMIT):
-            return self._err(ACTION_TOO_FREQUENT, 429)
-        cancelled = _schedule_hook(session).cancel(task_id)
+        with session.lock:
+            if _room_is_paused(session):
+                return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
+            if not _rate_ok(session.sid, "chron_cancel", CHRON_CANCEL_LIMIT):
+                return self._err(ACTION_TOO_FREQUENT, 429)
+            cancelled = _schedule_hook(session).cancel(task_id)
         return self._json({"status": "ok", "task_id": task_id,
                            "cancelled": bool(cancelled),
                            "world_minute": _chron_world_minute(session)})
@@ -4169,6 +4499,15 @@ class Handler(BaseHTTPRequestHandler):
     def _header_room(self) -> str:
         """当前请求指向的房间号：`X-Room` 头（§4.1）。"""
         return (self.headers.get("X-Room") or "").strip()
+
+    def _pvp_consent_token(self, params) -> str:
+        """该次对抗的同意令牌：头 `X-Pvp-Consent` 优先于 `params.pvp_consent`。"""
+        header = str(self.headers.get("X-Pvp-Consent") or "").strip()
+        if header:
+            return header
+        if isinstance(params, dict):
+            return str(params.get("pvp_consent") or "").strip()
+        return ""
 
     def _room_auth(self, room_id: str):
         """§4.1 鉴权链（每个请求都走）：读房间 → 认成员 → 比对令牌 → 查状态。
@@ -4489,6 +4828,10 @@ class Handler(BaseHTTPRequestHandler):
         if replay is not None:
             return self._json({"status": "ok", "replayed": True,
                                "result": replay, "seq": _action_seq_to(replay)})
+        # 暂停先于 `base_seq` / 配额：过期序号也回 `room_paused`，拒绝不占 12/60s。
+        with session.lock:
+            if _room_is_paused(session):
+                return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
         base_seq = body.get("base_seq")
         if not isinstance(base_seq, int) or isinstance(base_seq, bool) \
                 or base_seq < 0:
@@ -4499,11 +4842,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(
                     {"error": ACTION_STALE_SEQ, "reason": "conflict",
                      "seq": _int_or(handle.view().get("seq"), 0)}, 409)
-        if not _rate_ok(session.sid, "room_action", ACTION_COMMIT_LIMIT):
-            return self._err(ACTION_TOO_FREQUENT, 429)
         # 版本校验 + 结算 + 提交在同一临界区（单局锁）内：`base_seq` 一旦通过，
         # 到提交之间不再放开锁，避免「校验后、提交前」被别的提交插队（§8.1）。
+        # 配额只扣「即将结算」的那一次：暂停 / 序号冲突 / PvP 拒绝都不占 12/60s。
         with session.lock:
+            if _room_is_paused(session):
+                # 外层检查之后房主才按下暂停：仍拒绝，且不结算（§7.4）。
+                return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
             handle = session._handle or session._open_handle()
             current = _int_or(handle.view().get("seq"), 0)
             if int(base_seq) != current:
@@ -4512,6 +4857,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(
                     {"error": ACTION_STALE_SEQ, "reason": "conflict",
                      "seq": current}, 409)
+            # 先判定、配额通过后再核销：拒绝不占 12/60s，429 也不烧掉对方的同意。
+            token = self._pvp_consent_token(params)
+            decision = _room_pvp_decision(
+                session, member, action_id, params, token, consume=False)
+            if decision:
+                return self._err(decision[0], 403, decision[1])
+            if not _rate_ok(session.sid, "room_action", ACTION_COMMIT_LIMIT):
+                return self._err(ACTION_TOO_FREQUENT, 429)
+            decision = _room_pvp_decision(
+                session, member, action_id, params, token, consume=True)
+            if decision:
+                # 预览通过后令牌被并发用掉：仍拒绝，不结算。
+                return self._err(decision[0], 403, decision[1])
             proposal = _room_action_proposal(session, member, action_id, params)
             out = _action_settle_commit(
                 session, proposal, base_seq=int(base_seq),
@@ -4528,6 +4886,154 @@ class Handler(BaseHTTPRequestHandler):
         _action_idem_put(session.sid, key, result)
         return self._json({"status": "ok", "replayed": False,
                            "result": result, "seq": _action_seq_to(result)})
+
+    def _room_pause(self, body: dict):
+        """`POST /api/room/pause`：房主暂停 / 恢复（§7.4）。
+
+        体：`{paused: bool}`。非房主 → `403 not_authorized`，房间不落盘。
+        已经是目标值 → 200，不另写一条 `host.*` 事件。真切换写 `host.pause`
+        或 `host.resume`（`changes` 把 `/paused` 写进事件，重放可恢复）。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        paused = body.get("paused")
+        if not isinstance(paused, bool):
+            return self._err("暂停标记不合法", 400, "bad_paused")
+        with session.lock:
+            if not _room_caller_is_host(session.room, member):
+                return self._err("只有房主能暂停或恢复", 403, "not_authorized")
+            current = session.room.get("paused") is True
+            if current is paused:
+                switch = _room_switch_body(session)
+                commit = None
+            else:
+                previous = copy.deepcopy(session.room)
+                session.room["paused"] = paused
+                event_type = "host.pause" if paused else "host.resume"
+                cause = ROOM_PAUSED_ERROR if paused else "房主已恢复"
+                commit, err = _room_finish_host_change(
+                    session, member, previous, event_type=event_type, cause=cause,
+                    changes=[_room_set_change("/paused", current, paused)])
+                if err:
+                    return self._err(*err)
+                switch = _room_switch_body(session)
+        if commit is not None:
+            _room_publish_after_commit(session._handle, commit, session.sid)
+        return self._json(switch)
+
+    def _room_settings(self, body: dict):
+        """`POST /api/room/settings`：房主切换运行模式和 / 或 `pvp_mode`（§5.6）。
+
+        体至少带 `mode` 或 `pvp_mode` 之一。非法值 → 400；非房主 → 403，不落盘。
+        两项都变写一条 `host.settings`；只变一项写 `host.mode` 或 `host.pvp`。
+        回执里的 `settlement` / `chron_window` 是模式合同，不是「窗口已打开」。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        has_mode = "mode" in body
+        has_pvp = "pvp_mode" in body
+        if not has_mode and not has_pvp:
+            return self._err("没有要改的设置", 400, "bad_settings")
+        mode = body.get("mode")
+        pvp_mode = body.get("pvp_mode")
+        if has_mode and mode not in ROOM_MODES:
+            return self._err("模式不合法", 400, "bad_mode")
+        if has_pvp and pvp_mode not in ROOM_PVP_MODES:
+            return self._err("对抗设置不合法", 400, "bad_pvp_mode")
+        with session.lock:
+            if not _room_caller_is_host(session.room, member):
+                return self._err("只有房主能改房间设置", 403, "not_authorized")
+            previous = copy.deepcopy(session.room)
+            changes = []
+            if has_mode and previous.get("mode") != mode:
+                before_mode = previous.get("mode") if previous.get("mode") in ROOM_MODES else "free"
+                changes.append(_room_set_change("/mode", before_mode, mode))
+                session.room["mode"] = mode
+            if has_pvp and previous.get("pvp_mode") != pvp_mode:
+                before_pvp = (previous.get("pvp_mode")
+                              if previous.get("pvp_mode") in ROOM_PVP_MODES else "consent")
+                changes.append(_room_set_change("/pvp_mode", before_pvp, pvp_mode))
+                session.room["pvp_mode"] = pvp_mode
+            if not changes:
+                switch = _room_switch_body(session)
+                commit = None
+            else:
+                if len(changes) == 2:
+                    event_type, cause = "host.settings", "房主更新了房间设置"
+                elif changes[0]["path"] == "/mode":
+                    event_type, cause = "host.mode", "房主切换了运行模式"
+                else:
+                    event_type, cause = "host.pvp", "房主更新了对抗设置"
+                commit, err = _room_finish_host_change(
+                    session, member, previous, event_type=event_type,
+                    cause=cause, changes=changes)
+                if err:
+                    return self._err(*err)
+                switch = _room_switch_body(session)
+        if commit is not None:
+            _room_publish_after_commit(session._handle, commit, session.sid)
+        return self._json(switch)
+
+    def _room_pvp_consent(self, body: dict):
+        """`POST /api/room/pvp/consent`：被针对的成员签发该次同意（§7.4）。
+
+        体：`{action_id, actor_member_id}`。调用者必须是在座成员，令牌绑的是
+        **自己的角色**。`off` → 403 `pvp_disabled`（发了也没用）；`on` → 409
+        `pvp_not_required`。明文只在这一次响应里出现，服务端只留 hash。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        if member.get("role") not in ("host", "player"):
+            return self._err("观察者只读", 403, "not_authorized")
+        action_id = str(body.get("action_id") or "").strip()
+        actor_member_id = str(body.get("actor_member_id") or "").strip()
+        if not action_id:
+            return self._err(ACTION_NO_ACTION, 404, "no_action")
+        if not actor_member_id:
+            return self._err("成员不存在", 404, "member_not_found")
+        with session.lock:
+            mode = session.room.get("pvp_mode")
+            if mode not in ROOM_PVP_MODES:
+                mode = "consent"
+            if mode == "off":
+                return self._err(ROOM_PVP_DISABLED, 403, "pvp_disabled")
+            if mode == "on":
+                return self._err("当前不需要对方同意", 409, "pvp_not_required")
+            if actor_member_id == member.get("member_id"):
+                return self._err("不能同意对自己的行动", 400, "bad_target")
+            actor = (session.room.get("members") or {}).get(actor_member_id)
+            if not isinstance(actor, dict) or actor.get("state") != "active":
+                return self._err("成员不存在", 404, "member_not_found")
+            if actor.get("role") not in ("host", "player"):
+                return self._err("成员不存在", 404, "member_not_found")
+            entry = _action_scene_entry(session.rules, action_id)
+            if entry is None:
+                return self._err(ACTION_NO_ACTION, 404, "no_action")
+            if not _room_action_is_hostile(entry):
+                return self._err("这不是对抗行动", 400, "bad_action")
+            character_id = str(member.get("character_id") or "").strip()
+            if not character_id:
+                return self._err("还没有绑定角色", 400, "bad_target")
+            token, expires_at = _room_pvp_consent_issue(
+                room_id, str(member.get("member_id") or ""), actor_member_id,
+                action_id, character_id)
+        return self._json({
+            "status": "ok",
+            "room_id": room_id,
+            "action_id": action_id,
+            "actor_member_id": actor_member_id,
+            "consent_token": token,     # 唯一一次回明文
+            "expires_at": expires_at,
+        })
 
     # ── 房间事件流（M10-S2，§5.4 / §5.5）────────────────────
     def _room_stream_route(self):
