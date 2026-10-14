@@ -2956,6 +2956,189 @@ def check_room_stream_t5_reconnect_backfill():
             assert [f["id"] for f in frames_b[:5]] == [1, 2, 3, 5, 6], frames_b
 
 
+# --------------------------------------------------------------------------
+# 频道与认知分离（M10-S3，MPI §6.1 / §6.2 / §6.4 / §12 S3）
+# --------------------------------------------------------------------------
+
+
+def _room_chat(server, room_id, member, *, channel, text, target="", members=None,
+               headers=None):
+    """发一条房间消息（`POST /api/room/chat`）：返回 (状态, JSON)。"""
+    body = {"channel": channel, "text": text}
+    if target:
+        body["target"] = target
+    if members is not None:
+        body["members"] = members
+    h = _room_headers(room_id, member["member_id"], member["token"])
+    if headers:
+        h = dict(h, **headers)
+    return _post(server, "/api/room/chat", body, headers=h)
+
+
+def check_room_chat_t6_tell_not_leaked():
+    """T6：A 的 NPC 私谈 / `tell` 只出现在 A 的流；B 的流**0 命中**该内容（§6.1）。"""
+    rid = "room-chat-t6"
+    secret = "A-ONLY-NPC-SECRET-9d1"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        with _RoomStreamClient(server.port, rid, host["member_id"], host["token"],
+                               since=0) as sa, \
+                _RoomStreamClient(server.port, rid, other["member_id"],
+                                  other["token"], since=0) as sb:
+            # A 与 NPC 私谈（`npc` 频道：受众只有 A 自己）+ 一条世界消息。
+            status, body = _room_chat(server, rid, host, channel="npc", text=secret)
+            assert status == 200 and body["channel"] == "npc", (status, body)
+            status, body = _room_chat(server, rid, host, channel="world",
+                                      text="EVERYONE-SEES")
+            assert status == 200 and body["channel"] == "world", (status, body)
+            fa = sa.wait_frames(2)
+            assert [f["event"] for f in fa[:2]] == ["npc", "world"], fa
+            assert secret in json.dumps(fa, ensure_ascii=False), fa
+            # B 只收到 world：私谈的内容一个字都不出现在乙的流里。
+            fb = sb.wait_frames(1)
+            assert [f["event"] for f in fb[:1]] == ["world"], fb
+            time.sleep(0.3)
+            assert secret not in json.dumps(sb.frames(), ensure_ascii=False), \
+                sb.frames()
+
+
+def check_room_chat_reconnect_no_overreach():
+    """§6.4：受众在提交时**冻结**，重连沿用**同一判据**——重连不收越权内容。
+
+    B 断线期间的 A 私谈（`npc`）不在 B 的重连补发里；世界消息（`world`）一条不漏。
+    """
+    rid = "room-chat-reconnect"
+    secret = "A-ONLY-AFTER-RECONNECT-c4f"
+    with _LocalServer() as server, _stream_tuning(heartbeat=0.2, dead=5.0):
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        status, body = _room_chat(server, rid, host, channel="world", text="W1")
+        assert status == 200, (status, body)
+        # B 拿到第一条就断线（手机切网 / 锁屏）。
+        first = _RoomStreamClient(server.port, rid, other["member_id"],
+                                  other["token"], since=0)
+        assert [f["id"] for f in first.wait_frames(1)] == [1]
+        first.close()
+        # 断线期间：A 与 NPC 私谈（B 无权看）+ 又一条世界消息。
+        status, body = _room_chat(server, rid, host, channel="npc", text=secret)
+        assert status == 200, (status, body)
+        status, body = _room_chat(server, rid, host, channel="world", text="W2")
+        assert status == 200, (status, body)
+        # 重连 `since=0`：只补齐 B 有权看的 world（1 / 3），私谈（2）一步不给。
+        with _RoomStreamClient(server.port, rid, other["member_id"],
+                               other["token"], since=0) as again:
+            frames = again.wait_frames(2)
+            assert [f["id"] for f in frames[:2]] == [1, 3], frames
+            assert secret not in json.dumps(frames, ensure_ascii=False), frames
+
+
+def check_room_chat_channels_and_visibility_freeze():
+    """§6.1：七个频道各按设计分流；受众**提交时冻结**进事件 `visibility`（§6.4）。"""
+    rid = "room-chat-channels"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        both = {host["member_id"], other["member_id"]}
+        cases = [
+            ("world", {}, "public", []),
+            ("ooc", {}, "public", []),
+            ("party", {}, "team", both),
+            ("org", {"members": [other["member_id"]]}, "team", both),
+            ("npc", {}, "private", {host["member_id"]}),
+            ("host", {}, "gm", {host["member_id"]}),
+        ]
+        for channel, extra, scope, subjects in cases:
+            status, body = _room_chat(server, rid, host, channel=channel,
+                                      text="m-" + channel, **extra)
+            assert status == 200, (channel, status, body)
+            assert body["channel"] == channel, body
+            assert body["scope"] == scope, (channel, body)
+            assert set(body["subjects"]) == set(subjects), (channel, body)
+        # tell：仅收发双方。
+        status, tell = _room_chat(server, rid, host, channel="tell",
+                                  text="m-tell", target=other["member_id"])
+        assert status == 200 and tell["scope"] == "private", (status, tell)
+        assert set(tell["subjects"]) == both, tell
+
+        # 冻结的受众就是事件 `visibility`（落库载体，§6.4）；聊天不变更世界块。
+        session = notdnd_web.get_session(rid)
+        events = session._handle.events_since(0)
+        by_type = {e["type"]: e for e in events}
+        assert by_type["chat.tell"]["visibility"]["scope"] == "private", by_type
+        assert set(by_type["chat.tell"]["visibility"]["subjects"]) == both
+        assert by_type["chat.tell"]["cause"] == "m-tell"
+        assert by_type["chat.tell"]["changes"] == [], "聊天不成事实（GDD §7.7）"
+        assert by_type["chat.ooc"]["visibility"] == {"scope": "public", "subjects": []}
+
+        # 各频道各走各的：乙的**同一判据**下只收到 world / ooc + 被点名的 tell / org / party。
+        headers = dict(_room_headers(rid, other["member_id"], other["token"]),
+                       Accept="application/json")
+        status, poll = server.get("/api/room/stream?since=0", headers=headers)
+        assert status == 200, (status, poll)
+        seen = [f["type"] for f in poll["frames"]]
+        assert "world" in seen and "ooc" in seen and "tell" in seen, seen
+        assert "host" not in seen, seen          # 管理消息只给房主
+        assert "npc" not in seen, seen           # A 的私谈不给乙
+
+
+def check_room_chat_errors():
+    """§4.2 / §6.1：非法频道 / 空正文 / 私聊对象不在房 / observer 只读，各回固定码。"""
+    rid = "room-chat-errors"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        status, bad = _room_chat(server, rid, host, channel="shout", text="x")
+        assert status == 400 and bad.get("reason") == "bad_channel", (status, bad)
+        status, bad = _room_chat(server, rid, host, channel="world", text="   ")
+        assert status == 400 and bad.get("reason") == "bad_text", (status, bad)
+        status, bad = _room_chat(server, rid, host, channel="tell", text="x",
+                                 target="m-nosuchmember")
+        assert status == 404 and bad.get("reason") == "member_not_found", (status, bad)
+        # 非房主发管理消息 → 403；observer 只读 → 403。
+        status, bad = _room_chat(server, rid, other, channel="host", text="x")
+        assert status == 403 and bad.get("reason") == "not_authorized", (status, bad)
+        # 未鉴权 → 401（不泄露频道判定）。
+        status, raw = _post(server, "/api/room/chat",
+                            {"channel": "world", "text": "x"},
+                            headers={"X-Room": rid})
+        assert status == 401, (status, raw)
+
+
+def check_room_chat_secret_gate_per_member():
+    """§6.2：聊天正文按**每成员**过一遍秘密门——未放行的秘密不进该成员的帧。"""
+    rid = "room-chat-gate"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        secret = "霍砚低声说他是守钥人计霜的儿子。"   # yunji npc-01 的秘密全文
+        # 绑定 yunji（走真文件），让秘密门有 NPC 可判（`bind` 认 `X-Session`）。
+        status, body = _post(server, "/api/guide/bind",
+                             {"world_key": "yunji", "scenario_id": "yunji"},
+                             sid=rid)
+        assert status == 200, (status, body)
+        # 甲的角色 knows 命中 NPC-01 的 knows → 放行；乙无 knows → 涂掉。
+        session = notdnd_web.get_session(rid)
+        session.rules.setdefault("party", [])
+        session.rules["party"] = [{"id": "pc-a", "knows": ["C-01"]},
+                                  {"id": "pc-b"}]
+        status, body = _room_chat(server, rid, host, channel="world", text=secret)
+        assert status == 200, (status, body)
+        # 同一事件、同一 seq：甲的轮询见到秘密，乙的轮询只见「……」。
+        ha = dict(_room_headers(rid, host["member_id"], host["token"]),
+                  Accept="application/json")
+        hb = dict(_room_headers(rid, other["member_id"], other["token"]),
+                  Accept="application/json")
+        status, pa = server.get("/api/room/stream?since=0", headers=ha)
+        assert status == 200, (status, pa)
+        status, pb = server.get("/api/room/stream?since=0", headers=hb)
+        assert status == 200, (status, pb)
+        text_a = pa["frames"][-1]["event"]["cause"]
+        text_b = pb["frames"][-1]["event"]["cause"]
+        assert "他是守钥人计霜的儿子" in text_a, text_a
+        assert "他是守钥人计霜的儿子" not in text_b and "……" in text_b, text_b
+
+
 def check_room_stream_poll_equivalence():
     """§5.5 降级：**同一条路径**的短轮询（`Accept: application/json`）与流式逐帧一致。"""
     rid = "room-stream-poll-1"
@@ -5208,6 +5391,11 @@ CHECKS = (
     check_room_auth_chain,
     check_room_stream_frames_and_filter,
     check_room_stream_t5_reconnect_backfill,
+    check_room_chat_t6_tell_not_leaked,
+    check_room_chat_reconnect_no_overreach,
+    check_room_chat_channels_and_visibility_freeze,
+    check_room_chat_errors,
+    check_room_chat_secret_gate_per_member,
     check_room_stream_poll_equivalence,
     check_room_stream_auth_and_since,
     check_room_stream_heartbeat_and_dead,

@@ -2141,6 +2141,36 @@ def test_g7_redact_narration_no_second_request():
     ok("redact_narration：秘密换成「……」；lever / known_clues 放行；不叫传输")
 
 
+def test_s3_per_member_secret_gate():
+    """§6.2：秘密门按**每成员各过一次**——同一段文本，`knows` 不同的成员可见部分不同。
+
+    复用既有秘密门（`secret_allowed_for` / `redact_secrets`），不改判定语义：
+    成员 A 的 `knows` 命中 NPC 的 `knows`（或目击 / 被告知）→ 放行；成员 B 不放行。
+    """
+    web = _bound_guide()
+    guide = web.guide
+    huo = _npc("yunji", "npc-01")
+    secret = huo["secret"]
+    assert secret
+    raw = "霍砚低声说：" + secret
+    # 成员 B：无 knows / 无目击 / 无被告知 → 秘密不进可见部分。
+    seen_b = pg.redact_for_member(raw, guide)
+    assert secret not in seen_b and "……" in seen_b, seen_b
+    # 成员 A：其角色 knows 命中该 NPC 的 knows → 放行。
+    shared = [str(x) for x in (huo.get("knows") or [])]
+    assert shared, "yunji 的 npc-01 应有 knows"
+    seen_a = pg.redact_for_member(raw, guide, knows=shared[:1])
+    assert secret in seen_a, seen_a
+    # 目击 / 被告知同样放行（§6.2「目击 + 被告知」）。
+    assert secret in pg.redact_for_member(raw, guide, witnessed=[huo["id"]])
+    assert secret in pg.redact_for_member(raw, guide, told=[huo["id"]])
+    # 既有判定语义不变：空成员上下文与 `redact_narration` 同口径（同一份 known_clues）。
+    assert pg.redact_for_member(raw, guide) == pg.redact_narration(raw, guide)
+    # 未绑定剧本 → 没有秘密可涂（与 `bound_secrets` 同款退化）。
+    assert pg.redact_for_member(raw, pg.empty_guide()) == raw
+    ok("per-member 秘密门：同一文本按成员 knows / 目击 / 被告知给出不同可见部分")
+
+
 def test_g7_npc_home_and_scene_speakers():
     """`bind` 填 `npc_home`；`npcs_at` / `scene_speakers` 只认在场 NPC。"""
     web = _bound_guide()
@@ -2915,6 +2945,7 @@ def main():
     test_g7_npc_voice_stable()
     test_g7_check_speech_only_secrets()
     test_g7_redact_narration_no_second_request()
+    test_s3_per_member_secret_gate()
     test_g7_npc_home_and_scene_speakers()
     test_g7_traces_betrayed_uses_canonical_text()
     test_g7_traces_request_shape_and_secret_gate()

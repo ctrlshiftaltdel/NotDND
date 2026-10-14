@@ -1897,6 +1897,45 @@ def redact_narration(text, guide, player_text="", rules=None):
     return redact_secrets(text, bound_secrets(guide, player_text, rules))
 
 
+def per_member_bound_secrets(guide, *, knows=(), witnessed=(), told=(), rules=None):
+    """把秘密门从「单角色」推广到**每成员各过一次**（MULTIPLAYER-DESIGN §6.2）。
+
+    对每个已绑定 NPC 返回 `(秘密全文, 是否对该成员放行)`——判定**复用**既有门：
+    放行 = `secret_allowed_for`（玩家 lever 或 `guide.known_clues ∩ npc.knows`）
+    **或**本成员的 `knows` / `witnessed` / `told` 与该 NPC 的 `knows` / `id`
+    有交集（§6.2「本成员的角色 knows 集 + 目击 + 被告知」）。纯函数（读盘、不联网），
+    不改 `bound_secrets` / `redact_narration` 的既有判定语义。
+    """
+    parts = _scenario_parts(guide)
+    if not parts:
+        return []
+    member_keys = {str(item) for item in
+                   list(knows or []) + list(witnessed or []) + list(told or [])}
+    out = []
+    for npc in parts["npcs"]:
+        secret = str(npc.get("secret") or "")
+        if not secret:
+            continue
+        npc_keys = {str(item) for item in (npc or {}).get("knows") or []}
+        npc_keys.add(str(npc.get("id") or ""))
+        allowed = secret_allowed_for(guide, npc, parts["ledger"], "") \
+            or bool(npc_keys & member_keys)
+        out.append((secret, allowed))
+    return out
+
+
+def redact_for_member(text, guide, *, knows=(), witnessed=(), told=(), rules=None):
+    """对**某一个成员**过一遍秘密门（§6.2）：放行的秘密保留，未放行的涂成「……」。
+
+    与 `redact_narration` 同款纯函数，只是把「本成员的可见部分」拆成参数，
+    让多人层能对每个受众成员各算一次。**不**改变既有判定语义。
+    """
+    return redact_secrets(
+        text,
+        per_member_bound_secrets(guide, knows=knows, witnessed=witnessed,
+                                 told=told, rules=rules))
+
+
 def _npc_locus(guide, npc_id):
     """NPC 当前所在地点：`npc_at` 优先，其次 `npc_home`（§2.2）。"""
     npc_id = str(npc_id or "")
