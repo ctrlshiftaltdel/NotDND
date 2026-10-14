@@ -48,6 +48,13 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     每流一个**有界**出站队列，满则断开该流由客户端重连补发重建（不丢事件）；
     `Accept: application/json` 时同路径回一次性读取（降级短轮询，过滤与 `since`
     语义与流式一致）。补发与广播一律按事件的 `visibility` 过滤（§6.1 / §6.4）
+  · 并发提交与幂等（M10-S4，MULTIPLAYER-DESIGN.md §7.2 / §7.3 / §12 S4）：
+    `POST /api/room/action` 是 §5.1 的房间级**世界变更**提交口——把「抢物品 /
+    同时行动 / 重复提交」的并发正确性钉在状态层提交口上：`Idempotency-Key`
+    必带（同键重放回首次结果、不重放副作用）+ `base_seq` 乐观并发（过期 →
+    `409 conflict` + 当前 `seq`，不写事件）+ 单写者串行；行动者取该成员绑定的
+    角色，结算复用 M8 管线（一次提交 = 一条事件）。`POST /api/room/chat` 同一套
+    口径（认 `Idempotency-Key` 与可选 `base_seq`），两条房间写路径一致
   · CHRON 存档块（M9-C5）：`chron` 是又一块**不透明块**（CHRON-DESIGN §8.1）——
     本文件只提供它的默认值工厂（老档迁移时补空块）；块的加载 / 重放 / 重建 `due_heap` /
     幂等表全归 `chron.py`（C5），本文件不解析这块
@@ -2203,6 +2210,23 @@ def _action_proposal_from_id(session, action_id, params) -> dict:
     return proposal
 
 
+def _room_action_proposal(session, member, action_id, params) -> dict:
+    """房间级行动 → 提案（M10-S4，§7.2 / MULTIPLAYER-DESIGN §5.1）。
+
+    与单人 `_action_proposal_from_id` 同一份行动表契约，唯一差别是**行动者**：
+    房间层用发起该提交的成员绑定的角色（`member.character_id`）覆盖提案里的
+    `actor`——「谁在行动」由成员身份决定，而不是会话级的 `active_unit_id`
+    （多人共用一个权威世界时，后者不区分成员）。
+    成员还没绑定角色（`character_id` 为空）时回落到会话的默认行动者：
+    结算与事件仍走同一条 PRISM / 状态层路径。
+    """
+    proposal = _action_proposal_from_id(session, action_id, params)
+    character_id = str((member or {}).get("character_id") or "").strip()
+    if character_id:
+        proposal["actor"] = {"kind": "player", "id": character_id}
+    return proposal
+
+
 def _action_schedule_hint(entry) -> dict:
     """行动表的 `schedule_hint`（§4.2）：缺失 / 形状不对 → 契约默认值。
 
@@ -2380,7 +2404,8 @@ def _action_snapshot(rules, guide) -> dict:
     return {"rules": copy.deepcopy(rules), "guide": copy.deepcopy(guide)}
 
 
-def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> dict:
+def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
+                          unit_id: str = "") -> dict:
     """第 3–5 段 + 提交点冻结快照（§7 / §8.2 / §10.1），全程持**单局锁**。
 
     「结算 → 提交 → 取提交后快照」是设计里那一小段临界区（§7.4 锁边界）；
@@ -2394,6 +2419,10 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
 
     返回 `{"result":…, "snapshot":…, "saved": bool}`；长行动另加
     `"scheduled": {…}`（`result` / `snapshot` 为 `None`）。
+
+    `unit_id` 是**行动的执行者**（§6.4 前置条件面）：缺省空串 = 沿用会话的
+    `active_unit_id` / `party[0]`（单人路径逐字节不变）；房间层按成员的角色
+    （`member.character_id`）显式传入（M10-S4），使「谁在行动」落在成员身上。
     """
     with session.lock:
         handle = session._handle or session._open_handle()   # 开句柄在锁内：并发不重开
@@ -2420,7 +2449,7 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key) -> di
         # 4. 结算：PRISM 纯规则，一行模型都不调（§7.1）
         live = prism_core.RuleSession.from_snapshot(session.rules)
         try:
-            perf = prism_core.perform_action(live, action_id)
+            perf = prism_core.perform_action(live, action_id, unit_id=unit_id)
         except prism_core.CombatLocked:
             raise _ActionError(ACTION_COMBAT, 409)
         except ValueError:
@@ -3390,6 +3419,9 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/room/chat":
                 return self._room_chat(b)
+
+            if path == "/api/room/action":
+                return self._room_action(b)
 
             if path == "/api/session/create":
                 # 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）：还没有会话时要能开一局，
@@ -4378,9 +4410,18 @@ class Handler(BaseHTTPRequestHandler):
             if not scope:
                 return self._err("频道不合法", 400, "bad_channel")
             handle = session._handle or session._open_handle()
-            base_seq = _int_or(handle.view().get("seq"), 0)
-            # 幂等键：优先 `Idempotency-Key` 头（§7.2）；缺省由服务端补一个，
-            # 真正的重放去重归 S4（本切片只保证一次提交 = 一条事件）。
+            # 乐观并发（§7.2）：客户端**可**带 `base_seq`（读状态时读到的战役 seq）。
+            # 带了就按它校验——不匹配 → `409 conflict` + 当前 seq，不落事件；
+            # 没带则沿用提交时读到的 seq（老客户端行为不变）。
+            raw_base = body.get("base_seq")
+            if isinstance(raw_base, int) and not isinstance(raw_base, bool) \
+                    and raw_base >= 0:
+                base_seq = int(raw_base)
+            else:
+                base_seq = _int_or(handle.view().get("seq"), 0)
+            # 幂等键（§7.2 / §5.1）：`Idempotency-Key` 头；同键同载荷由状态层回
+            # `replayed`——**回首次结果、不重放副作用**。缺省时服务端补一个
+            # 随机键（老客户端兼容，S4 只保证「带了键就有真去重」）。
             key = str(self.headers.get("Idempotency-Key") or "").strip()
             if not ACTION_IDEM_KEY_RE.fullmatch(key):
                 key = "chat_" + secrets.token_hex(16)
@@ -4393,6 +4434,12 @@ class Handler(BaseHTTPRequestHandler):
                 visibility={"scope": scope, "subjects": subjects},
                 source="player")
             status = str((commit or {}).get("status") or "")
+            if status == "conflict":
+                # §7.2：`base_seq` 过期（并发 / 传输层拒绝）——**不写任何事件**，
+                # 回机器可读的 `conflict` + **当前 seq**，客户端重读后再提。
+                return self._json(
+                    {"error": ACTION_STALE_SEQ, "reason": "conflict",
+                     "seq": _int_or(handle.view().get("seq"), 0)}, 409)
             if status not in ("committed", "replayed"):
                 return self._err("状态已变，请重试", 409, "commit_conflict")
         # §5.5：**提交成功之后**扇出——推送只是交付，不影响已提交的事实。
@@ -4400,6 +4447,87 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"status": "ok", "room_id": room_id,
                            "channel": channel, "seq": commit.get("seq_to"),
                            "scope": scope, "subjects": subjects})
+
+    def _room_action(self, body: dict):
+        """`POST /api/room/action`：房间级**世界变更**提交（M10-S4，§7.2 / §5.1）。
+
+        这是 §5.1 列出的房间级提交口（与 `POST /api/room/chat` 并列）：把
+        「抢物品 / 同时行动 / 重复提交」的并发正确性钉在状态层提交口上——
+        **单写者串行 + 幂等键 + 乐观并发（`base_seq`）**（§7.2 / §8.1）。
+
+        - 鉴权：与其它房间写接口同一条链（`X-Room` / `X-Member` / Bearer，§4.1）；
+          observer 只读 → 403。
+        - `Idempotency-Key`（§7.2）：**必带**且过 `^[A-Za-z0-9_-]{8,64}$`；缺失 /
+          非法 → 400 `幂等键不合法`。同键重放**在任何结算之前**短路——回首次结果
+          （`replayed: true`）、**不重放副作用**（覆盖双击 / 网络重试 / 重连重发）。
+        - `base_seq`（§7.2）：请求体带「提交方读到的最新战役 `seq`」。提交时若
+          实际 `seq` 已变 → `409 conflict` + **当前 `seq`**，**不结算、不落事件**；
+          先入队者赢，后者据此重读后再提。
+        - `action_id`：房间当前场景行动表里的行动 id；行动者 = 该成员绑定的角色
+          （`member.character_id`）。结算 / 提交复用 M8 管线（`_action_settle_commit`），
+          因此「一次提交 = 一条事件」（STATE A0），物品 / 伤害等后果唯一归属、可溯源。
+        """
+        room_id = self._header_room()
+        try:
+            session, member = self._room_auth(room_id)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        if member.get("role") == "observer":
+            return self._err("观察者只读", 403, "not_authorized")
+        # §7.2：有副作用的房间提交**必须**带幂等键——这是「重复提交不重复副作用」
+        # 的唯一机制（不靠调用方自觉）；缺键不能退化成「换个随机键再赌一次」。
+        key = str(self.headers.get("Idempotency-Key") or "").strip()
+        if not ACTION_IDEM_KEY_RE.fullmatch(key):
+            return self._err(ACTION_BAD_IDEM_KEY, 400, "bad_idem_key")
+        action_id = str(body.get("action_id") or "").strip()
+        if not action_id:
+            return self._err(ACTION_NO_ACTION, 404, "no_action")
+        params = body.get("params") if isinstance(body.get("params"), dict) else {}
+        # §7.7：同键重放**在任何结算之前**短路——不掷骰、不扣费、不写事件，
+        # 直接回首次结果；这正是「响应丢失后重试 / 重复提交」要挡住的那一次。
+        replay = _action_idem_get(session.sid, key)
+        if replay is not None:
+            return self._json({"status": "ok", "replayed": True,
+                               "result": replay, "seq": _action_seq_to(replay)})
+        base_seq = body.get("base_seq")
+        if not isinstance(base_seq, int) or isinstance(base_seq, bool) \
+                or base_seq < 0:
+            # 缺 / 非法的 `base_seq`：按过期处理——重读状态（`GET /api/room/stream`
+            # 的 `seq` 或 `/api/state`）再提（§7.2 / §9.3）。
+            with session.lock:
+                handle = session._handle or session._open_handle()
+                return self._json(
+                    {"error": ACTION_STALE_SEQ, "reason": "conflict",
+                     "seq": _int_or(handle.view().get("seq"), 0)}, 409)
+        if not _rate_ok(session.sid, "room_action", ACTION_COMMIT_LIMIT):
+            return self._err(ACTION_TOO_FREQUENT, 429)
+        # 版本校验 + 结算 + 提交在同一临界区（单局锁）内：`base_seq` 一旦通过，
+        # 到提交之间不再放开锁，避免「校验后、提交前」被别的提交插队（§8.1）。
+        with session.lock:
+            handle = session._handle or session._open_handle()
+            current = _int_or(handle.view().get("seq"), 0)
+            if int(base_seq) != current:
+                # §7.2 / §8.1：并发提交不是「同时写」而是「排队提交」——先入队者
+                # 已把 `seq` 推到 `current`，本请求的 `base_seq` 过期 → 409，不落事件。
+                return self._json(
+                    {"error": ACTION_STALE_SEQ, "reason": "conflict",
+                     "seq": current}, 409)
+            proposal = _room_action_proposal(session, member, action_id, params)
+            out = _action_settle_commit(
+                session, proposal, base_seq=int(base_seq),
+                idempotency_key=key,
+                unit_id=str(member.get("character_id") or ""))
+        scheduled = out.get("scheduled")
+        if isinstance(scheduled, dict):
+            # 长行动（§4.3）：本回合只排入时间线，回执同 M8 的 `scheduled` 分支。
+            _action_idem_put(session.sid, key, scheduled)
+            return self._json({"status": "ok", "replayed": False,
+                               "scheduled": scheduled,
+                               "seq": _int_or(scheduled.get("base_seq"), 0)})
+        result = out["result"]
+        _action_idem_put(session.sid, key, result)
+        return self._json({"status": "ok", "replayed": False,
+                           "result": result, "seq": _action_seq_to(result)})
 
     # ── 房间事件流（M10-S2，§5.4 / §5.5）────────────────────
     def _room_stream_route(self):
