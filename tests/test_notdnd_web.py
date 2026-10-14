@@ -108,6 +108,16 @@
      路径**回一次性读取（降级短轮询，与流式逐帧一致）。鉴权与写接口同一条链
      （401 / 403 不开流）；非法的 `since` → 400。
 
+ 18. 运行模式、暂停与 PvP（M10-S5，MPI §5.6 / §7.3 / §7.4，Issue #323）：
+     `room.mode` ∈ free / event / manage（缺省 free），`paused` 与 `pvp_mode`
+     落盘并生效。非房主暂停 / 改设置 → 403 且磁盘房间块不变（不改 T8 踢人）。
+     房主暂停后新的世界变更（房间行动、行动提交、地图移动、CHRON 推进 / 取消、
+     带 `action_id` 的导引者结算）→ 409 `room_paused`，只读与聊天仍 200，同键
+     重放仍回首次结果。对另一名在座玩家角色的敌意行动：`off` → 403
+     `pvp_disabled`，`consent` 无该次令牌 → 403 `pvp_needs_consent`（拒绝不
+     结算），`on` 不带令牌照常经规则与状态层。事件模式只保证串行提交，
+     `chron_window` 恒为 false，不产生 `window.opened`。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -3158,21 +3168,24 @@ def check_room_chat_secret_gate_per_member():
 
 
 def _room_action_post(server, room_id, member, *, action_id, base_seq, key,
-                      params=None):
+                      params=None, extra_headers=None):
     """发一次房间级世界变更提交（`POST /api/room/action`）：返回 (状态, JSON)。"""
     body = {"action_id": action_id, "base_seq": base_seq}
     if params is not None:
         body["params"] = params
     headers = _room_headers(room_id, member["member_id"], member["token"])
     headers["Idempotency-Key"] = key
+    if extra_headers:
+        headers.update(extra_headers)
     return _post(server, "/api/room/action", body, headers=headers)
 
 
-def _seed_room_scene(rid, *, character_ids, action_id="pickup"):
+def _seed_room_scene(rid, *, character_ids, action_id="pickup", actions=None):
     """给房间的规则会话补一支队伍 + 一个场景行动（T1 的「拾取」用）。
 
     房间是「一档 = 一权威世界」，规则态仍归 `prism_core`——这里只造出结算所需
     的最小场景（队伍 + 一个 `check` 行动），不改房间块与状态层的语义。
+    `actions` 给定时整表替换默认的那一条拾取（调用方要自己带上要用的 id）。
     """
     session = notdnd_web.get_session(rid)
     with session.lock:
@@ -3182,9 +3195,10 @@ def _seed_room_scene(rid, *, character_ids, action_id="pickup"):
                 character_id, "角色-%d" % index,
                 attributes={"MGT": 6, "INS": 5}))
         rules.active_unit_id = character_ids[0]
-        rules.scene = {"id": "sc-room",
-                       "actions": [{"id": action_id, "label": "拾取",
-                                    "kind": "check", "df": 8}]}
+        if actions is None:
+            actions = [{"id": action_id, "label": "拾取",
+                        "kind": "check", "df": 8}]
+        rules.scene = {"id": "sc-room", "actions": actions}
         session.rules = rules.snapshot()
         session.save()
     return session
@@ -5539,6 +5553,510 @@ def check_api_state_legacy_readonly():
             "只读接口不得触发老档迁移（不落盘）"
 
 
+def _disk_room(rid: str) -> dict:
+    """本进程服务写出的房间块（检查点里的 `blocks.room`）。"""
+    return _read_room_block(str(notdnd_web.SAVE_DIR), rid)
+
+
+def _room_post(server, path, body, rid, member, extra_headers=None):
+    """带房间鉴权头的 POST：(状态, JSON)。"""
+    headers = _room_headers(rid, member["member_id"], member["token"])
+    if extra_headers:
+        headers.update(extra_headers)
+    return _post(server, path, body, headers=headers)
+
+
+def _room_poll(server, rid, member, since=0):
+    """短轮询该成员看得到的帧。"""
+    headers = dict(_room_headers(rid, member["member_id"], member["token"]),
+                   Accept="application/json")
+    return server.get("/api/room/stream?since=%d" % since, headers=headers)
+
+
+def _rules_digest(rid: str) -> str:
+    """规则快照的规范 JSON：拒绝路径用来证明「没有结算」。"""
+    rules = notdnd_web.get_session(rid).rules
+    return json.dumps(rules, sort_keys=True, ensure_ascii=False)
+
+
+def _event_seq(rid: str) -> int:
+    return notdnd_web.get_session(rid)._handle.view()["seq"]
+
+
+def check_room_pause_non_host_t8():
+    """非房主暂停 / 恢复 → 403，磁盘上的房间块逐字节不变（T8 的暂停半边）。
+
+    既有 `check_room_kick_authorization` 仍只覆盖踢人，这里不改它的断言。
+    """
+    rid = "room-pause-t8"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        before = _disk_room(rid)
+        status, denied = _room_post(server, "/api/room/pause", {"paused": True},
+                                    rid, other)
+        assert status == 403 and denied.get("reason") == "not_authorized", \
+            (status, denied)
+        assert denied.get("error") == "只有房主能暂停或恢复", denied
+        assert _disk_room(rid) == before, "非房主暂停不得改盘"
+        # 房主先暂停，非房主再恢复：仍 403，暂停保持。
+        status, paused = _room_post(server, "/api/room/pause", {"paused": True},
+                                    rid, host)
+        assert status == 200 and paused["paused"] is True, (status, paused)
+        frozen = _disk_room(rid)
+        assert frozen["paused"] is True
+        status, resume = _room_post(server, "/api/room/pause", {"paused": False},
+                                    rid, other)
+        assert status == 403 and resume.get("reason") == "not_authorized", \
+            (status, resume)
+        assert _disk_room(rid) == frozen, "非房主恢复不得改盘"
+        status, settings = _room_post(server, "/api/room/settings",
+                                      {"mode": "event"}, rid, other)
+        assert status == 403 and settings.get("reason") == "not_authorized", \
+            (status, settings)
+        assert settings.get("error") == "只有房主能改房间设置", settings
+        assert _disk_room(rid) == frozen
+
+
+def check_room_pause_t9():
+    """T9：房主暂停后世界变更 409 `room_paused`，只读与聊天仍成功；恢复后照常。"""
+    rid = "room-pause-t9"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        session = _seed_room_scene(rid, character_ids=("pc-a", "pc-b"),
+                                   action_id="pickup")
+        base = session._handle.view()["seq"]
+        status, first = _room_action_post(
+            server, rid, host, action_id="pickup", base_seq=base,
+            key="t9-before-pause-01")
+        assert status == 200 and first["replayed"] is False, (status, first)
+        actions_before = len(_room_action_events(rid))
+        assert actions_before == 1
+
+        status, bad = _room_post(server, "/api/room/pause", {"paused": "yes"},
+                                 rid, host)
+        assert status == 400 and bad.get("reason") == "bad_paused", (status, bad)
+
+        status, paused = _room_post(server, "/api/room/pause", {"paused": True},
+                                    rid, host)
+        assert status == 200, (status, paused)
+        assert paused["paused"] is True and paused["chron_window"] is False, paused
+        assert _disk_room(rid)["paused"] is True
+        seq_paused = _event_seq(rid)
+        assert seq_paused == paused["seq"]
+        host_events = [e for e in session._handle.events_since(0)
+                       if e["type"] == "host.pause"]
+        assert len(host_events) == 1, host_events
+        assert host_events[0]["changes"][0]["path"] == "/paused"
+        assert host_events[0]["changes"][0]["after"] is True
+        # 再暂停一次：不另写事件。
+        status, again = _room_post(server, "/api/room/pause", {"paused": True},
+                                   rid, host)
+        assert status == 200 and again["paused"] is True, (status, again)
+        assert len([e for e in session._handle.events_since(0)
+                    if e["type"] == "host.pause"]) == 1
+        # 留痕只给房主。
+        status, host_view = _room_poll(server, rid, host)
+        status2, other_view = _room_poll(server, rid, other)
+        assert status == 200 and status2 == 200, (status, status2)
+        assert any(f["event"]["type"] == "host.pause"
+                   for f in host_view["frames"]), host_view
+        assert all(f["event"]["type"] != "host.pause"
+                   for f in other_view["frames"]), other_view
+
+        rules_at_pause = _rules_digest(rid)
+        status, blocked = _room_action_post(
+            server, rid, other, action_id="pickup", base_seq=0,
+            key="t9-while-paused-01")
+        assert status == 409 and blocked.get("reason") == "room_paused", \
+            (status, blocked)
+        assert blocked.get("error") == "房主已暂停", blocked
+        assert _event_seq(rid) == seq_paused
+        assert len(_room_action_events(rid)) == actions_before
+        assert _rules_digest(rid) == rules_at_pause
+
+        # 只读仍成功。
+        status, view = server.get("/api/state", sid=rid)
+        assert status == 200 and view["campaign_id"] == rid, (status, view)
+        status, polled = _room_poll(server, rid, other)
+        assert status == 200 and "frames" in polled, (status, polled)
+        # 聊天不是世界事实，暂停期间仍可发。
+        status, chat = _room_post(server, "/api/room/chat",
+                                  {"channel": "world", "text": "先等一下"},
+                                  rid, other)
+        assert status == 200, (status, chat)
+        # 暂停前那次提交的同键重放仍回首次结果。
+        status, replay = _room_action_post(
+            server, rid, host, action_id="pickup", base_seq=base,
+            key="t9-before-pause-01")
+        assert status == 200 and replay["replayed"] is True, (status, replay)
+        assert replay["result"] == first["result"]
+        assert len(_room_action_events(rid)) == actions_before
+
+        # 旁路的世界变更同样被挡住（不改 chron.py / 地图 / 规则）。
+        status, moved = _post(server, "/api/atlas/move", {"via": "north"}, sid=rid)
+        assert status == 409 and moved.get("reason") == "room_paused", (status, moved)
+        status, advanced = _post(server, "/api/chron/advance",
+                                 {"target_minute": 30}, sid=rid)
+        assert status == 409 and advanced.get("reason") == "room_paused", \
+            (status, advanced)
+        status, cancelled = _post(server, "/api/chron/cancel",
+                                  {"task_id": "act_" + "ab" * 16}, sid=rid)
+        assert status == 409 and cancelled.get("reason") == "room_paused", \
+            (status, cancelled)
+        status, committed = _post(
+            server, "/api/action/commit", {}, sid=rid,
+            headers={"Idempotency-Key": "t9-commit-paused-01"})
+        assert status == 409 and committed.get("reason") == "room_paused", \
+            (status, committed)
+        status, guided = _post(server, "/api/guide/turn",
+                               {"text": "我捡起来", "action_id": "pickup"}, sid=rid)
+        assert status == 409 and guided.get("reason") == "room_paused", \
+            (status, guided)
+        # 淡出整句不相等结算，暂停不拦。
+        status, faded = _post(server, "/api/guide/turn",
+                              {"text": notdnd_web.GUIDE_FADE_WORD,
+                               "action_id": "pickup"}, sid=rid)
+        assert status == 200 and faded["status"] == "ok", (status, faded)
+        assert len(_room_action_events(rid)) == actions_before
+
+        # 丢掉内存缓存后仍从磁盘读到暂停（落盘生效，不只是内存旗标）。
+        notdnd_web._sessions.pop(rid, None)
+        status, still = _room_action_post(
+            server, rid, host, action_id="pickup", base_seq=0,
+            key="t9-after-reload-01")
+        assert status == 409 and still.get("reason") == "room_paused", \
+            (status, still)
+        assert notdnd_web.get_session(rid).room["paused"] is True
+
+        status, resumed = _room_post(server, "/api/room/pause", {"paused": False},
+                                     rid, host)
+        assert status == 200 and resumed["paused"] is False, (status, resumed)
+        assert _disk_room(rid)["paused"] is False
+        assert any(e["type"] == "host.resume"
+                   for e in notdnd_web.get_session(rid)._handle.events_since(0))
+        status, after = _room_action_post(
+            server, rid, host, action_id="pickup",
+            base_seq=_event_seq(rid), key="t9-after-resume-01")
+        assert status == 200 and after["replayed"] is False, (status, after)
+        assert len(_room_action_events(rid)) == actions_before + 1
+
+
+def check_room_pvp_t10():
+    """T10：对他人角色的敌意行动按 `pvp_mode` 拒绝或放行；拒绝不产生结算。"""
+    rid = "room-pvp-t10"
+    actions = [
+        {"id": "aid", "label": "救助", "kind": "check", "df": 8, "auto_pass": True},
+        {"id": "strike", "label": "攻击", "kind": "check", "df": 8, "hostile": True,
+         "auto_pass": True},
+        {"id": "poison", "label": "下毒", "kind": "check", "df": 8,
+         "tags": ["poison"], "auto_pass": True},
+        {"id": "steal", "label": "偷窃", "kind": "check", "df": 8,
+         "tags": ["steal"], "auto_pass": True},
+        {"id": "smite", "label": "惩戒", "kind": "check", "df": 8, "hostile": True,
+         "auto_pass": True},
+        {"id": "vent", "label": "自伤", "kind": "check", "df": 8, "hostile": True,
+         "auto_pass": True},
+        {"id": "duel", "label": "对决", "kind": "check", "df": 8, "hostile": True,
+         "auto_pass": True},
+        {"id": "finish", "label": "补刀", "kind": "check", "df": 8, "hostile": True,
+         "auto_pass": True},
+    ]
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        other = _join_room(server, rid, character_id="pc-b")
+        _seed_room_scene(rid, character_ids=("pc-a", "pc-b"), actions=actions)
+        target = {"target": {"kind": "player", "id": "pc-b"}}
+
+        def strike(key, **kwargs):
+            return _room_action_post(
+                server, rid, host, action_id=kwargs.pop("action_id", "strike"),
+                base_seq=_event_seq(rid), key=key, params=target, **kwargs)
+
+        digest = _rules_digest(rid)
+        seq = _event_seq(rid)
+        n_actions = len(_room_action_events(rid))
+        status, needs = strike("t10-no-token-00001")
+        assert status == 403 and needs.get("reason") == "pvp_needs_consent", \
+            (status, needs)
+        assert needs.get("error") == "需要对方同意这次对抗", needs
+        assert _rules_digest(rid) == digest and _event_seq(rid) == seq
+        assert len(_room_action_events(rid)) == n_actions
+
+        junk = "pvpc_" + "ab" * 16
+        status, junked = strike(
+            "t10-junk-token-0001",
+            extra_headers={"X-Pvp-Consent": junk})
+        assert status == 403 and junked.get("reason") == "pvp_needs_consent", \
+            (status, junked)
+        assert _rules_digest(rid) == digest and _event_seq(rid) == seq
+
+        status, self_ok = _room_post(
+            server, "/api/room/pvp/consent",
+            {"action_id": "strike", "actor_member_id": host["member_id"]},
+            rid, host)
+        assert status == 400 and self_ok.get("reason") == "bad_target", \
+            (status, self_ok)
+        status, not_hostile = _room_post(
+            server, "/api/room/pvp/consent",
+            {"action_id": "aid", "actor_member_id": host["member_id"]},
+            rid, other)
+        assert status == 400 and not_hostile.get("reason") == "bad_action", \
+            (status, not_hostile)
+
+        status, issued = _room_post(
+            server, "/api/room/pvp/consent",
+            {"action_id": "strike", "actor_member_id": host["member_id"]},
+            rid, other)
+        assert status == 200, (status, issued)
+        token = issued["consent_token"]
+        assert notdnd_web.ROOM_PVP_CONSENT_RE.fullmatch(token), token
+        assert token not in _save_bytes(str(notdnd_web.SAVE_DIR), rid)
+
+        # 令牌对不上这次行动：不消耗。
+        status, mismatched = _room_action_post(
+            server, rid, host, action_id="poison", base_seq=_event_seq(rid),
+            key="t10-mismatch-00001", params=target,
+            extra_headers={"X-Pvp-Consent": token})
+        assert status == 403 and mismatched.get("reason") == "pvp_needs_consent", \
+            (status, mismatched)
+        assert _rules_digest(rid) == digest
+        # 头优先于 body：头是错的，body 里那枚对的也不该被烧掉。
+        status, header_wins = _room_action_post(
+            server, rid, host, action_id="strike", base_seq=_event_seq(rid),
+            key="t10-header-wins-001",
+            params={"target": {"kind": "player", "id": "pc-b"},
+                    "pvp_consent": token},
+            extra_headers={"X-Pvp-Consent": junk})
+        assert status == 403 and header_wins.get("reason") == "pvp_needs_consent", \
+            (status, header_wins)
+        status, allowed = _room_action_post(
+            server, rid, host, action_id="strike", base_seq=_event_seq(rid),
+            key="t10-consent-ok-0001",
+            params={"target": {"kind": "player", "id": "pc-b"},
+                    "pvp_consent": junk},
+            extra_headers={"X-Pvp-Consent": token})
+        assert status == 200 and allowed["replayed"] is False, (status, allowed)
+        assert "strike" in (notdnd_web.get_session(rid).rules.get("done_actions") or {})
+        assert len(_room_action_events(rid)) == n_actions + 1
+        assert token not in _save_bytes(str(notdnd_web.SAVE_DIR), rid)
+        # 一次性：再用同一枚 → 拒绝，且不再结算。
+        digest_after = _rules_digest(rid)
+        seq_after = _event_seq(rid)
+        status, reused = _room_action_post(
+            server, rid, host, action_id="poison", base_seq=seq_after,
+            key="t10-reuse-token-001", params=target,
+            extra_headers={"X-Pvp-Consent": token})
+        assert status == 403 and reused.get("reason") == "pvp_needs_consent", \
+            (status, reused)
+        assert _rules_digest(rid) == digest_after and _event_seq(rid) == seq_after
+
+        # off 不看令牌、也不消耗。先在 consent 下签发，再关掉。
+        status, issued_steal = _room_post(
+            server, "/api/room/pvp/consent",
+            {"action_id": "steal", "actor_member_id": host["member_id"]},
+            rid, other)
+        assert status == 200, (status, issued_steal)
+        steal_token = issued_steal["consent_token"]
+        status, off = _room_post(server, "/api/room/settings", {"pvp_mode": "off"},
+                                 rid, host)
+        assert status == 200 and off["pvp_mode"] == "off", (status, off)
+        assert _disk_room(rid)["pvp_mode"] == "off"
+        status, cannot_issue = _room_post(
+            server, "/api/room/pvp/consent",
+            {"action_id": "duel", "actor_member_id": host["member_id"]},
+            rid, other)
+        assert status == 403 and cannot_issue.get("reason") == "pvp_disabled", \
+            (status, cannot_issue)
+        digest_off = _rules_digest(rid)
+        seq_off = _event_seq(rid)
+        n_off = len(_room_action_events(rid))
+        status, disabled = _room_action_post(
+            server, rid, host, action_id="poison", base_seq=seq_off,
+            key="t10-off-junk-000001", params=target,
+            extra_headers={"X-Pvp-Consent": steal_token})
+        assert status == 403 and disabled.get("reason") == "pvp_disabled", \
+            (status, disabled)
+        assert disabled.get("error") == "本房间未开启玩家对抗", disabled
+        assert _rules_digest(rid) == digest_off and _event_seq(rid) == seq_off
+        assert len(_room_action_events(rid)) == n_off
+        # 回到 consent：刚才那枚偷盗令牌还在。
+        status, back = _room_post(server, "/api/room/settings",
+                                  {"pvp_mode": "consent"}, rid, host)
+        assert status == 200 and back["pvp_mode"] == "consent", (status, back)
+        status, stole = _room_action_post(
+            server, rid, host, action_id="steal", base_seq=_event_seq(rid),
+            key="t10-steal-ok-00001", params=target,
+            extra_headers={"X-Pvp-Consent": steal_token})
+        assert status == 200, (status, stole)
+        assert "steal" in (notdnd_web.get_session(rid).rules.get("done_actions") or {})
+
+        status, off2 = _room_post(server, "/api/room/settings", {"pvp_mode": "off"},
+                                  rid, host)
+        assert status == 200, (status, off2)
+        # 非敌意、打 NPC、打自己：不是「对另一名玩家角色」，off 也放行。
+        status, aided = _room_action_post(
+            server, rid, host, action_id="aid", base_seq=_event_seq(rid),
+            key="t10-aid-ok-0000001", params=target)
+        assert status == 200, (status, aided)
+        assert "aid" in (notdnd_web.get_session(rid).rules.get("done_actions") or {})
+        status, smote = _room_action_post(
+            server, rid, host, action_id="smite", base_seq=_event_seq(rid),
+            key="t10-npc-ok-0000001",
+            params={"target": {"kind": "npc", "id": "npc-bandit"}})
+        assert status == 200, (status, smote)
+        assert "smite" in (notdnd_web.get_session(rid).rules.get("done_actions") or {})
+        status, vented = _room_action_post(
+            server, rid, host, action_id="vent", base_seq=_event_seq(rid),
+            key="t10-self-ok-000001",
+            params={"target": {"kind": "player", "id": "pc-a"}})
+        assert status == 200, (status, vented)
+
+        status, on = _room_post(server, "/api/room/settings", {"pvp_mode": "on"},
+                                rid, host)
+        assert status == 200 and on["pvp_mode"] == "on", (status, on)
+        assert _disk_room(rid)["pvp_mode"] == "on"
+        status, no_need = _room_post(
+            server, "/api/room/pvp/consent",
+            {"action_id": "duel", "actor_member_id": host["member_id"]},
+            rid, other)
+        assert status == 409 and no_need.get("reason") == "pvp_not_required", \
+            (status, no_need)
+        before_duel = len(_room_action_events(rid))
+        status, dueled = _room_action_post(
+            server, rid, host, action_id="duel", base_seq=_event_seq(rid),
+            key="t10-duel-on-000001", params=target)
+        assert status == 200 and dueled["replayed"] is False, (status, dueled)
+        assert dueled["result"]["committed"] is True, dueled["result"]
+        rules = notdnd_web.get_session(rid).rules
+        assert "duel" in (rules.get("done_actions") or {}), rules.get("done_actions")
+        commits = _room_action_events(rid)
+        assert len(commits) == before_duel + 1
+        assert commits[-1]["actor"] == "pc-a", commits[-1]
+        # 离开后的角色不再是在座玩家：off 也不拦。
+        status, off3 = _room_post(server, "/api/room/settings", {"pvp_mode": "off"},
+                                  rid, host)
+        assert status == 200, (status, off3)
+        status, left = _room_post(server, "/api/room/leave", {}, rid, other)
+        assert status == 200, (status, left)
+        status, finished = _room_action_post(
+            server, rid, host, action_id="finish", base_seq=_event_seq(rid),
+            key="t10-left-ok-000001", params=target)
+        assert status == 200, (status, finished)
+        assert "finish" in (notdnd_web.get_session(rid).rules.get("done_actions") or {})
+
+
+def check_room_modes():
+    """自由 / 事件 / 管理：落盘键是 `room.mode`；事件模式不开 CHRON 窗口。"""
+    rid = "room-modes-1"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        assert "mode" not in host and "paused" not in host, host
+        block = _disk_room(rid)
+        assert block["mode"] == "free" and block["pvp_mode"] == "consent"
+        assert block["paused"] is False
+        other = _join_room(server, rid, character_id="pc-b")
+        _seed_room_scene(rid, character_ids=("pc-a", "pc-b"), actions=[
+            {"id": "pickup", "label": "拾取", "kind": "check", "df": 8,
+             "auto_pass": True},
+            {"id": "aid", "label": "救助", "kind": "check", "df": 8,
+             "auto_pass": True},
+        ])
+        status, empty = _room_post(server, "/api/room/settings", {}, rid, host)
+        assert status == 400 and empty.get("reason") == "bad_settings", (status, empty)
+        status, bad_mode = _room_post(server, "/api/room/settings",
+                                      {"mode": "ranked"}, rid, host)
+        assert status == 400 and bad_mode.get("reason") == "bad_mode", (status, bad_mode)
+        status, bad_pvp = _room_post(server, "/api/room/settings",
+                                     {"pvp_mode": "maybe"}, rid, host)
+        assert status == 400 and bad_pvp.get("reason") == "bad_pvp_mode", \
+            (status, bad_pvp)
+        assert _disk_room(rid)["mode"] == "free"
+
+        session = notdnd_web.get_session(rid)
+        chron_before = json.dumps(
+            (session._handle.view().get("blocks") or {}).get("chron"),
+            sort_keys=True, ensure_ascii=False)
+        status, event_mode = _room_post(server, "/api/room/settings",
+                                        {"mode": "event"}, rid, host)
+        assert status == 200, (status, event_mode)
+        assert event_mode["mode"] == "event", event_mode
+        assert event_mode["settlement"] == "serial", event_mode
+        assert event_mode["chron_window"] is False, event_mode
+        assert "projects" not in event_mode
+        assert _disk_room(rid)["mode"] == "event"
+        chron_after = json.dumps(
+            (session._handle.view().get("blocks") or {}).get("chron"),
+            sort_keys=True, ensure_ascii=False)
+        assert chron_after == chron_before, "切到事件模式不得改 chron 块"
+        mode_events = [e for e in session._handle.events_since(0)
+                       if e["type"] == "host.mode"]
+        assert len(mode_events) == 1, mode_events
+        assert mode_events[0]["changes"][0]["after"] == "event"
+        status, seen = _room_poll(server, rid, host)
+        status2, hidden = _room_poll(server, rid, other)
+        assert status == 200 and status2 == 200
+        assert any(f["event"]["type"] == "host.mode" for f in seen["frames"])
+        assert all(f["event"]["type"] != "host.mode" for f in hidden["frames"])
+        # 再切一次同一模式：不另写事件。
+        status, noop = _room_post(server, "/api/room/settings", {"mode": "event"},
+                                  rid, host)
+        assert status == 200 and noop["settlement"] == "serial", (status, noop)
+        assert len([e for e in session._handle.events_since(0)
+                    if e["type"] == "host.mode"]) == 1
+
+        # 事件模式仍是既有的单写者串行提交：两笔都 200，没有局部同步窗口。
+        status, first = _room_action_post(
+            server, rid, host, action_id="pickup", base_seq=_event_seq(rid),
+            key="mode-event-act-0001")
+        status2, second = _room_action_post(
+            server, rid, other, action_id="aid", base_seq=_event_seq(rid),
+            key="mode-event-act-0002")
+        assert status == 200 and status2 == 200, (status, first, status2, second)
+        assert first["seq"] != second["seq"]
+        types = [e["type"] for e in session._handle.events_since(0)]
+        assert "window.opened" not in types, types
+        assert types.count(notdnd_web.ACTION_EVENT_TYPE) == 2
+
+        chron_manage = json.dumps(
+            (session._handle.view().get("blocks") or {}).get("chron"),
+            sort_keys=True, ensure_ascii=False)
+        status, manage = _room_post(
+            server, "/api/room/settings",
+            {"mode": "manage", "pvp_mode": "on"}, rid, host)
+        assert status == 200, (status, manage)
+        assert manage["mode"] == "manage" and manage["pvp_mode"] == "on", manage
+        assert manage["settlement"] == "independent", manage
+        assert manage["chron_window"] is False
+        disk = _disk_room(rid)
+        assert disk["mode"] == "manage" and disk["pvp_mode"] == "on"
+        assert "projects" not in disk
+        chron_now = json.dumps(
+            (session._handle.view().get("blocks") or {}).get("chron"),
+            sort_keys=True, ensure_ascii=False)
+        assert chron_now == chron_manage, "管理模式不建长期项目、不改 chron"
+        settings_events = [e for e in session._handle.events_since(0)
+                           if e["type"] == "host.settings"]
+        assert len(settings_events) == 1, settings_events
+        paths = sorted(change["path"] for change in settings_events[0]["changes"])
+        assert paths == ["/mode", "/pvp_mode"], settings_events[0]["changes"]
+        # 管理模式下行动仍各自提交。
+        status, third = _room_action_post(
+            server, rid, host, action_id="pickup", base_seq=_event_seq(rid),
+            key="mode-manage-act-001")
+        assert status == 200, (status, third)
+        assert [e["type"] for e in session._handle.events_since(0)
+                ].count(notdnd_web.ACTION_EVENT_TYPE) == 3
+
+        cleaned = notdnd_web._room_from(
+            {"paused": "yes", "pvp_mode": "maybe", "mode": "ranked",
+             "host_member_id": ""}, rid)
+        assert cleaned["paused"] is False
+        assert cleaned["pvp_mode"] == "consent"
+        assert cleaned["mode"] == "free"
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -5601,6 +6119,10 @@ CHECKS = (
     check_room_action_t3_same_key_replays,
     check_room_action_t4_new_key_stale_conflict,
     check_room_action_errors,
+    check_room_pause_non_host_t8,
+    check_room_pause_t9,
+    check_room_pvp_t10,
+    check_room_modes,
     check_room_chat_idempotency_and_base_seq,
     check_room_stream_poll_equivalence,
     check_room_stream_auth_and_since,
