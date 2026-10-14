@@ -3152,6 +3152,194 @@ def check_room_chat_secret_gate_per_member():
         assert "他是守钥人计霜的儿子" not in wa["frames"][-1]["event"]["cause"]
 
 
+# --------------------------------------------------------------------------
+# 并发提交与幂等（M10-S4，MPI §7.2 / §7.3 / §12 S4；T1 / T3 / T4）
+# --------------------------------------------------------------------------
+
+
+def _room_action_post(server, room_id, member, *, action_id, base_seq, key,
+                      params=None):
+    """发一次房间级世界变更提交（`POST /api/room/action`）：返回 (状态, JSON)。"""
+    body = {"action_id": action_id, "base_seq": base_seq}
+    if params is not None:
+        body["params"] = params
+    headers = _room_headers(room_id, member["member_id"], member["token"])
+    headers["Idempotency-Key"] = key
+    return _post(server, "/api/room/action", body, headers=headers)
+
+
+def _seed_room_scene(rid, *, character_ids, action_id="pickup"):
+    """给房间的规则会话补一支队伍 + 一个场景行动（T1 的「拾取」用）。
+
+    房间是「一档 = 一权威世界」，规则态仍归 `prism_core`——这里只造出结算所需
+    的最小场景（队伍 + 一个 `check` 行动），不改房间块与状态层的语义。
+    """
+    session = notdnd_web.get_session(rid)
+    with session.lock:
+        rules = prism_core.RuleSession(rid)
+        for index, character_id in enumerate(character_ids):
+            rules.party.append(prism_core.new_unit(
+                character_id, "角色-%d" % index,
+                attributes={"MGT": 6, "INS": 5}))
+        rules.active_unit_id = character_ids[0]
+        rules.scene = {"id": "sc-room",
+                       "actions": [{"id": action_id, "label": "拾取",
+                                    "kind": "check", "df": 8}]}
+        session.rules = rules.snapshot()
+        session.save()
+    return session
+
+
+def _room_action_events(rid):
+    """本房间事件日志里行动管线写下的那条（`type` = `ACTION_EVENT_TYPE`）。"""
+    handle = notdnd_web.get_session(rid)._handle
+    return [e for e in handle.events_since(0)
+            if e["type"] == notdnd_web.ACTION_EVENT_TYPE]
+
+
+def check_room_action_t1_pickup_conflict():
+    """T1（§7.3a / §8.1）：两名成员**并发**提交「拾取同一件物品」——恰一人成功
+    （200）并写**一条**事件，另一人 `409 conflict` + **当前 seq**、**不写事件**；
+    物品唯一归属、可溯源。"""
+    rid = "room-action-t1"
+    host_char, other_char = "pc-a", "pc-b"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id=host_char)
+        other = _join_room(server, rid, character_id=other_char)
+        session = _seed_room_scene(rid, character_ids=(host_char, other_char))
+        base_seq = session._handle.view()["seq"]
+        results = {}
+
+        def submit(member, key):
+            results[member["member_id"]] = _room_action_post(
+                server, rid, member, action_id="pickup", base_seq=base_seq,
+                key=key)
+
+        threads = [threading.Thread(target=submit,
+                                    args=(host, "t1-key-host-000001")),
+                   threading.Thread(target=submit,
+                                    args=(other, "t1-key-other-00001"))]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=20)
+
+        assert sorted(results[m["member_id"]][0]
+                      for m in (host, other)) == [200, 409], results
+        # A0：一次提交 = 一条事件——物品的唯一归属落在**恰好一条**事件上。
+        events = _room_action_events(rid)
+        assert len(events) == 1, events
+        winner = host if results[host["member_id"]][0] == 200 else other
+        loser = other if winner is host else host
+        winner_char = host_char if winner is host else other_char
+        assert events[0]["actor"] == winner_char, (events[0], winner_char)
+        # 输家：`409 conflict` + 当前 seq（= 赢家提交后的 seq），不落事件。
+        code, body = results[loser["member_id"]]
+        assert code == 409 and body.get("reason") == "conflict", (code, body)
+        assert body["seq"] == events[0]["seq"], (body, events[0]["seq"])
+
+
+def check_room_action_t3_same_key_replays():
+    """T3（§7.3c / §7.7）：同一 `Idempotency-Key` 提交两次——第二次**不产生副作用**、
+    回首次结果（`replayed`），资源 / 物品无重复变化（事件数不变）。"""
+    rid = "room-action-t3"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        session = _seed_room_scene(rid, character_ids=("pc-a",))
+        base_seq = session._handle.view()["seq"]
+        status1, first = _room_action_post(server, rid, host, action_id="pickup",
+                                           base_seq=base_seq, key="t3-key-00000001")
+        assert status1 == 200 and first["status"] == "ok", (status1, first)
+        assert first["replayed"] is False, first
+        # 第二次：**同一** base_seq（早已过期）也回首次结果——幂等查表在任何结算之前。
+        status2, again = _room_action_post(server, rid, host, action_id="pickup",
+                                           base_seq=base_seq, key="t3-key-00000001")
+        assert status2 == 200 and again["replayed"] is True, (status2, again)
+        assert again["result"] == first["result"], (again, first)
+        assert len(_room_action_events(rid)) == 1, _room_action_events(rid)
+
+
+def check_room_action_t4_new_key_stale_conflict():
+    """T4（§7.3c / §10 风险 2）：带**不同**幂等键、语义相同的重复点击——第二次因
+    `base_seq` 过期被拒（409 + 当前 seq），**不出现双份副作用**。"""
+    rid = "room-action-t4"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        session = _seed_room_scene(rid, character_ids=("pc-a",))
+        base_seq = session._handle.view()["seq"]
+        status1, first = _room_action_post(server, rid, host, action_id="pickup",
+                                           base_seq=base_seq, key="t4-key-00000001")
+        assert status1 == 200, (status1, first)
+        # 换个键再赌一次：新键不命中幂等表，但 base_seq 已过期 → 409，不落事件。
+        status2, again = _room_action_post(server, rid, host, action_id="pickup",
+                                           base_seq=base_seq, key="t4-key-00000002")
+        assert status2 == 409 and again.get("reason") == "conflict", (status2, again)
+        assert again["seq"] == 1, again
+        assert len(_room_action_events(rid)) == 1, _room_action_events(rid)
+
+
+def check_room_action_errors():
+    """§4.1 / §7.2：缺 / 非法幂等键 → 400；未鉴权 → 401；行动表没有的 id → 404。"""
+    rid = "room-action-err"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        session = _seed_room_scene(rid, character_ids=("pc-a",))
+        base_seq = session._handle.view()["seq"]
+        headers = _room_headers(rid, host["member_id"], host["token"])
+        # 缺 `Idempotency-Key` → 400（房间级写提交必须带键）。
+        status, body = _post(server, "/api/room/action",
+                             {"action_id": "pickup", "base_seq": base_seq},
+                             headers=headers)
+        assert status == 400 and body.get("reason") == "bad_idem_key", (status, body)
+        # 非法键（太短）→ 400。
+        status, body = _post(server, "/api/room/action",
+                             {"action_id": "pickup", "base_seq": base_seq},
+                             headers=dict(headers, **{"Idempotency-Key": "short"}))
+        assert status == 400 and body.get("reason") == "bad_idem_key", (status, body)
+        # 未鉴权（只有 `X-Room`，无成员 / 令牌）→ 401（不泄露房间内容）。
+        status, body = _post(server, "/api/room/action",
+                             {"action_id": "pickup", "base_seq": base_seq},
+                             headers={"X-Room": rid,
+                                      "Idempotency-Key": "err-key-00000001"})
+        assert status == 401, (status, body)
+        # 行动不在当前场景 → 404（前置条件面）。
+        status, body = _room_action_post(server, rid, host, action_id="no-such",
+                                         base_seq=base_seq, key="err-key-00000002")
+        assert status == 404, (status, body)
+
+
+def check_room_chat_idempotency_and_base_seq():
+    """§7.2：房间聊天提交口也认 `Idempotency-Key`（同键重放回首次结果）与 `base_seq`
+    （过期 → 409 + 当前 seq）——两条房间级写路径同一套并发口径（S3/S4 收口）。"""
+    rid = "room-chat-idem"
+    with _LocalServer() as server:
+        host = _new_room(server, rid, character_id="pc-a")
+        session = notdnd_web.get_session(rid)
+        base_seq = session._handle.view()["seq"]
+        headers = dict(_room_headers(rid, host["member_id"], host["token"]),
+                       **{"Idempotency-Key": "chat-idem-key-0001"})
+        status1, first = _post(server, "/api/room/chat",
+                               {"channel": "world", "text": "hello",
+                                "base_seq": base_seq}, headers=headers)
+        assert status1 == 200, (status1, first)
+        # 同键重放：回首次结果（同一 seq），不写新事件。
+        status2, again = _post(server, "/api/room/chat",
+                               {"channel": "world", "text": "hello",
+                                "base_seq": base_seq}, headers=headers)
+        assert status2 == 200 and again["seq"] == first["seq"], (status2, again)
+        # 新键 + 过期 base_seq → 409 + 当前 seq，不写事件。
+        headers2 = dict(_room_headers(rid, host["member_id"], host["token"]),
+                        **{"Idempotency-Key": "chat-idem-key-0002"})
+        status3, conflict = _post(server, "/api/room/chat",
+                                  {"channel": "world", "text": "hello2",
+                                   "base_seq": base_seq}, headers=headers2)
+        assert status3 == 409 and conflict.get("reason") == "conflict", \
+            (status3, conflict)
+        assert conflict["seq"] == first["seq"], (conflict, first)
+        assert len(session._handle.events_since(0)) == 1, \
+            session._handle.events_since(0)
+
+
 def check_room_stream_poll_equivalence():
     """§5.5 降级：**同一条路径**的短轮询（`Accept: application/json`）与流式逐帧一致。"""
     rid = "room-stream-poll-1"
@@ -5409,6 +5597,11 @@ CHECKS = (
     check_room_chat_channels_and_visibility_freeze,
     check_room_chat_errors,
     check_room_chat_secret_gate_per_member,
+    check_room_action_t1_pickup_conflict,
+    check_room_action_t3_same_key_replays,
+    check_room_action_t4_new_key_stale_conflict,
+    check_room_action_errors,
+    check_room_chat_idempotency_and_base_seq,
     check_room_stream_poll_equivalence,
     check_room_stream_auth_and_since,
     check_room_stream_heartbeat_and_dead,
