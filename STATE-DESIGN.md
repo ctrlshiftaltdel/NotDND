@@ -220,7 +220,7 @@ GDD §19.5 点名的字段**全部覆盖**（GDD §19.1–§19.3 只说「重要
 | `type` | string | 是 | GDD §19.5「类型」。`"<domain>.<verb>"`，小写，`^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$` | `"core.commit"` / `"map.move"` / `"resource.spend"` |
 | `actor` | string | 是 | GDD §19.5「主体」。实体 id；系统发起用 `"world"` | `"npc-01"` |
 | `target` | string \| null | 是 | GDD §19.5「目标」 | `"loc-02"` |
-| `cause` | string \| null | 是 | GDD §19.5「原因 / 触发事件」：上游 `event_id`；玩家发起的根因是 `null` | `"yunji:e000000000041"` |
+| `cause` | string \| null | 是 | GDD §19.5「原因 / 触发事件」：上游 `event_id`；玩家发起的根因是 `null`。**例外（仅 `chat.*`，过渡）**：`type` 为 `chat.<channel>` 的玩家消息事件以本字段承载聊天正文（普通字符串，**不是**上游 `event_id`；见下行） | `"yunji:e000000000041"` |
 | `visibility` | object | 是 | GDD §19.5「可见范围」+ §12.4 访问控制 | `{"scope":"private","subjects":["pc-1"]}` |
 | `changes` | array | 是 | GDD §19.5「状态变化」。声明式变更清单（5.3）；承载本次提交**全部**变更（可跨块、多路径） | 见 5.3 |
 | `rules_version` | string | 是 | GDD §19.5「规则版本」：本次裁决所依据的规则 / 数据包修订号 | `"prism@data-79"` |
@@ -229,6 +229,8 @@ GDD §19.5 点名的字段**全部覆盖**（GDD §19.1–§19.3 只说「重要
 | `source` | string | 是 | GDD §19.5「创建来源」：`player` / `npc` / `system` / `ai_proposal` | `"player"` |
 | `idempotency_key` | string \| null | 是 | 产生本次提交的幂等键（第 7 节）；系统 tick 可 `null` | `"a1b2…"` |
 | `ts` | int | 是 | 现实时间毫秒，**仅供审计**；不参与任何权威判断（GDD §6.9：不以客户端时钟为权威） | `1760000000000` |
+
+> **紧邻 `cause` 行**：`chat.<channel>` 玩家消息（`source="player"`，`changes` 为空）以 `cause` 承载**提交时**的聊天正文，聊天因此不成为世界事实；按成员涂掉秘密只发生在交付帧，不改这条事件、也不另写一条（`MULTIPLAYER-DESIGN.md` §6.2 / §6.3）。类型仍是 `string | null`，**不**改 `state.py`；专用正文字段另开契约变更单。依据：`PR #327（Issue #321）` 已合并实现与复核裁定——正文暂借 `cause`，接受为本阶段过渡。
 
 **枚举（初始，可扩展）**
 
