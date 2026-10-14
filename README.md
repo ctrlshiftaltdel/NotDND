@@ -28,6 +28,10 @@ AI 导引者是可选的：配置 `.env` 中的 `BASE_URL`、`MODEL`、`API_KEY`
 
 > ⚠️ **安全提示：** 仅限本机 / 可信局域网使用——当前无账号与鉴权，请勿暴露到公网。
 
+## 数据层
+
+`docs/` 是 PRISM 的原创规则与剧本源文档（可修订）；`data/` 存放由它整理出的 JSON——**加文件即加内容**（`data/system/` 跨世界规则、`data/worlds/` 世界模组、`data/scenarios/` 剧本、`data/random_tables/` 随机表）。统一格式与 `source` 溯源口径见 [`data/FORMAT.md`](data/FORMAT.md)；零依赖校验器：`python3 tests/validate_data.py`。
+
 ## 了解项目
 
 - [游戏设计文档（GDD）](GDD.md) · 产品目标与世界模拟原则
