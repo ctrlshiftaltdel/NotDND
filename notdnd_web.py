@@ -515,11 +515,18 @@ def _room_member_knows(session: Session, member: dict) -> list:
     return []
 
 
-def _room_member_frame(session: Session, member: dict, event) -> dict:
-    """按**该成员**的视角出一帧（§6.2 每成员各过一次秘密门）。
+# §6.2：内容**按成员各算**的频道（可见范围不同 = 各成员各过一遍秘密门）。
+ROOM_PER_MEMBER_CHANNELS = ("tell", "npc", "org")
 
-    聊天正文可能含 NPC 秘密：对该成员重跑一遍秘密门，未放行的片段涂成「……」
-    后才进帧——服务端只推成员自己那份（§6.3）；非聊天事件原样透出。
+
+def _room_member_frame(session: Session, member: dict, event) -> dict:
+    """按**该成员**的视角出一帧（§6.2 / §6.3）。
+
+    聊天正文可能含 NPC 秘密，交付前过一遍秘密门，未放行的片段涂成「……」：
+    - `tell` / `npc` / `org`：**按成员各过一遍**（本成员角色 `knows` 集 + 目击 +
+      被告知，`redact_for_member`）——同一事件对不同成员给出不同可见部分；
+    - `world` / `ooc` / `host`：**只过一次**（对所有人相同，复用 `redact_narration`）。
+    非聊天事件原样透出；秘密内容只按该成员的可见部分进帧（§6.3：服务端只推自己那份）。
     """
     channel = _room_event_channel(event)
     if (prism_guide is None or not channel or not isinstance(event, dict)
@@ -529,8 +536,11 @@ def _room_member_frame(session: Session, member: dict, event) -> dict:
     if not isinstance(text, str) or not text:
         return _room_frame(event)
     guide = session.guide if isinstance(session.guide, dict) else {}
-    redacted = prism_guide.redact_for_member(
-        text, guide, knows=_room_member_knows(session, member))
+    if channel in ROOM_PER_MEMBER_CHANNELS:
+        redacted = prism_guide.redact_for_member(
+            text, guide, knows=_room_member_knows(session, member))
+    else:
+        redacted = prism_guide.redact_narration(text, guide)
     if redacted == text:
         return _room_frame(event)
     safe = dict(event)
@@ -572,28 +582,30 @@ def _room_chat_audience(room: dict, member: dict, channel: str,
     """
     active = _room_active_members(room)
     sender_id = str((member or {}).get("member_id") or "")
+    scope = ROOM_CHANNEL_SCOPES.get(channel, "")
+    if not scope:
+        return "", []
     if channel in ("world", "ooc"):
-        return "public", []
+        return scope, []
     if channel == "party":
         seated = [mid for mid, m in active.items()
                   if m.get("role") in ("host", "player")]
-        return "team", (seated or [sender_id])
+        return scope, (seated or [sender_id])
     if channel in ("org", "npc"):
         ids = [sender_id] if sender_id else []
         for mid in members or []:
             mid = str(mid)
             if mid in active and mid not in ids:
                 ids.append(mid)
-        return ("team" if channel == "org" else "private"), ids
+        return scope, ids
     if channel == "tell":
         ids = [sender_id] if sender_id else []
         if str(target) in active and str(target) != sender_id:
             ids.append(str(target))
-        return "private", ids
-    if channel == "host":
-        hosts = [mid for mid, m in active.items() if m.get("role") == "host"]
-        return "gm", (hosts or [sender_id])
-    return "", []
+        return scope, ids
+    # 只剩 `host`（其余频道已在上文处理）。
+    hosts = [mid for mid, m in active.items() if m.get("role") == "host"]
+    return scope, (hosts or [sender_id])
 
 
 class _RoomStream:

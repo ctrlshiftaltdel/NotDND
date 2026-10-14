@@ -3106,7 +3106,7 @@ def check_room_chat_errors():
 
 
 def check_room_chat_secret_gate_per_member():
-    """§6.2：聊天正文按**每成员**过一遍秘密门——未放行的秘密不进该成员的帧。"""
+    """§6.2：`tell` / `npc` / `org` 正文按**每成员**过一遍秘密门；`world` 一次过。"""
     rid = "room-chat-gate"
     with _LocalServer() as server:
         host = _new_room(server, rid, character_id="pc-a")
@@ -3119,10 +3119,11 @@ def check_room_chat_secret_gate_per_member():
         assert status == 200, (status, body)
         # 甲的角色 knows 命中 NPC-01 的 knows → 放行；乙无 knows → 涂掉。
         session = notdnd_web.get_session(rid)
-        session.rules.setdefault("party", [])
         session.rules["party"] = [{"id": "pc-a", "knows": ["C-01"]},
                                   {"id": "pc-b"}]
-        status, body = _room_chat(server, rid, host, channel="world", text=secret)
+        # `tell`（按成员各算）：甲对乙私聊，正文含秘密。
+        status, body = _room_chat(server, rid, host, channel="tell",
+                                  text=secret, target=other["member_id"])
         assert status == 200, (status, body)
         # 同一事件、同一 seq：甲的轮询见到秘密，乙的轮询只见「……」。
         ha = dict(_room_headers(rid, host["member_id"], host["token"]),
@@ -3133,10 +3134,22 @@ def check_room_chat_secret_gate_per_member():
         assert status == 200, (status, pa)
         status, pb = server.get("/api/room/stream?since=0", headers=hb)
         assert status == 200, (status, pb)
-        text_a = pa["frames"][-1]["event"]["cause"]
-        text_b = pb["frames"][-1]["event"]["cause"]
-        assert "他是守钥人计霜的儿子" in text_a, text_a
-        assert "他是守钥人计霜的儿子" not in text_b and "……" in text_b, text_b
+        frame_a = pa["frames"][-1]
+        frame_b = pb["frames"][-1]
+        assert frame_a["seq"] == frame_b["seq"], (frame_a, frame_b)  # 同一条事件
+        assert "他是守钥人计霜的儿子" in frame_a["event"]["cause"], frame_a
+        assert "他是守钥人计霜的儿子" not in frame_b["event"]["cause"], frame_b
+        assert "……" in frame_b["event"]["cause"], frame_b
+        # `world` 只过一次（对所有人相同）：两人看到**同一条**（已统一涂掉的）正文。
+        status, body = _room_chat(server, rid, host, channel="world", text=secret)
+        assert status == 200, (status, body)
+        status, wa = server.get("/api/room/stream?since=%d" % frame_a["seq"],
+                                headers=ha)
+        status2, wb = server.get("/api/room/stream?since=%d" % frame_b["seq"],
+                                 headers=hb)
+        assert status == 200 and status2 == 200, (status, status2)
+        assert wa["frames"][-1]["event"]["cause"] == wb["frames"][-1]["event"]["cause"]
+        assert "他是守钥人计霜的儿子" not in wa["frames"][-1]["event"]["cause"]
 
 
 def check_room_stream_poll_equivalence():
