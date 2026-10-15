@@ -16,6 +16,10 @@
         "key": {"type": "string", "minLength": 1},
         "name": {"type": "string", "minLength": 1},
         "engine": {"enum": ["tactics", "build"]},
+        "world_type": {
+          "description": "世界主题的显式声明。只认这三个取值；缺失或不认识时由读取层落成 modern，不得用 engine、名称或 tone_pack 推导。",
+          "enum": ["fantasy", "modern", "future"]
+        },
         "source": {"$ref": "common.schema.json#/$defs/source"}
       },
       "additionalProperties": false

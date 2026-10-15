@@ -6,6 +6,7 @@
     "key": "threshold",
     "name": "阈界都市",
     "engine": "tactics",
+    "world_type": "modern",
     "source": "docs/scenario/05-world-module-i-threshold.md:3"
   },
   "glossary": [

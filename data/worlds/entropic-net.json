@@ -6,6 +6,7 @@
     "key": "entropic-net",
     "name": "熵网",
     "engine": "build",
+    "world_type": "future",
     "source": "docs/scenario/07-world-module-iii-entropic-net.md:3"
   },
   "glossary": [

@@ -3726,6 +3726,7 @@ def check_campaign_catalog_and_bind():
         assert status == 200, (status, view)
         sid = view["sid"]
         assert view["world"] == {} and view["scenario"] == {}, view
+        assert view["world_type"] == "modern", view.get("world_type")
 
         # 跨世界：阈界都市不认熵网的剧本 → 400「世界对不上」，视图不变。
         status, bad = server.post("/api/guide/bind",
@@ -3734,6 +3735,7 @@ def check_campaign_catalog_and_bind():
         assert status == 400 and bad.get("error") == "世界对不上", (status, bad)
         status, still = server.get("/api/session", sid=sid)
         assert still["world"] == {} and still["scenario"] == {}, still
+        assert still["world_type"] == "modern", still.get("world_type")
 
         # 正确绑定 → 200；会话视图带上世界 / 剧本名（场景卡直接用）。
         status, ok = server.post("/api/guide/bind",
@@ -3747,6 +3749,8 @@ def check_campaign_catalog_and_bind():
             bound["world"]
         assert bound["scenario"] == {"id": "backup_forty_one",
                                      "name": "第 41 次备份"}, bound["scenario"]
+        # 熵网模板是 future；该剧本没有 world_type 覆盖（engine 是 build，不参与推导）。
+        assert bound["world_type"] == "future", bound.get("world_type")
 
 
 # --------------------------------------------------------------------------

@@ -1310,17 +1310,50 @@ def campaign_catalog() -> dict:
     return {"worlds": worlds}
 
 
-def campaign_briefs(session: Session) -> dict:
-    """会话当前绑定的只读简报：`world` / `scenario` 两个块（场景卡用）。
+# 世界主题只认这三个显式取值（UI-WORLD-THEMES §2.1 / Issue #316）。
+# 不从 engine、名称或 tone_pack 推导：两个 tactics 世界可以是不同主题。
+WORLD_TYPE_VALUES = ("fantasy", "modern", "future")
+DEFAULT_WORLD_TYPE = "modern"
 
-    未绑定（`guide` 里没有 key / id）时为两个空块 `{}`。名字来自数据文件；
-    读不到时回退成 key / id 本身——**不编造名字**，也不读 `docs/`。只投影
-    key / name 两个字段，`guide` 的其余内容（salt / 秘密 / 转录）永不出现。
+
+def resolve_world_type(template_value: object, override_value: object = None) -> str:
+    """解析会话应读到的 `world_type`：有效战役覆盖 > 世界模板 > `modern`。
+
+    只认 `fantasy | modern | future`。缺失、非字符串、或不认识的值都不是有效声明，
+    该层作废后看下一层。本函数不接收 `engine` / 名称 / `tone_pack`——调用方不得
+    拿它们来填这两个参数。纯函数：不读盘、不写档。
+    """
+    override = _recognized_world_type(override_value)
+    if override is not None:
+        return override
+    template = _recognized_world_type(template_value)
+    if template is not None:
+        return template
+    return DEFAULT_WORLD_TYPE
+
+
+def _recognized_world_type(value: object) -> str | None:
+    """字符串且属于枚举才算数；大小写与前后空白都不放宽（放宽就是在猜）。"""
+    if isinstance(value, str) and value in WORLD_TYPE_VALUES:
+        return value
+    return None
+
+
+def campaign_briefs(session: Session) -> dict:
+    """会话当前绑定的只读简报：`world` / `scenario` 两个块，外加解析后的 `world_type`。
+
+    未绑定（`guide` 里没有 key / id）时两个块为 `{}`，`world_type` 为 `modern`。
+    名字来自数据文件；读不到时回退成 key / id 本身——**不编造名字**，也不读 `docs/`。
+    `world` / `scenario` 仍只投影 key / name（或 id / name）。`world_type` 单独放在
+    旁边：有效的战役顶层 `meta.world_type` 优先于模板声明，都不认识则 `modern`。
+    不看 `engine`、名称、`tone_pack`，也不看 `ledger_template`。`guide` 的其余内容
+    （salt / 秘密 / 转录）永不出现，解析结果也不写回 `guide` 或存档。
     """
     guide = session.guide if isinstance(session.guide, dict) else {}
     world_key = str(guide.get("world_key") or "")
     scenario_id = str(guide.get("scenario_id") or "")
     world: dict = {}
+    template_value = None
     if world_key:
         try:
             data = _load_world(world_key)
@@ -1329,12 +1362,19 @@ def campaign_briefs(session: Session) -> dict:
         block = data.get("world") if isinstance(data, dict) else None
         block = block if isinstance(block, dict) else {}
         world = {"key": world_key, "name": str(block.get("name") or world_key)}
+        template_value = block.get("world_type")
     scenario: dict = {}
+    override_value = None
     if scenario_id:
         meta = _scenario_meta(scenario_id) or {}
         scenario = {"id": scenario_id,
                     "name": str(meta.get("campaign") or scenario_id)}
-    return {"world": world, "scenario": scenario}
+        override_value = meta.get("world_type")
+    return {
+        "world": world,
+        "scenario": scenario,
+        "world_type": resolve_world_type(template_value, override_value),
+    }
 
 
 def _default_world_key() -> str:
@@ -1967,6 +2007,10 @@ def rules_view(session: Session) -> dict:
     与 `world` / `scenario`（当前绑定；未绑定为空块，见 `campaign_briefs`，
     UI-DESIGN §7 的「快照里没有 world / scenario」缺口在此补齐——只读派生，
     不写回存档）。
+
+    `world_type`（Issue #316）同样只读派生，加在视图顶层：有效的战役
+    `meta.world_type` 优先于世界模板声明，都不认识则 `modern`。不写回存档，
+    也不据此迁移老档。
     """
     rules = session.rules if isinstance(session.rules, dict) else {}
     view = copy.deepcopy(rules)
@@ -1981,6 +2025,7 @@ def rules_view(session: Session) -> dict:
     briefs = campaign_briefs(session)
     view["world"] = briefs["world"]
     view["scenario"] = briefs["scenario"]
+    view["world_type"] = briefs["world_type"]
     return view
 
 
