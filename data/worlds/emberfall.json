@@ -6,6 +6,7 @@
     "key": "emberfall",
     "name": "余烬纪元",
     "engine": "tactics",
+    "world_type": "fantasy",
     "source": "docs/scenario/06-world-module-ii-emberfall.md:3"
   },
   "glossary": [

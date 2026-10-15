@@ -637,7 +637,23 @@ data/
 
 族载荷（顶层）：
 
-- `world`：`{key, name, engine, source?}`；`engine` 枚举 `tactics | build`。
+- `world`：`{key, name, engine, world_type?, source?}`；`engine` 枚举 `tactics | build`。
+  `world_type` 枚举 `fantasy | modern | future`，是世界主题的**显式声明**（可选）。
+  已发布的三份模组都写了显式值：`threshold` → `modern`，`emberfall` → `fantasy`，
+  `entropic-net` → `future`。它与 `engine` 无关——`threshold` 与 `emberfall` 都是
+  `tactics`，主题却不同。
+
+**`world_type` 读取口径**（模板声明 → 战役覆盖 → 会话只读；不写回）：
+
+1. 合法值只有 `fantasy`、`modern`、`future`。缺省为 `modern`。
+2. 世界模板写在 `world.world_type`。战役实例的顶层 `meta.world_type`（可选）可覆盖；
+   **有效覆盖优先于模板**。账本骨架 `ledger_template.meta` 不是覆盖层，读取时不看它。
+3. 战役未写、或写了但不认识 → 继承模板里认识的值。模板也没有或不认识 → `modern`。
+4. **不得**用 `engine`、世界名、叙事文本或 `tone_pack` 推导。不认识的值不得猜：
+   该层作废，按上一条回退。
+5. 会话快照（`GET /api/session` 的 `rules_view`）加性顶层字段 `world_type` 是解析后的
+   结果，**只读**。解析不得把主题写进存档，也不得为了补上这个字段而在读取时迁移或重写老档。
+   老档本身没有该字段；读模型按上面的优先级现算。源数据也缺失或不认识时，读模型才是 `modern`。
 - `glossary[]`：术语表，`{term, meaning, source}`。
 - `factions[]`：`{id, name, alignment?, summary, note?, source}`；`alignment` 为开放字符串——
   05 记阵营分组（`官方 | 半民间 | 反体制 | 资本 | 其他`），06 记原文「性质」列并另以
@@ -706,8 +722,10 @@ data/
 顶层（`scenario.schema.json`）：
 
 - `meta`：复用 `ledger_meta`；实际使用 `{world, engine, campaign, party_level?, party_size?,
-  tone_pack?, engine_note?}`。`engine` 枚举 `tactics | build`；S0 §八记「两者皆可」的册
-  （S3）以 `engine: "tactics"` + `engine_note` 表达。
+  tone_pack?, engine_note?, world_type?}`。`engine` 枚举 `tactics | build`；S0 §八记「两者皆可」的册
+  （S3）以 `engine: "tactics"` + `engine_note` 表达。`world_type` 可选，枚举
+  `fantasy | modern | future`；缺省不写——不要把已发布剧本批量改成重复声明。
+  覆盖优先级、缺省 `modern`、以及禁止用 `engine` / 名称 / `tone_pack` 推导，见 4.2。
 - `acts[]`：幕 / 阶段，`{id, name, source, level_range?, summary?, nodes?[], scenes?[],
   tasks?[]}`；`scenes` 用于以「幕内场景序列表」组织的册（如 S6 的 `1-1…5-5`），
   `nodes` 引用节点图节点 id。

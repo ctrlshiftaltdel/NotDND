@@ -137,7 +137,11 @@
         "tone_pack": {"type": "string"},
         "campaign": {"type": "string"},
         "module": {"type": "string"},
-        "world_name": {"type": "string"}
+        "world_name": {"type": "string"},
+        "world_type": {
+          "description": "战役实例对世界模板 world_type 的可选覆盖。有效取值优先于模板；缺失或不认识则继承模板，模板也没有则读取层落成 modern。",
+          "enum": ["fantasy", "modern", "future"]
+        }
       },
       "additionalProperties": true
     },
