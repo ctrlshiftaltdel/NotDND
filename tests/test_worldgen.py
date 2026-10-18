@@ -875,6 +875,64 @@ def test_atlas_provenance_summary():
 
 
 
+# ── W7：unexplored 个体生成（§8.3，Issue #394） ───────────────────────────
+
+
+def _scenario_npc_schema():
+    """scenario.schema.json 的 `$defs.npc`（复用 validate_data 的校验入口）。"""
+    import validate_data  # noqa: E402 — 测试内局部 import
+    path = os.path.join(ROOT, "data", "schema", "scenario.schema.json")
+    with open(path, encoding="utf-8") as fh:
+        schema = json.load(fh)
+    return validate_data, schema["$defs"]["npc"]
+
+
+def test_w7_individuals_deterministic():
+    """§8.3：同输入逐字节相等；换 seed / place 结果不同；id 唯一。"""
+    a = worldgen.individuals("place-x", seed=42)
+    b = worldgen.individuals("place-x", seed=42)
+    assert json.dumps(a, ensure_ascii=False, sort_keys=True) == \
+        json.dumps(b, ensure_ascii=False, sort_keys=True)
+    assert json.dumps(a, ensure_ascii=False) != \
+        json.dumps(worldgen.individuals("place-x", seed=43), ensure_ascii=False)
+    assert json.dumps(a, ensure_ascii=False) != \
+        json.dumps(worldgen.individuals("place-y", seed=42), ensure_ascii=False)
+    ids = [npc["id"] for npc in a]
+    assert len(ids) == len(set(ids)), "同调用内 id 不重复"
+    names = [npc["name"] for npc in a]
+    assert len(names) == len(set(names)), "同调用内名字不重复"
+
+
+def test_w7_individuals_schema_and_named():
+    """§8.3：产物过 scenario.schema.json $defs.npc；全是具名 NPC
+    （unexplored 层不承载具名个体——生成即具名，层判定归 neura.layer_of）。"""
+    import validate_data  # noqa: E402
+    validator, npc_schema = _scenario_npc_schema()
+    for seed in (1, 42, 777):
+        npcs = worldgen.individuals("place-x", seed=seed,
+                                    world_type="fantasy",
+                                    factions=["faction-01"])
+        assert npcs, "region 档缺省预算必有产出"
+        for npc in npcs:
+            assert npc["id"] and npc["name"], "必须具名（id + name）"
+            assert npc["source"] == worldgen.INDIVIDUAL_SOURCE
+            errors = validate_data.check_schema(
+                npc, npc_schema, os.path.join(ROOT, "data", "schema"))
+            assert not errors, errors
+        # faction 循环分配进档案。
+        assert all(npc.get("faction") == "faction-01" for npc in npcs)
+
+
+def test_w7_individuals_budget():
+    """§8.3 预算：缺省按 region 档 3..6 抽取；count_hint 钳上限；0 = 空。"""
+    counts = {len(worldgen.individuals("p%d" % i, seed=i)) for i in range(20)}
+    assert min(counts) >= 3 and max(counts) <= 6, counts
+    assert len(worldgen.individuals("p", seed=1, count_hint=2)) == 2
+    assert worldgen.individuals("p", seed=1, count_hint=0) == []
+    # 名字池上限（8 个）也钳制 count。
+    assert len(worldgen.individuals("p", seed=1, count_hint=99)) <= 8
+
+
 def main():
     checks = [value for name, value in sorted(globals().items())
               if name.startswith("test_") and callable(value)]

@@ -607,7 +607,6 @@ def synthesize(spec, base, *, seed, port=None, budget=None):
 
 
 # ── P4：NPC 名册估算 ──────────────────────────────────────────────────────
-
 def roster(spec, seed, *, factions=None):
     """按 spec 的具名 NPC 预算产出名册（§8.3 目标形状：scenario $defs.npc）。
 
@@ -630,6 +629,69 @@ def roster(spec, seed, *, factions=None):
             npc["faction"] = factions[i % len(factions)]
         if spec["secrets_required"] and i == 0:
             npc["secret"] = "掌握一条与主线相关的秘密（由导引者细化）"
+        npcs.append(npc)
+    return npcs
+
+
+# ── §8.3 / W7：unexplored 个体生成（individuals） ─────────────────────────
+
+# 单地点具名个体数档位（§8.3 预算：sketch 2–3 人 / region 3–6 / domain 4–8；
+# `count_hint` 缺省按档位表取值）。累计具名 NPC 超过 §4.5 规模上限时编排层
+# 停止调用（超限只出人口摘要、不再生成个体）。
+SCALE_INDIVIDUALS = {"sketch": (2, 3), "region": (3, 6), "domain": (4, 8)}
+
+# individuals 产物的溯源指针：scenario.schema.json $defs.npc 的 source 是
+# docs 指针（validate_data 既有纪律），生成个体没有真实 docs 落点——登记
+# 保留指针（PR「风险与口径补充」）：不指向真实文件，仅满足 schema 纪律。
+INDIVIDUAL_SOURCE = "docs/scenario/worldgen-individuals.md:1"
+
+
+def individuals(place_id, *, seed, count_hint=None, world_type="modern",
+                factions=None):
+    """§8.3（V11）unexplored 个体生成：按种子确定性合成具名 NPC（纯函数）。
+
+    编排层在首次进入某 site 帧时对空地点调用（按需、每地点一次；结果记入
+    `blocks.world.population`，重复进入不重生成）。产物过
+    `scenario.schema.json` `$defs.npc`（不发明字段；`unexplored` 层不承载
+    具名 NPC——生成的都是具名个体，层判定由 `neura.layer_of` 自然升层）。
+
+    - `count_hint`：单地点个体数上限；缺省按 `SCALE_INDIVIDUALS["region"]`
+      的确定性抽取（3..6 人）；传入整数时钳到该上限；
+    - `world_type`：文本池（`BUILTIN_TEXT`）的键；`factions`：可选势力
+      id/name 表（按序循环分配 faction 字段）；
+    - 模型润色（name / drive）不在本函数——§4.3 三级来源的端口注入归
+      生成会话流（W3 协议），本函数只做离线确定性合成（v1 口径登记）。
+
+    同 `(place_id, seed, count_hint, world_type, factions)` 逐字节相等；
+    id = `ind-` + 内容哈希前 8 hex（同调用内去重）。
+    """
+    place_id = str(place_id or "")
+    builtin = BUILTIN_TEXT[world_type if world_type in WORLD_TYPES
+                           else "modern"]
+    rng = random.Random(derive_seed(seed, "individuals:%s" % place_id))
+    if count_hint is None:
+        low, high = SCALE_INDIVIDUALS["region"]
+        count = low + rng.randrange(high - low + 1)
+    else:
+        count = max(0, min(int(count_hint), len(builtin["npc_names"])))
+    name_order = list(range(len(builtin["npc_names"])))
+    rng.shuffle(name_order)                      # 同调用内名字不重复
+    faction_list = [str(f) for f in factions if str(f)] \
+        if factions else []
+    npcs = []
+    for i in range(count):
+        npc_id = "ind-%08x" % (int(hashlib.sha256(
+            ("ind|%s|%s|%d" % (place_id, seed, i)).encode("utf-8"))
+            .hexdigest()[:8], 16))
+        npc = {
+            "id": npc_id,
+            "name": builtin["npc_names"][name_order[i]],
+            "role": _pick(rng, builtin["npc_roles"]),
+            "drive": _pick(rng, builtin["npc_drives"]),
+            "source": INDIVIDUAL_SOURCE,
+        }
+        if faction_list:
+            npc["faction"] = faction_list[i % len(faction_list)]
         npcs.append(npc)
     return npcs
 
