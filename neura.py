@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""neura —— NEURA 内核骨架（M11-N1）：块结构、惰性迁移、确定性裁剪与单位哈希（纯函数）。
+"""neura —— NEURA 内核（M11-N1 骨架 + M11-N2 硬约束过滤；全部纯函数）。
 
-本模块实现 `NEURA-DESIGN.md` §4.2（运行时字段表）、§9.1–§9.2（模块与
-`blocks.neura` 不透明块）与 §11 N1：
+本模块实现 `NEURA-DESIGN.md` §4.2（运行时字段表）、§5.2 / §5.2.1（硬约束与
+`view` 形状）、§9.1–§9.2（模块与 `blocks.neura` 不透明块）、§11 N1 与 §11 N2：
 
 - `NEURA_VERSION` / `NeuraError`：块版本与模块自有异常；
 - `empty_block()` / `empty_npc()`：可 JSON 序列化的空块与空 NPC 运行时态；
@@ -12,7 +12,10 @@
 - `prune_block()`：按 `MEMORY_MAX = 128`（每 NPC）与 `JOURNAL_MAX = 256`
   （每战役）**先裁最旧**，两次裁剪结果相同（幂等）；
 - `stable_unit(*parts)`：确定性单位哈希，返回 `[0, 1)`，用于「同种子同结果」
-  的确定性抖动（§5.3 / §10.1 1.5）。
+  的确定性抖动（§5.3 / §10.1 1.5）；
+- `hard_filter()` / `check_distance()` / `check_time()` / `check_resource()` /
+  `check_law()` / `check_knowledge()`：**硬约束过滤**——候选先过距离 / 时间 /
+  资源 / 法律 / 知识五道闸，拒单带固定错误码（N2）。
 
 块形状（§4.1 / §9.2 / §5.8）::
 
@@ -28,6 +31,15 @@
 `NPC` 的 `needs` / `memory` / `plan` 等字段在 `npcs` 条目内（§4.2 的
 `npc_id` 行明确「块内以 `npcs` 字典的键表达」）；`plan` 为空时**键不存在**
 （§4.2 字段级不变量，不用 `null`）。
+
+`hard_filter()` 的 `view` 由编排层按 §5.2.1 构造，`neura` **只读**：`view` 里
+没有的东西就是不知道，本模块不访问任何全局 / 环境数据（不读盘、不联网、不读
+环境变量）。N2 在 §5.2.1 的字段之外还读两个**补充键**（都由编排层注入）：
+
+- `view["options"]`：本 tick 的**规则候选**池（`AI 候选` 在 ② 之后追加，
+  同样要过单条 `check_*`）；缺键等价于空池；
+- `view["budget"]`：`blocks.neura.budget` 的只读投影，仅用于判断「AI 候选是否
+  还有额度」（§8.2），**不影响规则候选**。
 
 **硬约束**：纯函数、无 IO、无副作用；只 import 标准库 `copy` / `hashlib`，
 **不得** import `state` / `chron` / `notdnd_web` / `prism_*` / `atlas*`
@@ -55,6 +67,41 @@ BUDGET_KEYS = ("day", "strong_calls", "light_calls", "tokens")
 
 # §4.2：plan 为空时键不存在；这些字段是每 NPC 的「空态」。
 _NPC_LIST_FIELDS = ("goals", "schedule", "knowledge", "secrets", "memory")
+
+# --------------------------------------------------------------------------
+# §5.2 硬约束常量（M11-N2）
+# --------------------------------------------------------------------------
+
+# 固定错误码（§5.2 表格逐行对应；journal 靠它回答「他为什么没去」）。
+E_DISTANCE = "E_DISTANCE"      # 距离：band 不通且 minutes 不够走完
+E_TIME = "E_TIME"              # 时间：计划预算 / 不可打断日程 / 义务期限
+E_RESOURCE = "E_RESOURCE"      # 资源：钱 / 存货不足，或到期义务未清
+E_LAW = "E_LAW"                # 法律：命中禁令标签且落在禁令范围内
+E_KNOWLEDGE = "E_KNOWLEDGE"    # 知识：缺有效认知或不知道地点
+# §5.2：**不拒选项**，只禁 AI 候选（降级为规则候选，§8.3 L2）。
+E_LAYER_BUDGET = "E_LAYER_BUDGET"
+# N2 本地补充：候选形状不合法（缺 option_id / minutes 非整数等）。
+# §5.2 表外的形状码——业务约束只认上面五个，形状问题不该被当成「规则拒绝」。
+E_OPTION = "E_OPTION"
+
+HARD_CODES = (E_DISTANCE, E_TIME, E_RESOURCE, E_LAW, E_KNOWLEDGE)
+
+# §5.2 距离：这三个 band 视为「走得到」，不必再看分钟数。
+BAND_PASS = ("same", "adjacent", "near")
+
+# §5.2.1：`view.laws` 的来源标注；缺表即 `"none"`（§12.1 P8）。
+LAW_DECLARED_SOURCES = ("world", "rules")
+# P8 把 `laws` schema 留到 M12；v1 只认这两个显式「容忍」值，其余一律硬禁。
+LAW_TOLERANT_THRESHOLDS = ("allow", "tolerate")
+
+# Option 形状（§5.2）：`source` 只有这两档，AI 候选可被审计区分。
+OPTION_SOURCES = ("rule", "ai")
+MAX_OPTION_MINUTES = 1440          # 一天；更长的动作由编排层拆步
+MINUTES_PER_DAY = 1440             # §4.2：schedule 的 tod 口径（0..1439）
+
+# §8.2：日预算 H ≤ 6 次、M ≤ 30 次（N5 接真正的 token 账本，这里只判额度用尽）。
+STRONG_CALLS_PER_DAY = 6
+LIGHT_CALLS_PER_DAY = 30
 
 
 class NeuraError(Exception):
@@ -461,3 +508,540 @@ def stable_unit(*parts):
     # 取前 53 位：结果严格落在 [0, 1)，且不依赖浮点舍入到 1.0。
     return (int.from_bytes(hashlib.blake2b(payload, digest_size=8).digest(),
                            "big") >> 11) / _UNIT53
+
+
+# --------------------------------------------------------------------------
+# §5.2 / §5.2.1 硬约束过滤（M11-N2）
+#
+# 五道闸按 §5.2 表格的**行序**短路：距离 → 时间 → 资源 → 法律 → 知识。
+# 每个候选至多留一条 `rejected`（带码），全灭时 `ok == False`。
+# 所有函数只读 `npc` / `option` / `view`，返回**新**对象，不改入参。
+# --------------------------------------------------------------------------
+
+def check_distance(npc, option, view):
+    """§5.2 距离：`bands` 直通**或** `travel_minutes ≤ minutes`，否则 `E_DISTANCE`。
+
+    两条路都要判：`same/adjacent/near` 不看分钟数（本节就是「近到不用算」）；
+    band 为 `far` / `mid` 时，走得完（`travel_minutes ≤ option.minutes`）仍然放行。
+    两条路都拿不到数据 → 按「不知道」拒（`view` 之外不猜距离）。
+    """
+    here = _npc_place(npc)
+    there = _text(option.get("place_id"))
+    if there == here:
+        return None
+
+    band = _band_of(view, here, there)
+    if band in BAND_PASS:
+        return None
+
+    travel = _travel_minutes(view, there)
+    minutes = option.get("minutes")
+    if travel is not None and _is_int(minutes) and travel <= minutes:
+        return None
+
+    if band is None and travel is None:
+        detail = "距离未知：view.bands 与 view.travel_minutes 都没有 %r（%r → %r）" \
+                 % (there, here, there)
+    elif travel is None:
+        detail = "band=%r 不可直达，且 view.travel_minutes 缺 %r 的耗时" % (band, there)
+    else:
+        detail = "band=%r 不可直达，走到 %r 需 %d 分钟 > minutes=%d" \
+                 % (band, there, travel, minutes if _is_int(minutes) else -1)
+    return _reject(E_DISTANCE, detail, there)
+
+
+def check_time(npc, option, view, now_minute):
+    """§5.2 时间：三条判据依次短路，任一命中即 `E_TIME`。
+
+    ① `option.minutes ≤ 当前计划剩余`（`plan.until_minute − now_minute`；无计划则不设限）；
+    ② 与 `schedule` 的**不可打断** slot 冲突——时间窗重叠、且动作不在该 slot 的地点；
+    ③ `now_minute + minutes` 越过某条 `resources.obligations[].due_minute` 时，
+       只放行**指向该义务**的选项（`target_ref` 命中 `to`，或 `fulfill_duty` 无指定）。
+    """
+    minutes = option.get("minutes")
+    if not _is_int(minutes):
+        return None
+
+    plan = npc.get("plan")
+    remaining = _plan_remaining(plan, now_minute)
+    if remaining is not None and minutes > remaining:
+        return _reject(
+            E_TIME,
+            "当前计划只剩 %d 分钟，选项需要 %d 分钟" % (remaining, minutes),
+            _text(plan.get("plan_id")) or None,
+        )
+
+    tod = now_minute % MINUTES_PER_DAY if _is_int(now_minute) else 0
+    windows = _tod_windows(tod, minutes)
+    schedule = npc.get("schedule")
+    if windows and isinstance(schedule, list):
+        place = _text(option.get("place_id"))
+        for slot in schedule:
+            if not isinstance(slot, dict) or slot.get("interruptible") is not False:
+                continue
+            start = slot.get("from_tod_minute")
+            end = slot.get("to_tod_minute")
+            if not (_is_int(start) and _is_int(end)) or start >= end:
+                continue
+            slot_place = _text(slot.get("place_id"))
+            if slot_place and slot_place == place:
+                continue          # 就在岗位上做，不算冲突
+            if not any(_overlaps_window(a, b, start, end) for a, b in windows):
+                continue
+            return _reject(
+                E_TIME,
+                "与不可打断的日程 %r（%d–%d 分钟）冲突，选项却去 %r"
+                % (_text(slot.get("slot_id")), start, end, place),
+                _text(slot.get("slot_id")) or None,
+            )
+
+    if _is_int(now_minute):
+        end_minute = now_minute + minutes
+        for obligation in _obligations(npc):
+            due = obligation.get("due_minute")
+            if not _is_int(due) or end_minute <= due:
+                continue
+            if _serves_obligation(option, obligation):
+                continue
+            return _reject(
+                E_TIME,
+                "选项将在第 %d 分钟结束，已越过义务 %r 的期限 %d，且不指向该义务"
+                % (end_minute, _text(obligation.get("to")), due),
+                _text(obligation.get("to")) or None,
+            )
+    return None
+
+
+def check_resource(npc, option, view):
+    """§5.2 资源：钱 / 存货够不够，到期义务是否只放行 `fulfill_duty` 类。
+
+    只做**可行性**判断（§4.2：权威库存仍在规则包，这里不同步账）。
+    `now_minute` 由 `view` 提供（`check_resource` 的签名里没有它，§5.2）。
+    """
+    coin = _npc_coin(npc)
+    stock = _npc_stock(npc)
+    cost = option.get("cost")
+    if not isinstance(cost, dict):
+        cost = {}
+
+    need_coin = cost.get("coin", 0)
+    if _is_int(need_coin) and need_coin > coin:
+        return _reject(
+            E_RESOURCE,
+            "需要 %d 枚硬币，身上只有 %d 枚" % (need_coin, coin),
+            None,
+        )
+
+    cost_stock = cost.get("stock")
+    if isinstance(cost_stock, dict):
+        for item in sorted(cost_stock, key=str):
+            need = cost_stock[item]
+            if not _is_int(need):
+                continue
+            have = stock.get(item, 0)
+            if need > have:
+                return _reject(
+                    E_RESOURCE,
+                    "需要 %r × %d，身上只有 × %d" % (item, need, have),
+                    item,
+                )
+
+    now_minute = view.get("now_minute") if isinstance(view, dict) else None
+    if _is_int(now_minute) and not _is_duty(option):
+        for obligation in _obligations(npc):
+            due = obligation.get("due_minute")
+            if not _is_int(due) or due > now_minute:
+                continue
+            return _reject(
+                E_RESOURCE,
+                "义务 %r 已于第 %d 分钟到期（现在第 %d 分钟），只允许 fulfill_duty 类选项"
+                % (_text(obligation.get("to")), due, now_minute),
+                _text(obligation.get("to")) or None,
+            )
+    return None
+
+
+def check_law(npc, option, view):
+    """§5.2 法律：`forbid_tags ∩ option.tags ≠ ∅` 且在禁令范围内 → `E_LAW`。
+
+    §12.1 **P8：`view` 缺 `laws` 即空表（`law_source == "none"`）——不抛错、
+    不误拒**；v1 的法律约束等价于「不设限」，这是**拍板结论**，不是漏实现。
+    `threshold` 取容忍值（`allow` / `tolerate`）时降级为「高风险但可行」，
+    由 `hard_filter` 在返回的候选副本上标 `law_risk`（交 ②③ 的 `risk` 处理）。
+    缺/空 `scope_place_ids` 视为全域适用（一条不留范围的禁令不该变成空文）。
+    """
+    place = _text(option.get("place_id"))
+    tags = set(_string_list(option.get("tags")))
+    for law in _laws(view):
+        hit = _law_hit_tags(law, tags)
+        if not hit or not _law_covers(law, place):
+            continue
+        if _law_tolerated(law):
+            continue
+        return _reject(
+            E_LAW,
+            "命中禁令 %r 的标签（%s），且 %r 在其管辖区内"
+            % (_text(law.get("id")), " / ".join(sorted(hit)), place),
+            _text(law.get("id")) or None,
+        )
+    return None
+
+
+def check_knowledge(npc, option, view):
+    """§5.2 知识：`requires_claims` 每条须 `status == "active"`，`requires_place` 须已知。
+
+    与 §6 的 `select_context` 同源：`view.known_places` 是**知识门过滤后**的
+    该 NPC 已知地点，本函数不自己推算可达性。
+    """
+    active = _active_claim_ids(npc)
+    for claim_id in _string_list(option.get("requires_claims")):
+        if claim_id not in active:
+            return _reject(
+                E_KNOWLEDGE,
+                "缺少有效认知 %r（不在 knowledge 中或 status 不是 active）" % claim_id,
+                claim_id,
+            )
+    for place_id in _string_list(option.get("requires_place")):
+        if not _knows_place(view, place_id):
+            return _reject(
+                E_KNOWLEDGE,
+                "不知道地点 %r（不在 view.known_places）" % place_id,
+                place_id,
+            )
+    return None
+
+
+def hard_filter(npc, view, now_minute):
+    """§5.2 硬约束过滤：返回 `{"ok", "options", "rejected", ...}`。
+
+    - `options`：过了五道闸的候选（**深拷贝**，调用方可随意加字段）；
+    - `rejected`：`[{"option_id", "code", "detail"}]`，**每个**候选都留码，不吞；
+    - `ok`：`options` 非空即 `True`；全灭时 `{"ok": False, "options": []}`；
+    - `law_source`：`"world"` / `"rules"` / `"none"`（缺 `laws` → `"none"`，P8）；
+    - `ai_allowed`：当日 AI 额度是否还在（§8.2）；`False` 时只禁 AI 候选，
+      **不拒规则候选**，并在 `notes` 里留 `E_LAYER_BUDGET`（记 journal 用）；
+    - `notes`：不构成拒单的说明（目前只有 `E_LAYER_BUDGET`）。
+
+    候选池取 `view["options"]`；`view` 不是对象 / 缺该键都按空池处理
+    （「`view` 里没有的东西就是不知道」，不猜）。
+    """
+    view = view if isinstance(view, dict) else {}
+    npc = npc if isinstance(npc, dict) else {}
+
+    result = {
+        "ok": False,
+        "options": [],
+        "rejected": [],
+        "law_source": _law_source(view),
+        "ai_allowed": True,
+        "notes": [],
+    }
+
+    options = view.get("options")
+    if not isinstance(options, list):
+        options = []
+
+    for raw in options:
+        shape = _option_error(raw)
+        if shape is not None:
+            result["rejected"].append({
+                "option_id": _text(raw.get("option_id")) if isinstance(raw, dict) else "",
+                "code": E_OPTION,
+                "detail": shape,
+            })
+            continue
+
+        option = _clone(raw)
+        option.setdefault("source", "rule")
+        reject = (
+            check_distance(npc, option, view)
+            or check_time(npc, option, view, now_minute)
+            or check_resource(npc, option, view)
+            or check_law(npc, option, view)
+            or check_knowledge(npc, option, view)
+        )
+        if reject is not None:
+            result["rejected"].append({
+                "option_id": option["option_id"],
+                "code": reject["code"],
+                "detail": reject["detail"],
+            })
+            continue
+
+        risks = _law_risk_ids(option, view)
+        if risks:
+            option["law_risk"] = risks
+        result["options"].append(option)
+
+    allowed, note = _ai_allowed(view, now_minute)
+    result["ai_allowed"] = allowed
+    if note is not None:
+        result["notes"].append(note)
+
+    result["ok"] = bool(result["options"])
+    return result
+
+
+# --------------------------------------------------------------------------
+# 硬约束的内部工具（全部纯函数，只做形状容错与只读投影）
+# --------------------------------------------------------------------------
+
+def _reject(code, detail, ref=None):
+    """§5.2 的 `Reject`：`{"code", "detail", "ref"}`（布尔回答不了「为什么」）。"""
+    return {"code": code, "detail": detail, "ref": ref}
+
+
+def _string_list(value):
+    """只保留字符串元素；非列表一律当空表（形状问题由 `_option_error` 拦）。"""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _npc_place(npc):
+    location = npc.get("location")
+    if isinstance(location, dict):
+        return _text(location.get("place_id"))
+    return ""
+
+
+def _npc_coin(npc):
+    resources = npc.get("resources")
+    if isinstance(resources, dict):
+        return _count(resources.get("coin"))
+    return 0
+
+
+def _npc_stock(npc):
+    resources = npc.get("resources")
+    if isinstance(resources, dict):
+        stock = resources.get("stock")
+        if isinstance(stock, dict):
+            return {key: value for key, value in stock.items()
+                    if isinstance(key, str) and _is_int(value) and value >= 0}
+    return {}
+
+
+def _obligations(npc):
+    resources = npc.get("resources")
+    if isinstance(resources, dict):
+        obligations = resources.get("obligations")
+        if isinstance(obligations, list):
+            return [item for item in obligations if isinstance(item, dict)]
+    return []
+
+
+def _band_of(view, here, there):
+    """§5.2.1：`bands` 的键是 `(a, b)` 元组（编排层内存构造，非 JSON 往返）。"""
+    bands = view.get("bands")
+    if isinstance(bands, dict):
+        band = bands.get((here, there))
+        if isinstance(band, str):
+            return band
+    return None
+
+
+def _travel_minutes(view, place):
+    travel = view.get("travel_minutes")
+    if isinstance(travel, dict):
+        value = travel.get(place)
+        if _is_int(value) and value >= 0:
+            return value
+    return None
+
+
+def _plan_remaining(plan, now_minute):
+    """§5.2 ①：「当前计划剩余预算」= `plan.until_minute − now_minute`；无计划不设限。"""
+    if not isinstance(plan, dict) or not _is_int(now_minute):
+        return None
+    until = plan.get("until_minute")
+    if not _is_int(until):
+        return None
+    return max(0, until - now_minute)
+
+
+def _tod_windows(start_tod, minutes):
+    """把 `[start, start+minutes)` 按当日内切段（§4.2：slot 不跨 0 点）。"""
+    windows = []
+    remaining = minutes
+    cursor = start_tod % MINUTES_PER_DAY
+    while remaining > 0:
+        chunk = min(remaining, MINUTES_PER_DAY - cursor)
+        windows.append((cursor, cursor + chunk))
+        remaining -= chunk
+        cursor = 0
+    return windows
+
+
+def _overlaps_window(start, end, slot_start, slot_end):
+    return start < slot_end and slot_start < end
+
+
+def _serves_obligation(option, obligation):
+    """选项是否「指向」这条义务（`check_time` ③ 的唯一放行口）。"""
+    target = _text(option.get("target_ref"))
+    if target and target in (_text(obligation.get("to")),
+                             _text(obligation.get("obligation_id"))):
+        return True
+    return _is_duty(option) and not target
+
+
+def _is_duty(option):
+    """`fulfill_duty` 类：§5.2 用它作为「到期义务」的唯一白名单动词。"""
+    return option.get("verb") == "fulfill_duty"
+
+
+def _laws(view):
+    laws = view.get("laws")
+    if isinstance(laws, list):
+        return [law for law in laws if isinstance(law, dict)]
+    return []
+
+
+def _law_source(view):
+    """§12.1 P8：缺 `laws` → `"none"`；有表时按声明，未声明按 `"world"`。"""
+    laws = view.get("laws")
+    declared = view.get("law_source")
+    if not isinstance(laws, list) or not laws:
+        if isinstance(laws, list) and declared in LAW_DECLARED_SOURCES:
+            return declared
+        return "none"
+    return declared if declared in LAW_DECLARED_SOURCES else "world"
+
+
+def _law_hit_tags(law, tags):
+    forbid = set(_string_list(law.get("forbid_tags")))
+    return forbid & tags
+
+
+def _law_covers(law, place):
+    """缺 / 空 `scope_place_ids` = 全域（一条不留范围的禁令不该变成空文）。"""
+    scope = _string_list(law.get("scope_place_ids"))
+    return not scope or place in scope
+
+
+def _law_tolerated(law):
+    threshold = law.get("threshold")
+    return isinstance(threshold, str) and threshold.strip().lower() in LAW_TOLERANT_THRESHOLDS
+
+
+def _law_risk_ids(option, view):
+    """被 `threshold` 容忍的禁令：改为「高风险但可行」，返回排序后的 law id 表。"""
+    place = _text(option.get("place_id"))
+    tags = set(_string_list(option.get("tags")))
+    hits = []
+    for law in _laws(view):
+        if not _law_hit_tags(law, tags) or not _law_covers(law, place):
+            continue
+        if _law_tolerated(law):
+            law_id = _text(law.get("id"))
+            if law_id:
+                hits.append(law_id)
+    return sorted(set(hits))
+
+
+def _active_claim_ids(npc):
+    active = set()
+    knowledge = npc.get("knowledge")
+    if isinstance(knowledge, list):
+        for claim in knowledge:
+            if not isinstance(claim, dict) or claim.get("status") != "active":
+                continue
+            claim_id = claim.get("claim_id")
+            if isinstance(claim_id, str) and claim_id:
+                active.add(claim_id)
+    return active
+
+
+def _knows_place(view, place_id):
+    known = view.get("known_places")
+    if isinstance(known, dict):
+        return bool(known.get(place_id))
+    if isinstance(known, (list, tuple, set)):
+        return place_id in known
+    return False
+
+
+def _ai_allowed(view, now_minute):
+    """§8.2：当日 `strong_calls` / `light_calls` 是否还有额度。
+
+    返回 `(allowed, note)`；`note` 为 `E_LAYER_BUDGET` 的 journal 说明。
+    无账本（`view` 缺 `budget`）→ 不在这里限流，交给编排层判断。
+    """
+    budget = view.get("budget")
+    if not isinstance(budget, dict):
+        return True, None
+
+    day = now_minute // MINUTES_PER_DAY if _is_int(now_minute) else None
+    recorded = budget.get("day")
+    if _is_int(recorded) and day is not None and recorded != day:
+        return True, None          # 跨日重置：计数器归零（§8.2）
+
+    strong = _count(budget.get("strong_calls"))
+    light = _count(budget.get("light_calls"))
+    if strong >= STRONG_CALLS_PER_DAY:
+        return False, {
+            "code": E_LAYER_BUDGET,
+            "detail": "当日 strong_calls 已用尽（%d/%d）：只禁 AI 候选，规则候选照常"
+                      % (strong, STRONG_CALLS_PER_DAY),
+        }
+    if light >= LIGHT_CALLS_PER_DAY:
+        return False, {
+            "code": E_LAYER_BUDGET,
+            "detail": "当日 light_calls 已用尽（%d/%d）：只禁 AI 候选，规则候选照常"
+                      % (light, LIGHT_CALLS_PER_DAY),
+        }
+    return True, None
+
+
+def _option_error(option):
+    """§5.2 `Option` 形状校验：返回错误说明（`str`）或 `None`。
+
+    只校验**形状**，不校验可行性（可行性归五个 `check_*`）；`relieves` /
+    `aggravates` / `risk` 的取值校验归 N3（评分段），此处不越界。
+    """
+    if not isinstance(option, dict):
+        return "候选不是对象（%s）" % type(option).__name__
+
+    option_id = option.get("option_id")
+    if not isinstance(option_id, str) or not option_id.strip():
+        return "option_id 缺失或非法（%r）" % (option_id,)
+
+    verb = option.get("verb")
+    if not isinstance(verb, str) or not verb.strip():
+        return "verb 缺失或非法（%r）" % (verb,)
+
+    place_id = option.get("place_id", "")
+    if not isinstance(place_id, str):
+        return "place_id 非法（%r）" % (place_id,)
+
+    minutes = option.get("minutes")
+    if not _is_int(minutes) or not 0 <= minutes <= MAX_OPTION_MINUTES:
+        return "minutes 非法（%r），须为 0..%d 的整数" % (minutes, MAX_OPTION_MINUTES)
+
+    for field in ("tags", "requires_claims", "requires_place"):
+        value = option.get(field)
+        if value is None:
+            continue
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            return "%s 须为字符串表（%r）" % (field, value)
+
+    source = option.get("source", "rule")
+    if source not in OPTION_SOURCES:
+        return "source 非法（%r），须为 %s" % (source, " / ".join(OPTION_SOURCES))
+
+    cost = option.get("cost")
+    if cost is not None:
+        if not isinstance(cost, dict):
+            return "cost 非法（%s）" % type(cost).__name__
+        coin = cost.get("coin", 0)
+        if not _is_int(coin) or coin < 0:
+            return "cost.coin 非法（%r）" % (coin,)
+        stock = cost.get("stock", {})
+        if not isinstance(stock, dict):
+            return "cost.stock 非法（%s）" % type(stock).__name__
+        for item in sorted(stock, key=str):
+            quantity = stock[item]
+            if not isinstance(item, str) or not _is_int(quantity) or quantity < 0:
+                return "cost.stock[%r] 非法（%r）" % (item, quantity)
+    return None
