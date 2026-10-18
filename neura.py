@@ -1537,7 +1537,7 @@ def _cost_of(view, ai_used):
     if not ai_used:
         return "rule", 0
     declared = view.get("cost_tier")
-    tier = declared if declared in ("H", "M") else "M"
+    tier = declared if declared in COST_TIERS and declared != "rule" else "M"
     tokens = view.get("ai_tokens")
     if not _is_int(tokens) or tokens < 0:
         tokens = COST_TOKENS[tier]
