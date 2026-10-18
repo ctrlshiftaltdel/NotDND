@@ -2511,12 +2511,54 @@ def _revalidate(npc, option, view, now_minute):
     return reject is None
 
 
-def _write_back(npc, decision, now_minute):
-    """§5.7 的最小回写：`move` → 更新位置；其余 → 写入 `plan`。
+def _submit_committed(result):
+    """提交成功（回写前提）：`status` 为 `committed` / 幂等重放 `replayed`。
+
+    `result` 非 dict、状态缺失或未知一律视为未提交——不把「调用返回本身」
+    当成功（Issue #400）。
+    """
+    return isinstance(result, dict) and \
+        _text(result.get("status")) in ("committed", "replayed")
+
+
+def _submit_note(npc_id, decision, result, now_minute):
+    """非 committed 提交的可解释记录（§5.7）：不回写、留痕、下个 tick 重试。
+
+    纯函数：只依赖传入值；输出可 JSON 往返（进 `journal`，由 `prune_block`
+    确定性裁剪）。
+    """
+    status = _text(result.get("status")) if isinstance(result, dict) else ""
+    reason = ""
+    if isinstance(result, dict):
+        error = result.get("error")
+        if isinstance(error, dict):
+            reason = _text(error.get("code")) or _text(error.get("message"))
+        reason = reason or _text(result.get("reason"))
+    return {
+        "kind": "submit_not_committed",
+        "npc_id": npc_id,
+        "at_minute": now_minute,
+        "status": status,
+        "reason": reason,
+        "decision_id": _text(decision.get("decision_id")),
+    }
+
+
+def _write_back(npc, decision, now_minute, result):
+    """§5.7 的最小回写：**严格跟随 M8 提交结果**（Issue #365 / #400）。
+
+    仅 `result.status` 为 `committed`（含幂等重放 `replayed`）才应用：
+    `move` → 更新位置；其余 → 写入 `plan`。`conflict` 不回写（§5.7：计划
+    保留可重试态，下个 tick 重试）；`rejected` / `unsupported` 同样不回写
+    ——不写 `running`、不动位置，保留 pending / 可重试态（结算级回写：
+    needs 兑现、memory、`dropped`，归 N6/N7 的 M8 结算链路，不在纯函数层
+    伪造结果）。可解释性由调用方把 `_submit_note` 记入 `journal` 承担。
 
     P7：NPC 的延迟执行用块内 `plan.until_minute` 表达，**不进** `chron.actions`；
-    到期由下一次 `catch_up` 收敛（§7.4）。`conflict` 不回写（§5.7：下个 tick 重试）。
+    到期由下一次 `catch_up` 收敛（§7.4）。
     """
+    if not _submit_committed(result):
+        return
     chosen = decision.get("chosen")
     if not isinstance(chosen, dict):
         return
@@ -2564,8 +2606,11 @@ def _tick_schedule_move(block, npc_id, slot, npc_view, port, now_minute):
     if decision["chosen"] is None:
         return True          # 硬约束拦下（如不认识路）：留痕、可解释
     proposal = to_proposal(decision, npc)
-    port.submit(proposal, idempotency_key=idempotency_key(decision, npc))
-    _write_back(npc, decision, now_minute)
+    result = port.submit(proposal, idempotency_key=idempotency_key(decision, npc))
+    _write_back(npc, decision, now_minute, result)
+    if not _submit_committed(result):
+        block["journal"].append(_submit_note(npc_id, decision, result,
+                                             now_minute))
     return True
 
 
@@ -2755,7 +2800,11 @@ def tick(block, view, *, port, now_minute):
         if decision["chosen"] is None:
             continue
         proposal = to_proposal(decision, npc)
-        port.submit(proposal, idempotency_key=idempotency_key(decision, npc))
-        _write_back(npc, decision, now_minute)
+        result = port.submit(proposal,
+                             idempotency_key=idempotency_key(decision, npc))
+        _write_back(npc, decision, now_minute, result)
+        if not _submit_committed(result):
+            block["journal"].append(
+                _submit_note(npc_id, decision, result, now_minute))
 
     return block
