@@ -712,3 +712,126 @@ world.py ──只读──► state.py（commit/view/replay 接口面，§12.1�
 | 生成世界入库 | `data/worlds/<key>.json`（玩家「保存我的世界」= 把合成结果写成文件，过 `validate_data`）；命名禁碰三个既有 key | W3 之后（可选项） |
 
 - 生成世界**是否入库存文件**是产品决策（临时战役可以只存 `overrides + seed`），见 §12 P6。
+
+---
+
+## 10. 可测口径（M12 出口条件 → 断言）
+
+### 10.1 出口 1 · 生成物结构有效（`GDD-BASELINE.md` §5「M12」行第一条）
+
+| # | 断言 | 测试思路 |
+|---|---|---|
+| 1.1 | `validate_atlas(compile_world(W, L, s))` 对三个既有世界 + `atlas_fiction_world.json` 零 error | W2 回归：遍历 `data/worlds/*.json` + fixture，断言 `error` 级 issue 为空（warn 允许） |
+| 1.2 | 生成的 `world.module` 过 `validate_data` 既有校验（schema / kind / source 纪律） | 合成结果落临时文件 → 复用 `tests/validate_data.py` 的校验入口断言通过 |
+| 1.3 | 流水线产物无死路：`generate_site` 后对每个 site 帧断言「从入口格出发 BFS 可达全部 room」（C2/C3/C4 的运行时化身） | 构造 5 个不同 seed 的生成世界，逐帧 BFS |
+| 1.4 | 同一 `(spec, seed)` 连跑 100 次 `normalize_spec → choose_base → synthesize → compile_world`，产物序列化**逐字节相等**；换 seed 则区域布局不同 | 纯函数单测（无 IO、无时钟） |
+| 1.5 | 修复收敛：人工构造含 C2 断链 / C3 缺门 / C4 不可达的残图 → `repair` 后全量校验零 error，且修复**只新增边**（边集单调增） | 残图夹具（从 fiction world 删边构造），断言重跑收敛 ≤ 2 轮 |
+| 1.6 | 离线路径可用：`port=None` 时 `extract_spec` 走结构化 JSON 直填、`synthesize` 文本字段落兜底短语，整条流水线零模型调用完成且过 1.3/1.4 | 显式传 `port=None`（同 `NEURA-DESIGN.md` §10.1 断言 3.5 的手法） |
+| 1.7 | error 阻断：带 error 的生成物无法进入 P6/P7（`commit` 路由对未过校验的预览返回错误码） | W3 编排测试：篡改预览结果强投 → 断言拒绝 |
+| 1.8 | 生成世界入库（可选路径）后 `tests/validate_data.py` 全仓仍通过 | 落盘 → 跑既有校验脚本 |
+
+### 10.2 出口 2 · 经济动作有账可查（`GDD-BASELINE.md` §5「M12」行第二条）
+
+| # | 断言 | 测试思路 |
+|---|---|---|
+| 2.1 | **三个等式**（§6.2）：跑 30 个游戏日（含交易 / 工程 / 日切）后，`replay` 重放事件日志重算的余额 == `balances` 快照；每个余额变动追到恰一条 `Entry`；每条 `Entry.refs.event_seq` 指向真实事件 | 长跑后逐账户复算；`Entry` 反查事件存在性 |
+| 2.2 | 库存不为负：任何 `Entry` 落地后 `goods[].stock >= 0`、`balances >= 0`（不足则动作被拒且**无** Entry） | 构造「买 10 只有 3 只」→ 断言拒单、无账、事件无 changes |
+| 2.3 | 幂等：同 `idempotency_key` 重投玩家交易 → 事件数不变、余额不变；同日重跑日切 → `wtick_<day>` 命中、不重复结算 | 状态层幂等索引（`STATE-DESIGN.md` §7）+ 日切键单测 |
+| 2.4 | 委托指令的账目可解释：active 指令在任意时刻能读出 §6.5 六项（目标 / 预算 / 在建 / 阻塞原因 / 近 3 笔 / 预期）；命中硬回问清单 → `blocked` + 留痕、**无自动花费** | 构造「粮仓 ≥ 90 天」指令 + 断供场景，断言 blocked 而非越权采买 |
+| 2.5 | 价格确定性：同块同 view 同日两次日切 → `prices` 全等（无随机、无时钟依赖）；涨幅不越钳制常量 | 纯函数单测 |
+| 2.6 | 工程账实相符：玩家工程（CHRON 通道）与背景工程（日切通道）完成时，`requirements` 与 `progress` 逐项对平；材料退回（fail 场景）有反向 `Entry` | 两条通道各造一例，含中断失败回滚 |
+| 2.7 | 屏障不日切：`stopped_at != None` 时 `economy.day` 不变（照 NEURA §10.1 断言 2.4）；跨屏障后补结算逐日补齐（欠 3 天 = 3 条独立事件） | 造长行动屏障场景断言 |
+| 2.8 | 重放相等：`replay(genesis, events[1..N])` 的 `blocks.world` 与 live 规范化 JSON 相等（含 ledger 裁剪确定性：裁两次结果相同） | 跑 60 日 + 手动裁剪复跑（同 NEURA §10.1 断言 2.1/2.5 手法） |
+| 2.9 | 重判预算：同 NPC 同日第 5 次 `match_event` 命中不再注入 `force_due_ids`；跨日归零 | 构造 5 连事件断言计数 |
+
+### 10.3 测试清单（对应 `GDD.md` §24.2）
+
+| 类别 | 本里程碑覆盖 | 交给谁 |
+|---|---|---|
+| 规则单元测试 | ◐ 经济结算公式（价格步进 / 工期折算）为纯函数单测；不掷骰 | 本文 + `prism_core` |
+| 时间调度测试 | ✅ 2.7（日切 × 屏障 × 补结算）；日切只读 CHRON 不改它 | 本文 + `CHRON-DESIGN.md` §9 |
+| 多人并发测试 | ✅ 账目交付过滤（`econ.day` gm 视角）；双人同时买断最后库存（2.3 幂等 + 库存不为负） | 本文 + `MULTIPLAYER-DESIGN.md` §11 |
+| 知识隔离测试 | ◐ `world_facts` 经既有过滤门下发；无新知识结构 | 本文 |
+| 存档测试 | ✅ 2.8 / 2.1；`blocks.world` 迁移往返（v1 起步，迁移骨架照 chron 块） | 本文 + `STATE-DESIGN.md` §14 |
+| 长期模拟测试 | ✅ 100 游戏日：ledger ≤ 上限、事件数 ≤ 日数 × 常量、重放相等、块 < 1 MiB | 本文（W8 长跑） |
+| AI 故障测试 | ✅ 1.6（生成零模型）；`world.tick` 全程无模型调用（结构保证，断言 port 缺失不抛错） | 本文 |
+| 视觉 / UX 测试 | ❌ 无 UI 改动（预览卡以 JSON/API 面交付） | UI 轨 |
+
+### 10.4 不测什么（明确边界）
+
+- 不测「生成的世界好不好玩 / 文本美不美」——玩法验收（`GDD.md` §24.4），需真人试玩。
+- 不测模型结构化抽取的准确率——只测「提不出来时落默认值、非法 spec 被钳制」。
+- 不测全球市场联动——首版没有（§1.2）。
+
+---
+
+## 11. 实现切片建议 W1…W8
+
+> **公共约束**（每条都适用）：从最新 `master` 开分支；尽早开 Draft PR；**不合并**；
+> 真跑 `bash tests/run_all.sh` 与 `bash tests/content_firewall.sh` 并把命令与结果写进 PR；
+> 新文件不进 `tests/test_repo_layout.py` 必需清单；新增事件 `type` 在 PR 说明登记。
+
+| # | 名称 | 内容 | 可改路径 | 禁改路径 | 依赖 | 标签 |
+|---|---|---|---|---|---|---|
+| **W1** | worldgen 内核：spec + 合成 + 世界校验 | `normalize_spec` / `choose_base` / `synthesize`（含词表覆盖项与三级文本来源）/ `roster` / `estimate` / `validate_world`；`WORLDGEN_CALL_BUDGET` 等常量 | `worldgen.py`（新）、`tests/test_worldgen.py`（新） | 一切既有文件 | 无 | 能力：逻辑 / 难度：高 |
+| **W2** | ATLAS 校验与修复 | `validate_atlas`（C1–C7）/ `repair`（三类 error）/ provenance；三世界 + fixture 零 error 回归 | `worldgen.py`、`tests/test_worldgen.py` | `atlas*.py` 三文件（V8 零改动） | W1 | 能力：逻辑 / 难度：中 |
+| **W3** | 生成会话编排 | `POST /api/world/generate` / `commit`；P1 模型端口接线（GUIDE 网关复用）；预览卡 / overrides diff；error 阻断（1.7） | `notdnd_web.py`、`tests/test_notdnd_web.py` | `worldgen.py`（只调用） | W2（同占 notdnd_web 队列 C 起点） | 能力：逻辑+文学 / 难度：高 |
+| **W4** | world 内核：块 + 账本 + 日切 | `blocks.world` 形状与 `new_block`/`migrate_block`；`Entry` / 三等式 / 日切结算纯函数；`_world_tick` 骨架（失败隔离、`wtick_<day>`） | `world.py`（新）、`tests/test_world.py`（新） | `state.py` / `chron.py` / `neura.py` | W1（Entry/WorldSpec 形状） | 能力：逻辑 / 难度：高 |
+| **W5** | 玩家经济动作接线 | M8 管线内部分支（trade / build 提案结算）；`econ.trade` / `econ.build` 事件；两本账双记（§6.6）；幂等 | `notdnd_web.py`、`tests/test_notdnd_web.py` | `world.py`（只调用）、提案契约 | W4 | 能力：逻辑 / 难度：高 |
+| **W6** | 建造与委托式管理 | Project 对象 / 两条通道（CHRON 卡 + 日切）/ 指令对象与硬回问清单 / 维护扣账 | `world.py`、`notdnd_web.py`（两队列各一段，先 B 后 C 串行）、`tests/test_world.py` | `chron.py`（既有钩子只调用） | W5 | 能力：逻辑 / 难度：中 |
+| **W7** | NEURA 挂接（M11 移交收尾） | 投影五键（§8.2）注入 `_neura_view`；`world.populate` 种群初始化；`worldgen.individuals` + 人口摘要；重判匹配 + `blocks.world.rejudge` + **`neura.py` 唯一改动**（`view.force_due_ids` 缺省空键）；`laws` 投影（`law_source="world"`） | `world.py`、`worldgen.py`、`notdnd_web.py`、`neura.py`（仅 §8.4 一处）、`tests/*` | `chron.py`、`state.py`、提案契约 | W4（W6 完成 projection 依赖的项目事实更完整，但非硬依赖） | 能力：逻辑 / 难度：高 |
+| **W8** | 数据片 + 观察面 + 长跑 | `world.schema.json` 扩展 laws / region economy（§9.2）；`FORMAT.md` 小节；`GET /api/world/ledger`；100 日长跑（2.8 / 10.3 长期模拟行） | `data/schema/world.schema.json`、`data/FORMAT.md`、`notdnd_web.py`、`tests/*` | 三个既有 `data/worlds/*.json` 正文 | W5（观察面）、W1（schema 形状） | 能力：逻辑 / 难度：中 |
+
+### 附：切片依赖图
+
+```
+W1 ──► W2 ──► W3（队列 A → C）
+W1 ──► W4 ──► W5 ──► W6（队列 B → C）
+              W4 ──► W7（投影 + populate + 重判；neura.py 一段独占）
+W1 ──────────────────► W8（数据 + 观察面 + 长跑）
+```
+
+- **并行推荐**：W1 → W2 → W3 与 W4 → W5 → W6 两条主线在 W1 完成后可并行
+  （`worldgen.py` 与 `world.py` 互斥文件）；W3 / W5 / W7 同占 `notdnd_web.py`，三片串行；
+  W7 的 `neura.py` 段不得与任何其它片并行。
+- **最小可玩出口**：W1+W2（生成物结构有效）与 W4+W5（经济有账可查）各自独立满足
+  M12 两条出口条件之一——Master 可按出口拆里程碑验收。
+
+---
+
+## 12. 未决与待拍板
+
+> 以下每一项都**不阻塞** W1–W5 的起草（纯函数层），但**阻塞**对应实现单的「可合并」判断。
+> 建议由人（或人授权 Master Agent）逐条给结论，写回本 Issue 或另开决策 Issue
+> （照 `NEURA-DESIGN.md` §12 的模式；拍板后本文按 §12.1 风格回填记录）。
+
+| # | 事项 | 为什么需要人（而不是 Agent 自决） | 建议 | 阻塞哪片 |
+|---|---|---|---|---|
+| **P1** | **新模块命名**：`worldgen.py` / `world.py`（本文口径）vs `econ.py`（只做经济）vs 合一模块 | `GDD-BASELINE.md` §4.1 明文「新模块名暂以本表为准；设计单如提出更名，说明理由并请 Master Agent 确认」——命名权在 Master | **两模块方案**（V1/V2）：生成与运行时生命周期不同、文件队列可并行、`world.py` 以后可挂据点 UI 数据；若嫌名字泛，`worldsim.py` 亦佳 | 全部 |
+| **P2** | **经济首版数值规模**：goods 数量（建议 8–12 种）、价格步进幅度（建议 ±10%/日钳制）、`LEDGER_MAX`（建议 512） | 数值手感是玩法判断； Agent 只有结构没有体验反馈 | 按建议值做常量起步，W8 长跑数据回调；全部一处可调 | W4 / W8 |
+| **P3** | **块体量上限**：`domain` 档 80 NPC + 90 日补算下 `blocks.world` 实测大小；是否需要 ledger 分片 | 涉及存档体积与迁移成本（`NEURA-DESIGN.md` §12.1 P3 的同款问题在宏观账上更大） | 先落单块 + 硬上限；实测 > 512 KiB 再评估分片（另开单） | W4 / W8 |
+| **P4** | **生成模型调用预算**：`WORLDGEN_CALL_BUDGET`（本文建议 12 次）与降级后兜底文本的质量底线 | 商业决策（模型单价 × 生成频次）；兜底文本质量影响首发观感 | 12 次起步；兜底短语表由 W3 实现时给最小可用版，**文案打磨另开内容单**（能力：文学） | W3 |
+| **P5** | **`threshold` 是否扩档**：`neura.py:111` 只认 `allow/tolerate`；要不要加「罚金可违反」档（`penalty` 数值化） | 扩档 = 改 NEURA 消费侧契约（M11 已定型），跨里程碑变更 | **不扩**：v1 三值（forbid/tolerate/allow），`penalty` 保持展示字段；违反处置走 M8 管线的既有风险结算 | W7 / W8 |
+| **P6** | **生成世界是否落库存文件**（`data/worlds/`）+ 命名规范（用户自建 key 与官方三 key 的冲突策略） | 涉及仓库内容治理（防火墙 / validate_data 对用户生成内容的责任边界）与 `GDD.md` §21 版权条款 | v1 不入库（实例只存 overrides + seed）；「保存为模组」推 M13 编辑器一并拍板 | W3（可选项） |
+| **P7** | **建造扰动的事件钩子**：天气 / 劳资关系 / 事故掷骰何时接入（本文 §7.2 只落三类结构化扰动） | 玩法深度与 PRISM 检定契约相关（涉及给工程开骰点通道与否，§1.2 的克制边界） | v1 不接；把「事件钩子」列为 `blocked_reason` 的一个保留枚举值，将来以 `world.facts` 驱动 | W6 |
+| **P8** | **重判上限的粒度**：`REJUDGE_DAILY_CAP=4` 按 NPC 计（本文）还是按「NPC × 事件类别」计 | 影响远场活性的手感（太少 = 世界死，太多 = 日成本漂移）——与 `NEURA-DESIGN.md` §12.1 P5 同性质 | 按 NPC 计 4 次起步，用 W8 长跑的 `important_far` 实际重判率回调 | W7 |
+| **P9** | **委托式管理的 UI 面**：M12 只交付 API + 块内可解释字段（本文 §9.1），指令的创建 / 回问 / 暂停界面归谁 | UI 优先级是产品决策（并行轨的排期权在人） | M12 交付 API 面 + JSON 可观测；UI 单另开（依赖 UI-DESIGN 轨），回问暂用 M8 既有的一次性澄清通道 | W6（验收口径） |
+| **P10** | **`known_refs` 的过渡口径**：本文 §8.2 用事件日志反推玩家已知线索；无事件日志的过渡档降级为「剧本全集」（过宽） | 「玩家已知道什么」直接改变 NEURA 决策与 P10 公式输入，口径过宽会让远场 NPC 过度活跃 | 事件日志已是 M7 交付物、过渡档仅存在于测试夹具——建议**不实现降级**，无日志按空表 | W7 |
+
+---
+
+## 附录 A · 与其它设计单的接口一览（便于交叉审查）
+
+| 对方 | 我给它的 | 它给我的 | 冲突风险 |
+|---|---|---|---|
+| `STATE-DESIGN.md` | 新块名 `world`、五个事件 `type`（§9.1）、每 tick 每域至多一条事件 | `commit()` / `view()` / `replay()` / 幂等索引 / 惰性迁移口径 | 低（块不透明；枚举登记照 P9 纪律） |
+| `CHRON-DESIGN.md` | 一条工程通道消费者（玩家工程进 `chron.actions`） | `world_minute` / `advance_to` 停点 / `next_barrier` / 分钟口径 | 中（V7 与 NEURA P7 反向：一进一出不混用，§7.3 已论证） |
+| `ACTION-DESIGN.md` | 两个内部分支消费者（trade / build 结算）+ 生成会话两路由 | 提案 Schema / 结果契约 / 幂等键 / 排程钩子语义 | 低（提案不新增字段） |
+| `NEURA-DESIGN.md` | view 五键 + `force_due_ids`（缺省空 = M11 行为不变）、种群初始化后的完整块 | 四段流水线复用 / tick 挂接先例 / P8 laws 消费契约 / P10 公式 | 低（neura.py 仅 §8.4 一处改动，缺键逐字节兼容） |
+| `MULTIPLAYER-DESIGN.md` | `econ.*` 事件的 `visibility` | 每成员视角过滤 / 受众冻结 | 低（复用既有门） |
+| `ATLAS-DESIGN.md` | **无改动**——校验与修复只读其输出形状 | `compile_world` / `generate_site` / `generate_tactical` / `range_band` / 词表机制 | 低（V8 零改动承诺；唯一扩展是调用次序，住在 worldgen） |
+| `GUIDE-DESIGN.md` | 生成文本字段的模型端口消费者 | AI 网关 / 单回合预算先例 | 低（端口注入，缺省离线） |
+
+---
+
+**（文末）本文不含任何代码改动；§12 的 P1–P10 待拍板，拍板前按「建议」列实施。**
