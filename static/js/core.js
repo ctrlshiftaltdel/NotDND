@@ -230,10 +230,40 @@ function renderSceneCard() {
   if (typeof phDecorateSceneCard === 'function') phDecorateSceneCard();
 }
 
+/* ── 世界主题（战役级常量，UI-WORLD-THEMES.md §2.1 / §2.5 / §4.7）──
+   唯一输入是会话快照里的**结构化字段** `world_type`：不从世界名、叙事文本、
+   模型输出或 `tone_pack` 推断（§2.3 硬性禁止）。取值只认三个枚举，未知 /
+   缺失一律落 `modern`——即基础令牌（现代中性基线），与「不设属性」同一套
+   计算值（tokens.css 不写 `[data-world="modern"]`）。
+   这里只是**只读投影**：不写回存档、不提供对局中切换（§2.3 第 4 条）。
+   返回归一后的取值，供设置区只读展示复用。 */
+var WORLD_DEFAULT = 'modern';
+var WORLD_LABEL = { fantasy: '奇幻', modern: '现代', future: '未来' };
+
+function normalizeWorld(value) {
+  return (value === 'fantasy' || value === 'modern' || value === 'future')
+    ? value : WORLD_DEFAULT;
+}
+
+function applyWorldTheme(s) {
+  var world = normalizeWorld(s && s.world_type);
+  // 显式写 modern（而不是删属性）：未知值不会余留上一局的主题值，
+  // 且与「从未设置」的计算值完全一致（tokens.css §4.7 的 :root 基线）。
+  document.documentElement.dataset.world = world;
+  return world;
+}
+
+/* 当前生效的世界主题：以 html 上的属性为准，读不到就按缺省 modern。 */
+function currentWorld() {
+  return normalizeWorld(document.documentElement.dataset.world);
+}
+
 /* 单一状态入口：状态一变就整屏重画，而不是各处零散地改 DOM。
    跨片共用件 + 各片的 render 都挂在这条链路上。 */
 function applyState(s) {
   ST = s || placeholderState();
+  // 主题先于渲染落地：首帧就用对的令牌，避免「先现代后奇幻」的闪一下。
+  applyWorldTheme(ST);
   renderTop();
   renderSceneCard();
   renderStream();      // 片 U2 / U5（js/turn.js）
@@ -292,6 +322,7 @@ function applySettings() {
 }
 
 function renderSettings() {
+  var world = currentWorld();
   var seg = function (key, opts, cur) {
     return '<div class="seg">' + opts.map(function (p) {
       return '<button type="button" data-set="' + key + '" data-val="' + p[0] + '"' +
@@ -307,6 +338,16 @@ function renderSettings() {
   };
 
   $('#settingsForm').innerHTML =
+    // 本局主题是**只读**事实（战役级常量，§2.3 第 4 条）：这里只显示，
+    // 不给切换控件，也不写回存档——外观偏好（明暗）不能顶替它（§2.3 第 5 条）。
+    '<div class="set-group">' +
+      '<div class="set-title">本局</div>' +
+      '<div class="set-row">' +
+        '<div class="set-label">本局世界主题<small>由战役决定，对局中不可更改</small></div>' +
+        '<span id="setWorldTheme" class="set-value" data-world-theme="' + world + '">' +
+          WORLD_LABEL[world] + '</span>' +
+      '</div>' +
+    '</div>' +
     '<div class="set-group">' +
       '<div class="set-title">显示</div>' +
       '<div class="set-row">' +
