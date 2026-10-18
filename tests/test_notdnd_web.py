@@ -8001,6 +8001,174 @@ def check_world_export_disposition():
         assert status == 404, (status, missing)
 
 
+# ── W7：NEURA 挂接（§8：投影注入 / 重判注入；Issue #394）────────────────────
+
+
+def check_world_view_projection_keys():
+    """§8.2（V10）：_neura_view 五键由 world.projection 注入且含真实数据。"""
+    sid = "world-w7-view"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "world-w7-view-neura-1")
+        world_block = _world_goods_block()
+        world_block["facts"].append(
+            {"fact_id": "fact-w7-1", "minute": 0,
+             "kind": world.FACT_KIND_IMPORTANCE_OVERRIDE,
+             "subject_ref": "npc-guard", "text": "", "value": 0.8})
+        _world_seed_block(session, world_block, "world-w7-view-world-1")
+        session.guide["known_clues"] = ["C-02", "C-01", "C-01"]
+        session.guide["scenario_id"] = "ashen_crown"     # 真剧本：threads/势力
+
+        view = notdnd_web._neura_view(session, block)
+        assert view["known_refs"] == ["C-01", "C-02"], view["known_refs"]
+        assert view["main_thread_refs"], "ashen_crown threads 展开非空"
+        assert view["faction_refs"], "faction 归属 NPC 非空"
+        assert view["importance_overrides"] == {"npc-guard": 0.8}
+        assert view["world_facts"], "facts 投影非空"
+        # travel_minutes：gate 与 market 相邻 → short 档；temple 不在
+        # 「块内地点 × 队伍地点」里（没有 NPC 引用它）→ 不投影。
+        assert view["travel_minutes"].get("gate") == \
+            notdnd_web.BAND_MINUTES["short"]
+        assert "temple" not in view["travel_minutes"]
+        # 无世界实例 → M11 laws 缺省（空表 + none）。
+        assert view["laws"] == [] and view["law_source"] == "none"
+
+        # 恰有一个世界实例（带 laws）→ view.laws + law_source="world"。
+        module = {"kind": "world.module",
+                  "world": {"key": "w7", "name": "W7 测试世界"},
+                  "factions": [{"id": "faction-01", "name": "守冠庭"}],
+                  "laws": [{"id": "law-01", "name": "禁武令",
+                            "forbid_tags": ["武器"], "scope_place_ids": [],
+                            "threshold": "forbid", "penalty": "没收",
+                            "source": "docs/system/x.md:1"}]}
+        notdnd_web._world_instances_save(sid, [
+            {"instance_id": "wi_w7_1", "world": module}])
+        view2 = notdnd_web._neura_view(session, block)
+        assert view2["law_source"] == "world"
+        assert [law["id"] for law in view2["laws"]] == ["law-01"]
+        assert view2["laws"][0]["forbid_tags"] == ["武器"]
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_view_projection_defaults_without_data():
+    """§8.2：无世界数据 / 无剧本 → 全部空键（M11 行为逐字节一致）。"""
+    sid = "world-w7-view-empty"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "world-w7-view-empty-neura")
+        view = notdnd_web._neura_view(session, block)
+        assert view["known_refs"] == []
+        assert view["main_thread_refs"] == []
+        assert view["faction_refs"] == []
+        assert view["importance_overrides"] == {}
+        assert view["travel_minutes"] == {}       # 无地图：bands 空 → 投影空
+        assert view["world_facts"] == {}
+        assert view["laws"] == [] and view["law_source"] == "none"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_rejudge_force_due_wired():
+    """§8.4（V12）端到端：本停点动作事件匹配的远场 NPC 经预算注入
+    force_due_ids → 本 tick 强制到期；预算变更随 tick 提交落盘（A0）。"""
+    sid = "world-w7-rejudge"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        far = _neura_mover_npc("npc-far", place="temple", slot_place="temple")
+        far["importance"] = 0.9                   # temple 距 market 两格 → far 层
+        block = neura.empty_block()
+        block["npcs"]["npc-far"] = far
+        _neura_seed_block(session, block, "world-w7-rejudge-neura-1")
+        _world_seed_block(session, _world_goods_block(),
+                          "world-w7-rejudge-world-1")
+        # 模拟本停点动作事件已被 `_world_rejudge_candidates` 收集（§8.4：
+        # 编排层内存传递；层过滤与预算在 tick 侧）。
+        session._neura_rejudge_pending = {"npc-far"}
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok", out
+        saved = _neura_block_of(session)
+        # 强制到期：同日 important_far 本不该判（last_day == day），注入后判了。
+        assert saved["npcs"]["npc-far"]["last_tick_minute"] == 10
+        assert saved["journal"], "强制到期必须有决策留痕"
+        # 预算计数落进 world 块（同日第 1 次）。
+        world_saved = _world_block_of(session)
+        assert world_saved["rejudge"] == {"day": 0, "counts": {"npc-far": 1}}
+        # A0：块级变更仍只随 1 条 neura.tick 事件（不单开重判事件）。
+        events = _neura_all_events(session)
+        assert [t for t, _a in events].count("neura.tick") == 1, events
+
+        # 同日第 2 次：预算内继续注入。
+        session._neura_rejudge_pending = {"npc-far"}
+        notdnd_web._chron_advance(session, 20)
+        world_saved = _world_block_of(session)
+        assert world_saved["rejudge"]["counts"]["npc-far"] == 2
+
+        # 预算打满（4/日）→ 第 5 次不注入、不报错、远场不动。
+        handle = session._handle or session._open_handle()
+        world_before = _world_block_of(session)
+        world_before["rejudge"]["counts"]["npc-far"] = world.REJUDGE_DAILY_CAP
+        out = handle.commit(
+            base_seq=handle.view()["seq"], idempotency_key="world-w7-cap-1",
+            type="core.commit", actor="pc-1",
+            changes=[{"block": "world", "op": "replace_block", "path": "",
+                      "before": None, "after": world_before}],
+            rules_version=notdnd_web.ACTION_RULES_VERSION, source="player")
+        assert out["status"] == "committed", out
+        session._neura_rejudge_pending = {"npc-far"}
+        notdnd_web._chron_advance(session, 30)
+        saved = _neura_block_of(session)
+        assert saved["npcs"]["npc-far"]["last_tick_minute"] == 20, \
+            "超预算不得重判（last_tick 停在上一次）"
+        assert _world_block_of(session)["rejudge"]["counts"]["npc-far"] == 4
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_rejudge_match_event_collects_candidates():
+    """§8.4：_world_rejudge_candidates 把匹配表结果记入本停点候选（内存）。"""
+    sid = "world-w7-match"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-a"] = _neura_mover_npc("npc-a", place="gate",
+                                                  slot_place="gate")
+        _neura_seed_block(session, block, "world-w7-match-neura-1")
+        _world_seed_block(session, _world_goods_block(),
+                          "world-w7-match-world-1")
+        handle = session._handle or session._open_handle()
+        # 事件投影带卡面地点：gate 在场 NPC（npc-a）命中规则 1。
+        notdnd_web._world_rejudge_candidates(
+            session, handle,
+            {"type": "action.settle", "target": "act-1", "subject": "act-1",
+             "place_id": "gate"})
+        assert getattr(session, "_neura_rejudge_pending", None) == {"npc-a"}
+        # 无命中 → 候选不新增。
+        notdnd_web._world_rejudge_candidates(
+            session, handle,
+            {"type": "action.settle", "target": "act-2", "subject": "act-2",
+             "place_id": "nowhere"})
+        assert session._neura_rejudge_pending == {"npc-a"}
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -8151,6 +8319,10 @@ CHECKS = (
     check_econ_build_chron_card_completes_project,
     check_world_project_api_http,
     check_world_directive_api_and_explain_http,
+    check_world_view_projection_keys,
+    check_world_view_projection_defaults_without_data,
+    check_world_rejudge_force_due_wired,
+    check_world_rejudge_match_event_collects_candidates,
 )
 
 

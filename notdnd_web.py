@@ -1277,6 +1277,30 @@ def _scenario_meta(scenario_id: str) -> dict | None:
         return meta
 
 
+_SCENARIO_DATA_CACHE: dict[str, dict | None] = {}
+
+
+def _scenario_data(scenario_id: str) -> dict | None:
+    """读 data/scenarios/<id>.json 的**正文**（惰性 + 缓存；读不了回 None）。
+
+    W7（§8.2）：view 投影的 threads / npcs 数据源（与 `_scenario_meta` 同款
+    纪律——只读、白名单 id、缓存；meta 只投影字段，正文才带 threads）。
+    """
+    if not SID_RE.fullmatch(scenario_id or ""):
+        return None
+    with _DATA_LOCK:
+        if scenario_id in _SCENARIO_DATA_CACHE:
+            return _SCENARIO_DATA_CACHE[scenario_id]
+        path = HERE / "data" / "scenarios" / f"{scenario_id}.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = None
+        data = data if isinstance(data, dict) else None
+        _SCENARIO_DATA_CACHE[scenario_id] = data
+        return data
+
+
 def campaign_catalog() -> dict:
     """`GET /api/campaigns` 的响应体：世界 → 该世界下的剧本（只读）。
 
@@ -3184,7 +3208,11 @@ def _neura_view(session, block) -> dict:
       编排层不预置（注入了也会被覆盖）。
     - `options` 恒为空：候选池第一版只来自日程义务（tick 内合成，N5 裁定
       12）；其余候选归 M12 / AI 接入。
-    - `laws` / `law_source`：P8 第一版空表不拒；`world_facts`：M12 前无投影。
+    - `laws` / `law_source` / `world_facts` / 五个注入键（`known_refs` /
+      `main_thread_refs` / `faction_refs` / `importance_overrides` /
+      `travel_minutes`）：W7 起由 `world.projection`（§8.2 V10 / §8.1 V9）
+      供数——见 `_neura_view_project`；投影抛错或无世界数据时保持空键
+      （M11 行为逐字节不变）。
     """
     view = {
         "campaign_id": str(session.sid),
@@ -3223,7 +3251,64 @@ def _neura_view(session, block) -> dict:
                         bands[(a, b)] = atlas_kernel.range_band(
                             atlas, frame_id, a, b)
     view["bands"] = bands
+    _neura_view_project(session, view)
     return view
+
+
+def _neura_view_project(session, view) -> None:
+    """§8.2（V10）/ §8.1（V9）：世界事实投影注入 view（失败隔离）。
+
+    W1 裁定的「缺键按缺省」从此有真数据源：`world.projection` 是纯函数，
+    IO（剧本正文 / 世界实例 sidecar）都留在本层；投影抛错、`blocks.world`
+    缺失、实例不唯一（歧义，v1 不猜）→ 保持 M11 空键并落 `world_skipped`
+    日志——与 `neura_skipped` 同款失败隔离。
+
+    口径（PR「风险与口径补充」登记）：
+
+    - `known_clues` 来自 `guide.known_clues`（M7 起玩家已知线索的运行时
+      权威；state 事件日志没有 clue 事件类型——§8.2 表的「线索事件」在
+      现实现中的落点就是它）。P10：无日志按空表，不降级剧本全集。
+    - `world_module`（laws / factions 校准）取世界实例 sidecar：**恰有
+      一个**实例时用之（campaign-scoped；零个 = 无法律 M11 行为；多个 =
+      歧义不猜，等开档流程把实例绑进战役后收紧）。
+    - `travel_minutes` 的档位→分钟表 = `BAND_MINUTES` 原样注入
+      （CHRON §2.3 口径复用；不定义新时间常数）。
+    """
+    try:
+        handle = session._handle or session._open_handle()
+        blocks = handle.view().get("blocks") or {}
+        guide = session.guide if isinstance(session.guide, dict) else {}
+        scenario = _scenario_data(str(guide.get("scenario_id") or ""))
+        world_module = None
+        instances = _world_instances_load(session.sid)
+        if len(instances) == 1 and isinstance(instances[0].get("world"), dict):
+            world_module = instances[0]["world"]
+        world_block = blocks.get("world")
+        world_block = world_block if isinstance(world_block, dict) else None
+        projected = world.projection({
+            "known_clues": guide.get("known_clues"),
+            "scenario": scenario,
+            "npcs": (scenario or {}).get("npcs"),
+            "world_module": world_module,
+            "world": world_block,
+            "bands": view.get("bands"),
+            "party_places": view.get("party_places"),
+            "band_minutes": BAND_MINUTES,
+        })
+        view["known_refs"] = projected["known_refs"]
+        view["main_thread_refs"] = projected["main_thread_refs"]
+        view["faction_refs"] = projected["faction_refs"]
+        view["importance_overrides"] = projected["importance_overrides"]
+        view["travel_minutes"] = projected["travel_minutes"]
+        view["world_facts"] = projected["world_facts"]
+        view["laws"] = projected["laws"]
+        view["law_source"] = projected["law_source"]
+    except Exception as exc:      # noqa: BLE001 — §8.2 失败隔离：保持空键
+        try:
+            session.add_log(WORLD_SKIPPED_LOG_KIND,
+                            "world 投影跳过：%s" % (exc,))
+        except Exception:         # noqa: BLE001 — 日志通道也失败就静默
+            pass
 
 
 def _neura_guide_change(session, guide_view, block, new_block, port) -> tuple:
@@ -3328,6 +3413,13 @@ def _neura_tick(session, *, stopped_at=None) -> None:
     **失败隔离（§9.4 硬要求）**：任何异常（块拒载 / view 构造失败 /
     tick 抛错 / 提交被拒）只落一条 `neura_skipped` 日志并返回——不阻塞
     `_chron_advance`，NPC 不动、世界照走。
+
+    **W7 重判注入（§8.4 / V12，Issue #394）**：本停点的动作事件经
+    `_world_rejudge_candidates` 收集受影响 NPC（内存），这里过滤到
+    important_far 层 → `world.register_rejudge` 预算（同 NPC 同日
+    ≤ `REJUDGE_DAILY_CAP=4`，跨日归零）→ `view.force_due_ids` 注入
+    （neura 侧只读缺省空键，M11 缺键行为不变）。预算变更随本 tick 的
+    块级提交落盘（`changes` 附 world 块，A0：不单开事件）。
     """
     try:
         handle = session._handle or session._open_handle()
@@ -3337,6 +3429,41 @@ def _neura_tick(session, *, stopped_at=None) -> None:
             return                      # 没有 NPC 运行时态：无事可做（§9.7）
         view = _neura_view(session, block)
         minute = chron.world_time_minute(handle.view().get("world_time"))
+        # W7 重判注入（§8.4 V12）：本停点动作事件匹配到的候选，过滤到
+        # important_far 层（near 每 tick 判、background 不值得付重判）后
+        # 过 `world.register_rejudge` 预算（同 NPC 同日 ≤ 4，P8），注入
+        # `view.force_due_ids`；预算变更随本 tick 的块级提交落盘（A0：
+        # 不单开事件）。
+        force_ids: list = []
+        world_change = None
+        pending = getattr(session, "_neura_rejudge_pending", None)
+        session._neura_rejudge_pending = set()
+        if pending and isinstance(minute, int) and minute >= 0:
+            try:
+                npcs = block.get("npcs") if isinstance(block.get("npcs"),
+                                                       dict) else {}
+                far_ids = [npc_id for npc_id in sorted(pending)
+                           if npc_id in npcs
+                           and neura.layer_of(npcs[npc_id], view)
+                           == "important_far"]
+                world_before = blocks.get("world")
+                if far_ids and isinstance(world_before, dict):
+                    world_after, injected = world.register_rejudge(
+                        world_before, far_ids, day=minute // world.MINUTES_PER_DAY)
+                    if injected and world_after != world_before:
+                        force_ids = injected
+                        world_change = {
+                            "block": "world", "op": "replace_block", "path": "",
+                            "before": copy.deepcopy(world_before),
+                            "after": copy.deepcopy(world_after)}
+            except Exception as exc:  # noqa: BLE001 — 重判失败不阻塞 tick
+                try:
+                    session.add_log(WORLD_SKIPPED_LOG_KIND,
+                                    "world 重判注入跳过：%s" % (exc,))
+                except Exception:  # noqa: BLE001
+                    pass
+        if force_ids:
+            view["force_due_ids"] = force_ids
         far: dict = {}
         if stopped_at is not None:
             far = {npc_id: copy.deepcopy(npc)
@@ -3351,7 +3478,7 @@ def _neura_tick(session, *, stopped_at=None) -> None:
         new_block = neura.tick(block, view, port=port, now_minute=minute)
         for npc_id, npc in far.items():
             new_block["npcs"][npc_id] = npc     # 原样放回（2.4：远场不动）
-        if new_block == block:
+        if new_block == block and world_change is None:
             return                      # 本 tick 无块级变更：不落事件
         # `world_time` 现算（§3.1 唯一写法）：`handle.view()` 里的值会被本 tick
         # 内的动作提交（不传 `world_time`）重置为 None，不可作为输入。
@@ -3361,13 +3488,15 @@ def _neura_tick(session, *, stopped_at=None) -> None:
         change = {"block": "neura", "op": "replace_block", "path": "",
                   "before": copy.deepcopy(block),
                   "after": copy.deepcopy(new_block)}
+        changes = ([change] if new_block != block else [])
         # D4 双写（P6 / §12.1）：neura 权威移动 → guide.npc_at 随**同一条**
         # 提交落盘（`changes` 双块或单块，A0：不单开事件）。落盘 base 用
         # 事件流视角的 guide 块——`handle.view()` 此刻的动作事件尚未把它
         # 改动（动作只动 rules / chron），直接取 tick 开头的快照即可。
         guide_change, guide_updates = _neura_guide_change(
             session, blocks.get("guide"), block, new_block, port)
-        changes = [change] + ([guide_change] if guide_change else [])
+        changes += ([guide_change] if guide_change else []) \
+            + ([world_change] if world_change is not None else [])
         result = handle.commit(
             base_seq=_int_or(handle.view().get("seq"), 0),
             idempotency_key="ntick_%07d" % minute,
@@ -3957,6 +4086,44 @@ def _chron_cancel(session, task_id) -> bool:
         return True
 
 
+def _world_rejudge_candidates(session, handle, event) -> None:
+    """§8.4（V12）：动作事件 → `world.match_event` → 本停点的重判候选（内存）。
+
+    只收集匹配、不落块：真正的层过滤（只重判 important_far）与预算计数
+    （`world.register_rejudge`）在 `_neura_tick` 的 view 侧完成——层判定
+    需要 bands / party_places，view 构造处才有（依赖方向：world 不 import
+    neura）。失败隔离：world 块缺失 / 匹配抛错只落 `world_skipped` 日志，
+    不阻塞结算（照既有 skipped 先例）。
+    """
+    try:
+        blocks = handle.view().get("blocks") or {}
+        if blocks.get("world") is None:
+            return                      # 没有世界运行时态：无事可做
+        neura_block = blocks.get("neura")
+        npcs = neura_block.get("npcs") \
+            if isinstance(neura_block, dict) else None
+        if not isinstance(npcs, dict) or not npcs:
+            return                      # 没有具名 NPC：重判无对象
+        world_block = world.migrate_block(blocks.get("world"))
+        matched = world.match_event(event, {
+            "npcs": npcs,
+            "facts": world_block.get("facts") or [],
+        })
+        if not matched:
+            return
+        pending = getattr(session, "_neura_rejudge_pending", None)
+        pending = set(pending) if isinstance(pending, (set, list, tuple)) \
+            else set()
+        pending.update(matched)
+        session._neura_rejudge_pending = pending
+    except Exception as exc:      # noqa: BLE001 — 失败隔离：不阻塞结算
+        try:
+            session.add_log(WORLD_SKIPPED_LOG_KIND,
+                            "world 重判匹配跳过：%s" % (exc,))
+        except Exception:         # noqa: BLE001 — 日志通道也失败就静默
+            pass
+
+
 def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
     """一个到期点（`action.due`，B8）的结算：PRISM → `chron.settle` → 一次提交。
 
@@ -4079,6 +4246,12 @@ def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
     record = {"event_id": (committed_ids or [settle_event["event_id"]])[0],
               "type": settle_event["type"],
               "world_time": settle_event["world_time"], "seq": commit["seq"]}
+    # W7 重判收集（§8.4）：动作事件已提交 → 匹配受影响 NPC（层过滤与
+    # 预算在 `_neura_tick` 的 view 侧做；事件投影带卡面地点）。
+    _world_rejudge_candidates(session, handle,
+                              {"type": settle_event.get("type"),
+                               "target": action_id, "subject": action_id,
+                               "place_id": str(card.get("place") or "")})
     return {"state": settled["state"], "block": commit["block"],
             "seq": commit["seq"], "event": record,
             "report": {"action_id": action_id, "status": status,
