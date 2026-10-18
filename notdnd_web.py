@@ -2606,40 +2606,91 @@ def _action_econ_spec(entry) -> dict | None:
 
         {"kind": "trade", "good_id": <str>, "quantity": <int ≥ 1>,
          "unit_price": <int ≥ 0>}
+        {"kind": "build", "project_id": <str>}          # W6：建造工程
 
     缺失 / 形状不对（含未知 `kind`）→ `None`：按普通行动结算，不进经济
     分支（照 `_action_schedule_hint` 的「脏值逐项丢弃，不猜」口径；世界
-    规则包是服务器侧内容，不是客户端输入）。`econ.build` 的结算函数
-    world.py 尚未提供（W4 明确归 W6）——声明了也先按普通行动走，PR
-    「风险与口径补充」登记。
+    规则包是服务器侧内容，不是客户端输入）。
     """
     raw = (entry or {}).get("econ")
-    if not isinstance(raw, dict) or str(raw.get("kind") or "") != "trade":
+    if not isinstance(raw, dict):
         return None
-    good_id = str(raw.get("good_id") or "")
-    quantity = raw.get("quantity")
-    unit_price = raw.get("unit_price")
-    if not good_id or not isinstance(quantity, int) or isinstance(quantity, bool) \
-            or quantity < 1 or not isinstance(unit_price, int) \
-            or isinstance(unit_price, bool) or unit_price < 0:
-        return None
-    return {"kind": "trade", "good_id": good_id, "quantity": quantity,
-            "unit_price": unit_price}
+    kind = str(raw.get("kind") or "")
+    if kind == "trade":
+        good_id = str(raw.get("good_id") or "")
+        quantity = raw.get("quantity")
+        unit_price = raw.get("unit_price")
+        if not good_id or not isinstance(quantity, int) \
+                or isinstance(quantity, bool) or quantity < 1 \
+                or not isinstance(unit_price, int) \
+                or isinstance(unit_price, bool) or unit_price < 0:
+            return None
+        return {"kind": "trade", "good_id": good_id, "quantity": quantity,
+                "unit_price": unit_price}
+    if kind == "build":
+        project_id = str(raw.get("project_id") or "")
+        if not project_id:
+            return None
+        return {"kind": "build", "project_id": project_id}
+    return None
 
 
-def _action_econ_settle(entry, handle, *, base_seq, result) -> tuple:
+def _world_atlas_validated(session) -> bool:
+    """开工条件五（§7.2）：本局 atlas 是否零 error（`validate_atlas` C1–C4）。
+
+    按 atlas 对象缓存（编译产物不可变地挂在 `session._atlas` 上）；
+    `worldgen` 不可用 → 视为未校验（宁不开工）。
+    """
+    atlas = getattr(session, "_atlas", None)
+    if atlas is None or worldgen is None:
+        return False
+    cache = session.__dict__.setdefault("_world_atlas_zero_error", {})
+    key = id(atlas)
+    if key not in cache:
+        try:
+            issues = worldgen.validate_atlas(
+                atlas, checks=worldgen.ATLAS_CHECKS_POST_COMPILE)
+            cache[key] = not worldgen.has_errors(issues)
+        except Exception:          # noqa: BLE001 — 校验失败按未校验处理
+            cache[key] = False
+    return bool(cache[key])
+
+
+def _world_place_view(session, place_id) -> dict | None:
+    """开工条件四/五的**编排侧注入**（§7.2，W6 PR 登记）：world.py 不
+    import atlas，地点信息由本函数投影成
+    `{place_id, kind, validated}` 传入。地点不存在 → `None`（条件四不满足）。
+    """
+    place_id = str(place_id or "")
+    atlas = getattr(session, "_atlas", None)
+    if not place_id or atlas is None:
+        return None
+    place = atlas_kernel.find_place(atlas, place_id)
+    if place is None:
+        return None
+    return {"place_id": place_id, "kind": str(place.get("kind") or ""),
+            "validated": _world_atlas_validated(session)}
+
+
+def _action_econ_settle(entry, handle, *, base_seq, result,
+                        session=None) -> tuple:
     """M8 内部的**经济结算分支**（§6.4）：结算 + 组装同提交的 `world` 块变更。
 
     行动表条目没有经济载荷 → `(None, ACTION_EVENT_TYPE)`，玩家路径逐字节
-    不变。有载荷（trade）→ `world.settle_trade` 给出经济部分的 `effects`
-    （结果契约 §5.1 既有字段装得下：逐条 Entry 折成 `resource` 效果）与
-    `world` 块变更；事件 type 换成 `econ.trade`（§6.4 枚举）。
+    不变。有载荷：
+    - `trade` → `world.settle_trade` 给出经济部分的 `effects`（结果契约
+      §5.1 既有字段装得下：逐条 Entry 折成 `resource` 效果）；事件 type
+      换成 `econ.trade`（§6.4 枚举）。
+    - `build`（W6）→ `world.project_start`：queued 工程五条件齐即开工
+      （材料/资金/劳力三笔扣账），事件 type 换成 `econ.build`；五条件
+      缺一 → 拒单（409），无账、无 changes。完工由 CHRON 卡到期结算或
+      日切里程碑推进完成（两条通道汇合，§7.3）。
 
     **两本账不互改**（§6.6 铁律）：规则包库存是 M8 结算的既有事实，这里
     零改动——双记是「同一次提交各记各的」（`changes` 双块：规则块 +
     `world` 块），没有任何交叉写。
 
-    **拒单无账**（出口 2.2）：库存 / 余额不足时 `settle_trade` 抛
+    **拒单无账**（出口 2.2）：库存 / 余额不足时结算函数抛
     `WorldError` → 翻成 `_ActionError`（409 `经济结算拒单`）——结算之后、
     排程钩子与提交之前抛出，**任何**事件都不发生（无账、无 changes）。
 
@@ -2654,10 +2705,24 @@ def _action_econ_settle(entry, handle, *, base_seq, result) -> tuple:
     minute = ACTION_EPOCH_MINUTE if minute is None else minute
     world_before = (view.get("blocks") or {}).get("world")
     try:
-        new_block, entries = world.settle_trade(
-            world_before, good_id=spec["good_id"], quantity=spec["quantity"],
-            unit_price=spec["unit_price"], at_minute=minute,
-            event_seq=base_seq + 1)
+        if spec["kind"] == "trade":
+            new_block, entries = world.settle_trade(
+                world_before, good_id=spec["good_id"],
+                quantity=spec["quantity"], unit_price=spec["unit_price"],
+                at_minute=minute, event_seq=base_seq + 1)
+        else:
+            if world_before is None:
+                raise world.WorldError("没有世界运行时态，无法开工")
+            if session is None:
+                raise world.WorldError("缺少会话上下文，无法校验地点")
+            project = world.migrate_block(world_before)["projects"].get(
+                spec["project_id"])
+            if not isinstance(project, dict):
+                raise world.WorldError("没有这个工程：%r" % (spec["project_id"],))
+            place = _world_place_view(session, project.get("place_id"))
+            new_block, entries = world.project_start(
+                world_before, spec["project_id"], now_minute=minute,
+                event_seq=base_seq + 1, place=place)
     except world.WorldError as exc:
         raise _ActionError(ECON_REJECTED, 409, str(exc)) from exc
     actor_id = str((result.get("actor") or {}).get("id") or "")
@@ -2669,7 +2734,9 @@ def _action_econ_settle(entry, handle, *, base_seq, result) -> tuple:
     change = {"block": "world", "op": "replace_block", "path": "",
               "before": copy.deepcopy(world_before),
               "after": copy.deepcopy(new_block)}
-    return change, ECON_TRADE_EVENT_TYPE
+    event_type = ECON_TRADE_EVENT_TYPE if spec["kind"] == "trade" \
+        else ECON_BUILD_EVENT_TYPE
+    return change, event_type
 
 
 def _action_prepare_proposal(session, raw) -> dict:
@@ -2883,7 +2950,7 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
         # **同一次提交**落盘，事件 type 换 `econ.trade`）；拒单（库存 / 余额
         # 不足，出口 2.2）在排程钩子与提交**之前**抛出——无账、无 changes。
         econ_change, econ_type = _action_econ_settle(
-            entry, handle, base_seq=base_seq, result=result)
+            entry, handle, base_seq=base_seq, result=result, session=session)
         errors = prism_core.validate_result(result)
         if errors:
             # 结果契约不过关就**不进提交**：状态层一旦落事件就不可回滚（§7.7）。
@@ -3033,8 +3100,11 @@ NEURA_SKIPPED_LOG_KIND = "neura_skipped"  # 失败隔离的日志 kind（§9.4�
 # 按 P9 纪律在实现 PR 登记（§9.2 枚举的文档 PR 另开同步）；`world_skipped`
 # 沿 world.py 既定常量（W4 已定，照 `neura_skipped` 先例）。
 ECON_TRADE_EVENT_TYPE = "econ.trade"      # 玩家 trade 提案结算伴随（双记账）
-ECON_BUILD_EVENT_TYPE = "econ.build"      # 玩家 build 提案伴随（结算归 W6）
+ECON_BUILD_EVENT_TYPE = "econ.build"      # 玩家 build 提案伴随（W6：开工结算）
 WORLD_TICK_EVENT_TYPE = "econ.day"        # 日切块级提交（幂等键 `wtick_<day>`）
+# W6（PR 登记）：Project / 指令的管理类变更（暂停 / 复工 / 撤销 / 指令操作）
+# 的事件 type——建造本体（创建 / 排队 / 开工 / 卡到期结算）沿用 `econ.build`。
+WORLD_MANAGE_EVENT_TYPE = "world.manage"
 WORLD_SKIPPED_LOG_KIND = world.WORLD_SKIPPED_LOG_KIND
 
 
@@ -3928,6 +3998,48 @@ def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
                 "seq": commit["seq"],
                 "report": {"action_id": action_id, "status": "failed",
                            "reason": "action_unavailable"}}
+    # 经济载荷分支（W6，§7.3 玩家工程通道）：build 行动到期 = 工程开工 +
+    # 里程碑到期结算（A0：Project 状态变更随本张卡的结算提交落块，**不**
+    # 单独开 econ.build 事件——登记见 PR）。五条件缺一 → 卡按 failed 收尾，
+    # 无任何 world 变更（拒单无账）。
+    econ_spec = _action_econ_spec(entry)
+    econ_changes: list = []
+    if econ_spec is not None and econ_spec.get("kind") == "build":
+        world_before = (handle.view().get("blocks") or {}).get("world")
+        try:
+            if world_before is None:
+                raise world.WorldError("没有世界运行时态")
+            project = world.migrate_block(world_before)["projects"].get(
+                econ_spec["project_id"])
+            if not isinstance(project, dict):
+                raise world.WorldError(
+                    "没有这个工程：%r" % (econ_spec["project_id"],))
+            place = _world_place_view(session, project.get("place_id"))
+            block_started, _start_entries = world.project_start(
+                world_before, econ_spec["project_id"], now_minute=minute,
+                event_seq=seq + 1, place=place)
+            block_done, _completed = world.project_settle_milestone(
+                block_started, econ_spec["project_id"], now_minute=minute,
+                event_seq=seq + 1)
+        except world.WorldError:
+            try:
+                out = chron.settle(state, action_id, "failed",
+                                   world_minute=minute,
+                                   reason="econ_rejected")
+            except chron.ScheduleError:
+                return stuck("error", "无法结算")
+            settle_event = out["events"][action_id][0]
+            commit = _chron_commit(handle, settle_event, block=block,
+                                   state=out["state"], base_seq=seq,
+                                   source="player")
+            return {"state": out["state"], "block": commit["block"],
+                    "seq": commit["seq"],
+                    "report": {"action_id": action_id, "status": "failed",
+                               "reason": "econ_rejected"}}
+        econ_changes.append(
+            {"block": "world", "op": "replace_block", "path": "",
+             "before": copy.deepcopy(world_before),
+             "after": copy.deepcopy(block_done)})
     live = prism_core.RuleSession.from_snapshot(session.rules)
     try:
         perf = prism_core.perform_action(live, card["kind"])
@@ -3956,7 +4068,7 @@ def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
               "after": copy.deepcopy(new_rules)}
     commit = _chron_commit(handle, settle_event, block=block,
                            state=settled["state"], base_seq=seq, source="player",
-                           extra_changes=[change],
+                           extra_changes=[change] + econ_changes,
                            roll_refs=[roll_ref] if roll_ref else [])
     if commit["status"] == "skipped":           # CHRON 侧同键 no-op：事实已落
         result["committed"] = True
@@ -4627,6 +4739,35 @@ def _world_host_gate(self_handler, session) -> None:
         raise _RoomAuthError(403, "只有房主可以操作世界生成", "not_authorized")
 
 
+def _world_manage_commit(session, *, event_type, idempotency_key,
+                         new_block, world_before, minute) -> dict:
+    """W6 管理类提交（A0）：一次操作 = 一条事件，`world` 块整体替换。
+
+    幂等键由调用方给（客户端头或按 (op, 标的, base_seq) 确定性派生）；
+    `Entry.refs.event_seq` 指向本条事件（`base_seq + 1`）。
+    """
+    handle = session._handle or session._open_handle()
+    base_seq = _int_or(handle.view().get("seq"), 0)
+    calendar = chron.to_calendar(minute)
+    world_time = {key: calendar[key] for key in
+                  ("world_minute", "day", "tod")}
+    change = {"block": "world", "op": "replace_block", "path": "",
+              "before": copy.deepcopy(world_before),
+              "after": copy.deepcopy(new_block)}
+    return handle.commit(
+        base_seq=base_seq, idempotency_key=idempotency_key,
+        type=event_type, actor="player", changes=[change],
+        rules_version=ACTION_RULES_VERSION, world_time=world_time,
+        source="player")
+
+
+def _world_project_body(body) -> dict:
+    """`POST /api/world/project` 的工程字段（顶层或 `project` 包一层）。"""
+    raw = body.get("project") if isinstance(body.get("project"), dict) \
+        else body
+    return raw if isinstance(raw, dict) else {}
+
+
 def _world_instance_from_record(record: dict, imported: bool = False) -> dict:
     """世界实例（P6 完整实例：world.module + spec + seed 一起存）。"""
     world = record.get("world") if isinstance(record.get("world"), dict) else {}
@@ -4871,6 +5012,12 @@ class Handler(BaseHTTPRequestHandler):
                 # NPC 模拟状态只读观察面（N8，NEURA §9.4 / §11 N8）：不写块、
                 # 不触发 tick、零状态变更；鉴权与可见性裁定见 _neura_view_route。
                 return self._neura_view_route()
+            if path == "/api/world/project":
+                # 工程只读查询（W6，P9）：?project_id= 单个 + readiness 缺项。
+                return self._world_project_view()
+            if path == "/api/world/directive":
+                # 指令可解释六项（W6，P9 / §6.5）：?settlement_id=&directive_id=。
+                return self._world_directive_view()
             # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
@@ -4938,6 +5085,12 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/world/import":
                 return self._world_import(b)
+
+            if path == "/api/world/project":
+                return self._world_project_route(b)
+
+            if path == "/api/world/directive":
+                return self._world_directive_route(b)
 
             if path == "/api/room/create":
                 return self._room_create(b)
@@ -5894,6 +6047,245 @@ class Handler(BaseHTTPRequestHandler):
         return self._json({"status": "ok",
                            "instance_id": instance["instance_id"],
                            "world_name": (world.get("world") or {}).get("name")})
+
+    # ── 世界管理面（W6，P9：API 面 + 块内可解释字段；UI 归后续 UI 单）──
+    def _world_op_key(self, session, op: str, payload_key: str,
+                      base_seq: int) -> str:
+        """管理操作的幂等键：客户端 `Idempotency-Key` 优先，缺省按
+        (sid, op, 标的, base_seq) 确定性派生（同请求重放 → replayed）。"""
+        header = (self.headers.get("Idempotency-Key") or "").strip()
+        if header:
+            return header
+        blob = json.dumps({"sid": session.sid, "op": op, "pid": payload_key,
+                           "seq": base_seq}, ensure_ascii=False,
+                          sort_keys=True)
+        return "wop-" + hashlib.sha256(blob.encode("utf-8")).hexdigest()[:24]
+
+    def _world_project_route(self, body: dict):
+        """`POST /api/world/project`：Project 管理面（P9 裁定，PR 登记）。
+
+        `op ∈ {create, queue, start, pause, resume, revoke}`；create / queue /
+        start 落 `econ.build`，pause / resume / revoke 落 `world.manage`。
+        `start` 的五条件四/五由 `_world_place_view` 从本局 atlas 注入
+        （world.py 不 import atlas）；五条件缺一 → 409（拒单无账）。
+        """
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        op = str(body.get("op") or "")
+        if op not in ("create", "queue", "start", "pause", "resume", "revoke"):
+            return self._err("op 不合法", 400, "bad_op")
+        try:
+            with session.lock:
+                handle = session._handle or session._open_handle()
+                view = handle.view()
+                world_before = (view.get("blocks") or {}).get("world")
+                if world_before is None:
+                    return self._err("没有世界运行时态", 404, "no_world")
+                minute = chron.world_time_minute(view.get("world_time"))
+                minute = ACTION_EPOCH_MINUTE if minute is None else minute
+                base_seq = _int_or(view.get("seq"), 0)
+                if op == "create":
+                    raw = _world_project_body(body)
+                    try:
+                        project = world.new_project(
+                            raw.get("project_id") or body.get("project_id"),
+                            name=raw.get("name"), place_id=raw.get("place_id"),
+                            blueprint=raw.get("blueprint")
+                            if isinstance(raw.get("blueprint"), dict) else {},
+                            requirements=raw.get("requirements")
+                            if isinstance(raw.get("requirements"), dict) else {},
+                            milestones=raw.get("milestones"),
+                            source=raw.get("source") or "player",
+                            directive_id=raw.get("directive_id") or "",
+                            wage_per_day=raw.get("wage_per_day") or 0,
+                            created_minute=minute)
+                        new_block = world.project_create(world_before, project)
+                    except world.WorldError as exc:
+                        return self._err(str(exc), 400, "bad_project")
+                    pid = str(project["project_id"])
+                else:
+                    pid = str(body.get("project_id") or "")
+                    if not pid:
+                        return self._err("project_id 必填", 400,
+                                         "no_project_id")
+                    if op == "queue":
+                        new_block = world.project_queue(world_before, pid)
+                    elif op == "start":
+                        migrated = world.migrate_block(world_before)
+                        project = migrated["projects"].get(pid)
+                        if not isinstance(project, dict):
+                            return self._err("没有这个工程", 404, "no_project")
+                        session.ensure_atlas()
+                        place = _world_place_view(session,
+                                                  project.get("place_id"))
+                        new_block, _entries = world.project_start(
+                            world_before, pid, now_minute=minute,
+                            event_seq=base_seq + 1, place=place)
+                    elif op == "pause":
+                        new_block = world.project_pause(world_before, pid)
+                    elif op == "resume":
+                        new_block = world.project_resume(world_before, pid)
+                    else:
+                        new_block = world.project_revoke(world_before, pid)
+                event_type = ECON_BUILD_EVENT_TYPE \
+                    if op in ("create", "queue", "start") \
+                    else WORLD_MANAGE_EVENT_TYPE
+                result = _world_manage_commit(
+                    session, event_type=event_type,
+                    idempotency_key=self._world_op_key(session, "project:" + op,
+                                                       pid, base_seq),
+                    new_block=new_block, world_before=world_before,
+                    minute=minute)
+                status = str(result.get("status") or "")
+                if status not in ("committed", "replayed"):
+                    return self._err("状态层拒绝提交", 409, "commit_rejected")
+                return self._json({"status": "ok", "op": op,
+                                   "project_id": pid,
+                                   "commit": status,
+                                   "project": new_block["projects"][pid]})
+        except world.WorldError as exc:
+            return self._err(str(exc), 409, "world_rejected")
+
+    def _world_directive_route(self, body: dict):
+        """`POST /api/world/directive`：委托指令管理面（§6.5，P9）。
+
+        `op ∈ {create, pause, resume, revoke}`；统一落 `world.manage`。
+        指令挂在据点上（`settlement_id` 必填）；创建即 active（§6.5 转化）。
+        """
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        op = str(body.get("op") or "")
+        if op not in ("create", "pause", "resume", "revoke"):
+            return self._err("op 不合法", 400, "bad_op")
+        try:
+            with session.lock:
+                handle = session._handle or session._open_handle()
+                view = handle.view()
+                world_before = (view.get("blocks") or {}).get("world")
+                if world_before is None:
+                    return self._err("没有世界运行时态", 404, "no_world")
+                minute = chron.world_time_minute(view.get("world_time"))
+                minute = ACTION_EPOCH_MINUTE if minute is None else minute
+                base_seq = _int_or(view.get("seq"), 0)
+                settlement_id = str(body.get("settlement_id") or "")
+                if op == "create":
+                    raw = body.get("directive") \
+                        if isinstance(body.get("directive"), dict) else body
+                    try:
+                        directive = world.new_directive(
+                            raw.get("directive_id") or body.get("directive_id"),
+                            text=raw.get("text"),
+                            goal=raw.get("goal")
+                            if isinstance(raw.get("goal"), dict) else {},
+                            budget=raw.get("budget")
+                            if isinstance(raw.get("budget"), dict) else {},
+                            priority=raw.get("priority") or 0,
+                            authorized_scope=raw.get("authorized_scope") or (),
+                            created_minute=minute,
+                            created_by=raw.get("created_by") or "player")
+                        new_block = world.directive_add(
+                            world_before, settlement_id, directive)
+                    except world.WorldError as exc:
+                        return self._err(str(exc), 400, "bad_directive")
+                    did = str(directive["directive_id"])
+                else:
+                    settlement_id = str(body.get("settlement_id") or "")
+                    did = str(body.get("directive_id") or "")
+                    if not settlement_id or not did:
+                        return self._err("settlement_id / directive_id 必填",
+                                         400, "no_ids")
+                    status = {"pause": "paused", "resume": "active",
+                              "revoke": "revoked"}[op]
+                    new_block = world.directive_set_status(
+                        world_before, settlement_id, did, status)
+                result = _world_manage_commit(
+                    session, event_type=WORLD_MANAGE_EVENT_TYPE,
+                    idempotency_key=self._world_op_key(
+                        session, "directive:" + op, did, base_seq),
+                    new_block=new_block, world_before=world_before,
+                    minute=minute)
+                status = str(result.get("status") or "")
+                if status not in ("committed", "replayed"):
+                    return self._err("状态层拒绝提交", 409, "commit_rejected")
+                return self._json({"status": "ok", "op": op,
+                                   "directive_id": did,
+                                   "commit": status})
+        except world.WorldError as exc:
+            return self._err(str(exc), 409, "world_rejected")
+
+    def _world_project_view(self):
+        """`GET /api/world/project`：工程只读查询（P9）。
+
+        `?project_id=` 指定单个（附五条件缺项 `readiness`）；缺省回全部的
+        摘要（id / name / place / status / source）。
+        """
+        session = self._sess()
+        with session.lock:
+            handle = session._handle or session._open_handle()
+            world_block = (handle.view().get("blocks") or {}).get("world")
+            if world_block is None:
+                return self._err("没有世界运行时态", 404, "no_world")
+            block = world.migrate_block(world_block)
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            pid = (q.get("project_id") or [""])[0]
+            if pid:
+                project = block["projects"].get(pid)
+                if not isinstance(project, dict):
+                    return self._err("没有这个工程", 404, "no_project")
+                return self._json({
+                    "status": "ok",
+                    "project": project,
+                    "readiness": world.project_readiness(
+                        block, project,
+                        place=_world_place_view(session,
+                                                project.get("place_id"))),
+                })
+            summary = [{"project_id": key, "name": item.get("name"),
+                        "place_id": item.get("place_id"),
+                        "status": item.get("status"),
+                        "source": item.get("source")}
+                       for key, item in sorted(block["projects"].items())
+                       if isinstance(item, dict)]
+        return self._json({"status": "ok", "projects": summary})
+
+    def _world_directive_view(self):
+        """`GET /api/world/directive`：指令可解释六项（§6.5 / §16.5，P9）。
+
+        `?settlement_id=&directive_id=` 指定单条；缺省列全据点的指令摘要。
+        """
+        session = self._sess()
+        try:
+            with session.lock:
+                handle = session._handle or session._open_handle()
+                world_block = (handle.view().get("blocks") or {}).get("world")
+                if world_block is None:
+                    return self._err("没有世界运行时态", 404, "no_world")
+                block = world.migrate_block(world_block)
+                q = urllib.parse.parse_qs(
+                    urllib.parse.urlparse(self.path).query)
+                sid = (q.get("settlement_id") or [""])[0]
+                did = (q.get("directive_id") or [""])[0]
+                if sid and did:
+                    return self._json({"status": "ok",
+                                       "explain": world.directive_explain(
+                                           block, sid, did)})
+                summary = []
+                for settlement_id in sorted(block["settlements"]):
+                    settlement = block["settlements"][settlement_id]
+                    directives = settlement.get("directives") \
+                        if isinstance(settlement.get("directives"), dict) else {}
+                    for key in sorted(directives):
+                        summary.append({"settlement_id": settlement_id,
+                                        "directive_id": key,
+                                        "status": directives[key].get(
+                                            "status")})
+                return self._json({"status": "ok", "directives": summary})
+        except world.WorldError as exc:
+            return self._err(str(exc), 404, "no_directive")
 
     # ── 多人房间（M10-S1，§4）────────────────────────────────
     def _bearer_token(self) -> str:

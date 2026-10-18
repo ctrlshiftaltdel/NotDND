@@ -6686,6 +6686,309 @@ def check_econ_trade_insufficient_rejected_http():
         notdnd_web._sessions.pop(sid, None)
 
 
+# ── 建造与委托式管理（M12-W6，WORLD-DESIGN §7 / §6.5）──────────────────────
+#
+# 两条通道（V7）：玩家 build 行动同步开工（econ.build 事件）或走 CHRON 卡
+# 到期结算（状态变更随结算提交落块，A0 不单独开事件）；HTTP 管理面（P9：
+# 创建/排队/开工/暂停/撤销 + 指令 + 可解释六项查询）。
+
+# 会话默认世界（data/worlds/ 字典序第一份）的区域锚点——编译产物里世界帧
+# 的地点 id 是确定性的（<world_key>/region-01）。
+_PROJECT_PLACE = notdnd_web._default_world_key() + "/region-01"
+
+
+def _world_project_block(*, stock=100, coin=1000, labor=10, status="queued",
+                         project_id="p-wall", place=_PROJECT_PLACE):
+    """带一个 queued 工程 + 铁/粮/金库/劳力池的 world 块（W6 夹具）。"""
+    block = world.new_block(
+        goods=[{"good_id": "g-iron", "name": "铁锭", "category": "military",
+                "tier": 2, "base_price": 6, "stock": stock,
+                "produced_by": []},
+               {"good_id": "grain", "name": "黑麦", "category": "food",
+                "tier": 1, "base_price": 2, "stock": 50,
+                "produced_by": ["p1"]}],
+        day=0, balances={"coin": coin, "labor": labor})
+    project = world.new_project(
+        project_id, name="修墙", place_id=place, blueprint={"kind": "wall"},
+        requirements={"goods": {"g-iron": 20}, "coin": 100, "labor_days": 2},
+        source="player", wage_per_day=5, created_minute=0)
+    project["status"] = status
+    block["projects"][project_id] = project
+    block["settlements"]["s1"] = {"place_id": place, "population": 2}
+    return block
+
+
+def check_econ_build_start_commit_http():
+    """W6 验收：build 提案同步开工全链路（HTTP 面）：五条件齐 → queued →
+    running（三笔扣账 Entry），事件 `econ.build` + 同提交 `world` 块变更；
+    结果契约 `effects` 装下经济部分（§6.4）。"""
+    sid = "econ-w6-build"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="build-wall",
+                         label="修墙",
+                         entry={"econ": {"kind": "build",
+                                         "project_id": "p-wall"}})
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            session.ensure_atlas()
+            _world_seed_block(session, _world_project_block(),
+                              "econ-w6-seed-0001")
+            status, prop = _propose_action(server, sid,
+                                           action_id="build-wall")
+            assert status == 200, (status, prop)
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "econ-w6-build-0001"})
+            assert status == 200, (status, body)
+            result = _parse_sse(raw)[0][1]
+            assert result["committed"] is True, result
+            pools = {(e["pool"], e["value"]) for e in result["effects"]
+                     if e["kind"] == "resource"}
+            assert ("g-iron", -20) in pools and ("coin", -100) in pools \
+                and ("labor", -2) in pools, result["effects"]
+
+            # 事件封套：type econ.build，changes 双块；工程已 running
+            handle = session._handle or session._open_handle()
+            events = handle.events_since(0)
+            econ = [e for e in events if e["type"] == "econ.build"]
+            assert len(econ) == 1, [e["type"] for e in events]
+            assert [c["block"] for c in econ[0]["changes"]] == \
+                ["rules", "world"], econ[0]["changes"]
+            saved = _world_block_of(session)
+            project = saved["projects"]["p-wall"]
+            assert project["status"] == "running", project
+            assert project["progress"]["materials_in"] == {"g-iron": 20}
+            assert project["progress"]["spend_coin"] == 100
+            assert saved["economy"]["balances"]["coin"] == 900
+            assert saved["economy"]["balances"]["labor"] == 8
+            assert saved["economy"]["goods"]["g-iron"]["stock"] == 80
+            assert world.verify_ledger(saved) == [], world.verify_ledger(saved)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_econ_build_rejected_no_conditions_http():
+    """W6 验收：开工五条件缺一 → 409 拒（拒单无账）：无事件、无 Entry、
+    world 块逐字节原样。"""
+    sid = "econ-w6-blocked"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="build-wall",
+                         label="修墙",
+                         entry={"econ": {"kind": "build",
+                                         "project_id": "p-wall"}})
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            session.ensure_atlas()
+            seeded = _world_project_block(stock=10)   # 材料不足（要 20）
+            _world_seed_block(session, seeded, "econ-w6-seed-0002")
+            status, prop = _propose_action(server, sid,
+                                           action_id="build-wall")
+            assert status == 200, (status, prop)
+            seq_before = (session._handle or session._open_handle()) \
+                .view()["seq"]
+            status, body, _raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "econ-w6-blocked-0001"})
+            assert status == 409, (status, body)
+            assert body.get("error") == notdnd_web.ECON_REJECTED, body
+            handle = session._handle or session._open_handle()
+            assert handle.view()["seq"] == seq_before, "拒开工不得落事件"
+            assert _world_block_of(session) == seeded, "world 块被改写"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_econ_build_chron_card_completes_project():
+    """W6 验收（玩家工程 CHRON 卡通道，V7）：build 长行动 → 排程回执；
+    卡到期结算 = 开工 + 里程碑完工（A0：状态变更随结算提交落块，不单独开
+    econ.build 事件）；完工设施进据点。"""
+    sid = "econ-w6-card"
+    _seed_action_session(
+        notdnd_web.SAVE_DIR, sid, action_id="build-wall", label="修墙",
+        entry={"econ": {"kind": "build", "project_id": "p-wall"},
+               "time_cost": {"value": 30, "unit": "minute"},
+               "schedule_hint": {"can_defer": True, "depends_on": [],
+                                 "priority": 0}})
+    session = notdnd_web.Session.load(sid)
+    try:
+        session.ensure_atlas()
+        notdnd_web._sessions[sid] = session     # 放回缓存：_chron_schedule 用它
+        proposal = notdnd_web._action_proposal_from_id(session, "build-wall",
+                                                       {})
+        scheduled = notdnd_web._chron_schedule(session, proposal, base_seq=0)
+        task_id = scheduled["task_id"]
+        assert scheduled["mode"] == "async", scheduled
+        _world_seed_block(session, _world_project_block(),
+                          "econ-w6-seed-0003")
+
+        out = notdnd_web._chron_advance(session, 2000)
+        assert out["status"] == "ok", out
+        assert out["settled"] and out["settled"][0]["action_id"] == task_id, \
+            out["settled"]
+        assert out["settled"][0]["status"] in ("success", "partial"), \
+            out["settled"]
+        # 卡到期 = 开工结算（三笔扣账落账；里程碑按工期折算到期）
+        saved = _world_block_of(session)
+        project = saved["projects"]["p-wall"]
+        assert project["status"] == "running", project
+        assert project["progress"]["materials_in"] == {"g-iron": 20}
+        assert project["progress"]["spend_coin"] == 100
+        assert project["milestones"][0]["at_minute"] == 30 + 2 * 1440, project
+        assert world.verify_ledger(saved) == [], world.verify_ledger(saved)
+        # A0：没有单独的 econ.build 事件——world 变更骑在卡结算提交上
+        counts = _event_type_counts(session)
+        assert counts.get("econ.build") is None, counts
+        handle = session._handle or session._open_handle()
+        with_world = [e for e in handle.events_since(0)
+                      if "world" in [c.get("block")
+                                     for c in (e.get("changes") or [])]]
+        assert with_world, "world 变更必须随某条提交落盘"
+        # 里程碑到期（日切第 4 步，两条通道汇合）→ 完工 + 设施进据点
+        out2 = notdnd_web._chron_advance(session, 5000)
+        assert out2["status"] == "ok", out2
+        saved = _world_block_of(session)
+        assert saved["projects"]["p-wall"]["status"] == "completed", \
+            saved["projects"]["p-wall"]
+        facilities = saved["settlements"]["s1"].get("facilities") or []
+        assert [f["facility_id"] for f in facilities] == ["fac-p-wall"], \
+            saved["settlements"]
+        assert world.verify_ledger(saved) == [], world.verify_ledger(saved)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_project_api_http():
+    """W6 验收（P9 API 面）：POST /api/world/project 创建/排队/开工/暂停/
+    复工/撤销 + GET 查询（readiness 缺项可读）；事件类型 econ.build /
+    world.manage（PR 登记）；A0：一次操作一条事件。"""
+    sid = "world-w6-api"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            session.ensure_atlas()
+            _world_seed_block(session, _world_goods_block(),
+                              "econ-w6-seed-0004")
+            block = _world_project_block(status="draft", project_id="p-api")
+            block["projects"].pop("p-api", None)     # 只留经济夹具，工程由 API 建
+            _world_seed_block(session, block, "econ-w6-seed-0005")
+
+            def post(op, **extra):
+                payload = {"op": op, "project_id": "p-api"}
+                payload.update(extra)
+                return _post(server, "/api/world/project", payload, sid=sid,
+                             headers={"Idempotency-Key":
+                                      "world-w6-api-%s" % op})
+
+            # create：draft（econ.build）
+            status, out = post("create", project={
+                "project_id": "p-api", "name": "修墙",
+                "place_id": _PROJECT_PLACE, "blueprint": {"kind": "wall"},
+                "requirements": {"goods": {"g-iron": 20}, "coin": 100,
+                                 "labor_days": 2}, "source": "player"})
+            assert status == 200 and out["project"]["status"] == "draft", out
+            # queue → start（五条件齐，atlas 注入）
+            status, out = post("queue")
+            assert status == 200 and out["project"]["status"] == "queued", out
+            status, out = post("start")
+            assert status == 200 and out["project"]["status"] == "running", out
+            # GET 单个：readiness 缺项为空
+            status, view = server.get(
+                "/api/world/project?project_id=p-api", sid=sid)
+            assert status == 200 and view["readiness"] == [], view
+            # pause / resume / revoke（world.manage）
+            status, out = post("pause")
+            assert status == 200 and out["project"]["status"] == "paused", out
+            status, out = post("resume")
+            assert status == 200 and out["project"]["status"] == "queued", out
+            status, out = post("revoke")
+            assert status == 200 and out["project"]["status"] == "revoked", out
+            # 事件类型：create/queue/start 三条 econ.build + 三条 world.manage
+            counts = _event_type_counts(session)
+            assert counts.get("econ.build") == 3, counts
+            assert counts.get("world.manage") == 3, counts
+            # 撤销后再开工 → 409（终态不可开工）
+            status, out = post("start")
+            assert status == 409, (status, out)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_directive_api_and_explain_http():
+    """W6 验收（P9 / §6.5）：POST /api/world/directive 创建 + 日切自动采买
+    （cap_total 生成时钳制）+ GET 可解释六项；paused / revoked 日切跳过。"""
+    sid = "world-w6-directive"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            block = _world_goods_block(stock=10, coin=1000)
+            block["settlements"]["s1"] = {"place_id": "p1", "population": 10}
+            _world_seed_block(session, block, "econ-w6-seed-0006")
+            status, out = _post(server, "/api/world/directive", {
+                "op": "create", "settlement_id": "s1",
+                "directive": {
+                    "directive_id": "d-grain", "text": "确保粮仓储备",
+                    "goal": {"metric": "grain_days", "op": ">=", "target": 5},
+                    "budget": {"cap_total": 400},
+                    "authorized_scope": ["procure"]}},
+                sid=sid, headers={"Idempotency-Key": "world-w6-dir-0001"})
+            assert status == 200, (status, out)
+
+            # 日切：自动采买（目标 5 天 × 日耗 10 → 40 只 × 2 = 80 ≤ cap）
+            out = notdnd_web._chron_advance(session, 2000)
+            assert out["status"] == "ok", out
+            saved = _world_block_of(session)
+            directive = saved["settlements"]["s1"]["directives"]["d-grain"]
+            assert directive["spent_total"] == 80, directive
+            assert directive["status"] == "active", directive
+            trades = [e for e in saved["economy"]["ledger"]
+                      if (e.get("refs") or {}).get("directive_id")]
+            assert [(e["kind"], e["delta"]) for e in trades] == \
+                [("trade", -80), ("trade", 40)], trades
+            # GET 可解释六项（§6.5 / §16.5）
+            status, explain = server.get(
+                "/api/world/directive?settlement_id=s1&directive_id=d-grain",
+                sid=sid)
+            assert status == 200, (status, explain)
+            explain = explain["explain"]
+            for key in ("goal", "budget", "projects", "blocked_reason",
+                        "recent_decisions", "expected"):
+                assert key in explain, key
+            assert explain["budget"]["remaining"] == 320, explain["budget"]
+            assert len(explain["recent_decisions"]) == 2, explain
+
+            # paused：日切跳过
+            status, _out = _post(server, "/api/world/directive",
+                                 {"op": "pause", "settlement_id": "s1",
+                                  "directive_id": "d-grain"}, sid=sid,
+                                 headers={"Idempotency-Key":
+                                          "world-w6-dir-pause"})
+            assert status == 200, (status, _out)
+            spent_before = _world_block_of(session)["settlements"]["s1"][
+                "directives"]["d-grain"]["spent_total"]
+            out = notdnd_web._chron_advance(session, 4000)
+            assert out["status"] == "ok", out
+            assert _world_block_of(session)["settlements"]["s1"][
+                "directives"]["d-grain"]["spent_total"] == spent_before, \
+                "paused 指令日切必须跳过"
+            # revoked：只停后续
+            status, _out = _post(server, "/api/world/directive",
+                                 {"op": "revoke", "settlement_id": "s1",
+                                  "directive_id": "d-grain"}, sid=sid,
+                                 headers={"Idempotency-Key":
+                                          "world-w6-dir-revoke"})
+            assert status == 200, (status, _out)
+            counts = _event_type_counts(session)
+            assert counts.get("world.manage") == 3, counts   # create+pause+revoke
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 def check_api_state_view():
     """M7-4：GET /api/state —— 只读摘要（campaign_id / seq / world_time / 块存在性）。
 
@@ -7843,6 +8146,11 @@ CHECKS = (
     check_world_absent_block_writes_nothing,
     check_econ_trade_commit_dual_ledger_http,
     check_econ_trade_insufficient_rejected_http,
+    check_econ_build_start_commit_http,
+    check_econ_build_rejected_no_conditions_http,
+    check_econ_build_chron_card_completes_project,
+    check_world_project_api_http,
+    check_world_directive_api_and_explain_http,
 )
 
 
