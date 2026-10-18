@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""neura —— NEURA 内核（M11-N1 骨架 + M11-N2 硬约束过滤；全部纯函数）。
+"""neura —— NEURA 内核（M11-N1 骨架 + M11-N2 硬约束 + M11-N3 评分选计划；全部纯函数）。
 
 本模块实现 `NEURA-DESIGN.md` §4.2（运行时字段表）、§5.2 / §5.2.1（硬约束与
 `view` 形状）、§9.1–§9.2（模块与 `blocks.neura` 不透明块）、§11 N1 与 §11 N2：
@@ -15,7 +15,10 @@
   的确定性抖动（§5.3 / §10.1 1.5）；
 - `hard_filter()` / `check_distance()` / `check_time()` / `check_resource()` /
   `check_law()` / `check_knowledge()`：**硬约束过滤**——候选先过距离 / 时间 /
-  资源 / 法律 / 知识五道闸，拒单带固定错误码（N2）。
+  资源 / 法律 / 知识五道闸，拒单带固定错误码（N2）；
+- `score_options()` / `choose()` / `decide()` / `to_proposal()` /
+  `idempotency_key()`：**需求评分 → 计划选择 → 决策记录 → M8 提案**（N3，§5.3 /
+  §5.4 / §5.6），评分逐需求留 `terms` 供手工复算。
 
 块形状（§4.1 / §9.2 / §5.8）::
 
@@ -1045,3 +1048,545 @@ def _option_error(option):
             if not isinstance(item, str) or not _is_int(quantity) or quantity < 0:
                 return "cost.stock[%r] 非法（%r）" % (item, quantity)
     return None
+
+
+# --------------------------------------------------------------------------
+# §5.3 / §5.4 / §5.6 需求评分 → 计划选择 → 决策记录（M11-N3）
+#
+# 一次 tick 的 ①→②→③ 在这里合起来：hard_filter（N2）→ score_options（§5.3）
+# → choose（§5.4）→ decide（决策记录）；§5.6 的窄口结构由 to_proposal 与
+# idempotency_key 落地。全部纯函数：只读 npc / view，返回新对象，不改入参；
+# 无 IO、无随机源（jitter 只来自 stable_unit）、不 import 业务模块。
+# --------------------------------------------------------------------------
+
+# §5.4：计划切换理由的六个取值（机器可读，供「行为连续可解释」审计）。
+SWITCH_REASONS = ("goal_done", "goal_failed", "hard_blocked",
+                  "newly_known", "deadline_pressure", "need_spike")
+
+# §5.3 的四个系数与两个映射（逐字照抄，**不自创权重**）。
+JITTER_SPAN = 0.03                 # jitter = span × (2u − 1)
+RISK_AVERSION_MIN = 0.2            # risk_aversion = min + span × w_safety
+RISK_AVERSION_SPAN = 0.6
+TIME_PENALTY_PER_HOUR = 0.02       # 每小时扣 0.02
+HABIT_BONUS = 0.05                 # option.place_id == home_place
+
+# §8.2：成本档与写死的 token 估算（N3 只记录，真实记账归 N5）。
+COST_TIERS = ("rule", "H", "M")
+COST_TOKENS = {"rule": 0, "H": 4000, "M": 1200}
+
+# §7.1 / §4.2：层名（N5 现算后由编排层注入 view["layer"]，N3 只记录）。
+LAYERS = ("near", "important_far", "background", "unexplored")
+DEFAULT_LAYER = "background"
+
+# §4.2：可沿用的当前计划状态（同目标同步骤 → 幂等键恒定）。
+PLAN_ACTIVE = ("pending", "running")
+
+# ACTION-DESIGN.md §4.2：提案版本与五级风险的数值分档。
+PROPOSAL_SCHEMA_VERSION = 1
+RISK_BANDS = (0.2, 0.4, 0.6, 0.8)   # [0,.2)→R0 … [.8,1]→R4（§5.2 的 Option 只给 0..1）
+
+
+def risk_aversion(npc):
+    """§5.3：`0.2 + 0.6 × need_weights.safety`（由既有字段线性映射，不新增字段）。"""
+    return RISK_AVERSION_MIN + RISK_AVERSION_SPAN * _need_weight(npc, "safety")
+
+
+def score_options(npc, options, *, seed, now_minute):
+    """§5.3 需求评分：每个候选返回一条可解释记录（**不选**，只打分）。
+
+    公式（逐字照 §5.3，权重全部来自 `need_weights` / 常数）：
+
+    ```
+    sat(option, n) = relieves[n] − aggravates[n]          # 截断到 [-1, 1]
+    raw            = Σ_n need_weights[n] × level(npc, n) × sat(option, n)
+    risk_penalty   = (0.2 + 0.6 × w_safety) × option.risk
+    time_penalty   = 0.02 × ceil(option.minutes / 60)
+    habit_bonus    = 0.05 if option.place_id == home_place else 0
+    jitter         = 0.03 × (2 × stable_unit(seed, npc_id, now_minute, option_id) − 1)
+    score          = raw − risk_penalty − time_penalty + habit_bonus + jitter
+    ```
+
+    记录字段：`terms`（六需求逐个 `weight / level / sat / product`，顺序固定为
+    `NEED_KEYS`）、`raw`、`risk_penalty`、`time_penalty`、`penalty`（前两者之和）、
+    `habit_bonus`、`jitter`、`score`。审查者按 `terms` 累加即得 `raw`，
+    再按上式即得 `score`（`Σ product == raw`，浮点误差 ≤ 1e-9）。
+
+    `jitter` **不是骰点**：它只为打破并列，**不进** `roll_refs`、**不进** PRISM
+    账本、**不落**独立字段——可由 `(seed, npc_id, now_minute, option_id)` 随时重算。
+    `home_place` 取首个带 `place_id` 的 `schedule` slot（无日程则无加成）。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    npc_id = _npc_id(npc)
+    seed = _seed_of(seed)
+    minute = now_minute if _is_int(now_minute) else 0
+    home = _home_place(npc)
+    aversion = risk_aversion(npc)
+
+    scores = []
+    for raw_option in options if isinstance(options, list) else []:
+        if not isinstance(raw_option, dict):
+            continue
+        option = _clone(raw_option)
+        option_id = _text(option.get("option_id"))
+        minutes = option.get("minutes")
+        minutes = minutes if _is_int(minutes) and minutes >= 0 else 0
+
+        terms = []
+        raw_total = 0.0
+        for key in NEED_KEYS:
+            weight = _need_weight(npc, key)
+            level = _need_level(npc, key)
+            sat = _saturation(option, key)
+            product = weight * level * sat
+            raw_total += product
+            terms.append({"need": key, "weight": weight, "level": level,
+                          "sat": sat, "product": product})
+
+        risk = _risk_of_option(option)
+        risk_penalty = aversion * risk
+        time_penalty = TIME_PENALTY_PER_HOUR * _hours_ceil(minutes)
+        habit_bonus = HABIT_BONUS if home and _text(option.get("place_id")) == home else 0.0
+        jitter = JITTER_SPAN * (2.0 * stable_unit(
+            seed, npc_id, minute, option_id) - 1.0)
+        penalty = risk_penalty + time_penalty
+
+        scores.append({
+            "option_id": option_id,
+            "verb": _text(option.get("verb")),
+            "target_ref": _text(option.get("target_ref")) or None,
+            "target_kind": _text(option.get("target_kind")) or None,
+            "goal_id": _goal_of_option(npc, option),
+            "place_id": _text(option.get("place_id")),
+            "minutes": minutes,
+            "risk": risk,
+            "source": option.get("source") if option.get("source") in OPTION_SOURCES
+                      else "rule",
+            "requires_claims": sorted(set(_string_list(option.get("requires_claims")))),
+            "terms": terms,
+            "raw": raw_total,
+            "risk_penalty": risk_penalty,
+            "time_penalty": time_penalty,
+            "penalty": penalty,
+            "habit_bonus": habit_bonus,
+            "jitter": jitter,
+            "score": raw_total - penalty + habit_bonus + jitter,
+        })
+    return scores
+
+
+def choose(scores):
+    """§5.4 计划选择：最高分；并列按 `(score, −risk, option_id)` 稳定取一。
+
+    用 `min` 配 `(-score, risk, option_id)`——与「字典序取一」等价，且**与输入
+    顺序无关**（候选集相同则结果相同）。空表 / 全是非法记录 → `None`。
+    返回深拷贝，调用方改它不会污染 `scores`。
+    """
+    if not isinstance(scores, list):
+        return None
+    candidates = [item for item in scores
+                  if isinstance(item, dict) and _is_number(item.get("score"))]
+    if not candidates:
+        return None
+    best = min(candidates, key=lambda item: (
+        -item["score"], _risk_of_score(item), _text(item.get("option_id"))))
+    return _clone(best)
+
+
+def decide(npc, view):
+    """§5.4 一次决策的完整记录（**写 journal 的对象**，不落事件、不提交）。
+
+    返回 §5.4 的十个字段：
+
+    ```
+    {"decision_id", "npc_id", "at_minute", "layer", "hard", "scores",
+     "chosen", "switch_reason", "cost": {"tier", "tokens"}, "ai_used"}
+    ```
+
+    - 流水线：`hard_filter` → `score_options` → `choose`；**无候选**时
+      `chosen is None` + `switch_reason == "hard_blocked"`，**仍返回记录**
+      （写 journal 一条），不抛异常；
+    - `seed` 取 `view["campaign_seed"]`（§5.8 的 `block["campaign_seed"]` 投影），
+      `now_minute` 取 `view["now_minute"]`；两者缺省按 0（无种子也是确定性的）；
+    - `layer` 取 `view["layer"]`（N5 现算后注入），缺省 `"background"`；
+    - `ai_used` = 参评候选里出现 `source == "ai"`；`cost.tier` 为 `rule` / `H` / `M`
+      （§8.2），**只记录**，扣账归 N5；
+    - `hard` 只留审计需要的摘要（`rejected` / `law_source` / `ai_allowed` 等），
+      过闸候选的完整分数在 `scores` 里，不重复存两份候选。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    now_minute = _now_of(view, npc)
+
+    hard = hard_filter(npc, view, now_minute)
+    scores = score_options(npc, hard["options"], seed=view.get("campaign_seed", 0),
+                           now_minute=now_minute)
+    chosen = choose(scores)
+    ai_used = any(item["source"] == "ai" for item in scores)
+    tier, tokens = _cost_of(view, ai_used)
+
+    return {
+        "decision_id": _decision_id(npc, now_minute, chosen),
+        "npc_id": _npc_id(npc),
+        "at_minute": now_minute,
+        "layer": _layer_of_view(view),
+        "hard": {
+            "ok": hard["ok"],
+            "kept": len(hard["options"]),
+            "rejected": _clone(hard["rejected"]),
+            "law_source": hard["law_source"],
+            "ai_allowed": hard["ai_allowed"],
+            "notes": _clone(hard["notes"]),
+        },
+        "scores": scores,
+        "chosen": chosen,
+        "switch_reason": _switch_reason(npc, chosen, now_minute),
+        "cost": {"tier": tier, "tokens": tokens},
+        "ai_used": ai_used,
+    }
+
+
+def to_proposal(decision, npc):
+    """§5.6 窄口结构：把选中的计划转成 ACTION-DESIGN §4.2 的提案（**纯结构**）。
+
+    字段与 §4.2 **逐项对齐**（14 个，封闭集合）：`schema_version` /
+    `proposal_id` / `actor` / `intent` / `params` / `source` / `risk` /
+    `time_cost` / `schedule_hint` / `interruptible` / `interrupt_conditions` /
+    `expected_changes` / `raw_text` / `created_at`。
+
+    NEURA 侧只填这些值，且**不产出叙事**（§12.1 P1）：
+
+    - `actor` = `{"kind": "npc", "id": npc_id}`（§5.6；`source` 是 `"action"`，
+      不是 `"ai_proposal"`——后者留给「AI 替玩家提的案」）；
+    - `params.dc_override = None`（P2：第一版不掷骰）、`items_used = []`；
+    - `schedule_hint.can_defer = false`（走 M8 同步结算，不进 CHRON 队列，P7）；
+    - `risk` 由 `option.risk`（0..1）按 `RISK_BANDS` 五等分映射到 R0–R4；
+    - `created_at` = `at_minute × 60000`（世界分钟换算的毫秒）：**不取墙钟**，
+      否则同输入不再同输出，纯函数与「逐字节相等」都失效；
+    - `proposal_id` = `p_<sha256(npc_id|plan_id|step_index)[:32]>`，同计划同步骤恒定。
+
+    `chosen is None`（本次没选中任何计划）时**不生成提案**，抛 `NeuraError`——
+    这是调用方顺序错误（§5.8 在 `chosen is None` 时 `continue`）。
+    """
+    decision = decision if isinstance(decision, dict) else {}
+    npc = npc if isinstance(npc, dict) else {}
+    chosen = decision.get("chosen")
+    if not isinstance(chosen, dict):
+        raise NeuraError("to_proposal：本次决策没有选中计划（chosen is None），不生成提案")
+
+    at_minute = _now_of(decision, npc)
+    npc_id = _npc_id(npc) or _text(decision.get("npc_id"))
+    plan_id, step_index = _plan_step(npc, chosen, at_minute)
+    minutes = chosen.get("minutes")
+    minutes = minutes if _is_int(minutes) and minutes >= 0 else 0
+
+    return {
+        "schema_version": PROPOSAL_SCHEMA_VERSION,
+        "proposal_id": "p_" + _digest("neura.proposal", npc_id, plan_id,
+                                      step_index)[:32],
+        "actor": {"kind": "npc", "id": npc_id},
+        "intent": {
+            "verb": _text(chosen.get("verb")),
+            "target": _intent_target(chosen, npc),
+            "desired": _text(chosen.get("desired")) or _text(chosen.get("verb")),
+            "means": _text(chosen.get("means")),
+        },
+        "params": {"dc_override": None, "items_used": []},
+        "source": "action",
+        "risk": _risk_level(chosen),
+        "time_cost": {"value": minutes, "unit": "minute"},
+        "schedule_hint": {"can_defer": False, "depends_on": [], "priority": 0},
+        "interruptible": True,
+        "interrupt_conditions": [],
+        "expected_changes": [],
+        "raw_text": "",
+        "created_at": at_minute * 60000,
+    }
+
+
+def idempotency_key(decision, npc):
+    """§5.6 幂等键：`np_<sha256(npc_id)[:8]>_<sha256(plan_id)[:10]>_<step:02d>`。
+
+    过 `ACTION-DESIGN.md` §9.4 的 `^[A-Za-z0-9_-]{8,64}$`；**同计划同步骤恒定**
+    ——同一计划步骤重投命中首次结果，不重复副作用（`STATE-DESIGN.md` §7）。
+    `chosen is None` 时没有可提交的计划 → `NeuraError`（同 `to_proposal`）。
+    """
+    decision = decision if isinstance(decision, dict) else {}
+    npc = npc if isinstance(npc, dict) else {}
+    chosen = decision.get("chosen")
+    if not isinstance(chosen, dict):
+        raise NeuraError("idempotency_key：本次决策没有选中计划（chosen is None）")
+
+    at_minute = _now_of(decision, npc)
+    npc_id = _npc_id(npc) or _text(decision.get("npc_id"))
+    plan_id, step_index = _plan_step(npc, chosen, at_minute)
+    return "np_%s_%s_%02d" % (_sha256(npc_id)[:8], _sha256(plan_id)[:10],
+                              step_index)
+
+
+# --------------------------------------------------------------------------
+# N3 的内部工具（纯函数；只做确定性推导与形状容错）
+# --------------------------------------------------------------------------
+
+def _clamp(value, low, high):
+    return low if value < low else (high if value > high else value)
+
+
+def _hours_ceil(minutes):
+    """`ceil(minutes / 60)`，用整数运算（不 import `math`，保持依赖面）。"""
+    return (minutes + 59) // 60
+
+
+def _need_level(npc, key):
+    """§5.3 的 `level(npc, n)` = `needs[n] / 100`；缺键按迁移口径补 50。"""
+    needs = npc.get("needs")
+    value = needs.get(key) if isinstance(needs, dict) else None
+    if _is_int(value) and NEED_MIN <= value <= NEED_MAX:
+        return value / 100.0
+    return NEED_DEFAULT / 100.0
+
+
+def _need_weight(npc, key):
+    """§5.3 的 `need_weights[n]`；非法值按空态的 1.0（与 `empty_npc` 同口径）。"""
+    weights = npc.get("need_weights")
+    value = weights.get(key) if isinstance(weights, dict) else None
+    if _is_number(value) and 0.0 <= value <= 1.0:
+        return float(value)
+    return 1.0
+
+
+def _saturation(option, key):
+    """`sat(option, n) = relieves[n] − aggravates[n]`，截断到 `[-1, 1]`。"""
+    def amount(field):
+        table = option.get(field)
+        value = table.get(key) if isinstance(table, dict) else None
+        return float(value) if _is_number(value) else 0.0
+
+    return _clamp(amount("relieves") - amount("aggravates"), -1.0, 1.0)
+
+
+def _risk_of_option(option):
+    """`option.risk` 规范到 `[0, 1]`；非数值按 0（形状问题归 `_option_error`）。"""
+    value = option.get("risk")
+    if not _is_number(value):
+        return 0.0
+    return _clamp(float(value), 0.0, 1.0)
+
+
+def _risk_of_score(item):
+    value = item.get("risk")
+    return float(value) if _is_number(value) else 0.0
+
+
+def _risk_level(chosen):
+    """§6.1 的 N3 落地口径：`option.risk`（0..1）五等分到 `R0`–`R4`。
+
+    §5.2 的 `Option` 只给 `risk: float 0..1`；五级枚举见 `ACTION-DESIGN.md` §6.1。
+    分档是**线性映射**，不新增权重；`risk_level` 若要显式覆盖，由 R 层再扩
+    `Option` schema（本单不改契约）。
+    """
+    value = chosen.get("risk")
+    risk = float(value) if _is_number(value) else 0.0
+    for index, upper in enumerate(RISK_BANDS):
+        if risk < upper:
+            return "R%d" % index
+    return "R%d" % len(RISK_BANDS)
+
+
+def _home_place(npc):
+    """§5.3：`home_place` = 首个带 `place_id` 的 `schedule` slot；无日程则无加成。"""
+    schedule = npc.get("schedule")
+    if isinstance(schedule, list):
+        for slot in schedule:
+            if isinstance(slot, dict):
+                place = _text(slot.get("place_id"))
+                if place:
+                    return place
+    return ""
+
+
+def _npc_id(npc):
+    """§4.2：`npc_id` 存在 `display_ref.npc_id`（块内键由编排层持有）。"""
+    ref = npc.get("display_ref")
+    if isinstance(ref, dict):
+        return _text(ref.get("npc_id"))
+    return ""
+
+
+def _seed_of(seed):
+    """`stable_unit` 只接受标量；其它形状按 0（不猜种子）。"""
+    if isinstance(seed, bool) or not isinstance(seed, (int, float, str)):
+        return 0
+    return seed
+
+
+def _now_of(source, npc):
+    """`now_minute` 依次取 `view["now_minute"]` → `decision["at_minute"]` → `last_tick_minute`。"""
+    for key in ("now_minute", "at_minute"):
+        value = source.get(key) if isinstance(source, dict) else None
+        if _is_int(value):
+            return value
+    value = npc.get("last_tick_minute")
+    return value if _is_int(value) else 0
+
+
+def _layer_of_view(view):
+    layer = view.get("layer")
+    return layer if layer in LAYERS else DEFAULT_LAYER
+
+
+def _goal_of_option(npc, option):
+    """候选归属的目标：显式 `goal_id` 优先，否则按 `target_ref` 匹配 active goal。
+
+    §5.2 的 `Option` 没有 `goal_id`；§5.4 的切换判据需要「新目标 ≠ 旧目标」，
+    因此这里只做**查找**（不补字段、不猜）：AI / 编排层给 `goal_id` 就用它，
+    否则只有 `target_ref` 恰好等于某条 active `goal.target_ref` 时才认领。
+    """
+    explicit = _text(option.get("goal_id"))
+    if explicit:
+        return explicit
+    target = _text(option.get("target_ref"))
+    if not target:
+        return ""
+    goals = npc.get("goals")
+    if isinstance(goals, list):
+        for goal in goals:
+            if not isinstance(goal, dict) or goal.get("status") != "active":
+                continue
+            if _text(goal.get("target_ref")) == target:
+                return _text(goal.get("goal_id"))
+    return ""
+
+
+def _goal_of(npc, goal_id):
+    goals = npc.get("goals")
+    if isinstance(goals, list):
+        for goal in goals:
+            if isinstance(goal, dict) and _text(goal.get("goal_id")) == goal_id:
+                return goal
+    return {}
+
+
+def _switch_reason(npc, chosen, now_minute):
+    """§5.4 切换理由：**同目标续计划 / 首次决策 → `None`**，换目标必带六值之一。
+
+    优先级（每条都是对既有字段的**事实判断**，不新增阈值）：
+
+    1. `chosen is None` → `hard_blocked`（无候选，§5.4 明文）；
+    2. 没有旧计划 / 旧目标 / 新目标无法判定 → `None`（不是切换，不编造理由）；
+    3. 旧目标或旧计划 `done` → `goal_done`；
+    4. 旧计划 `dropped`（被硬约束或管线丢弃）→ `hard_blocked`；
+    5. 旧目标 `failed` / `abandoned` → `goal_failed`；
+    6. 旧目标 `deadline_minute` 已到 → `deadline_pressure`；
+    7. 选中候选依赖一条 `learned_minute ≥ 旧计划 started_minute` 的 active claim
+       → `newly_known`（用 `Claim.learned_minute`，不加字段）；
+    8. 其余 → `need_spike`：前七条证据都不在时，切换只能由需求推高解释
+       （评分里 `raw` 就是需求的线性组合，这是**兜底口径**，不是新增阈值）。
+    """
+    if chosen is None:
+        return "hard_blocked"
+
+    plan = npc.get("plan")
+    old_goal_id = _text(plan.get("goal_id")) if isinstance(plan, dict) else ""
+    new_goal_id = _text(chosen.get("goal_id"))
+    if not old_goal_id or not new_goal_id or new_goal_id == old_goal_id:
+        return None
+
+    goal = _goal_of(npc, old_goal_id)
+    goal_status = _text(goal.get("status"))
+    plan_status = _text(plan.get("status"))
+
+    if goal_status == "done" or plan_status == "done":
+        return "goal_done"
+    if plan_status == "dropped":
+        return "hard_blocked"
+    if goal_status in ("failed", "abandoned"):
+        return "goal_failed"
+
+    deadline = goal.get("deadline_minute")
+    if _is_int(deadline) and _is_int(now_minute) and now_minute >= deadline:
+        return "deadline_pressure"
+
+    if _newly_known(npc, plan, chosen):
+        return "newly_known"
+    return "need_spike"
+
+
+def _newly_known(npc, plan, chosen):
+    """选中候选是否依赖「旧计划开始后才学到」的 active claim（§6 的修正链口径）。"""
+    required = set(_string_list(chosen.get("requires_claims")))
+    if not required:
+        return False
+    started = plan.get("started_minute")
+    started = started if _is_int(started) else 0
+    knowledge = npc.get("knowledge")
+    if not isinstance(knowledge, list):
+        return False
+    for claim in knowledge:
+        if not isinstance(claim, dict) or claim.get("status") != "active":
+            continue
+        if _text(claim.get("claim_id")) not in required:
+            continue
+        learned = claim.get("learned_minute")
+        if _is_int(learned) and learned >= started:
+            return True
+    return False
+
+
+def _cost_of(view, ai_used):
+    """§8.2 的 `cost`：没用 AI 候选即 `rule`；用了按注入档位，缺省 M。"""
+    if not ai_used:
+        return "rule", 0
+    declared = view.get("cost_tier")
+    tier = declared if declared in COST_TIERS and declared != "rule" else "M"
+    tokens = view.get("ai_tokens")
+    if not _is_int(tokens) or tokens < 0:
+        tokens = COST_TOKENS[tier]
+    return tier, tokens
+
+
+def _intent_target(chosen, npc):
+    """§4.2 的 `intent.target`：有 `target_ref` 才给对象；kind 用显式或关系表推断。"""
+    target_ref = _text(chosen.get("target_ref"))
+    if not target_ref:
+        return None
+    kind = _text(chosen.get("target_kind"))
+    if not kind:
+        relations = npc.get("relations")
+        kind = "npc" if isinstance(relations, dict) and target_ref in relations \
+            else "entity"
+    return {"kind": kind, "id": target_ref}
+
+
+def _plan_step(npc, chosen, at_minute):
+    """本次提案属于哪个计划步骤 → `(plan_id, step_index)`。
+
+    同目标且旧计划仍在 `pending` / `running` → **沿用**旧 `plan_id` 与
+    `step_index`（幂等键因此恒定）；否则是**新计划**，`plan_id` 由
+    `(npc_id, goal_id, at_minute)` 确定性派生、步骤从 0 起。
+    """
+    goal_id = _text(chosen.get("goal_id"))
+    plan = npc.get("plan")
+    if isinstance(plan, dict):
+        plan_id = _text(plan.get("plan_id"))
+        if plan_id and _text(plan.get("status")) in PLAN_ACTIVE \
+                and _text(plan.get("goal_id")) == goal_id:
+            step = plan.get("step_index")
+            return plan_id, step if _is_int(step) and step >= 0 else 0
+    return "pl_" + _digest("neura.plan", _npc_id(npc), goal_id, at_minute)[:12], 0
+
+
+def _decision_id(npc, now_minute, chosen):
+    """决策 ID：同输入同 ID（可重算、可去重）；无候选时也有一条可审计的 ID。"""
+    option_id = _text(chosen.get("option_id")) if isinstance(chosen, dict) else ""
+    return "dec_" + _digest("neura.decision", _npc_id(npc), now_minute,
+                            option_id)[:16]
+
+
+def _digest(*parts):
+    """带标签的确定性摘要（`repr(tuple)` 编码无歧义，不用内置 `hash()`）。"""
+    return hashlib.sha256(repr(parts).encode("utf-8")).hexdigest()
+
+
+def _sha256(text):
+    """§5.6 的幂等键就是 `sha256(<原始串>)` 的前缀，单独一个口子便于对照。"""
+    return hashlib.sha256(_text(text).encode("utf-8")).hexdigest()
