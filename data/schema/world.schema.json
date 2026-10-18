@@ -9,6 +9,25 @@
     "schema_version": {"const": 1},
     "kind": {"const": "world.module"},
     "source": {"$ref": "common.schema.json#/$defs/source"},
+    "laws": {
+      "description": "世界法律表（WORLD-DESIGN §8.1，W8 转正为可选属性）。条目逐字段对齐 neura._laws 的消费契约；缺省 = 无法律 = M11 行为。",
+      "type": "array",
+      "items": {"$ref": "#/$defs/law"}
+    },
+    "goods": {
+      "description": "经济开档的商品清单（W1 顶层附加键转正，人拍板 P2：按世界特性生成）。三个官方世界不带此键。",
+      "type": "array",
+      "items": {"$ref": "#/$defs/good"}
+    },
+    "worldgen_provenance": {
+      "description": "合成来源记录（W1 顶层附加键转正）：文本三级来源 / 预算计数 / 未覆盖 tone_terms。",
+      "$ref": "#/$defs/worldgen_provenance"
+    },
+    "lexicon_overrides": {
+      "description": "tone_terms 的 atlas.lexicon 覆盖项（W1 顶层附加键转正：加词不加地图，不改词表文件）。",
+      "type": "array",
+      "items": {"$ref": "#/$defs/lexicon_override"}
+    },
     "world": {
       "type": "object",
       "required": ["key", "name", "engine"],
@@ -41,6 +60,117 @@
   },
   "additionalProperties": false,
   "$defs": {
+    "law": {
+      "title": "世界法律",
+      "description": "逐字段对齐 neura._laws 消费契约（neura.py LAW_TOLERANT_THRESHOLDS 只认 allow/tolerate 两个容忍值，其余一律硬禁；_law_covers：scope_place_ids 缺/空 = 全域）。人拍板 P5：保留按地区/国家扩展的可能性（scope_place_ids 方向），不得做成全局写死结构。",
+      "type": "object",
+      "required": ["id", "name", "forbid_tags", "threshold", "source"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "forbid_tags": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "scope_place_ids": {
+          "description": "管辖地点（place_id）清单；缺省或空数组 = 全域。",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "threshold": {"enum": ["forbid", "tolerate", "allow"]},
+        "penalty": {
+          "description": "展示 / 叙事用字符串；neura 不消费。",
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {"$ref": "#/$defs/worldgen_source"}
+      },
+      "additionalProperties": false
+    },
+    "good": {
+      "title": "商品",
+      "description": "经济开档商品清单条目（worldgen._build_goods 产物形状；validate_world 的 E_GOODS_SHAPE 逐键核对）。",
+      "type": "object",
+      "required": ["good_id", "name", "category", "tier", "base_price",
+                   "stock", "produced_by", "era"],
+      "properties": {
+        "good_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "name": {"type": "string", "minLength": 1},
+        "category": {
+          "description": "类目开放字符串：保底五类 clothing | food | shelter | travel | military（GOODS_REQUIRED_CATEGORIES），flavor 类 tool | medicine | energy | luxury 可选。",
+          "type": "string",
+          "minLength": 1
+        },
+        "tier": {"type": "integer", "minimum": 1, "maximum": 3},
+        "base_price": {"type": "integer", "minimum": 1},
+        "stock": {"type": "integer", "minimum": 0},
+        "produced_by": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "era": {
+          "description": "时代档（人拍板 P2 时代违和校验）：高于 world.type → E_GOODS_ERA error；低于 → W_GOODS_ERA_LOW warn。",
+          "enum": ["fantasy", "modern", "future"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "region_economy": {
+      "title": "区域产出声明",
+      "type": "object",
+      "required": ["produces"],
+      "properties": {
+        "produces": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      },
+      "additionalProperties": false
+    },
+    "worldgen_provenance": {
+      "title": "合成来源记录",
+      "description": "worldgen._build_text 的溯源产物：texts 记各文本字段的来源（port = 模型端口 / template = 官方模板 / builtin = 内置兜底短语）。",
+      "type": "object",
+      "required": ["texts", "degraded"],
+      "properties": {
+        "texts": {
+          "type": "object",
+          "additionalProperties": {"enum": ["port", "template", "builtin"]}
+        },
+        "degraded": {"type": "boolean"},
+        "uncovered_terms": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "budget": {
+          "type": "object",
+          "required": ["calls", "est_tokens", "limit"],
+          "properties": {
+            "calls": {"type": "integer", "minimum": 0},
+            "est_tokens": {"type": "integer", "minimum": 0},
+            "limit": {"type": "integer", "minimum": 1}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "lexicon_override": {
+      "title": "词表覆盖项",
+      "description": "形状对齐 atlas.lexicon 的 entries[]（{id, trait, terms[]}）；trait 枚举同词表 13 值；本键在运行时拼接，不改 data/atlas/lexicon.json。",
+      "type": "object",
+      "required": ["id", "trait", "terms"],
+      "properties": {
+        "id": {"$ref": "common.schema.json#/$defs/entity_id"},
+        "trait": {
+          "enum": ["settlement", "wilderness", "span_country", "vertical",
+                   "below", "network", "water", "barrier", "unlisted",
+                   "abstract", "unstable", "carry", "shortcut"]
+        },
+        "terms": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "worldgen_source": {
+      "title": "条目溯源（世界侧）",
+      "description": "预制世界条目用 docs 指针（validate_data 既有纪律）；合成世界条目用 worldgen: 前缀标记（validate_data 的 source 文件核对只对 docs/ 形式生效）。",
+      "anyOf": [
+        {"$ref": "common.schema.json#/$defs/source"},
+        {"type": "string", "pattern": "^worldgen:[A-Za-z0-9:_-]+$"}
+      ]
+    },
     "glossary_entry": {
       "title": "术语表条目",
       "type": "object",
@@ -78,6 +208,10 @@
         "key_places": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "powers": {"type": "array", "items": {"type": "string", "minLength": 1}},
         "events": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "economy": {
+          "description": "区域产出声明（WORLD-DESIGN §5.1 C6 / §9.2，W8 转正）：produces 是商品名清单，与区域 traits 白名单抽查对照（warn）。",
+          "$ref": "#/$defs/region_economy"
+        },
         "source": {"$ref": "common.schema.json#/$defs/source"}
       },
       "additionalProperties": false

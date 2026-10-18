@@ -679,6 +679,40 @@ data/
   06 烬值 / 燃痕 / 月相 / 根系 / 奉献；07 同步率 / 纯度 / 义体 / 网潜），**允许各世界自定义键**。
 - `random_tables[]`（见 4.3 的 `random_table`）。
 
+**W8 转正的可选附加键**（`world.schema.json` 同步扩展；三个官方世界与既有 fixture
+**不带**这些键——缺失 = 现行为，schema 不强制）：
+
+- `laws[]`：世界法律表（`WORLD-DESIGN.md` §8.1，M11 移交 ① 的数据落点）。条目
+  `{id, name, forbid_tags[], scope_place_ids[]?, threshold, penalty?, source}`：
+  - 字段**逐字段对齐 `neura._laws` 的消费契约**：`forbid_tags` 命中即禁
+    （`neura._law_hit_tags`）；`threshold` 只认 `forbid | tolerate | allow`
+    （`neura.LAW_TOLERANT_THRESHOLDS` 只认后两个为「容忍」，其余一律硬禁）；
+    `scope_place_ids` 缺省或空 = 全域（`neura._law_covers` 口径，不得改语义）；
+    `penalty` 是展示 / 叙事用字符串，neura 不消费。
+  - **扩展方向（人拍板 P5）**：`scope_place_ids` 保留「按地区 / 国家差异化法律」
+    的可能性；**不得**把法律做成全局写死结构。
+  - 三取值之外 `threshold` 由合成期归一为 `forbid`；校验器对直接构造的非法值报
+    `E_LAW_THRESHOLD` error（W1 口径）。
+- `goods[]`：经济开档商品清单（人拍板 P2：按世界特性生成，不设固定常量表）。
+  条目 `{good_id, name, category, tier, base_price, stock, produced_by[], era}`；
+  衣食住行军五类（`clothing | food | shelter | travel | military`）保底覆盖，
+  flavor 类（`tool | medicine | energy | luxury`）可选；`era` 枚举
+  `fantasy | modern | future`，与 `world.world_type` 联动——**高于**世界时代档
+  → `E_GOODS_ERA` error（奇幻世界卖激光枪），**低于** → `W_GOODS_ERA_LOW` warn。
+- `worldgen_provenance`：合成来源记录 `{texts{字段→port|template|builtin},
+  degraded, uncovered_terms[]?, budget{calls, est_tokens, limit}?}`（W1 三级
+  文本来源的溯源面，预览卡可读）。
+- `lexicon_overrides[]`：tone_terms 的词表覆盖项，形状对齐 4.5 的
+  `atlas.lexicon` 条目 `{id, trait, terms[]}`（加词不加地图：运行时拼接，
+  **不**改写 `data/atlas/lexicon.json`）。
+- `regions[].economy`：区域产出声明 `{produces[]}`（商品名清单）；与区域 traits
+  白名单对照抽查（C6，warn 级）。
+
+> **条目 `source` 的双轨口径**：预制世界条目用 docs 指针（第 6 节纪律不变）；
+> 合成世界条目用 `worldgen:` 前缀标记（如 `worldgen:synthesized`）——校验器的
+> source 文件核对只对 `docs/…` 形式生效，`worldgen:` 形式免检。schema 以
+> `anyOf` 同时接纳两形（`$defs.worldgen_source`）。
+
 > **计数核对**（M1.2b 逐条比对 `docs/scenario/06` 余烬纪元）：职途 **17**（16 + 旅人）；
 > 秘仪 **100**（9 类：火焰与余烬 16 / 生命与治疗 12 / 心智与幻觉 12 / 移动与空间 10 /
 > 防护与反制 12 / 亡灵与骨骼 12 / 自然与根系 12 / 神术 8 / 禁忌 6）；装备 **28**
