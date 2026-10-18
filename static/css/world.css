@@ -1,0 +1,158 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 片 W-WORLD：世界工坊（生成 / 建造 / 委托 / 账本）
+   依据 WORLD-DESIGN.md §9.1（API 面）/ §10.3，Issue #398。
+   面板画在既有 #auxSheet 的 #auxBody 里（复用 core 的浮层栈，
+   手法同片 U4 js/panels.js 的注册表扩展），本文件只是该片样式。
+
+   纪律：
+     · 颜色一律引用 css/tokens.css 的令牌，本文件零硬编码色值；
+     · 三世界主题兼容：--wt-motif / --wt-edge 按 placeholder.css 的
+       既有手法取用（母题进 background-image，边饰是叠加层且默认
+       content: none——现代 / 奇幻下计算样式与「没有这层」完全一致）；
+     · 不引用位图，无外部字体。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 工坊内的小节导航（生成 / 工程 / 委托 / 账本）────────── */
+.wseg {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line-strong); border-radius: var(--r);
+  overflow: hidden; margin-bottom: var(--sp-3);
+}
+.wseg button {
+  min-height: 44px; padding: 0 var(--sp-2);
+  font-size: var(--fs-ui); color: var(--text-2);
+  border-left: 1px solid var(--line-strong);
+}
+.wseg button:first-child { border-left: none; }
+.wseg button:hover:not(.is-on) { background: var(--bg-2); color: var(--text-1); }
+.wseg button.is-on { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+/* ── 卡片（工坊里的一块内容）────────────────────────────── */
+.wcard {
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--bg-1); overflow: hidden;
+}
+.wcard + .wcard,
+.wcard + .wband,
+.wband + .wcard { margin-top: var(--sp-3); }
+.wcard-title {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-xs); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--text-2); background: var(--bg-2); border-bottom: 1px solid var(--line);
+}
+.wcard-body { padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); }
+
+/* 顶部的主题横幅：母题令牌的取用点（世界主题在这里「露脸」）。 */
+.wband {
+  position: relative;
+  padding: var(--sp-3);
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--bg-2);
+  background-image: var(--wt-motif);
+  background-size: var(--wt-motif-size);
+  overflow: hidden;
+}
+.wband b {
+  display: block;
+  font-family: var(--wt-title-font);
+  letter-spacing: var(--wt-title-track);
+  font-size: var(--fs-lg); color: var(--text-1);
+}
+.wband small { display: block; margin-top: var(--sp-1); color: var(--text-3); font-size: var(--fs-sm); }
+
+/* --wt-edge 关键字 → 叠加层的手法同 placeholder.css：默认不生成。 */
+.wband::before {
+  content: none;
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+:root[data-world="future"] .wband::before {
+  content: "";
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--accent) 55%, transparent) 0 28px, transparent 28px) 0 0 / 100% 2px no-repeat,
+    linear-gradient(0deg, color-mix(in srgb, var(--accent) 55%, transparent) 0 28px, transparent 28px) 0 0 / 2px 100% no-repeat;
+}
+
+/* ── 键值行 / 明细 ─────────────────────────────────────── */
+.wrow {
+  display: flex; align-items: baseline; gap: var(--sp-3);
+  padding: var(--sp-1) 0;
+  font-size: var(--fs-sm);
+}
+.wrow .wk { flex: 0 0 auto; color: var(--text-3); min-width: 4.5em; }
+.wrow .wv { flex: 1 1 auto; min-width: 0; color: var(--text-1); overflow-wrap: anywhere; }
+.wrow .wv.is-mono { font-family: var(--font-mono); font-size: var(--fs-xs); }
+
+/* ── 只读表格（账本 / 库存）────────────────────────────── */
+.wtable { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.wtable th {
+  text-align: left; font-weight: 400; color: var(--text-3);
+  font-size: var(--fs-xs); padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--line);
+}
+.wtable td {
+  padding: var(--sp-1) var(--sp-2);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-1); overflow-wrap: anywhere;
+}
+.wtable tr:last-child td { border-bottom: none; }
+.wtable .num { text-align: right; font-family: var(--font-mono); font-size: var(--fs-xs); }
+.wtable .num.is-plus { color: var(--success); }
+.wtable .num.is-minus { color: var(--danger); }
+
+/* ── 状态徽标（工程八态 / 指令状态）────────────────────── */
+.wstatus {
+  display: inline-block; padding: 0 var(--sp-2);
+  border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+  font-size: var(--fs-xs); color: var(--text-2); white-space: nowrap;
+}
+.wstatus.is-good { color: var(--success); border-color: var(--success); }
+.wstatus.is-bad { color: var(--danger); border-color: var(--danger); }
+.wstatus.is-warn { color: var(--accent-2); border-color: var(--accent-2); }
+
+/* ── 表单行 ───────────────────────────────────────────── */
+.wfield { display: flex; flex-direction: column; gap: var(--sp-1); }
+.wfield > label { font-size: var(--fs-xs); color: var(--text-3); }
+.wgrid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2) var(--sp-3); }
+@media (max-width: 420px) { .wgrid { grid-template-columns: 1fr; } }
+.wacts { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.wacts .btn { min-height: 38px; }
+.werror {
+  border-left: 3px solid var(--danger);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2); border-radius: var(--r);
+  color: var(--text-1); font-size: var(--fs-sm); overflow-wrap: anywhere;
+}
+
+/* 校验问题列表（生成预览的 warn 与 error 阻断共用）。 */
+.wissues { display: flex; flex-direction: column; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.wissues li {
+  font-size: var(--fs-xs); color: var(--text-2);
+  padding: var(--sp-1) 0; border-bottom: 1px dashed var(--line);
+  overflow-wrap: anywhere;
+}
+.wissues li:last-child { border-bottom: none; }
+.wissues li.is-error { color: var(--danger); }
+.wissues .code { font-family: var(--font-mono); margin-right: var(--sp-1); }
+
+/* overrides diff 行 */
+.wdiff { display: flex; flex-direction: column; gap: var(--sp-1); }
+.wdiff-line { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-2); overflow-wrap: anywhere; }
+.wdiff-line .op { margin-right: var(--sp-1); }
+.wdiff-line[data-op="add"] .op { color: var(--success); }
+.wdiff-line[data-op="remove"] .op { color: var(--danger); }
+.wdiff-line[data-op="change"] .op { color: var(--accent-2); }
+
+/* 工程条目卡 */
+.wproj {
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--bg-2); padding: var(--sp-2) var(--sp-3);
+  display: flex; flex-direction: column; gap: var(--sp-1);
+}
+.wproj-head { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap; }
+.wproj-head b { flex: 1 1 auto; min-width: 0; font-size: var(--fs-ui); color: var(--text-1); overflow-wrap: anywhere; }
+.wproj-meta { font-size: var(--fs-xs); color: var(--text-3); overflow-wrap: anywhere; }
+.wblocked { font-size: var(--fs-xs); color: var(--danger); overflow-wrap: anywhere; }
+
+/* 空态 / 加载态复用 base 的 .stream-empty，不另造。 */

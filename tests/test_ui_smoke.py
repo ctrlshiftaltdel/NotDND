@@ -664,6 +664,270 @@ def _check_offline_actions(page, server):
           "results=%r" % (before,))
 
 
+# ── M12-UI：世界工坊接线（Issue #398，WORLD-DESIGN §9.1）──────────────────
+#
+# 三个界面块各给一组真断言，全部在**真浏览器 + 真服务**（离线、无 AI 配置）
+# 里跑。服务端数据面用既有播种手法：先造一局普通存档，再把手工 world 块
+# （含据点 / 货物 / 一条真实日切账目）经状态层 commit 进去——与
+# test_notdnd_web 的 `_world_seed_block` 同源，零后端改动。
+#
+#   · 账本（只读）：第 N 日 / 账户余额 / 货物库存与市价 / 最近 Entry；
+#   · 建造与委托：创建工程（草稿）→ 排队 → 撤销（操作按钮按状态显隐）；
+#     创建指令（预算上界）→ 生效中 → 六项可解释 → 暂停 → 撤销；
+#   · 生成世界：表单 → 生成预览（预览卡有结构摘要）→ 确认入库（实例号 +
+#     导出入口）；error 阻断用 fetch 桩注入 422 issues，断言就地展示。
+
+def _seed_world_session(save_dir, sid):
+    """在子进程服务的存档目录里造一局带 world 块的存档。
+
+    先走 `_seed_action_session` 造普通一局，再把它装载、经状态层提交一块
+    手工 world 块（据点 s1 + 黑麦 + coin/labor），并用 `world.world_tick`
+    结算一个真实日切——账本展示的是**服务端真实产物**，不是前端编的数。
+    """
+    _seed_action_session(save_dir, sid, [
+        {"id": "a-look", "label": "查看四周", "kind": "narrate",
+         "text": "四下无人。", "risk": "R0"},
+    ])
+    saved_dir = notdnd_web.SAVE_DIR
+    notdnd_web.SAVE_DIR = pathlib.Path(save_dir)
+    try:
+        session = notdnd_web.Session.load(sid)
+        block = notdnd_web.world.new_block(
+            goods=[{"good_id": "grain", "name": "黑麦", "category": "food",
+                    "tier": 1, "base_price": 2, "stock": 60,
+                    "produced_by": ["p1"]}],
+            day=0, balances={"coin": 500, "labor": 20})
+        block["settlements"]["s1"] = {"place_id": "p1", "population": 10}
+        block, _entries, _notes = notdnd_web.world.world_tick(
+            block, day=1, now_minute=1500, event_seq=1)
+        handle = session._handle or session._open_handle()
+        out = handle.commit(
+            base_seq=handle.view()["seq"],
+            idempotency_key="world-ui-seed-0001", type="core.commit",
+            actor="pc-1",
+            changes=[{"block": "world", "op": "replace_block", "path": "",
+                      "before": None, "after": block}],
+            rules_version=notdnd_web.ACTION_RULES_VERSION, source="player")
+        assert out["status"] == "committed", out
+        session.save()
+    finally:
+        notdnd_web.SAVE_DIR = saved_dir
+    notdnd_web._sessions.pop(sid, None)
+
+
+def _wclick(page, selector):
+    """点工坊里的按钮（存在才点，断言里能看出「没这个按钮」）。"""
+    return page.js(
+        "const e = document.querySelector(%s);"
+        "if (!e) return false; e.click(); return true;" % json.dumps(selector))
+
+
+def _wfill(page, selector, value):
+    """填一个工坊表单控件（真实赋值，供读侧 data-* 选择器取值）。"""
+    return page.js(
+        "const e = document.querySelector(%s);"
+        "if (!e) return false; e.value = %s; return true;"
+        % (json.dumps(selector), json.dumps(value)))
+
+
+def _wtext(page, selector):
+    """取一个元素的 textContent（不存在回空串）。"""
+    return page.js(
+        "const e = document.querySelector(%s);"
+        "return e ? e.textContent : '';" % json.dumps(selector))
+
+
+def _check_world_ui(page, server):
+    """M12-UI：账本 / 建造与委托 / 生成世界三块的浏览器断言。"""
+    sid = "m12-world-ui"
+    _seed_world_session(_get_json(server.port, "/api/saves")["save_dir"], sid)
+    _enter_session(page, sid, base="http://127.0.0.1:%d/" % server.port)
+
+    # 打开「工坊」tab → 生成表单是缺省第一屏。
+    opened = page.wait_for(
+        "const t = document.querySelector('.tab[data-panel=\"world\"]');"
+        "if (!t) return false; t.click(); return true;", timeout=15)
+    panel = page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wwork]')"
+        " && !!document.querySelector('#auxBody [data-wgen-run]');", timeout=10)
+    check("W1：工坊 tab 打开面板且生成表单在第一屏", opened and panel,
+          "panel=%r errs=%r" % (page.js(
+              "return window.__WORLD ? window.__WORLD() : null;"),
+              page.js("return window.__ERRS || [];")))
+    check("W1：生成表单有世界类型 / 规模 / 引擎 / 描述 / overrides 五个输入",
+          all(page.js("return !!document.querySelector(%s);"
+                      % json.dumps(sel)) for sel in (
+              "[data-wgen-type]", "[data-wgen-scale]", "[data-wgen-engine]",
+              "[data-wgen-desc]", "[data-wgen-ovr]")),
+          "form=%r" % (page.js(
+              "return { type: !!document.querySelector('[data-wgen-type]'),"
+              " ovr: !!document.querySelector('[data-wgen-ovr]') };"),))
+
+    # ── 账本（只读）：真实日切产物 ──
+    _wclick(page, '#auxBody [data-wview="ledger"]')
+    ledger_ready = page.wait_for(
+        "const w = document.querySelector('#auxBody [data-wledger]');"
+        "return !!(w && w.textContent.indexOf('第 1 日') >= 0"
+        " && w.textContent.indexOf('黑麦') >= 0);", timeout=10)
+    check("W3：账本展示第 1 日与黑麦（服务端日切产物）", ledger_ready,
+          "ledger=%r" % (_wtext(page, "#auxBody [data-wledger]")[:200],))
+    ledger_rows = page.js(
+        "const w = document.querySelector('#auxBody [data-wledger]');"
+        "const t = w ? w.textContent : '';"
+        "return { coin: t.indexOf('coin') >= 0,"
+        "         produce: t.indexOf('produce') >= 0,"
+        "         consume: t.indexOf('consume') >= 0,"
+        "         price: t.indexOf('市价') >= 0 };")
+    check("W3：账本有账户余额 / 市价列 / produce+consume 账目", all(
+        (ledger_rows or {}).get(k) for k in ("coin", "produce", "consume", "price")),
+        "rows=%r" % (ledger_rows,))
+
+    # ── 建造：创建 → 排队 → 撤销（按钮按状态显隐）──
+    _wclick(page, '#auxBody [data-wview="build"]')
+    # 工程列表是异步读的：列表到位前不填表单（重画会清掉刚填的值）。
+    # count = -1 表示还没读到列表；读到（哪怕是空表）才会 ≥ 0。
+    page.wait_for(
+        "return !!window.__WORLD && window.__WORLD().build.count >= 0"
+        " && window.__WORLD().build.loading === false;", timeout=10)
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wp-create]');",
+        timeout=10)
+    _wfill(page, "#auxBody [data-wp-name]", "东墙粮仓")
+    _wfill(page, "#auxBody [data-wp-place]", "p1")
+    _wfill(page, "#auxBody [data-wp-kind]", "granary")
+    _wfill(page, "#auxBody [data-wp-coin]", "50")
+    _wfill(page, "#auxBody [data-wp-labor]", "2")
+    _wfill(page, "#auxBody [data-wp-goods]", '{"grain": 5}')
+    _wclick(page, "#auxBody [data-wp-create]")
+    created = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wproject]');"
+        "return !!(p && p.textContent.indexOf('东墙粮仓') >= 0"
+        " && p.textContent.indexOf('草稿') >= 0"
+        " && p.querySelector('[data-wp-op=\"queue\"]'));", timeout=15)
+    check("W2：创建工程落草稿态且只给「排队」", created,
+          "proj=%r" % (_wtext(page, "#auxBody [data-wproject]"),))
+    _wclick(page, '#auxBody [data-wp-op="queue"]')
+    queued = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wproject]');"
+        "return !!(p && p.textContent.indexOf('排队中') >= 0"
+        " && p.querySelector('[data-wp-op=\"start\"]')"
+        " && p.querySelector('[data-wp-op=\"pause\"]'));", timeout=15)
+    check("W2：排队后变排队中并给出开工 / 暂停", queued,
+          "proj=%r" % (_wtext(page, "#auxBody [data-wproject]"),))
+    _wclick(page, '#auxBody [data-wp-op="revoke"]')
+    revoked = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wproject]');"
+        "return !!(p && p.textContent.indexOf('已撤销') >= 0"
+        " && !p.querySelector('[data-wp-op]'));", timeout=15)
+    check("W2：撤销后进终态（操作按钮全部隐去）", revoked,
+          "proj=%r" % (_wtext(page, "#auxBody [data-wproject]"),))
+
+    # ── 委托：创建 → 六项可解释 → 暂停 → 撤销 ──
+    _wclick(page, '#auxBody [data-wview="dir"]')
+    page.wait_for(
+        "return !!window.__WORLD && window.__WORLD().dir.count >= 0"
+        " && window.__WORLD().dir.loading === false;", timeout=10)
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wd-create]');",
+        timeout=10)
+    _wfill(page, "#auxBody [data-wd-settle]", "s1")
+    _wfill(page, "#auxBody [data-wd-text]", "把存粮维持到 90 天")
+    _wfill(page, "#auxBody [data-wd-target]", "90")
+    _wfill(page, "#auxBody [data-wd-cap]", "200")
+    _wclick(page, "#auxBody [data-wd-create]")
+    d_created = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wdirective]');"
+        "return !!(p && p.textContent.indexOf('生效中') >= 0);", timeout=15)
+    check("W2：指令创建即生效中", d_created,
+          "dir=%r" % (_wtext(page, "#auxBody [data-wdirective]"),))
+    _wclick(page, "#auxBody [data-wd-explain]")
+    explained = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wdir-explain]');"
+        "if (!p) return false;"
+        "const t = p.textContent;"
+        "return ['目标', '预算', '在建', '阻塞原因', '最近决策', '预期结果']"
+        ".every(function (k) { return t.indexOf(k) >= 0; });", timeout=15)
+    check("W2：六项可解释展示齐全（含预算上界 200）",
+          explained and "200" in (_wtext(page, "#auxBody [data-wdir-explain]")),
+          "explain=%r" % (_wtext(page, "#auxBody [data-wdir-explain]"),))
+    _wclick(page, '#auxBody [data-wd-op="pause"]')
+    d_paused = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wdirective]');"
+        "return !!(p && p.textContent.indexOf('已暂停') >= 0"
+        " && p.querySelector('[data-wd-op=\"resume\"]'));", timeout=15)
+    check("W2：指令暂停后给复工", d_paused,
+          "dir=%r" % (_wtext(page, "#auxBody [data-wdirective]"),))
+    _wclick(page, '#auxBody [data-wd-op="revoke"]')
+    d_revoked = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wdirective]');"
+        "return !!(p && p.textContent.indexOf('已撤销') >= 0"
+        " && !p.querySelector('[data-wd-op]'));", timeout=15)
+    check("W2：指令撤销后进终态", d_revoked,
+          "dir=%r" % (_wtext(page, "#auxBody [data-wdirective]"),))
+
+    # ── 生成世界：表单 → 预览 → 入库 → 导出；error 阻断用 fetch 桩注入 ──
+    _wclick(page, '#auxBody [data-wview="gen"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wgen-run]');",
+        timeout=10)
+    _wfill(page, "#auxBody [data-wgen-desc]", "灰烬覆盖的港口城")
+    _wclick(page, "#auxBody [data-wgen-run]")
+    preview = page.wait_for(
+        "const p = document.querySelector('#auxBody [data-wgen-preview]');"
+        "return !!(p && p.textContent.indexOf('预览卡') >= 0"
+        " && p.textContent.indexOf('确认入库') >= 0);", timeout=20)
+    check("W4：生成预览卡出现（结构摘要 + 确认入库）", preview,
+          "preview=%r" % (_wtext(page, "#auxBody [data-wgen-preview]"),))
+    if not preview:
+        return
+    _wclick(page, "#auxBody [data-wgen-commit]")
+    committed = page.wait_for(
+        "const c = document.querySelector('#auxBody [data-wgen-committed]');"
+        "return !!(c && c.textContent.indexOf('实例号') >= 0"
+        " && c.querySelector('[data-wgen-export]'));", timeout=20)
+    check("W4：确认入库给实例号与导出入口", committed,
+          "committed=%r" % (_wtext(page, "#auxBody [data-wgen-committed]"),))
+    if committed:
+        _wclick(page, "#auxBody [data-wgen-export]")
+        exported = page.wait_for(
+            "return !window.__WORLD || window.__WORLD().gen.busy === false;",
+            timeout=10)
+        check("W4：导出请求走完且没有就地报错",
+              exported and "保存失败" not in
+              _wtext(page, "#auxBody [data-wgen-committed]"),
+              "gen=%r" % (page.js("return window.__WORLD().gen;"),))
+
+    # error 阻断：fetch 桩回 422 + issues，断言问题列表就地展示。
+    blocked = page.js(
+        "window.__FETCH_ORIG = window.fetch;"
+        "window.fetch = function (url, o) {"
+        "  if (String(url).indexOf('/api/world/generate') >= 0) {"
+        "    return Promise.resolve(new Response(JSON.stringify({"
+        "      status: 'error', error: '生成物校验未通过',"
+        "      issues: [{ code: 'E_UI_PROBE', level: 'error',"
+        "                 hint: '人为注入的阻断样例' }] }),"
+        "      { status: 422, headers:"
+        "        { 'Content-Type': 'application/json' } }));"
+        "  }"
+        "  return window.__FETCH_ORIG.apply(this, arguments);"
+        "};"
+        "return 'stub-on';")
+    _wclick(page, "#auxBody [data-wgen-run]")
+    error_shown = page.wait_for(
+        "const li = document.querySelector('#auxBody .wissues li.is-error');"
+        "return !!(li && li.textContent.indexOf('E_UI_PROBE') >= 0);",
+        timeout=15)
+    check("W4：error 阻断的 issues 就地展示（不建会话、无预览）",
+          blocked == "stub-on" and error_shown
+          and not page.js(
+              "return !!document.querySelector('#auxBody [data-wgen-preview]');"),
+          "issues=%r" % (_wtext(page, "#auxBody .wissues"),))
+    page.js("window.fetch = window.__FETCH_ORIG; return 'stub-off';")
+    check("W1–W4：世界工坊全程没有未捕获错误", not page.js(
+        "return window.__ERRS || [];"),
+        "errs=%r" % (page.js("return window.__ERRS || [];"),))
+
+
 def _check_clarify(page):
     """③：澄清只呈现一个问题与选项，答完（clarify_id 回路）出判定卡。"""
     sid = "a4-ui-clarify"
@@ -845,6 +1109,8 @@ def _smoke():
             _check_campaign_entry(page, server)
             # M8-A4：行动管线接线（R0/R1 直通 / R2+ 确认 / 澄清 / 离线）。
             _check_offline_actions(page, server)
+            # M12-UI：世界工坊（账本 / 建造与委托 / 生成世界，Issue #398）。
+            _check_world_ui(page, server)
             _check_clarify(page)
             if not _fails:
                 try:
