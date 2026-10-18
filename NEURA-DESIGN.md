@@ -566,6 +566,21 @@ tick(now_minute)
 - **`actor`**：`{"kind": "npc", "id": "<npc_id>"}`；`source` 必须是 `"npc"`（不是 `"ai_proposal"`——
   后者留给「AI 替玩家提的案」，两者的审计含义不同）。
 
+**N6 实现裁定（2026-10-18 回填；源头：PR #363（Issue #362）的「风险与口径补充」节）**
+
+> 下列 4 条是 N6（`notdnd_web.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **`base_seq` 锁内自取**：`_neura_submit` 的 `submit` 签名没有 `base_seq` 形参 → 在**锁内自取当前 seq**；
+   两段锁之间的竞争由 `_action_settle_commit` 既有的 `base_seq` 核验归类 `conflict`（§7.4），调用方可重试。
+2. **幂等实现**：复用玩家路径的进程内幂等表 `_action_idem`（TTL 7 天，键空间按 `(sid, key)` 隔离）+
+   状态层持久幂等索引兜底；不变式「**不重复副作用**」全程成立；TTL 过期 / 重启后「回首次结果」降级为
+   `conflict`（同键同载荷走状态层 `replayed` 仍回首次结果），持久回执的升级归 N7 编排层，本层不扩权。
+3. **catch-all 的理论误报**：catch-all 分支对「提交**之后**才发生的意外异常」理论上会误报 `rejected`——
+   现行代码无已知可达路径（扇出恒不抛、save 失败只置 `saved=False`）；neura 侧下次同键重投会被幂等拦住。
+4. **前置守卫（P2 / P7 的防御口径）**：`_action_is_deferred` 的提案一律 `unsupported`（**不进管线、
+   不可能落排程事件**）——比「不应触发」更强的防御口径；另有两个固定拒绝语：`NEURA_NO_DICE`（P2 不掷骰）、
+   `NEURA_NO_DEFER`（P7 永远同步）。
+
 ### 5.7 结果回写记忆（连续性的一半）
 
 | 结果 | 回写 |
@@ -578,6 +593,15 @@ tick(now_minute)
 
 **为什么失败也要改需求**：不改的话，NPC 会永远重复同一个必败计划（「决策抖动」再大也救不了），
 玩家会看到「这个人一直在撞墙」——这正是 `GDD.md` §11.6「连续性」要避免的。
+
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 1 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **`_write_back` 的最小回写**：`verb == "move"` → 直接更新块内 `location`；其余 → 写
+   `plan = {plan_id, goal_id, step_index, status: "running", started_minute, until_minute = now + minutes}`（P7）；
+   `port.submit` 返回 `status == "conflict"` 时**不回写**（上表 conflict 行：下个 tick 重试）；其余结果一律写计划。
+   更细的结算回写（needs 兑现、memory）按本节归 N6/N7 的 M8 结算链路，**不在纯函数层伪造结果**。
 
 ### 5.8 伪代码（可直接对照实现）
 
@@ -617,6 +641,21 @@ def tick(block, view, *, port, now_minute):
 
 > `tick` **不返回事件**、**不碰 `state`**：它返回**新的块**与一份「待提交清单」，
 > 由编排层组装成 `changes` 并提交。这让 `neura` 全程可单测（给定 block + view → 断言新 block）。
+
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 3 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **`port` 的形状**：带方法的回调对象——`submit(proposal, idempotency_key=…)` **必须实现**（§5.6 窄口）；
+   `generate_candidates(npc, view, budget=…)` **可选**，用 `hasattr` 探测，**缺失 = 无 AI 配置的正常路径**
+   （§8.4，不抛错）；AI 候选逐条过 `_revalidate`（形状 + 五道硬约束重验，即上面伪代码 ④）。
+2. **`tick` 内日程移动的提案形状**：合成规则候选
+   `{verb: "move", place_id: <slot 地点>, minutes: travel_minutes 或 0, source: "rule", risk: 0}`，
+   走完整 decide → to_proposal → submit 管线；**移动成功后直接更新块内 `location`**（规则移动即时结算，
+   不写 `plan`）；被硬约束拦下（如 `view.bands` 缺路径 → `E_DISTANCE`）时只留 journal、不提交，
+   下个 tick 重试——「他为什么没去上班」可解释。
+3. **突发上限的传递通道**：`can_call_ai` 签名没有本 tick 计数形参，单 tick 已用量由 `tick` 维护并经
+   `view.tick_burst` 注入（每 NPC 传入快照）；直接调用 `can_call_ai` 时缺键按 0 计。
 
 ---
 
@@ -746,6 +785,17 @@ def layer_of(npc, view) -> str:
 **晋升 / 降级**：每 tick 现算，**不缓存**（`layer` 是内存字段，§4.2）。
 玩家走远一步，NPC 就从 `near` 掉到 `important_far`——这必须立刻生效，否则成本会漏。
 
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 2 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **`unexplored` 的判据 = 未具名**：`layer_of` 对**未具名**条目（`display_ref.npc_id` 为空）返回
+   `unexplored`——上表只明文「该层里没有具名 NPC」，未写 `layer_of` 何时返回该值；实现取
+   「块内出现未具名条目」这一种情况，正常具名 NPC 不会落到该层。
+2. **important_far 第二条路的输入键**：`view.party_refs`（PC id 集）与 `view.known_refs`
+   （玩家已知线索 id 集），缺键按「不在」——上表只写语义不给形状；两个键由编排层注入，
+   缺省时该条路自动失效（只按 importance 判）。
+
 ### 7.2 层 × 触发条件 × 频率 × 成本上限
 
 | 层 | 触发条件 | 更新频率 | 精度 | 成本上限（每游戏日） |
@@ -758,6 +808,17 @@ def layer_of(npc, view) -> str:
 - 上限合计：H = 2 + 3 = 5 次（= 20,000 tokens），M = 8 + 12 = 20 次（= 24,000 tokens），
   合计 **44,000**，日预算 **60,000** 留 **16,000** 余量给「玩家交互触发的即时反应」（§8.2）。
 - **单次 tick 的突发上限**：`≤ 1 次 H`、`≤ 3 次 M`——防止一次大推进把所有预算烧光。
+
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 2 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **频率的「日差」实现**：`important_far` / `background` 的「每游戏日 1 次 / 每 3 游戏日 1 次」以
+   `last_tick_minute // 1440` 与 `now_minute // 1440` 的**日差**判定（`important_far`：日差 ≥ 1；
+   `background`：日差 ≥ 3）——块内没有「上次判定日」的独立字段，`last_tick_minute` 是 §4.2 唯一可用锚点。
+2. **日程违约无视层频率额外到期**：`due_npcs` 对「到点不在岗」（日程违约）的 NPC **无视层频率额外到期**
+   （仅当 `last_tick_minute < now_minute` 防同 tick 重复）——日程移动是规则动作、零 token，
+   若受 background 的 3 日频率限制，「铁匠开门了」这类离线底线事件（§8.4）会迟到最多 3 天。
 
 ### 7.3 与 CHRON 的挂接（不新建时钟）
 
@@ -798,6 +859,14 @@ crossed_minutes = [m for m in (start, now] 中每个 10 分钟的格点 if 有 N
 - 补算的结果与「逐分钟跑」**不保证**逐步等价，但保证：**终态收敛**（所有到期计划都被处理）、
   **幂等**（同一 `last_tick_minute` 重跑不重复）、**可解释**（`journal` 里有 `catchup_deferred` 的记录）。
   这三条是 N5 的验收项。
+
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 1 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **`catchup_deferred` 的计数与幂等 guard**：`count=N` 的 N = **被跳过的格点数**（步进集合大小 −
+   已处理的到期格点数）；到期计划一律收敛、**不计入** deferred；幂等 guard：同一 `at_minute` 只记一条
+   （重跑不重复 journal）。
 
 ---
 
@@ -848,6 +917,14 @@ reserve   = 60000 − (17600 + 26400) = 16000        # 玩家交互触发的即�
 而世界时间只在提交时前进（`CHRON-DESIGN.md` Key Decisions 9）——
 **游戏日**是唯一同时满足「可预算」与「不可刷」的刻度。
 
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 1 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **tier 同源双名**：`charge` 的 tier ∈ `strong/light/rule` 与本节 / N3 的 `COST_TIERS`（`H/M/rule`）
+   是**同源双名**：`strong ≙ H`（4000）、`light ≙ M`（1200）；`tick` 内按降级档位（L0→strong/H、
+   L1→light/M）选择，并同步 `view.cost_tier` / `view.ai_tokens`，让 `decide` 的 `cost` 记录与记账一致。
+
 ### 8.3 降级阶梯
 
 | 阶梯 | 触发 | 行为 | 玩家能感知的变化 |
@@ -860,6 +937,17 @@ reserve   = 60000 − (17600 + 26400) = 16000        # 玩家交互触发的即�
 - **降级是单调的**：当天一旦降到 L2，**不回到 L1**（避免「省下的预算被一阵风花掉」）。
 - **降级必须留痕**：`journal.cost.tier` + `budget` 计数；`GET /api/neura/view`（N8）可看到。
 - **L3 不是死锁**：`needs` 仍在涨（时间流逝），下一天重置预算后自然恢复。
+
+**N5 实现裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节）**
+
+> 下列 2 条是 N5（`neura.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **单调性的实现口径**：不引入额外状态位，靠「当天 token 只增不减（`charge` 只加不减、跨日才归零）」
+   保证 L0→L1→L2 单调（测试以用量递增序列断言档位序列单调）；若将来出现「token 回退」类需求（如退款），
+   需另加当日档位下限字段（受 budget 4 键形状限制）。
+2. **L0 档 strong 额度不足不自动降 light**：`can_call_ai` 按 `degrade_tier` 给的档位判一种调用；
+   strong 被次数 / 余量拦下时该 NPC 本次走规则候选，而不是改投 light——降级是「天」级刻度（≥ 80% 才降 L1），
+   允许 tick 内逐次下滑会让档位随调用抖动、可解释性变差。
 
 ### 8.4 离线可玩底线（GDD §20.4）
 
@@ -1000,6 +1088,15 @@ _chron_advance(session, target)
 - **为什么在叙事之前**：玩家该看到「守卫已经走到门口」，而不是「先讲完故事再挪人」。
 - **失败隔离**：`neura.tick` 抛任何异常 → 捕获 + `log` + **不阻塞** `_chron_advance` 返回
   （离线底线：NPC 不动，世界照走）。
+
+**N6 实现裁定（2026-10-18 回填；源头：PR #363（Issue #362）的「风险与口径补充」节）**
+
+> 下列 1 条是 N6（`notdnd_web.py`）**已经落地**的口径，回填单为 Issue #368。与上文冲突时以本节裁定为准。
+
+1. **验收项改判归 N7**：「事件 `changes` 同时含 `neura` 与 `guide`（若走动）」**改判归 N7**——
+   `_action_settle_commit` 的提交恒为单一 `rules` 块 change（§10.1），§5.6「写回与提交的关系」明确
+   `write_back` 的 neura 块变更由编排层随 `changes` 落盘（即 N7 `_neura_tick` 的职责），且 `submit`
+   签名没有承载额外 `changes` 的形参；N6 只覆盖 `source == "npc"`、`actor == npc_id` 的事件封套部分。
 
 ### 9.5 `atlas.py`：只读查询，零改动
 
@@ -1294,6 +1391,12 @@ N1 ─► N2 ─► N3 ─┬─► N4 ─► N5 ─┐
 | **P8** | 第一版 `law_source = "none"`（空表、不拒）；`view.laws` 的 schema 留到 M12 | N2 **不得**因缺 laws 抛错或拒单；法律约束在 v1 等价于「不设限」，须在代码与测试里显式标注，避免被误读为「已实现」 |
 | **P9** | 新增四个 `neura.*` 事件 `type` 由实现单在 PR 说明登记；`STATE-DESIGN.md` §5.1 枚举清单**另开文档 PR** 同步 | 实现 PR **不得夹带** `STATE-DESIGN.md` 改动；PR 说明必须列出四个 `type` 全名 |
 | **P10** | `importance` 第一版**显式覆盖优先**（静态档案有就用），否则公式 `0.4×在主线 threads + 0.3×有 faction + 0.3×有 secret` | N5 必须实现该公式并把三个权重写成常量；「显式覆盖 > 公式」的优先级须有测试断言 |
+
+> **P10 追加裁定（2026-10-18 回填；源头：PR #364（Issue #361）的「风险与口径补充」节，回填单 Issue #368）**：
+> P10 公式的**输入形状**——`view.main_thread_refs` / `view.faction_refs`（npc_id 集合，缺键按「不在」）+
+> `npc.secrets` 非空；「显式覆盖」定义为 `view.importance_overrides[npc_id]`（编排层注入，**最高优先**）
+> 或 `npc.importance > 0`（静态档案镜像，`0.0` 视为未设置 → 走公式）。理由：`empty_npc` 默认
+> `importance = 0.0`，**显式 0 与未设置在块内不可区分**，「档案显式给 0」须由编排层用覆盖表表达。
 
 **拍板后实现顺序不变**：N1 → N5（`neura.py` 串行）、N6 → N8（`notdnd_web.py` 串行），见 §11「附：切片依赖图」。
 
