@@ -27,6 +27,16 @@ world 不回头）；与 `worldgen.py` 互不 import（§9.1），goods 形状�
 - `new_directive()` / `directive_add` / `directive_set_status` /
   `directive_explain`：委托指令（§6.5，W6；可解释六项 + 硬回问清单）。
 
+W7（NEURA 挂接，§8 / §11 W7）新增：
+- `projection()`：世界事实投影（§8.2 V10，纯函数）——view 五键
+  （known_refs / main_thread_refs / faction_refs / importance_overrides /
+  travel_minutes）+ world_facts + laws / law_source（§8.1 V9）的唯一
+  数据源；输入是编排层汇好的只读状态 dict；
+- `match_event()`：事件 → 受影响 npc_id 集的匹配表（§8.4 V12，纯函数）；
+  层过滤（只重判 important_far）由编排层经 `neura.layer_of` 完成；
+- `populate()`：NPC 种群初始化（§8.5，纯函数）——静态档案 → neura 运行
+  时块（P10 importance 公式 + needs 抖动 + role 模板 + 日程骨架）。
+
 新口径（与设计原文的出入 / 设计留白处的落法，已在 PR「风险与口径补充」登记）：
 1. `wtick_key(day)` 零填充为 `wtick_%04d`（如 `wtick_0001`），保证幂等键满足
    `^[A-Za-z0-9_-]{8,64}$`（裸 `wtick_1` 只有 7 字符，越下限）。
@@ -2143,3 +2153,424 @@ def catch_up(block, *, target_day, now_minute, event_seq, seed=None):
         all_entries.extend(entries)
         notes.extend(tick_notes)
     return block, all_entries, notes
+
+
+# ── NEURA 挂接（§8 / §11 W7：投影五键 + laws + 匹配表 + 种群初始化） ───────
+
+# §8.2 facts 的两种投影相关 kind：显式重要度覆盖（PR #364 裁定 5 的「显式 0
+# 须由覆盖表表达」）与势力级事件标记（§8.4 匹配规则 3）。fact.kind 是开放
+# 字符串，这里只定投影读取的两个约定值。
+FACT_KIND_IMPORTANCE_OVERRIDE = "importance_override"
+FACT_KIND_FACTION_EVENT = "faction_event"
+
+# §8.2 travel_minutes：range_band（图距离投影）→ 行程档。行程档 → 分钟的
+# 口径**复用编排层既有 BAND_MINUTES 常量**（CHRON §2.3，1 时段 = 360 名义
+# 分钟；不定义新时间常数）——world.py 不 import 编排层，档位→分钟表由调用方
+# 经 `band_minutes` 注入，缺省不给（travel_minutes = {}，neura 缺键按
+# 「无耗时」，M11 行为不变）。`dangerous` 档给 BAND_MINUTES 常量值，行走
+# 风险归 PRISM 结算、不在分钟数里体现（§8.5 边界）。
+RANGE_BAND_TRAVEL_SLOT = {
+    "same": None,          # 同地：无需行程（0 分钟）
+    "adjacent": "short",
+    "near": "medium",
+    "mid": "long",
+    "far": "dangerous",
+}
+
+# §8.5 populate：needs 初值 = 中位数 50 + 确定性抖动 ±10（NEURA §4.2 缺键补
+# 50 的同源口径；抖动走 sha256 种子公式——world.py 不 import random，同 §7.2
+# 新口径 7 的理由）。键面镜像 NEURA-DESIGN §4.2（world.py 不 import neura）。
+NPC_NEED_KEYS = ("safety", "wealth", "power", "relation", "duty", "curiosity")
+NPC_ABILITY_KEYS = ("mgt", "fin", "vig", "ins", "mnd", "pre")
+NEED_DEFAULT = 50
+NEED_JITTER = 10
+# role 模板（§8.5）：role 文本命中关键词 → 这两项 need 权重加重（1.5），
+# 其余等权 1.0；未命中 = 全等权。覆盖常见原型，未覆盖的角色等权起步。
+ROLE_NEED_WEIGHTS = (
+    (("卫", "兵", "守", "巡", "骑士"), ("safety", "duty")),
+    (("商", "贩", "掌柜", "市场"), ("wealth", "relation")),
+    (("学", "法师", "术士", "贤者"), ("curiosity", "power")),
+    (("医", "祭司", "神官"), ("relation", "duty")),
+    (("盗", "贼", "刺客", "密探"), ("wealth", "power")),
+)
+
+
+def _npc_hash(seed, npc_id, salt):
+    """populate 的种子确定性整数（[0, 2**64)；同 §7.2 新口径 7 的公式家族）。"""
+    raw = "world|populate|%s|%s|%s" % (seed, npc_id, salt)
+    return int(hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16], 16)
+
+
+def _string_list(value):
+    """list 里的非空字符串项（其余丢弃；不发明条目）。"""
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, str) and item]
+
+
+def projection(session_state):
+    """§8.2（V10）世界事实投影：view 五键 + laws 的唯一数据源（纯函数）。
+
+    输入是编排层汇好的**只读**状态 dict（键全部可选；投影不 import 业务
+    模块、不触发懒编译——IO 与地图编译都留在 `_neura_view` 一侧）：
+
+    - `known_clues`: [clue_id]      玩家已获知线索（guide.known_clues；
+                                    P10：无数据源按空表，不降级全集）
+    - `scenario`: 剧本数据 dict     threads / npcs（主线 thread 参与人展开）
+    - `npcs`: [档案] / {id: 档案}   NPC 静态档案（faction 字段的载体；
+                                    缺省回退剧本 `npcs`）
+    - `world_module`: world.module  laws（§8.1）+ factions（faction 校准）
+    - `world`: blocks.world         facts（importance 覆盖表 / world_facts）
+    - `bands`: {(a, b): band}       `_neura_view` 既有口径的图距离表
+    - `party_places`: [place_id]    队伍地点（travel_minutes 的出发点）
+    - `band_minutes`: {档: 分钟}    编排层 BAND_MINUTES 原样注入
+
+    返回 dict（键恒在；缺数据 = M11 缺省值，与 `_neura_view` 现写死的空键
+    逐字段一致）。travel_minutes 键 = 目的地 place_id（neura
+    `_travel_minutes` 的消费形状），值 = 分钟；同目的地多条取最小
+    （不夸大可达性）。`importance_overrides` 同 subject 后写覆盖先写
+    （facts 有序，确定性）。`world_facts` = `{subject_ref: [fact]}`，
+    按 (minute, fact_id) 排序分组；法律事实也走这里（§8.2 表注）。
+    """
+    state = session_state if isinstance(session_state, dict) else {}
+
+    # known_refs（P10：无数据源按空表，不实现「剧本全集」降级）
+    known_refs = sorted(set(_string_list(state.get("known_clues"))))
+
+    # main_thread_refs：主线 thread 参与人（thread.npcs 存的是参与人名，
+    # 经档案 name→id 映射；映射不到的原样保留——可能本来就是 id）
+    scenario = state.get("scenario")
+    scenario = scenario if isinstance(scenario, dict) else {}
+    name_to_id = {}
+    scen_npcs = scenario.get("npcs")
+    for npc in (scen_npcs if isinstance(scen_npcs, list) else []):
+        if isinstance(npc, dict) and _text(npc.get("id")) and _text(npc.get("name")):
+            name_to_id[_text(npc["name"])] = _text(npc["id"])
+    main = set()
+    for thread in (scenario.get("threads") if isinstance(scenario.get("threads"),
+                                                         list) else []):
+        if not isinstance(thread, dict):
+            continue
+        for ref in _string_list(thread.get("npcs")):
+            main.add(name_to_id.get(ref, ref))
+    main_thread_refs = sorted(main)
+
+    # faction_refs：有 faction 归属的 npc_id 集。world_module.factions 给了
+    # 就按其 id / name 校准（不在势力表里的 faction 字符串不计入）；没给
+    # world_module = 档案 faction 非空即算（M12 前的宽松口径）。
+    world_module = state.get("world_module")
+    world_module = world_module if isinstance(world_module, dict) else {}
+    valid_factions = set()
+    raw_factions = world_module.get("factions")
+    for faction in (raw_factions if isinstance(raw_factions, list) else []):
+        if isinstance(faction, dict):
+            if _text(faction.get("id")):
+                valid_factions.add(_text(faction["id"]))
+            if _text(faction.get("name")):
+                valid_factions.add(_text(faction["name"]))
+    raw_npcs = state.get("npcs")
+    if isinstance(raw_npcs, dict):
+        archives = [v for v in raw_npcs.values() if isinstance(v, dict)]
+    elif isinstance(raw_npcs, list):
+        archives = [v for v in raw_npcs if isinstance(v, dict)]
+    elif isinstance(scen_npcs, list):
+        archives = [v for v in scen_npcs if isinstance(v, dict)]
+    else:
+        archives = []
+    faction_refs = sorted({
+        _text(npc["id"])
+        for npc in archives
+        if _text(npc.get("id")) and _text(npc.get("faction"))
+        and (not valid_factions or _text(npc["faction"]) in valid_factions)
+    })
+
+    # importance_overrides / world_facts（blocks.world.facts 投影）
+    world = state.get("world")
+    world = world if isinstance(world, dict) else {}
+    facts = world.get("facts")
+    facts = [f for f in facts if isinstance(f, dict)] \
+        if isinstance(facts, list) else []
+    facts.sort(key=lambda f: (_fact_minute(f), _text(f.get("fact_id"))))
+    overrides = {}
+    world_facts = {}
+    for fact in facts:
+        subject = _text(fact.get("subject_ref"))
+        if not subject:
+            continue
+        value = fact.get("value")
+        if fact.get("kind") == FACT_KIND_IMPORTANCE_OVERRIDE \
+                and isinstance(value, (int, float)) and not isinstance(value, bool):
+            overrides[subject] = value       # 后写覆盖先写（facts 已有序）
+        world_facts.setdefault(subject, []).append(_clone(fact))
+
+    # travel_minutes：块内地点 × 队伍地点（同 bands 的范围纪律）
+    bands = state.get("bands")
+    bands = bands if isinstance(bands, dict) else {}
+    party_places = set(_string_list(state.get("party_places")))
+    band_minutes = state.get("band_minutes")
+    band_minutes = band_minutes if isinstance(band_minutes, dict) else {}
+    travel = {}
+    for key in sorted(bands, key=lambda k: (str(k[0]), str(k[1]))
+                      if isinstance(k, tuple) and len(k) == 2 else ("", "")):
+        if not (isinstance(key, tuple) and len(key) == 2):
+            continue
+        here, there = str(key[0]), str(key[1])
+        if here not in party_places:
+            continue
+        band = bands[key]
+        if band == "same":
+            minutes = 0
+        else:
+            slot = RANGE_BAND_TRAVEL_SLOT.get(band) \
+                if isinstance(band, str) else None
+            raw = band_minutes.get(slot) if slot is not None else None
+            minutes = raw if _is_int(raw) and raw >= 0 else None
+        if minutes is None:
+            continue
+        if there not in travel or minutes < travel[there]:
+            travel[there] = minutes
+
+    # laws（§8.1 / V9：逐字段对齐 neura._laws 的消费契约；坏条目跳过）
+    laws = []
+    raw_laws = world_module.get("laws")
+    for law in (raw_laws if isinstance(raw_laws, list) else []):
+        if not isinstance(law, dict) or not _text(law.get("id")):
+            continue
+        laws.append({
+            "id": _text(law.get("id")),
+            "name": _text(law.get("name")),
+            "forbid_tags": _string_list(law.get("forbid_tags")),
+            "scope_place_ids": _string_list(law.get("scope_place_ids")),
+            "threshold": _text(law.get("threshold"), "forbid") or "forbid",
+            "penalty": _text(law.get("penalty")),
+            "source": _text(law.get("source")),
+        })
+
+    return {
+        "known_refs": known_refs,
+        "main_thread_refs": main_thread_refs,
+        "faction_refs": faction_refs,
+        "importance_overrides": overrides,
+        "travel_minutes": travel,
+        "world_facts": world_facts,
+        "laws": laws,
+        "law_source": "world" if laws else "none",
+    }
+
+
+def match_event(event, readonly):
+    """§8.4（V12）事件 → 受影响 npc_id 集（匹配表，纯函数）。
+
+    事件命中某 NPC 当且仅当满足其一（§8.4 匹配语义）：
+    1. `event.place_id` == 该 NPC `location.place_id` 或其 schedule 任一
+       slot 地点；
+    2. `event.subject` / `event.target` 引用该 npc_id、其所属 faction、
+       或其任一 active goal 的 `target_ref`；
+    3. `world.facts` 里有 `kind="faction_event"`、`subject_ref=F` 的条目，
+       且事件 subject/target 引用 F——该势力全体成员命中。
+
+    `readonly`（只读）：`npcs` = neura 运行时块 npcs（dict / list 均收）、
+    `facts` = blocks.world.facts、`factions` = {npc_id: faction}（编排层
+    从静态档案汇出；缺省时规则 2/3 的 faction 分支读运行时块 `faction`
+    字段，通常没有 → 不命中）。**层过滤由编排层完成**：只重判
+    important_far 层候选（near 每 tick 判、background 不值得），判定用
+    `neura.layer_of`——world.py 不 import neura（§9.1 依赖方向）。
+    """
+    event = event if isinstance(event, dict) else {}
+    readonly = readonly if isinstance(readonly, dict) else {}
+    place = _text(event.get("place_id"))
+    refs = set()
+    for key in ("subject", "target"):
+        value = _text(event.get(key))
+        if value:
+            refs.add(value)
+
+    raw_npcs = readonly.get("npcs")
+    if isinstance(raw_npcs, dict):
+        npcs = raw_npcs
+    elif isinstance(raw_npcs, list):
+        npcs = {str(index): npc for index, npc in enumerate(raw_npcs)}
+    else:
+        npcs = {}
+    raw_factions = readonly.get("factions")
+    factions = {str(k): str(v) for k, v in raw_factions.items()
+                if isinstance(k, str) and isinstance(v, str) and v} \
+        if isinstance(raw_factions, dict) else {}
+    faction_event_refs = set()
+    facts = readonly.get("facts")
+    for fact in (facts if isinstance(facts, list) else []):
+        if isinstance(fact, dict) \
+                and fact.get("kind") == FACT_KIND_FACTION_EVENT \
+                and _text(fact.get("subject_ref")):
+            faction_event_refs.add(_text(fact.get("subject_ref")))
+
+    def _faction_of(npc_id, npc):
+        return factions.get(npc_id) or _text(npc.get("faction"))
+
+    matched = []
+    for npc_id, npc in npcs.items():
+        npc_id = str(npc_id)
+        if not npc_id or not isinstance(npc, dict):
+            continue
+        hit = False
+        if place:                                    # 规则 1：地点
+            location = npc.get("location")
+            if isinstance(location, dict) \
+                    and _text(location.get("place_id")) == place:
+                hit = True
+            if not hit:
+                schedule = npc.get("schedule")
+                for slot in (schedule if isinstance(schedule, list) else []):
+                    if isinstance(slot, dict) \
+                            and _text(slot.get("place_id")) == place:
+                        hit = True
+                        break
+        if not hit and refs:                         # 规则 2：引用
+            if npc_id in refs:
+                hit = True
+            else:
+                faction = _faction_of(npc_id, npc)
+                if faction and faction in refs:
+                    hit = True
+                else:
+                    goals = npc.get("goals")
+                    for goal in (goals if isinstance(goals, list) else []):
+                        if isinstance(goal, dict) \
+                                and goal.get("status") == "active" \
+                                and _text(goal.get("target_ref")) in refs:
+                            hit = True
+                            break
+        if not hit and refs and faction_event_refs:  # 规则 3：势力级事件
+            faction = _faction_of(npc_id, npc)
+            if faction and faction in refs and faction in faction_event_refs:
+                hit = True
+        if hit:
+            matched.append(npc_id)
+    return sorted(matched)
+
+
+# ── §8.5 种群初始化（populate：静态档案 → neura 运行时块） ─────────────────
+
+def populate(roster_or_scenario, *, seed, places=None):
+    """§8.5 NPC 种群初始化（纯函数）：静态档案 → neura 运行时块。
+
+    `roster_or_scenario`：worldgen.roster 产物（list[档案]）或剧本数据
+    （带 `npcs` / `threads` 的 dict）。`places`：{npc_id: place_id} 的
+    location / 日程 slot 初值（编排层从档案 / atlas 汇出；未注入的 NPC
+    location 为空地、不出日程 slot——空日程 = 无日程义务，neura 语义安全）。
+
+    返回**新** neura 块（键面照 NEURA-DESIGN §4.2 / `neura.empty_npc` 镜像；
+    world.py 不 import neura）：
+
+    - `importance`：显式覆盖（档案 importance ∈ [0, 1]）优先，否则 P10
+      公式 `0.4×主线 threads + 0.3×faction + 0.3×secret`——主线集由剧本
+      threads 展开同 §8.2 口径，faction / secret 读档案；
+    - `needs`：50 + 确定性抖动 ±10（sha256 种子公式，同 (seed, npc) 逐字节
+      相等）；`need_weights`：role 模板（`ROLE_NEED_WEIGHTS`，未命中等权）；
+    - `schedule`：单个 slot 骨架（tod ∈ [480, 1200) 起点 + 240..720 分钟，
+      §4.2 slot 不跨 0 点；地点取 `places`）；
+    - `secrets`：档案 `secret` 非空 → 单元素表（P10 公式的 secret 输入）。
+
+    不变式（§4.5）：键集 ⊆ 档案 id 集（无 id/name 的档案跳过、不发明
+    NPC；同 id 冲突以先出现者为准）；schedule slot 有序（单 slot 平凡）。
+    """
+    if isinstance(roster_or_scenario, dict):
+        source_scenario = roster_or_scenario
+        raw_archives = roster_or_scenario.get("npcs")
+    else:
+        source_scenario = {}
+        raw_archives = roster_or_scenario
+    archives = [a for a in raw_archives if isinstance(a, dict)] \
+        if isinstance(raw_archives, list) else []
+    places = places if isinstance(places, dict) else {}
+
+    # 主线 thread 参与人（P10 公式第一项；同 projection 的 name→id 口径）
+    name_to_id = {}
+    for npc in archives:
+        if _text(npc.get("id")) and _text(npc.get("name")):
+            name_to_id[_text(npc["name"])] = _text(npc["id"])
+    main_refs = set()
+    threads = source_scenario.get("threads")
+    for thread in (threads if isinstance(threads, list) else []):
+        if not isinstance(thread, dict):
+            continue
+        for ref in _string_list(thread.get("npcs")):
+            main_refs.add(name_to_id.get(ref, ref))
+
+    block = {
+        "version": 1,
+        "schema_version": 1,
+        "campaign_seed": seed if _is_int(seed) else 0,
+        "npcs": {},
+        "journal": [],
+        "budget": {"day": 0, "strong_calls": 0, "light_calls": 0, "tokens": 0},
+    }
+    for npc in archives:
+        npc_id = _text(npc.get("id"))
+        if not npc_id or not _text(npc.get("name")) \
+                or npc_id in block["npcs"]:
+            continue                                 # 不发明 NPC；先到先得
+        faction = _text(npc.get("faction"))
+        secret = _text(npc.get("secret"))
+        role = _text(npc.get("role"))
+        place = _text(places.get(npc_id))
+
+        # importance（P10：显式覆盖优先，否则公式——加法顺序照抄
+        # neura.derive_importance，浮点口径逐位一致）
+        explicit = npc.get("importance")
+        if isinstance(explicit, (int, float)) and not isinstance(explicit, bool) \
+                and 0.0 <= explicit <= 1.0:
+            importance = float(explicit)
+        else:
+            importance = 0.0
+            if npc_id in main_refs:
+                importance += 0.4
+            if faction:
+                importance += 0.3
+            if secret:
+                importance += 0.3
+
+        # needs：50 + 确定性抖动；need_weights：role 模板
+        weights = {key: 1.0 for key in NPC_NEED_KEYS}
+        for keywords, boosted in ROLE_NEED_WEIGHTS:
+            if any(keyword in role for keyword in keywords):
+                for key in boosted:
+                    weights[key] = 1.5
+                break
+        needs = {}
+        for key in NPC_NEED_KEYS:
+            jitter = _npc_hash(seed, npc_id, "need:" + key) \
+                % (2 * NEED_JITTER + 1) - NEED_JITTER
+            needs[key] = min(100, max(0, NEED_DEFAULT + jitter))
+
+        # 日程骨架：有地点才出 slot（tod 起点 ∈ [480, 1200)，时长
+        # 240..720 分钟；§4.2 slot 不跨 0 点）
+        schedule = []
+        if place:
+            start = 480 + _npc_hash(seed, npc_id, "slot:start") % 720
+            span = 240 + _npc_hash(seed, npc_id, "slot:span") % 481
+            schedule.append({"from_tod_minute": start,
+                             "to_tod_minute": min(1440, start + span),
+                             "place_id": place})
+
+        block["npcs"][npc_id] = {
+            "display_ref": {"scenario_id": _text(
+                (source_scenario.get("meta") or {}).get("scenario_id")
+                if isinstance(source_scenario.get("meta"), dict) else ""),
+                "npc_id": npc_id},
+            "importance": importance,
+            "abilities": {key: None for key in NPC_ABILITY_KEYS},
+            "needs": needs,
+            "need_weights": weights,
+            "goals": [],
+            "schedule": schedule,
+            "location": {"place_id": place, "since_minute": 0,
+                         "band_to_party": "same"},
+            "relations": {},
+            "knowledge": [],
+            "secrets": [secret] if secret else [],
+            "memory": [],
+            "resources": {"coin": 0, "stock": {}, "obligations": []},
+            "last_tick_minute": 0,
+        }
+    return block

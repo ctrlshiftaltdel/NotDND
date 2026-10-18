@@ -1050,6 +1050,333 @@ def test_maintenance_funds_chain_project_linkage():
 
 
 
+# ── W7：NEURA 挂接（§8：投影 / 匹配表 / 种群初始化；Issue #394） ───────────
+
+
+def _w7_scenario():
+    """§8.2 投影夹具：剧本 threads（参与人是名字）+ 档案（name→id / faction）。"""
+    return {
+        "npcs": [
+            {"id": "npc-01", "name": "伊蕾芙", "faction": "守冠庭"},
+            {"id": "npc-02", "name": "涅朵婆婆", "faction": ""},
+            {"id": "npc-03", "name": "卡霖", "faction": "叛军"},
+        ],
+        "threads": [
+            {"id": "C-01", "npcs": ["伊蕾芙", "涅朵婆婆", "流浪者"]},
+            {"id": "C-02", "npcs": ["卡霖"]},
+        ],
+    }
+
+
+def _w7_world_block(facts=None):
+    block = world.new_block(day=0)
+    for fact in facts or []:
+        block["facts"].append(fact)
+    return block
+
+
+def test_w7_projection_default_keys_empty():
+    """§8.2：无数据 → 全部缺省键（M11 空键口径逐字段一致）。"""
+    out = world.projection({})
+    assert out == {
+        "known_refs": [], "main_thread_refs": [], "faction_refs": [],
+        "importance_overrides": {}, "travel_minutes": {}, "world_facts": {},
+        "laws": [], "law_source": "none",
+    }
+    # 脏输入不抛错：非 dict / 非法形状一律按缺省。
+    assert world.projection(None)["known_refs"] == []
+    assert world.projection({"scenario": 3, "world": "x", "bands": [1],
+                             "npcs": "bad"})["main_thread_refs"] == []
+
+
+def test_w7_projection_known_refs_p10():
+    """§8.2 + P10：known_refs 来自已知线索表；无数据 = 空表（不降级全集）。"""
+    assert world.projection({"known_clues": ["C-02", "C-01", "C-01", ""]})[
+        "known_refs"] == ["C-01", "C-02"]
+    assert world.projection({})["known_refs"] == []
+    # 剧本给了一堆线索也没用：P10 拍板不实现「全集降级」。
+    assert world.projection({"scenario": _w7_scenario()})["known_refs"] == []
+
+
+def test_w7_projection_main_thread_refs():
+    """§8.2：主线 thread 参与人展开；thread.npcs 的名字经档案映射成 npc_id。"""
+    out = world.projection({"scenario": _w7_scenario()})
+    # 「伊蕾芙」→ npc-01、「涅朵婆婆」→ npc-02、「卡霖」→ npc-03；
+    # 「流浪者」档案里没有 → 原样保留（可能是 id 或待补档案）；
+    # 字典序排序 + 去重。
+    assert out["main_thread_refs"] == \
+        ["npc-01", "npc-02", "npc-03", "流浪者"]
+    # 无 threads 的剧本 → 空。
+    assert world.projection({"scenario": {"npcs": _w7_scenario()["npcs"]}})[
+        "main_thread_refs"] == []
+
+
+def test_w7_projection_faction_refs():
+    """§8.2：faction_refs = 有 faction 归属的 npc_id 集；world_module.factions
+    给了就按其 id / name 校准。"""
+    scenario = _w7_scenario()
+    # 没给 world_module：档案 faction 非空即算。
+    out = world.projection({"scenario": scenario})
+    assert out["faction_refs"] == ["npc-01", "npc-03"]
+    # world_module.factions 只认「守冠庭」→ 叛军被校准掉。
+    module = {"factions": [{"id": "faction-01", "name": "守冠庭"}]}
+    out = world.projection({"scenario": scenario, "world_module": module})
+    assert out["faction_refs"] == ["npc-01"]
+    # world_module 存在但 factions 缺失 → 宽松口径（faction 非空即算）。
+    out = world.projection({"scenario": scenario, "world_module": {}})
+    assert out["faction_refs"] == ["npc-01", "npc-03"]
+
+
+def test_w7_projection_overrides_and_facts():
+    """§8.2：importance 覆盖表（后写覆盖先写）+ world_facts 按 subject 分组。"""
+    block = _w7_world_block(facts=[
+        {"fact_id": "f-2", "minute": 5, "kind": "importance_override",
+         "subject_ref": "npc-01", "text": "", "value": 0.1},
+        {"fact_id": "f-1", "minute": 5, "kind": "importance_override",
+         "subject_ref": "npc-01", "text": "", "value": 0.9},
+        {"fact_id": "f-3", "minute": 1, "kind": "grain_fire",
+         "subject_ref": "place-a", "text": "粮仓失火"},
+        {"fact_id": "f-4", "minute": 2, "kind": "importance_override",
+         "subject_ref": "npc-02", "text": "", "value": 0},
+    ])
+    out = world.projection({"world": block})
+    assert out["importance_overrides"] == {"npc-01": 0.1, "npc-02": 0}
+    assert [f["fact_id"] for f in out["world_facts"]["place-a"]] == ["f-3"]
+    assert [f["fact_id"] for f in out["world_facts"]["npc-01"]] == ["f-1", "f-2"]
+
+
+def test_w7_projection_travel_minutes():
+    """§8.2：travel_minutes 只对「块内地点 × 队伍地点」求值；档位→分钟表由
+    调用方注入（BAND_MINUTES 口径）；同目的地取最小；缺表 = 空键。"""
+    band_minutes = {"short": 360, "medium": 720, "long": 1440,
+                    "dangerous": 1440}
+    state = {
+        "party_places": ["market"],
+        "bands": {("market", "gate"): "adjacent", ("market", "temple"): "near",
+                  ("market", "docks"): "far", ("market", "market"): "same",
+                  ("gate", "temple"): "far",   # 出发点不是队伍地点：不投影
+                  ("market", "ruins"): "far"},
+        "band_minutes": band_minutes,
+    }
+    out = world.projection(state)
+    assert out["travel_minutes"] == {"gate": 360, "temple": 720,
+                                     "docks": 1440, "market": 0,
+                                     "ruins": 1440}
+    # 缺 band_minutes：非 same 的档位全拿不到分钟 → 只剩 same 的 0。
+    out = world.projection({key: state[key] for key in
+                            ("party_places", "bands")})
+    assert out["travel_minutes"] == {"market": 0}
+    # 同目的地多队伍地点 → 取最小（不夸大可达性）。
+    out = world.projection({
+        "party_places": ["market", "docks"],
+        "bands": {("market", "gate"): "adjacent", ("docks", "gate"): "far"},
+        "band_minutes": band_minutes,
+    })
+    assert out["travel_minutes"] == {"gate": 360}
+
+
+def test_w7_projection_laws_and_source():
+    """§8.1（V9）：laws 逐字段对齐 neura 消费契约；无 laws → law_source=none。"""
+    module = {"laws": [
+        {"id": "law-01", "name": "禁武令", "forbid_tags": ["武器"],
+         "scope_place_ids": ["place-a"], "threshold": "tolerate",
+         "penalty": "没收", "source": "docs/system/x.md:1", "extra": "多余键剔除"},
+        {"id": "", "name": "坏条目"},                # 无 id：跳过
+        "不是对象",                                    # 非 dict：跳过
+        {"id": "law-02", "name": "宵禁", "threshold": "forbid"},
+    ]}
+    out = world.projection({"world_module": module})
+    assert out["law_source"] == "world"
+    assert out["laws"] == [
+        {"id": "law-01", "name": "禁武令", "forbid_tags": ["武器"],
+         "scope_place_ids": ["place-a"], "threshold": "tolerate",
+         "penalty": "没收", "source": "docs/system/x.md:1"},
+        {"id": "law-02", "name": "宵禁", "forbid_tags": [],
+         "scope_place_ids": [], "threshold": "forbid",
+         "penalty": "", "source": ""},
+    ]
+    assert world.projection({"world_module": {"laws": []}})["law_source"] == "none"
+    assert world.projection({})["laws"] == []
+
+
+def test_w7_projection_is_pure():
+    """§8.2：投影不改写入参、同输入重跑逐字节相等。"""
+    scenario = _w7_scenario()
+    block = _w7_world_block(facts=[
+        {"fact_id": "f-1", "minute": 0, "kind": "importance_override",
+         "subject_ref": "npc-01", "text": "", "value": 0.5}])
+    state = {"known_clues": ["C-01"], "scenario": scenario, "world": block}
+    snapshot = _dumps(state)
+    first = _dumps(world.projection(state))
+    assert first == _dumps(world.projection(state))
+    assert snapshot == _dumps(state), "投影不得改写 session_state"
+    # bands（tuple 键，JSON 不可序列化）同样不被改写。
+    bands = {("market", "gate"): "adjacent"}
+    snapshot_bands = dict(bands)
+    world.projection({"bands": bands, "party_places": ["market"],
+                      "band_minutes": {"short": 360}})
+    assert bands == snapshot_bands
+
+
+def test_w7_match_event_rules():
+    """§8.4 匹配表三条规则逐条断言（含层过滤归编排层的边界）。"""
+    def _npc(npc_id, place, *, slot_place=None, goals=None, faction=None):
+        npc = {"location": {"place_id": place}}
+        if slot_place:
+            npc["schedule"] = [{"place_id": slot_place,
+                                "from_tod_minute": 0, "to_tod_minute": 1}]
+        if goals:
+            npc["goals"] = goals
+        if faction:
+            npc["faction"] = faction
+        return npc
+
+    npcs = {
+        "npc-a": _npc("npc-a", "gate"),
+        "npc-b": _npc("npc-b", "temple", slot_place="forge"),
+        "npc-c": _npc("npc-c", "temple",
+                      goals=[{"goal_id": "g1", "target_ref": "obj-x",
+                              "status": "active"},
+                             {"goal_id": "g2", "target_ref": "obj-y",
+                              "status": "done"}]),
+        "npc-d": _npc("npc-d", "temple", faction="守冠庭"),
+    }
+    readonly = {"npcs": npcs, "facts": [], "factions": {"npc-d": "守冠庭"}}
+
+    # 规则 0：空事件 / 无命中 → 空。
+    assert world.match_event({}, readonly) == []
+    assert world.match_event({"place_id": "nowhere"}, readonly) == []
+
+    # 规则 1a：地点 == location.place_id。
+    assert world.match_event({"place_id": "gate"}, readonly) == ["npc-a"]
+    # 规则 1b：地点 == schedule slot 地点（npc-b 的 location 在 temple、
+    # slot 在 forge；forge 只命中 slot 分支）。
+    assert world.match_event({"place_id": "forge"}, readonly) == ["npc-b"]
+
+    # 规则 2a：subject/target 引用 npc_id。
+    assert world.match_event({"target": "npc-c"}, readonly) == ["npc-c"]
+    # 规则 2b：引用所属 faction（factions 表）。
+    assert world.match_event({"subject": "守冠庭"}, readonly) == ["npc-d"]
+    # 规则 2c：引用 active goal 的 target_ref（done 的不算）。
+    assert world.match_event({"target": "obj-x"}, readonly) == ["npc-c"]
+    assert world.match_event({"target": "obj-y"}, readonly) == []
+
+    # 规则 3：facts 标记势力级事件 → 全体成员命中。
+    readonly_f = dict(readonly, facts=[
+        {"fact_id": "f-1", "minute": 0, "kind": "faction_event",
+         "subject_ref": "守冠庭", "text": ""}])
+    assert world.match_event({"target": "守冠庭"}, readonly_f) == ["npc-d"]
+    # 没有 facts 标记时同样的引用不触发规则 3（规则 2b 仍命中单个成员）。
+    assert world.match_event({"target": "守冠庭"}, readonly) == ["npc-d"]
+
+    # 命中多 NPC → 排序去重；factions 表缺 faction 分支读运行时 faction 字段。
+    out = world.match_event({"place_id": "temple"}, readonly)
+    assert out == ["npc-b", "npc-c", "npc-d"]
+    readonly_nf = {"npcs": npcs, "facts": []}      # 无 factions 表
+    assert world.match_event({"subject": "守冠庭"}, readonly_nf) == ["npc-d"]
+
+
+def test_w7_match_event_then_register_rejudge_budget():
+    """§8.4 / 10.2 断言 2.9：match_event → register_rejudge；同 NPC 同日
+    第 5 次不再注入；跨日归零。"""
+    npcs = {"npc-a": {"location": {"place_id": "gate"}}}
+    block = world.new_block(day=0)
+    for _ in range(4):
+        matched = world.match_event({"place_id": "gate"}, {"npcs": npcs})
+        block, injected = world.register_rejudge(block, matched, day=3)
+        assert injected == ["npc-a"]
+    assert block["rejudge"] == {"day": 3, "counts": {"npc-a": 4}}
+    # 第 5 次：预算内不注入（不报错）。
+    block, injected = world.register_rejudge(
+        block, world.match_event({"place_id": "gate"}, {"npcs": npcs}), day=3)
+    assert injected == []
+    # 跨日归零（world_tick 收尾同口径）。
+    block, injected = world.register_rejudge(
+        block, world.match_event({"place_id": "gate"}, {"npcs": npcs}), day=4)
+    assert injected == ["npc-a"]
+    assert block["rejudge"] == {"day": 4, "counts": {"npc-a": 1}}
+
+
+def test_w7_populate_deterministic_and_shape():
+    """§8.5：同 (spec, seed) 逐字节相等；键面镜像 neura 块；P10 importance。"""
+    scenario = {
+        "meta": {"campaign": "测试"},
+        "npcs": [
+            {"id": "npc-01", "name": "伊蕾芙", "role": "谷中领主",
+             "faction": "守冠庭", "secret": "她写过退位书", "importance": 0.2},
+            {"id": "npc-02", "name": "涅朵婆婆", "role": "屠户"},
+            {"id": "npc-03", "name": "卡霖", "role": "守烬人卫兵",
+             "faction": "叛军"},
+            {"id": "", "name": "无 id 的坏档案"},
+            {"id": "npc-05", "name": ""},
+        ],
+        "threads": [{"id": "C-01", "npcs": ["伊蕾芙"]}],
+    }
+    places = {"npc-01": "place-a", "npc-03": "place-b"}
+    a = world.populate(scenario, seed=42, places=places)
+    b = world.populate(scenario, seed=42, places=places)
+    assert _dumps(a) == _dumps(b), "同 (spec, seed) 必须逐字节相等"
+    assert set(a["npcs"]) == {"npc-01", "npc-02", "npc-03"}  # 不发明 NPC
+    assert a["version"] == 1 and a["schema_version"] == 1
+    assert a["journal"] == []
+    assert a["budget"] == {"day": 0, "strong_calls": 0, "light_calls": 0,
+                           "tokens": 0}
+
+    # P10：显式覆盖优先；公式 0.4×threads + 0.3×faction + 0.3×secret。
+    assert a["npcs"]["npc-01"]["importance"] == 0.2
+    assert a["npcs"]["npc-02"]["importance"] == 0.0
+    assert a["npcs"]["npc-03"]["importance"] == 0.3   # faction 有、secret 无
+
+    # needs：中位数 50 ± 10 确定性抖动；键面六键。
+    for npc_id, npc in a["npcs"].items():
+        assert set(npc["needs"]) == {"safety", "wealth", "power", "relation",
+                                     "duty", "curiosity"}
+        for value in npc["needs"].values():
+            assert 40 <= value <= 60
+    # role 模板：卫兵类 → safety/duty 加重。
+    assert a["npcs"]["npc-03"]["need_weights"]["safety"] == 1.5
+    assert a["npcs"]["npc-03"]["need_weights"]["duty"] == 1.5
+    assert a["npcs"]["npc-02"]["need_weights"]["safety"] == 1.0
+
+    # 地点 / 日程：注入 places 的 NPC 有 location 与单个 slot；没有的为空。
+    assert a["npcs"]["npc-01"]["location"]["place_id"] == "place-a"
+    slot = a["npcs"]["npc-01"]["schedule"][0]
+    assert slot["place_id"] == "place-a"
+    assert 480 <= slot["from_tod_minute"] < 1200
+    assert slot["from_tod_minute"] < slot["to_tod_minute"] <= 1440
+    assert a["npcs"]["npc-02"]["schedule"] == []
+    assert a["npcs"]["npc-02"]["location"]["place_id"] == ""
+
+    # secrets：档案 secret 非空 → 单元素表。
+    assert a["npcs"]["npc-01"]["secrets"] == ["她写过退位书"]
+    assert a["npcs"]["npc-02"]["secrets"] == []
+
+    # 换 seed → needs 抖动不同（确定性来源换了）；同 seed 重跑仍逐字节相等。
+    c = world.populate(scenario, seed=43, places=places)
+    assert _dumps(c) != _dumps(a)
+    # 兼容性：产物能过 neura.migrate_block（键面是 neura 认识的）。
+    import neura  # noqa: E402 — 测试内局部 import（仅兼容性断言用）
+    migrated = neura.migrate_block(a)
+    assert set(migrated["npcs"]) == set(a["npcs"])
+    assert migrated["npcs"]["npc-01"]["importance"] == 0.2
+    assert migrated["npcs"]["npc-01"]["needs"] == a["npcs"]["npc-01"]["needs"]
+
+
+def test_w7_populate_roster_list_and_purity():
+    """§8.5：worldgen.roster 产物（list）也能初始化；不改写入参。"""
+    spec = worldgen.normalize_spec({"world_type": "fantasy", "scale": "sketch"})
+    roster = worldgen.roster(spec, 42, factions=["faction-01", "faction-02"])
+    snapshot = _dumps(roster)
+    block = world.populate(roster, seed=42)
+    assert set(block["npcs"]) == {npc["id"] for npc in roster}
+    # roster 的 faction 是字符串 → P10 公式的 faction 项生效；sketch 档
+    # secrets_required 使首个档案带 secret → faction + secret = 0.6。
+    assert block["npcs"][roster[0]["id"]]["importance"] == 0.6
+    assert snapshot == _dumps(roster), "populate 不得改写档案"
+    # 无 threads 的 list 来源 → 主线项 0；同 (spec, seed) 逐字节相等。
+    assert _dumps(block) == _dumps(world.populate(roster, seed=42))
+
+
 def main():
     checks = [value for name, value in sorted(globals().items())
               if name.startswith("test_") and callable(value)]
