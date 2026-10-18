@@ -5856,6 +5856,175 @@ def check_neura_empty_block_writes_nothing():
         notdnd_web._sessions.pop(sid, None)
 
 
+# --------------------------------------------------------------------------
+# guide.npc_at 严格双写（D4，NEURA-DESIGN §12.1 / §4.4，Issue #372）
+#
+# P6 落地补全：neura 权威移动 → `guide.npc_at` 随**同一条** `neura.tick`
+# 提交落盘（changes 双块，A0 不单开事件）；无移动 / 位置未变 / 移动提交
+# 失败不产生 guide 块变更（防噪音、N5 裁定 13 延伸）；重放后
+# `blocks.guide.npc_at` 与 live 相等。`prism_guide.py` / `neura.py` 零改动。
+# --------------------------------------------------------------------------
+
+
+def _neura_tick_events(session) -> list:
+    """本局全部 `neura.tick` 事件（按 seq 升序）。"""
+    handle = session._handle or session._open_handle()
+    return [e for e in handle.events_since(0)
+            if e["type"] == notdnd_web.NEURA_TICK_EVENT_TYPE]
+
+
+def check_neura_npc_at_dual_write_same_event():
+    """D4 验收 1：NPC 移动提交后，**同一条** `neura.tick` 事件的 changes
+    同时含 neura 与 guide 块变更，且 `guide.npc_at[npc_id] == 新 place_id`
+    （live 与落盘一致——§12.1：不得只写一侧）。"""
+    sid = "neura-d4-dual"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-d4-seed-0001")
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok" and out["world_minute"] == 10, out
+
+        tick_events = _neura_tick_events(session)
+        assert len(tick_events) == 1, tick_events
+        blocks_changed = [c["block"] for c in tick_events[0]["changes"]]
+        assert blocks_changed == ["neura", "guide"], blocks_changed
+        guide_change = tick_events[0]["changes"][1]
+        assert guide_change["op"] == "replace_block", guide_change
+        assert guide_change["after"]["npc_at"]["npc-guard"] == "gate", \
+            guide_change["after"]
+        # live 侧同提交更新（不得只写落盘一侧）
+        assert session.guide["npc_at"]["npc-guard"] == "gate", session.guide
+        # 状态层（checkpoint 前的块视图）也一致
+        handle = session._handle or session._open_handle()
+        saved_guide = (handle.view().get("blocks") or {}).get("guide") or {}
+        assert saved_guide.get("npc_at") == {"npc-guard": "gate"}, saved_guide
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_npc_at_no_move_no_guide_change():
+    """D4 验收 2：无移动 / 位置未变的 tick → changes 不含 guide 块（防噪音）。"""
+    sid = "neura-d4-noise"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        # 已在岗（place == slot_place）：日程义务不触发移动，无移动提交
+        block["npcs"]["npc-stay"] = _neura_mover_npc(
+            npc_id="npc-stay", place="gate", slot_place="gate")
+        _neura_seed_block(session, block, "neura-d4-seed-0002")
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok" and out["world_minute"] == 10, out
+        tick_events = _neura_tick_events(session)
+        assert len(tick_events) == 1, tick_events
+        blocks_changed = [c["block"] for c in tick_events[0]["changes"]]
+        assert blocks_changed == ["neura"], blocks_changed
+        assert session.guide.get("npc_at") == {}, session.guide
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_npc_at_idempotent_recommit():
+    """D4 验收 3：幂等——同一分钟再推进 → 事件数不变、npc_at 不重复变。"""
+    sid = "neura-d4-idem"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-d4-seed-0003")
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok", out
+        handle = session._handle or session._open_handle()
+        before_events = handle.events_since(0)
+        at_before = dict(session.guide["npc_at"])
+
+        out2 = notdnd_web._chron_advance(session, 10)
+        assert out2["status"] == "ok" and out2["world_minute"] == 10, out2
+        assert out2["events"] == [], out2
+        after_events = handle.events_since(0)
+        assert len(after_events) == len(before_events), "不得新增事件"
+        assert [e["event_id"] for e in after_events] == \
+            [e["event_id"] for e in before_events]
+        assert session.guide["npc_at"] == at_before, session.guide
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_npc_at_move_failed_not_written():
+    """D4 验收 5：移动提交没成功（这里是 `unsupported`：行动表被清空，
+    与 `conflict` / `rejected` 走同一「非 committed 不写」分支）→
+    `npc_at` 不变，tick 事件 changes 不含 guide 块。"""
+    sid = "neura-d4-fail"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-d4-seed-0004")
+
+        # 行动表清空 → `move` 找不到条目 → `_neura_submit` 前置守卫拒绝
+        session.rules["scene"]["actions"] = []
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok" and out["world_minute"] == 10, out
+        tick_events = _neura_tick_events(session)
+        assert len(tick_events) == 1, tick_events
+        blocks_changed = [c["block"] for c in tick_events[0]["changes"]]
+        assert blocks_changed == ["neura"], blocks_changed
+        # npc_at 不写（移动提交没成功；neura 块 write_back 的前移照旧——
+        # N7 现状，neura.py 一行不动，下个 tick 收敛时再双写）
+        assert session.guide.get("npc_at") == {}, session.guide
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_npc_at_replay_matches_live():
+    """D4 验收 4（§10.1 出口 2.1/2.2 的自然扩展）：重启后 `replay` 重建的
+    `blocks.guide.npc_at` 必须与 live 相等。"""
+    sid = "neura-d4-replay"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-d4-seed-0005")
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok" and out["world_minute"] == 10, out
+        assert session.guide["npc_at"] == {"npc-guard": "gate"}, session.guide
+        session.save()
+
+        # 「重启」：丢缓存走真实读盘，live 从检查点还原
+        notdnd_web._sessions.pop(sid, None)
+        revived = notdnd_web.Session.load(sid)
+        assert revived.guide["npc_at"] == {"npc-guard": "gate"}, revived.guide
+        # 纯事件重放：guide 块随事件落盘后必须与 live 相等
+        handle = revived._handle or revived._open_handle()
+        replayed = handle.replay()
+        replay_guide = replayed["blocks"].get("guide") or {}
+        assert replay_guide.get("npc_at") == revived.guide["npc_at"], \
+            (replay_guide, revived.guide)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 
 # --------------------------------------------------------------------------
 # 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
@@ -6701,6 +6870,11 @@ CHECKS = (
     check_neura_concurrent_advance_no_duplicate_events,
     check_neura_restart_replay_identical,
     check_neura_empty_block_writes_nothing,
+    check_neura_npc_at_dual_write_same_event,
+    check_neura_npc_at_no_move_no_guide_change,
+    check_neura_npc_at_idempotent_recommit,
+    check_neura_npc_at_move_failed_not_written,
+    check_neura_npc_at_replay_matches_live,
     check_api_state_view,
     check_api_events_incremental,
     check_api_events_across_archives,
