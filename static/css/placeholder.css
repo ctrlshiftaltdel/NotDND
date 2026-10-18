@@ -37,3 +37,64 @@
   margin: 0 var(--sp-2) 0 0;
 }
 .unit-head > .ph ~ .unit-name { flex: 1 1 auto; }
+
+/* ── W4 · 主题化占位母题（`UI-WORLD-THEMES.md` §11 W4 / §4.4）──────
+   世界主题令牌层（W1）早就定义了 `--wt-motif*` / `--wt-edge`，但一直没有
+   取用点。这里给 `figure.ph` 接上这两项，**只动占位符这一处**：
+
+     1. `--wt-motif` → `background-image`，叠在 `background: var(--bg-2)`
+        **之上**（背景图层本来就画在背景色上），重复尺寸交给
+        `--wt-motif-size`。不碰 `--bg-*` / `--line`，也不改位名 / 位 id。
+     2. `--wt-edge` → `::before` **叠加层**（内缘一道主题装饰线）。
+        `.ph` 自己的 `border: 1px solid var(--line)` 与
+        `border-radius: var(--r)` 原样保留——**绝不**写成 `border: var(--wt-edge)`。
+
+   **零回归**：现代与奇幻的 `--wt-motif: none` / `--wt-edge: none` 下，
+   这里分别得到「`background-image: none`」与「`::before` 不生成」
+   ——计算样式与改动前逐项相同（W4 用例会逐项对照）。
+
+   **为什么有一行 `data-world` 映射**：`--wt-edge` 是**关键字**令牌
+   （`none` / `orbit`，§4.4），CSS 不能按字符串分支；把关键字直接喂给
+   `border` / `content` 又会让整条声明失效。于是由主题层已经写在 `html` 上的
+   `data-world` 把关键字翻成「叠加层存不存在」。映射只此一处，且 W4 用例
+   每次都核对「`--wt-edge` 取值 ↔ 叠加层是否存在」一致——只改令牌不改映射，
+   测试即红（不会静默漂移）。 */
+
+/* 母题层：`none` 时与改动前的 `background-image: none` 同值。 */
+.ph {
+  background-image: var(--wt-motif);
+  background-size: var(--wt-motif-size);
+}
+
+/* 角切 / 弧线叠加层：默认**不生成**（`content: none`）→ 零视觉差异。
+   真生成时也不进布局：绝对定位 + `pointer-events: none`，
+   不改 `.ph` 自己的边框 / 圆角 / 触控目标，也不吃焦点环。 */
+.ph::before {
+  content: none;
+  position: absolute;
+  inset: 0;
+  align-self: stretch;
+  justify-self: stretch;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* 未来主题的 `--wt-edge: orbit`：内缘左上角一段轨道线（横向淡出 + 短竖线），
+   纯渐变、不用图片；墨色取 `--accent` 的 55%，不改任何语义色。 */
+:root[data-world="future"] .ph::before {
+  content: "";
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--accent) 55%, transparent),
+      transparent) 0 0 / 38% 1px no-repeat,
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--accent) 55%, transparent),
+      transparent) 0 0 / 1px 38% no-repeat;
+}
+
+/* 窄屏（≤640px）母题退化：关掉背景图案（小尺寸里 5px / 12px 的重复线只会变噪点）。
+   边框、圆角、位名、位 id 与高度塌缩全部不变；1px 内缘轨道线保留
+   ——它不吃触控目标、不影响任何文本对比度（§4.4 的两条禁止项）。 */
+@media (max-width: 640px) {
+  .ph { background-image: none; }
+}
