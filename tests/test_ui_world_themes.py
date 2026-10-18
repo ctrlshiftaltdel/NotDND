@@ -846,13 +846,16 @@ def _check_wiring(page):
     check("从设置退回列表再进末局（未绑定老档）", back is True, "未回到主画面")
 
     # 主题重投影：换一个 world_type 再走一遍 applyState，叙事 / 滚动 / 焦点都不动。
+    # 先关掉「自动置底」——它是既有设置，applyState 末尾本来就会滚到最新一段，
+    # 与主题投影无关；关掉它，「主题这一步不动滚动」才量得准。
+    page.js("window.SETTINGS.autoScroll = false; return 1;")
     page.js(
         "const sc = document.getElementById('playScroll');"
         "sc.scrollTop = Math.round((sc.scrollHeight - sc.clientHeight) / 2);"
         "window.__w2mark = document.querySelector('#stream .msg');"
         "const ta = document.getElementById('turnInput'); if (ta) ta.focus();"
         "window.__w2.focusWatch(); return 1;")
-    time.sleep(0.2)
+    time.sleep(0.3)
     before = page.js("return window.__w2.state();")
     settings_before = page.js("return localStorage.getItem('prism.settings');")
     applied = page.js(
@@ -870,7 +873,7 @@ def _check_wiring(page):
     check("主题重投影没有重画叙事（DOM 节点仍是同一批）",
           kept_node is True and after["count"] == before["count"],
           "节点保留=%r 条数=%r→%r" % (kept_node, before["count"], after["count"]))
-    check("主题重投影没有丢滚动位置",
+    check("主题重投影没有丢滚动位置（关闭自动置底后逐像素比对）",
           after["scrollTop"] == before["scrollTop"] and after["scrollTop"] > 0,
           "scrollTop=%r→%r（max=%r）"
           % (before["scrollTop"], after["scrollTop"], after["scrollMax"]))
