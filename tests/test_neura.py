@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""neura 内核（M11-N1 骨架 + M11-N2 硬约束 + N3 评分 + N4 知识边界）回归测试。
+"""neura 内核（M11-N1 骨架 + M11-N2 硬约束 + N3 评分 + N4 知识边界 + N5 分层模拟）
+回归测试。
 
 逐条覆盖 `Issue #339`（N1）与 `Issue #348`（N2）的验收清单：
 
@@ -46,6 +47,18 @@ N4（`Issue #357`）：
 - 修正链：旧 claim `status="disproved"` + `superseded_by`，`resolve_claim(旧 id)` 仍可解析；
 - `select_context` 输出不含其他 NPC 的 `proposition`、不含 `secrets[].proposition`；
 - `neura.py` 里 role 键字面量只出现一次（唯一拼 `messages` 处的源码断言）。
+
+N5（`Issue #361`）：
+
+- 四层判定按 §7.1 短路顺序；玩家走远一步 → 同一 tick 内可见降层；
+- 日预算公式 `4000*h + 1200*m ≤ 60000`（P4 反解 `h ≤ 6`、`m ≤ 30`）；
+  跨日（`day` 变化）计数归零；
+- 80% / 100% 两档降级各一条断言；降级单调不回弹；
+- `catch_up` 上限 `MAX_CATCHUP_STEPS = 8`；超出记 `catchup_deferred`；
+  所有到期计划都被收敛（断言终态）；幂等重跑不重复记账；
+- 无 AI 配置下仍产生日程移动提案（≥ 1 条 / 日 / 有日程 NPC）；
+- 单 tick 突发上限 ≤ 1 次 H、≤ 3 次 M；
+- `tick` 不返回事件、不改入参；假 `port` 的提交键与 `idempotency_key` 一致。
 
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_neura.py` 运行。
 """
@@ -1713,6 +1726,514 @@ def check_role_literal_appears_once():
     assert '"role":' in source[start:end]
 
 
+# --------------------------------------------------------------------------
+# §7 / §8 / §11 N5：分层模拟 + 每日预算 + 降级阶梯 + 补算（M11-N5）
+# --------------------------------------------------------------------------
+
+class _FakePort:
+    """记录型假 port（依赖注入）：submit 必须实现；generate_candidates 可选。"""
+
+    def __init__(self, ai_options=None):
+        self.submits = []
+        self.ai_calls = []
+        self._ai_options = list(ai_options or [])
+
+    def submit(self, proposal, idempotency_key=None):
+        self.submits.append({"proposal": proposal, "key": idempotency_key})
+        return {"status": "committed"}
+
+    def generate_candidates(self, npc, view, budget=None):
+        self.ai_calls.append(
+            {"npc_id": npc.get("display_ref", {}).get("npc_id")})
+        return [dict(item) for item in self._ai_options]
+
+
+class _SubmitOnlyPort:
+    """无 AI 配置的最小 port：没有 `generate_candidates` 属性（§8.4 正常路径）。"""
+
+    def __init__(self):
+        self.submits = []
+
+    def submit(self, proposal, idempotency_key=None):
+        self.submits.append({"proposal": proposal, "key": idempotency_key})
+        return {"status": "committed"}
+
+
+def _n5_npc(npc_id="npc-01", place="gate", importance=0.0, schedule=None,
+            plan=None, goals=None, secrets=None):
+    npc = neura.empty_npc(npc_id, "sc-01")
+    npc["location"]["place_id"] = place
+    npc["importance"] = importance
+    if schedule is not None:
+        npc["schedule"] = list(schedule)
+    if plan is not None:
+        npc["plan"] = dict(plan)
+    if goals is not None:
+        npc["goals"] = list(goals)
+    if secrets is not None:
+        npc["secrets"] = list(secrets)
+    return npc
+
+
+def _n5_block(npcs):
+    block = neura.empty_block()
+    for npc in npcs:
+        block["npcs"][npc["display_ref"]["npc_id"]] = npc
+    return block
+
+
+def check_n5_constants():
+    """P4 / P5 / §7.2 / §7.4 / §8.2 / P10 的常量逐字对齐。"""
+    assert neura.NPC_DAILY_TOKEN_BUDGET == 60000
+    assert neura.IMPORTANCE_THRESHOLD == 0.7
+    assert neura.MAX_CATCHUP_STEPS == 8
+    assert neura.CATCHUP_GRID_MINUTES == 10
+    assert neura.BUDGET_WARN_RATIO == 0.8
+    assert neura.DEGRADE_TIERS == ("L0", "L1", "L2", "L3")
+    assert neura.BURST_LIMITS == {"strong": 1, "light": 3}
+    assert neura.CALL_KIND_TOKENS == {"strong": 4000, "light": 1200, "rule": 0}
+    # P4 反解：h ≤ 6、m ≤ 30，且 4000*h + 1200*m ≤ 60000。
+    assert neura.STRONG_CALLS_PER_DAY == 6
+    assert neura.LIGHT_CALLS_PER_DAY == 30
+    assert 4000 * neura.STRONG_CALLS_PER_DAY + \
+        1200 * neura.LIGHT_CALLS_PER_DAY == 60000
+    assert 4000 * neura.STRONG_CALLS_PER_DAY + \
+        1200 * neura.LIGHT_CALLS_PER_DAY <= neura.NPC_DAILY_TOKEN_BUDGET
+    # P10：三个权重写成常量。
+    assert (neura.IMPORTANCE_WEIGHT_THREADS, neura.IMPORTANCE_WEIGHT_FACTION,
+            neura.IMPORTANCE_WEIGHT_SECRET) == (0.4, 0.3, 0.3)
+
+
+def check_layer_of_short_circuit():
+    """§7.1 四层判定按短路顺序；未具名条目归 unexplored。"""
+    view = _view()     # party_places=["market"]；bands (gate,market)=adjacent
+
+    # near：place ∈ party_places。
+    assert neura.layer_of(_n5_npc(place="market"), view) == "near"
+    # near：band adjacent 直通，且优先于重要性判定（短路顺序）。
+    assert neura.layer_of(_n5_npc(place="gate", importance=1.0), view) == "near"
+    # important_far：importance ≥ 0.7（P5）。
+    far_view = _view()
+    far_view["bands"] = {}
+    assert neura.layer_of(
+        _n5_npc(place="temple", importance=0.9), far_view) == "important_far"
+    # background：其余已具名 NPC。
+    assert neura.layer_of(
+        _n5_npc(place="temple", importance=0.5), far_view) == "background"
+    # unexplored：未具名条目不承载具名 NPC（§7.1）。
+    assert neura.layer_of(_n5_npc(npc_id=""), view) == "unexplored"
+
+
+def check_layer_of_goal_target_and_importance_formula():
+    """§7.1 important_far 的第二条路（goal 指向 PC / 已知线索）+ P10 派生公式。"""
+    view = _view()
+    view["bands"] = {}
+    view["party_refs"] = ["pc-1"]
+    view["known_refs"] = ["clue-9"]
+
+    goal = {"goal_id": "g-1", "kind": "belong", "target_ref": "pc-1",
+            "weight": 1.0, "deadline_minute": None, "status": "active"}
+    assert neura.layer_of(
+        _n5_npc(place="temple", goals=[goal]), view) == "important_far"
+
+    goal["target_ref"] = "clue-9"
+    assert neura.layer_of(
+        _n5_npc(place="temple", goals=[goal]), view) == "important_far"
+
+    goal["target_ref"] = "npc-99"            # 不指向 PC / 已知线索
+    assert neura.layer_of(
+        _n5_npc(place="temple", goals=[goal]), view) == "background"
+
+    # P10：显式覆盖（静态档案 importance > 0）优先于公式。
+    npc = _n5_npc(place="temple", secrets=[{"secret_id": "s-1"}])
+    view["main_thread_refs"] = ["npc-01"]
+    view["faction_refs"] = ["npc-01"]
+    assert neura.derive_importance(npc, view) == 1.0
+    assert neura._effective_importance(dict(npc, importance=0.2), view) == 0.2
+    # P10：覆盖表（编排层注入）同样优先。
+    view["importance_overrides"] = {"npc-01": 0.5}
+    assert neura._effective_importance(npc, view) == 0.5
+    # 公式分项：0.4 / 0.3 / 0.3。
+    assert neura.derive_importance(_n5_npc(place="temple"), _view()) == 0.0
+    assert neura.derive_importance(
+        _n5_npc(secrets=[{"secret_id": "s"}]), _view()) == 0.3
+
+
+def check_layer_recomputed_same_tick():
+    """§7.1：layer 每 tick 现算、不缓存——玩家走远一步，同一 tick 内立刻降层。"""
+    view_near = _view()                      # gate 与 market 相邻
+    npc = _n5_npc(place="gate")
+    assert neura.layer_of(npc, view_near) == "near"
+    assert neura.layer_of(npc, view_near) == "near"      # 同输入同输出（无缓存漂移）
+
+    view_far = _view()
+    view_far["party_places"] = ["dock"]      # 玩家走远一步：不在 gate 也不相邻
+    view_far["bands"] = {}
+    assert neura.layer_of(npc, view_far) == "background"
+    # 同一 NPC 同一 tick 内前后两次判定，降层立刻可见。
+    assert neura.layer_of(npc, view_near) == "near"
+    assert neura.layer_of(npc, view_far) == "background"
+
+
+def check_due_npcs_frequencies_and_order():
+    """§7.2 频率去重 + 确定性排序 + 日程违约额外到期 + unexplored 永不到期。"""
+    near_a = _n5_npc("npc-a", place="market", importance=0.2)
+    near_b = _n5_npc("npc-b", place="market", importance=0.9)
+    far = _n5_npc("npc-f", place="temple", importance=0.9)
+    bg = _n5_npc("npc-g", place="temple")
+    view = _view()
+    view["bands"] = {}                       # temple 与 market 不相邻
+    block = _n5_block([near_a, near_b, far, bg])
+
+    # near 每 tick；important_far 日切才到期；background 每 3 游戏日；
+    # 层内按 importance 降序（npc-b 0.9 在 npc-a 0.2 之前）。
+    assert neura.due_npcs(block, view, 600) == ["npc-b", "npc-a"]
+    assert neura.due_npcs(block, view, 1441) == ["npc-b", "npc-a", "npc-f"]
+    assert neura.due_npcs(block, view, 4321) == \
+        ["npc-b", "npc-a", "npc-f", "npc-g"]
+    # 同 tick 内 last_tick 去重，不重复到期。
+    block["npcs"]["npc-a"]["last_tick_minute"] = 600
+    assert neura.due_npcs(block, view, 600) == ["npc-b"]
+
+    # 日程违约：background 未到频率也额外到期（§8.4 日程移动零 token）。
+    worker = _n5_npc("npc-w", place="gate",
+                     schedule=[{"slot_id": "sl-forge", "from_tod_minute": 480,
+                                "to_tod_minute": 720, "place_id": "forge",
+                                "activity": "work", "interruptible": False}])
+    block2 = _n5_block([worker])
+    assert neura.due_npcs(block2, view, 600) == ["npc-w"]
+    worker["location"]["place_id"] = "forge"
+    assert neura.due_npcs(block2, view, 600) == []
+
+    # unexplored 永不到期。
+    anon = _n5_npc("", place="market")
+    assert neura.due_npcs(_n5_block([anon]), view, 600) == []
+
+
+def check_charge_and_cross_day_reset():
+    """§8.2 记账（纯函数、rule 不计数）+ 跨日（day 变化）计数归零。"""
+    budget = {"day": 1, "strong_calls": 0, "light_calls": 0, "tokens": 0}
+    snapshot = dict(budget)
+    charged = neura.charge(budget, "strong")
+    assert charged == {"day": 1, "strong_calls": 1, "light_calls": 0,
+                       "tokens": 4000}
+    assert budget == snapshot, "charge 改写了入参"
+    assert neura.charge(budget, "light")["light_calls"] == 1
+    assert neura.charge(budget, "rule") == snapshot, "rule 档不计数"
+    assert neura.charge(budget, "strong", tokens=3900)["tokens"] == 3900
+    assert neura.charge(budget, "unknown-tier") == snapshot, "非法档位按 rule"
+
+    # 跨日归零：账本停在 day 0，tick 推进到 day 1 → 计数器归零（§8.2）。
+    block = _n5_block([_n5_npc(place="market")])
+    block["budget"] = {"day": 0, "strong_calls": 6, "light_calls": 30,
+                       "tokens": 60000}
+    ticked = neura.tick(block, _view(options=[]), port=_SubmitOnlyPort(),
+                        now_minute=1440)
+    assert ticked["budget"] == {"day": 1, "strong_calls": 0, "light_calls": 0,
+                                "tokens": 0}
+
+
+def check_can_call_ai_gates():
+    """§8.2 / §8.3：预算 + 突发上限 + 档位的 AI 准入；超限不抛错。"""
+    near = _n5_npc(place="market")
+    fresh = {"day": 0, "strong_calls": 0, "light_calls": 0, "tokens": 0}
+    view = _view()                           # npc 在 market → near
+
+    assert neura.can_call_ai(near, view, fresh) is True
+    # strong 次数用尽（P4 反解 h ≤ 6）。
+    assert neura.can_call_ai(
+        near, view, dict(fresh, strong_calls=6, tokens=24000)) is False, \
+        "strong 次数用尽应拒绝"
+    # token 余量不足：档位 ≥ 80% 已是 L1（light），light 超预算应拒绝；
+    # 边界 58800 + 1200 == 60000 放行。
+    assert neura.can_call_ai(near, view, dict(fresh, tokens=59000)) is False, \
+        "light 超出日预算应拒绝"
+    assert neura.can_call_ai(near, view, dict(fresh, tokens=58800)) is True
+    # background 层 0 次模型调用（§7.2）。
+    assert neura.can_call_ai(_n5_npc(place="temple"), view, fresh) is False
+    # 无 AI 配置 = L2 正常路径（§8.4）。
+    assert neura.can_call_ai(
+        near, dict(view, ai_configured=False), fresh) is False
+    # L3：plan dropped 且无可行选项。
+    dropped = _n5_npc(place="market",
+                      plan={"plan_id": "pl-x", "status": "dropped"})
+    assert neura.can_call_ai(dropped, _view(options=[]), fresh) is False
+    # 突发上限：本 tick 已用 1 次 strong → 拒（§7.2 ≤ 1 H）。
+    assert neura.can_call_ai(
+        near, dict(view, tick_burst={"strong": 1, "light": 0}), fresh) is False
+    # L1 档走 light：strong 用尽不连坐；light 突发 3 次用尽 → 拒（≤ 3 M）。
+    far_view = _view()
+    far_view["bands"] = {}
+    leader = _n5_npc(place="temple", importance=0.9)
+    used = dict(fresh, strong_calls=6, tokens=24000)
+    assert neura.can_call_ai(leader, far_view, used) is True
+    assert neura.can_call_ai(
+        leader, dict(far_view, tick_burst={"strong": 0, "light": 3}),
+        used) is False
+
+
+def check_degrade_ladder_and_monotonic():
+    """§8.3：80% / 100% 两档降级 + 单调不回弹 + L3 判据。"""
+    near = _n5_npc(place="market")
+    view = _view()
+    fresh = {"day": 0, "strong_calls": 0, "light_calls": 0, "tokens": 0}
+    assert neura.degrade_tier(near, view, fresh) == "L0"
+    # 80% 档：48000 / 60000 == 0.8 → L1。
+    assert neura.degrade_tier(near, view, dict(fresh, tokens=48000)) == "L1"
+    # important_far 恒 L1（预算未到 80% 也是，§8.3）。
+    far_view = _view()
+    far_view["bands"] = {}
+    assert neura.degrade_tier(
+        _n5_npc(place="temple", importance=0.9), far_view, fresh) == "L1"
+    # 100% 档：tokens 60000 → L2。
+    assert neura.degrade_tier(near, view, dict(fresh, tokens=60000)) == "L2"
+    # 无 AI 配置 → L2（正常路径，不抛错，§8.4）。
+    assert neura.degrade_tier(
+        near, dict(view, ai_configured=False), fresh) == "L2"
+    # L3：plan dropped 且无可行选项；dropped 但有可行选项 → 不冻结。
+    dropped = _n5_npc(place="market",
+                      plan={"plan_id": "pl-x", "status": "dropped"})
+    assert neura.degrade_tier(dropped, _view(options=[]), fresh) == "L3"
+    assert neura.degrade_tier(
+        dropped, _view(options=[_option("op-ok")]), fresh) == "L0"
+    # 单调：同一天内用量只增，档位不回弹（L2 → 再判定仍为 L2/L3）。
+    sequence = [neura.degrade_tier(near, view, dict(fresh, tokens=tokens))
+                for tokens in (0, 30000, 48000, 51000, 60000)]
+    assert sequence == ["L0", "L0", "L1", "L1", "L2"]
+    assert sequence == sorted(sequence), "档位应单调不回弹"
+
+
+def check_tick_offline_schedule_move():
+    """§8.4：无 AI 配置（port 无 generate_candidates）仍产生日程移动提案。"""
+    npc = _n5_npc(place="gate",
+                  schedule=[{"slot_id": "sl-forge", "from_tod_minute": 480,
+                             "to_tod_minute": 720, "place_id": "forge",
+                             "activity": "work", "interruptible": False}])
+    block = _n5_block([npc])
+    view = _view()
+    view["bands"][("gate", "forge")] = "adjacent"
+    port = _SubmitOnlyPort()
+    block_before = copy.deepcopy(block)
+    view_before = copy.deepcopy(view)
+
+    result = neura.tick(block, view, port=port, now_minute=600)
+
+    # tick 返回新块、不返回事件；入参不被改写。
+    assert isinstance(result, dict) and "events" not in result
+    assert result is not block
+    assert block == block_before, "tick 改写了入参 block"
+    assert view == view_before, "tick 改写了入参 view"
+
+    assert len(port.submits) == 1
+    proposal = port.submits[0]["proposal"]
+    assert proposal["intent"]["verb"] == "move"
+    assert proposal["intent"]["desired"] == "move"
+    # 提交键与幂等键一致（用 journal 里同一条决策重算得到同一个键）。
+    decision = result["journal"][-1]
+    assert port.submits[0]["key"] == neura.idempotency_key(
+        decision, result["npcs"]["npc-01"])
+    # 移动后位置更新；离线路径 cost.tier == "rule"、ai_used == false。
+    assert result["npcs"]["npc-01"]["location"]["place_id"] == "forge"
+    assert result["npcs"]["npc-01"]["last_tick_minute"] == 600
+    assert decision["cost"] == {"tier": "rule", "tokens": 0}
+    assert decision["ai_used"] is False
+
+
+def check_tick_schedule_moves_each_day():
+    """§8.4：日程移动 ≥ 1 条 / 日 / 有日程 NPC（两个 slot 到点各移一次）。"""
+    npc = _n5_npc(place="gate", schedule=[
+        {"slot_id": "sl-forge", "from_tod_minute": 480, "to_tod_minute": 720,
+         "place_id": "forge", "activity": "work", "interruptible": False},
+        {"slot_id": "sl-gate", "from_tod_minute": 800, "to_tod_minute": 1000,
+         "place_id": "gate", "activity": "guard", "interruptible": False},
+    ])
+    block = _n5_block([npc])
+    view = _view()
+    view["bands"][("gate", "forge")] = "adjacent"
+    view["bands"][("forge", "gate")] = "adjacent"
+    port = _SubmitOnlyPort()
+
+    block = neura.tick(block, view, port=port, now_minute=600)   # 去 forge 上班
+    block = neura.tick(block, view, port=port, now_minute=900)   # 回 gate 值岗
+
+    assert len(port.submits) == 2
+    assert all(submit["proposal"]["intent"]["verb"] == "move"
+               for submit in port.submits)
+    assert block["npcs"]["npc-01"]["location"]["place_id"] == "gate"
+
+
+def check_tick_burst_and_charge():
+    """§7.2 单 tick 突发上限 ≤ 1 次 H / ≤ 3 次 M；按降级档位记账。"""
+    ai = _option("op-ai", source="ai")
+
+    # 5 个 near NPC 抢 strong：只有 1 次调用、1 次记账。
+    block = _n5_block([_n5_npc("npc-%d" % index, place="market")
+                       for index in range(5)])
+    port = _FakePort(ai_options=[ai])
+    ticked = neura.tick(block, _view(options=[_option("op-rule")]),
+                        port=port, now_minute=600)
+    assert ticked["budget"]["strong_calls"] == 1
+    assert ticked["budget"]["light_calls"] == 0
+    assert ticked["budget"]["tokens"] == 4000
+    assert len(port.ai_calls) == 1, "突发上限应在调用前拦住"
+
+    # 4 个 important_far NPC（日切到期）抢 light：≤ 3 次。
+    far_view = _view(options=[_option("op-rule")])
+    far_view["bands"] = {}
+    block2 = _n5_block([_n5_npc("npc-%d" % index, place="temple",
+                                importance=0.9) for index in range(4)])
+    port2 = _FakePort(ai_options=[ai])
+    ticked2 = neura.tick(block2, far_view, port=port2, now_minute=1441)
+    assert ticked2["budget"] == {"day": 1, "strong_calls": 0, "light_calls": 3,
+                                 "tokens": 3600}
+    assert len(port2.ai_calls) == 3
+
+
+def check_tick_submit_keys_stable_and_idempotent():
+    """§5.6：提交键与幂等键一致；同计划同步骤续投键恒定。"""
+    block = _n5_block([_n5_npc(
+        place="market",
+        plan={"plan_id": "pl-9", "goal_id": "", "step_index": 0,
+              "status": "running", "started_minute": 590,
+              "until_minute": 700})])
+    view = _view(options=[_option("op-work", verb="work")])
+    port = _FakePort(ai_options=[])          # 有口子但返回空 → 规则候选
+
+    ticked = neura.tick(block, view, port=port, now_minute=600)
+    assert len(port.submits) == 1
+    first_key = port.submits[0]["key"]
+    assert first_key == neura.idempotency_key(ticked["journal"][-1],
+                                              ticked["npcs"]["npc-01"])
+    assert first_key.endswith("_00")
+    # P7：延迟执行写在块内 plan.until_minute，不进 chron.actions。
+    assert ticked["npcs"]["npc-01"]["plan"]["until_minute"] == 610
+    # 计划仍在跑、同目标续投（更短的候选，过 check_time 的剩余预算）→
+    # 幂等键恒定（§5.6 同计划同步骤）。
+    short_view = _view(options=[_option("op-short", verb="work", minutes=3)])
+    neura.tick(ticked, short_view, port=port, now_minute=601)
+    assert len(port.submits) == 2
+    assert port.submits[1]["key"] == first_key
+
+
+def check_tick_l3_idle_journal():
+    """§8.3 L3：只写 journal(kind="idle")，不提交。"""
+    npc = _n5_npc(place="market",
+                  plan={"plan_id": "pl-x", "goal_id": "g-1", "step_index": 0,
+                        "status": "dropped", "started_minute": 500,
+                        "until_minute": 700})
+    block = _n5_block([npc])
+    port = _SubmitOnlyPort()
+    ticked = neura.tick(block, _view(options=[]), port=port, now_minute=600)
+
+    entry = ticked["journal"][-1]
+    assert entry["kind"] == "idle"
+    assert entry["npc_id"] == "npc-01"
+    assert entry["at_minute"] == 600
+    assert port.submits == [], "L3 不提交任何计划"
+    assert ticked["npcs"]["npc-01"]["last_tick_minute"] == 600
+    assert _json_roundtrip(ticked) == ticked
+
+
+def check_catch_up_converges_and_defers():
+    """§7.4：上限 8 步；到期计划全部收敛（断言终态）；超出记 catchup_deferred。"""
+    npcs = [_n5_npc("npc-%02d" % index, place="temple",
+                    plan={"plan_id": "pl-%02d" % index, "goal_id": "",
+                          "step_index": 0, "status": "running",
+                          "started_minute": 0,
+                          "until_minute": 100 + index * 10})
+            for index in range(12)]
+    block = _n5_block(npcs)
+
+    result = neura.catch_up(block, _view(), 600)
+    ticked = result["block"]
+
+    # 终态收敛：没有 active 计划的 until_minute ≤ 600。
+    for npc in ticked["npcs"].values():
+        assert npc["plan"]["status"] == "done"
+        assert npc["last_tick_minute"] == 600, "远场层直接跳到最新分钟"
+    assert result["processed"] == 12
+    # 60 个格点 > 8：未处理的记 catchup_deferred（count = 60 − 12）。
+    deferred = [entry for entry in ticked["journal"]
+                if entry.get("kind") == "catchup_deferred"]
+    assert len(deferred) == 1
+    assert deferred[0]["count"] == 48
+    assert deferred[0]["at_minute"] == 600
+    assert len([entry for entry in ticked["journal"]
+                if entry.get("kind") == "catchup_plan_done"]) == 12
+    assert _json_roundtrip(ticked) == ticked
+
+
+def check_catch_up_small_gap_no_defer():
+    """§7.4：步数 ≤ 8 不记 catchup_deferred；到期计划照常收敛。"""
+    npcs = [
+        _n5_npc("npc-a", place="temple",
+                plan={"plan_id": "pl-a", "goal_id": "", "step_index": 0,
+                      "status": "running", "started_minute": 0,
+                      "until_minute": 50}),
+        _n5_npc("npc-b", place="temple",
+                plan={"plan_id": "pl-b", "goal_id": "", "step_index": 0,
+                      "status": "running", "started_minute": 0,
+                      "until_minute": 60}),
+        _n5_npc("npc-c", place="temple"),          # 无计划：不被补算改动
+    ]
+    block = _n5_block(npcs)
+
+    result = neura.catch_up(block, _view(), 80)
+    ticked = result["block"]
+
+    assert result["processed"] == 2 and result["deferred"] == 0
+    assert not [entry for entry in ticked["journal"]
+                if entry.get("kind") == "catchup_deferred"]
+    assert ticked["npcs"]["npc-a"]["plan"]["status"] == "done"
+    assert ticked["npcs"]["npc-b"]["plan"]["status"] == "done"
+    assert ticked["npcs"]["npc-a"]["last_tick_minute"] == 50
+    assert ticked["npcs"]["npc-c"]["last_tick_minute"] == 0, \
+        "≤ 8 步不触发远场跳分钟"
+
+
+def check_catch_up_idempotent():
+    """§7.4：同一 last_tick_minute 重跑不重复记账、不重复 journal。"""
+    plan = {"plan_id": "pl-a", "goal_id": "", "step_index": 0,
+            "status": "running", "started_minute": 0, "until_minute": 120}
+
+    # 远场层：收敛后 last_tick == now → 第二次跑整体早退。
+    block = _n5_block([_n5_npc("npc-a", place="temple", plan=plan)])
+    first = neura.catch_up(block, _view(), 600)
+    snapshot = json.dumps(first["block"], ensure_ascii=False, sort_keys=True)
+    second = neura.catch_up(first["block"], _view(), 600)
+    assert second["processed"] == 0 and second["deferred"] == 0
+    assert json.dumps(second["block"], ensure_ascii=False,
+                      sort_keys=True) == snapshot
+
+    # near 层：last_tick 停在到期分钟，重跑仍不重复 journal（guard 生效）。
+    block2 = _n5_block([_n5_npc("npc-a", place="market", plan=plan)])
+    first2 = neura.catch_up(block2, _view(), 600)
+    snapshot2 = json.dumps(first2["block"], ensure_ascii=False, sort_keys=True)
+    second2 = neura.catch_up(first2["block"], _view(), 600)
+    assert json.dumps(second2["block"], ensure_ascii=False,
+                      sort_keys=True) == snapshot2
+
+
+def check_tick_is_pure():
+    """tick 纯函数：入参深比较不变、返回值可 JSON 往返。"""
+    npc = _n5_npc(place="gate",
+                  schedule=[{"slot_id": "sl-forge", "from_tod_minute": 480,
+                             "to_tod_minute": 720, "place_id": "forge",
+                             "activity": "work", "interruptible": True}])
+    block = _n5_block([npc])
+    view = _view(options=[_option("op-rule")])
+    view["bands"][("gate", "forge")] = "adjacent"
+    block_before = copy.deepcopy(block)
+    view_before = copy.deepcopy(view)
+
+    result = neura.tick(block, view, port=_FakePort(), now_minute=600)
+
+    assert block == block_before, "tick 改写了入参 block"
+    assert view == view_before, "tick 改写了入参 view"
+    assert result is not block
+    assert _json_roundtrip(result) == result
+
+
 def main():
     checks = (
         check_constants,
@@ -1776,6 +2297,23 @@ def main():
         check_context_is_deterministic_and_pure,
         check_build_candidate_body_shape,
         check_role_literal_appears_once,
+        check_n5_constants,
+        check_layer_of_short_circuit,
+        check_layer_of_goal_target_and_importance_formula,
+        check_layer_recomputed_same_tick,
+        check_due_npcs_frequencies_and_order,
+        check_charge_and_cross_day_reset,
+        check_can_call_ai_gates,
+        check_degrade_ladder_and_monotonic,
+        check_tick_offline_schedule_move,
+        check_tick_schedule_moves_each_day,
+        check_tick_burst_and_charge,
+        check_tick_submit_keys_stable_and_idempotent,
+        check_tick_l3_idle_journal,
+        check_catch_up_converges_and_defers,
+        check_catch_up_small_gap_no_defer,
+        check_catch_up_idempotent,
+        check_tick_is_pure,
     )
     failures = 0
     for check in checks:

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""neura —— NEURA 内核（M11-N1 骨架 + N2 硬约束 + N3 评分选计划 + N4 知识边界；纯函数）。
+"""neura —— NEURA 内核（M11-N1 骨架 + N2 硬约束 + N3 评分选计划 + N4 知识边界
++ N5 分层模拟；纯函数）。
 
 本模块实现 `NEURA-DESIGN.md` §4.2（运行时字段表）、§5.2 / §5.2.1（硬约束与
 `view` 形状）、§9.1–§9.2（模块与 `blocks.neura` 不透明块）、§11 N1 与 §11 N2：
@@ -21,7 +22,13 @@
   §5.4 / §5.6），评分逐需求留 `terms` 供手工复算；
 - `select_context()` / `build_candidate_body()` / `learn()` / `supersede()` /
   `resolve_claim()`：**知识边界**（N4，§6）——五类 claim 分离、**唯一**上下文收口、
-  修正链（不删旧 id），以及全文件**唯一**拼 `messages` 的入口。
+  修正链（不删旧 id），以及全文件**唯一**拼 `messages` 的入口；
+- `layer_of()` / `derive_importance()` / `due_npcs()` / `can_call_ai()` /
+  `charge()` / `degrade_tier()` / `catch_up()` / `tick()`：**分层模拟 +
+  每日预算 + 降级阶梯 + 补算**（N5，§7 / §8 / §12.1 P4 / P5 / P7 / P10）——
+  四层每 tick 现算、日预算 60,000 tokens 一处可调、L0–L3 单调降级、
+  补算上限 8 步超限记 `catchup_deferred`；`tick` 签名照抄 §5.8，
+  返回新块、不返回事件、不碰 `state`；`port` 是注入的回调（依赖注入）。
 
 > N4 的 `purpose` 取 `decide` / `narrate` / `react`（Issue #357 正文的口径）；
 > §6.2 的示例写的是 `decide` / `dialogue` / `memory_summary`，两处命名不同、
@@ -2159,3 +2166,588 @@ def _stable_text(value):
     if isinstance(value, (int, float)):
         return repr(value)
     return _text(value)
+
+
+# --------------------------------------------------------------------------
+# §7 / §8 / §11 N5：分层模拟 + 每日预算 + 降级阶梯 + 补算
+#
+# 分工（§7.1 / §7.2 / §7.4 / §8.2 / §8.3 / §8.4 / §12.1 P4 / P5 / P7 / P10）：
+#   layer_of()           四层判定（每 tick 现算、不缓存，§7.1）；
+#   derive_importance()  P10 的 importance 派生公式（显式覆盖优先）；
+#   due_npcs()           层 × 频率 × last_tick_minute 去重（§7.1 / §7.2）；
+#   can_call_ai()        预算 + 突发上限 + 降级档位的 AI 准入（§8.2 / §8.3）；
+#   charge()             日预算记账（跨日归零由 _ensure_budget_day 做）；
+#   degrade_tier()       L0–L3 降级阶梯（当天单调，§8.3）；
+#   catch_up()           长推进后的补算收敛（上限 8 步，§7.4）；
+#   tick()               一次 tick 的完整管线（§5.8 签名原样，返回新块）。
+#
+# `port` 是注入的回调对象（依赖注入，测试用记录型假 port）：
+#   `submit(proposal, idempotency_key=…)` 必须实现；
+#   `generate_candidates(npc, view, budget=…)` 可选——没有它就是「无 AI 配置」
+#   的正常路径（§8.4），NPC 仍按日程移动、按需求阈值行动、硬约束照拦。
+# --------------------------------------------------------------------------
+
+# §12.1 P4：每游戏日 token 上限（常量、一处可调；上线前按实际单价复核）。
+NPC_DAILY_TOKEN_BUDGET = 60000
+# §12.1 P5：「重要远场」的 importance 阈值（用 N8 长跑数据回调，不改判定结构）。
+IMPORTANCE_THRESHOLD = 0.7
+# §12.1 P10：importance 派生公式（显式覆盖优先；三个权重写成常量）。
+IMPORTANCE_WEIGHT_THREADS = 0.4    # 在主线 threads
+IMPORTANCE_WEIGHT_FACTION = 0.3    # 有 faction
+IMPORTANCE_WEIGHT_SECRET = 0.3     # 有 secret
+
+# §7.4：补算步数上限与 10 分钟格点。
+MAX_CATCHUP_STEPS = 8
+CATCHUP_GRID_MINUTES = 10
+
+# §8.3：降级阶梯（L0 强模型 → L1 轻模型 → L2 规则 → L3 冻结）。
+DEGRADE_TIERS = ("L0", "L1", "L2", "L3")
+BUDGET_WARN_RATIO = 0.8            # 预算 ≥ 80% 降 L1
+# 档位 → 调用种类：L0 只允许 strong（H）、L1 只允许 light（M）、L2/L3 不调模型。
+TIER_CALL_KIND = {"L0": "strong", "L1": "light"}
+# §8.2：调用种类 × token 常数 / 当日次数上限（P4 反解：h ≤ 6、m ≤ 30）。
+CALL_KIND_TOKENS = {"strong": 4000, "light": 1200, "rule": 0}
+CALL_KIND_LIMITS = {"strong": STRONG_CALLS_PER_DAY, "light": LIGHT_CALLS_PER_DAY}
+# §7.2：单 tick 突发上限 ≤ 1 次 H、≤ 3 次 M。
+BURST_LIMITS = {"strong": 1, "light": 3}
+
+# §7.1 / §7.2：层序（due_npcs 的确定性排序）与层频率（游戏日间隔）。
+LAYER_ORDER = {"near": 0, "important_far": 1, "background": 2, "unexplored": 3}
+LAYER_MIN_INTERVAL_DAYS = {"near": 0, "important_far": 1, "background": 3}
+
+
+def _collection_has(collection, ref):
+    """`ref` 是否在集合里（list / tuple / set / dict 键都认；其余视为不在）。"""
+    if isinstance(collection, (dict, list, tuple, set)):
+        return ref in collection
+    return False
+
+
+def _active_schedule_slot(npc, now_minute):
+    """当前时刻命中的日程 slot（§4.2：slot 不跨 0 点）；没有则 `None`。"""
+    schedule = npc.get("schedule")
+    if not isinstance(schedule, list) or not _is_int(now_minute):
+        return None
+    tod = now_minute % MINUTES_PER_DAY
+    for slot in schedule:
+        if not isinstance(slot, dict):
+            continue
+        start = slot.get("from_tod_minute")
+        end = slot.get("to_tod_minute")
+        if _is_int(start) and _is_int(end) and start <= tod < end:
+            return slot
+    return None
+
+
+def _schedule_needs_move(npc, now_minute):
+    """§8.4 日程义务：到点不在岗（有活动 slot 且位置不符）。"""
+    slot = _active_schedule_slot(npc, now_minute)
+    if slot is None:
+        return False
+    place = _text(slot.get("place_id"))
+    return bool(place) and place != _npc_place(npc)
+
+
+def derive_importance(npc, view):
+    """§12.1 P10：importance 派生公式 `0.4×主线 threads + 0.3×faction + 0.3×secret`。
+
+    三个输入都是 0/1 的事实判断：在主线 threads 看 `view.main_thread_refs`、
+    有 faction 看 `view.faction_refs`（编排层注入；缺键按「不在」）、
+    有 secret 看 `npc.secrets` 非空。显式覆盖（静态档案给了 importance）
+    由 `_effective_importance` 优先处理，本函数只算公式值。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    npc_id = _npc_id(npc)
+    score = 0.0
+    if _collection_has(view.get("main_thread_refs"), npc_id):
+        score += IMPORTANCE_WEIGHT_THREADS
+    if _collection_has(view.get("faction_refs"), npc_id):
+        score += IMPORTANCE_WEIGHT_FACTION
+    if npc.get("secrets"):
+        score += IMPORTANCE_WEIGHT_SECRET
+    return score
+
+
+def _effective_importance(npc, view):
+    """§12.1 P10：显式覆盖优先（静态档案 importance > 0 视为显式），否则公式。"""
+    npc_id = _npc_id(npc)
+    overrides = view.get("importance_overrides")
+    if isinstance(overrides, dict):
+        value = overrides.get(npc_id)
+        if _is_number(value):
+            return _clamp(float(value), 0.0, 1.0)
+    explicit = npc.get("importance")
+    if _is_number(explicit) and float(explicit) > 0.0:
+        return _clamp(float(explicit), 0.0, 1.0)
+    return derive_importance(npc, view)
+
+
+def _goal_targets_known(npc, view):
+    """§7.1：NPC 的 active goal `target_ref` 指向某个 PC / 玩家已知线索。"""
+    goals = npc.get("goals")
+    if not isinstance(goals, list):
+        return False
+    for goal in goals:
+        if not isinstance(goal, dict) or goal.get("status") != "active":
+            continue
+        target = _text(goal.get("target_ref"))
+        if not target:
+            continue
+        if _collection_has(view.get("party_refs"), target):
+            return True
+        if _collection_has(view.get("known_refs"), target):
+            return True
+    return False
+
+
+def layer_of(npc, view):
+    """§7.1 四层判定，按表短路：`near` → `important_far` → `background`。
+
+    只看三件事：与 PC 的空间关系（`view.party_places` / `view.bands`）、
+    重要性（P5：`importance ≥ IMPORTANCE_THRESHOLD`，或 active goal 指向
+    PC / 玩家已知线索）、是否在玩家所在地点集里。未具名条目归 `unexplored`
+    （§7.1：该层不承载具名 NPC，人口摘要信号归编排层，个体生成归 M12）。
+    **每 tick 现算、不缓存**（§7.1）：玩家走远一步 → 同一 tick 内立刻降层，
+    否则成本会漏。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    if not _npc_id(npc):
+        return "unexplored"
+    place = _npc_place(npc)
+    party_places = _string_list(view.get("party_places"))
+    bands = view.get("bands") if isinstance(view.get("bands"), dict) else {}
+    if place and place in party_places:
+        return "near"
+    if place:
+        for party_place in party_places:
+            if bands.get((place, party_place)) == "adjacent":
+                return "near"
+    if _effective_importance(npc, view) >= IMPORTANCE_THRESHOLD:
+        return "important_far"
+    if _goal_targets_known(npc, view):
+        return "important_far"
+    return "background"
+
+
+def due_npcs(block, view, now_minute):
+    """§7.1 / §7.2：本 tick 到期的 `npc_id` 表（按层 × 频率 × last_tick_minute 去重）。
+
+    频率（§7.2）：near 每 tick；important_far 每游戏日 1 次（事件触发由编排层
+    重复调 tick 表达，本函数只管日切）；background 每 3 游戏日 1 次；
+    unexplored 不承载具名 NPC、永不到期。到点不在岗（日程违约）的 NPC 额外
+    到期——日程移动是规则动作、零 token，不受层频率限制（§8.4 离线底线）。
+    返回顺序确定：near → important_far → background，层内按 importance 降序、
+    再按 npc_id 字典序（可重放）。
+    """
+    block = block if isinstance(block, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    now_minute = now_minute if _is_int(now_minute) else 0
+    npcs = block.get("npcs")
+    if not isinstance(npcs, dict):
+        return []
+    day = now_minute // MINUTES_PER_DAY
+    due = []
+    for npc_id in sorted(npcs, key=str):
+        npc = npcs.get(npc_id)
+        if not isinstance(npc, dict):
+            continue
+        layer = layer_of(npc, view)
+        if layer == "unexplored":
+            continue
+        last = _count(npc.get("last_tick_minute"))
+        last_day = last // MINUTES_PER_DAY
+        if layer == "near":
+            frequency_due = last < now_minute
+        elif layer == "important_far":
+            frequency_due = last_day < day
+        else:
+            frequency_due = \
+                last_day + LAYER_MIN_INTERVAL_DAYS["background"] <= day
+        schedule_due = last < now_minute and _schedule_needs_move(npc, now_minute)
+        if frequency_due or schedule_due:
+            due.append((LAYER_ORDER[layer],
+                        -_effective_importance(npc, view), npc_id))
+    due.sort()
+    return [item[2] for item in due]
+
+
+def _budget_day_of(source, npc):
+    """账本游戏日：`now_minute // 1440`（P7：只读 CHRON 给的分钟，不新建时钟）。"""
+    minute = _now_of(source, npc)
+    if _is_int(minute) and minute >= 0:
+        return minute // MINUTES_PER_DAY
+    return None
+
+
+def _budget_used(budget, day):
+    """当日已用量 `(strong, light, tokens)`；账本是别的游戏日 → 视为零（§8.2 跨日重置）。"""
+    budget = budget if isinstance(budget, dict) else {}
+    recorded = budget.get("day")
+    if day is not None and _is_int(recorded) and recorded != day:
+        return 0, 0, 0
+    return (_count(budget.get("strong_calls")),
+            _count(budget.get("light_calls")),
+            _count(budget.get("tokens")))
+
+
+def _ensure_budget_day(budget, now_minute):
+    """§8.2 跨日重置：`world_minute // 1440` 变化 → 计数器归零（返回新账本）。"""
+    budget = budget if isinstance(budget, dict) else {}
+    clean = {key: _count(budget.get(key)) for key in BUDGET_KEYS}
+    if not _is_int(now_minute) or now_minute < 0:
+        return clean
+    day = now_minute // MINUTES_PER_DAY
+    if clean["day"] == day:
+        return clean
+    return {"day": day, "strong_calls": 0, "light_calls": 0, "tokens": 0}
+
+
+def can_call_ai(npc, view, budget):
+    """§8.2 / §8.3：本次 tick 该 NPC 能否调模型（预算 + 突发上限 + 降级档位）。
+
+    - `background` / `unexplored`：0 次模型调用（§7.2）；
+    - `view.ai_configured is False`：无配置 = L2，走规则候选（§8.4 正常路径）；
+    - 降级档位 L2 / L3：不调模型；L0 只允许 strong、L1 只允许 light；
+    - 当日次数上限（P4 反解 h ≤ 6 / m ≤ 30）或 token 余量不足 → 不调、不抛错；
+    - 单 tick 突发上限 ≤ 1 H / ≤ 3 M（§7.2）：本 tick 已用量由 `view.tick_burst`
+      注入（`tick` 维护；直接调用时缺键按 0 计）。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    budget = budget if isinstance(budget, dict) else {}
+    if layer_of(npc, view) in ("background", "unexplored"):
+        return False
+    if view.get("ai_configured") is False:
+        return False
+    kind = TIER_CALL_KIND.get(degrade_tier(npc, view, budget))
+    if kind is None:
+        return False
+    strong, light, tokens = _budget_used(budget, _budget_day_of(view, npc))
+    calls = strong if kind == "strong" else light
+    if calls >= CALL_KIND_LIMITS[kind]:
+        return False
+    if tokens + CALL_KIND_TOKENS[kind] > NPC_DAILY_TOKEN_BUDGET:
+        return False
+    burst = view.get("tick_burst")
+    if isinstance(burst, dict) and _count(burst.get(kind)) >= BURST_LIMITS[kind]:
+        return False
+    return True
+
+
+def charge(budget, tier, tokens=None):
+    """§8.2 记账：`tier ∈ strong / light / rule`；返回**新**账本（不改入参）。
+
+    `tokens` 缺省按档位常数（strong=4000 / light=1200 / rule=0）；`tokens` 是
+    估算值、不是账单（§8.2），真实账单由 AI Gateway 统计。
+    """
+    budget = budget if isinstance(budget, dict) else {}
+    kind = tier if tier in CALL_KIND_TOKENS else "rule"
+    amount = tokens if _is_int(tokens) and tokens >= 0 else CALL_KIND_TOKENS[kind]
+    charged = {key: _count(budget.get(key)) for key in BUDGET_KEYS}
+    if kind == "strong":
+        charged["strong_calls"] += 1
+    elif kind == "light":
+        charged["light_calls"] += 1
+    charged["tokens"] += amount
+    return charged
+
+
+def degrade_tier(npc, view, budget):
+    """§8.3 降级阶梯：返回 `L0` / `L1` / `L2` / `L3`。
+
+    判定顺序（自重到轻）：
+
+    - **L3**：`plan` 已 `dropped` 且当前无可行选项（只写 idle journal；
+      不是死锁——`needs` 仍在涨，次日预算重置后自然恢复）；
+    - **L2**：无 AI 配置（`view.ai_configured is False`，§8.4 正常路径）
+      或当日 token 用量 ≥ 100%；
+    - **L1**：`important_far` 层，或当日 token 用量 ≥ 80%；
+    - **L0**：其余（预算充足 + near 层关键决策）。
+
+    单调性（§8.3「当天降到 L2 不回到 L1」）：token 用量当天只增不减
+    （跨日归零除外），用量单调 ⇒ 档位单调，不需要额外的状态位。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    budget = budget if isinstance(budget, dict) else {}
+    plan = npc.get("plan")
+    if isinstance(plan, dict) and _text(plan.get("status")) == "dropped":
+        if not hard_filter(npc, view, _now_of(view, npc))["ok"]:
+            return "L3"
+    if view.get("ai_configured") is False:
+        return "L2"
+    _, _, tokens = _budget_used(budget, _budget_day_of(view, npc))
+    ratio = tokens / float(NPC_DAILY_TOKEN_BUDGET)
+    if ratio >= 1.0:
+        return "L2"
+    if layer_of(npc, view) == "important_far" or ratio >= BUDGET_WARN_RATIO:
+        return "L1"
+    return "L0"
+
+
+def _revalidate(npc, option, view, now_minute):
+    """§5.8 ④：AI 候选必须重过一次硬约束（复验不过就丢，不豁免）。"""
+    if _option_error(option) is not None:
+        return False
+    candidate = _clone(option)
+    candidate.setdefault("source", "ai")
+    reject = (
+        check_distance(npc, candidate, view)
+        or check_time(npc, candidate, view, now_minute)
+        or check_resource(npc, candidate, view)
+        or check_law(npc, candidate, view)
+        or check_knowledge(npc, candidate, view)
+    )
+    return reject is None
+
+
+def _write_back(npc, decision, now_minute):
+    """§5.7 的最小回写：`move` → 更新位置；其余 → 写入 `plan`。
+
+    P7：NPC 的延迟执行用块内 `plan.until_minute` 表达，**不进** `chron.actions`；
+    到期由下一次 `catch_up` 收敛（§7.4）。`conflict` 不回写（§5.7：下个 tick 重试）。
+    """
+    chosen = decision.get("chosen")
+    if not isinstance(chosen, dict):
+        return
+    if _text(chosen.get("verb")) == "move":
+        place = _text(chosen.get("place_id"))
+        if place:
+            npc["location"]["place_id"] = place
+            npc["location"]["since_minute"] = now_minute
+        return
+    plan_id, step_index = _plan_step(npc, chosen, now_minute)
+    minutes = chosen.get("minutes")
+    minutes = minutes if _is_int(minutes) and minutes >= 0 else 0
+    npc["plan"] = {
+        "plan_id": plan_id,
+        "goal_id": _text(chosen.get("goal_id")),
+        "step_index": step_index,
+        "status": "running",
+        "started_minute": now_minute,
+        "until_minute": now_minute + minutes,
+    }
+
+
+def _tick_schedule_move(block, npc_id, slot, npc_view, port, now_minute):
+    """§8.4 日程义务：到点不在岗 → 生成规则移动提案并提交（离线也走）。
+
+    返回 `True` 表示本 tick 该 NPC 已被日程步骤处理（无论移动是否被硬约束
+    拦下——拦下也要留 journal，回答「他为什么没去上班」）。
+    """
+    npc = block["npcs"][npc_id]
+    place = _text(slot.get("place_id"))
+    travel = _travel_minutes(npc_view, place)
+    minutes = travel if travel is not None else 0
+    option = {
+        "option_id": "sched_%s_%s" % (npc_id, _text(slot.get("slot_id")) or place),
+        "verb": "move",
+        "place_id": place,
+        "minutes": min(minutes, MAX_OPTION_MINUTES),
+        "source": "rule",
+        "risk": 0.0,
+    }
+    npc_view["options"] = [option]
+    decision = decide(npc, npc_view)
+    block["journal"].append(decision)
+    npc["last_tick_minute"] = now_minute
+    if decision["chosen"] is None:
+        return True          # 硬约束拦下（如不认识路）：留痕、可解释
+    proposal = to_proposal(decision, npc)
+    port.submit(proposal, idempotency_key=idempotency_key(decision, npc))
+    _write_back(npc, decision, now_minute)
+    return True
+
+
+def catch_up(block, view, now_minute):
+    """§7.4 补算：长推进后把跨过的到期计划一次收敛。
+
+    返回 `{"block", "deferred", "processed"}`（新块；`processed` = 收敛的计划数，
+    `deferred` = 被跳过的格点数）。
+
+    - 步进集合 = `(start, now]` 内的 10 分钟格点 ∪ 跨过的日界；`start` 取
+      全块最小的 `last_tick_minute`（§7.4 的 `crossed_minutes`）；
+    - 处理顺序：按 minute 升序，同 minute 按 (importance 降序, npc_id)（§7.4）；
+    - 上限 `MAX_CATCHUP_STEPS = 8`：超限时**到期计划一律收敛**（第 1 条：
+      必须收敛，否则永远卡住），其余格点记
+      `journal(kind="catchup_deferred", count=N)`（第 2 条），远场层直接跳到
+      最新分钟、不再逐点补（第 3 条：远场本来就是日粒度）；
+    - 保证（§7.4 / 验收）：**终态收敛**（没有 active 计划的 `until_minute ≤ now`）、
+      **幂等**（同一 `last_tick_minute` 重跑不重复记账、不重复 journal）、
+      **可解释**（`journal` 里有 `catchup_deferred`）；
+    - 只读 CHRON 给的分钟（P7）：不改 `advance_to` 的语义、不把计划塞进
+      `chron.actions`；跨过的日界顺手做预算归零（§8.2）。
+    """
+    notes = []
+    block = migrate_block(block, notes)
+    view = view if isinstance(view, dict) else {}
+    result = {"deferred": 0, "processed": 0}
+    if not _is_int(now_minute) or now_minute < 0:
+        result["block"] = block
+        return result
+    npcs = block["npcs"]
+
+    starts = [_count(npc.get("last_tick_minute")) for npc in npcs.values()]
+    start = min(starts) if starts else now_minute
+    if start >= now_minute:
+        result["block"] = block
+        return result
+
+    steps = set()
+    grid = (start // CATCHUP_GRID_MINUTES + 1) * CATCHUP_GRID_MINUTES
+    while grid <= now_minute:
+        steps.add(grid)
+        grid += CATCHUP_GRID_MINUTES
+    for day in range(start // MINUTES_PER_DAY + 1,
+                     now_minute // MINUTES_PER_DAY + 1):
+        steps.add(day * MINUTES_PER_DAY)
+
+    # 到期计划（必须全部收敛，§7.4 第 1 条）：minute 升序，
+    # 同 minute 按 (importance 降序, npc_id) 稳定排序。
+    expiries = []
+    for npc_id in sorted(npcs, key=str):
+        npc = npcs[npc_id]
+        plan = npc.get("plan")
+        if not isinstance(plan, dict) or _text(plan.get("status")) not in PLAN_ACTIVE:
+            continue
+        until = plan.get("until_minute")
+        if not _is_int(until) or until > now_minute:
+            continue
+        minute = max(until, _count(npc.get("last_tick_minute")) + 1)
+        expiries.append((minute, -_effective_importance(npc, view), npc_id))
+    expiries.sort()
+
+    for minute, _neg_importance, npc_id in expiries:
+        npc = npcs[npc_id]
+        plan = npc["plan"]
+        plan["status"] = "done"
+        npc["last_tick_minute"] = max(_count(npc.get("last_tick_minute")), minute)
+        block["journal"].append({
+            "kind": "catchup_plan_done",
+            "npc_id": npc_id,
+            "plan_id": _text(plan.get("plan_id")),
+            "at_minute": minute,
+            "decision_id": "cat_" + _digest("neura.catchup.done", npc_id,
+                                            _text(plan.get("plan_id")),
+                                            minute)[:16],
+        })
+        result["processed"] += 1
+
+    if len(steps) > MAX_CATCHUP_STEPS:
+        # §7.4 超限：其余格点记 catchup_deferred（幂等：同一时刻只记一次），
+        # 远场层直接跳到最新分钟。
+        deferred = len(steps) - min(len(expiries), len(steps))
+        if deferred > 0 and not any(
+                entry.get("kind") == "catchup_deferred"
+                and entry.get("at_minute") == now_minute
+                for entry in block["journal"] if isinstance(entry, dict)):
+            block["journal"].append({
+                "kind": "catchup_deferred",
+                "count": deferred,
+                "at_minute": now_minute,
+                "decision_id": "cat_" + _digest("neura.catchup.deferred",
+                                                start, now_minute,
+                                                deferred)[:16],
+            })
+            result["deferred"] = deferred
+        for npc_id in sorted(npcs, key=str):
+            npc = npcs[npc_id]
+            if layer_of(npc, view) in ("important_far", "background"):
+                npc["last_tick_minute"] = now_minute
+
+    block["budget"] = _ensure_budget_day(block["budget"], now_minute)
+    result["block"] = block
+    return result
+
+
+def tick(block, view, *, port, now_minute):
+    """§5.8 一次 tick（签名照抄设计，不改）：返回**新块**，不返回事件、不碰 state。
+
+    每个到期 NPC（`due_npcs`）依次走：
+
+    ① 日程义务：到点不在岗 → 规则移动提案并提交（离线也走，§8.4）；
+    ② 降级阶梯 L0–L3：L3 只写 `journal(kind="idle")`、不提交（§8.3）；
+    ③ 硬约束过滤；`hard["ok"]` 且预算 / 突发上限允许时，经
+       `port.generate_candidates` 取 AI 候选并**逐条复验**（§5.8 ④），
+       按档位 `charge` 记账（L0 → strong、L1 → light）；
+    ④ 需求评分 → 选择 → journal → `port.submit(proposal, idempotency_key)`。
+
+    `port` 是注入的回调对象（依赖注入）：`submit` 必须实现；
+    `generate_candidates` 可选——没有它 = 无 AI 配置的正常路径（§8.4），
+    NPC 仍按日程移动、按需求阈值行动、硬约束照拦。本函数不改写入参
+    （block / view），不 import 业务模块、不新建时钟（P7：`now_minute`
+    只来自 CHRON）。
+    """
+    view = view if isinstance(view, dict) else {}
+    block = prune_block(block)
+    block["budget"] = _ensure_budget_day(block["budget"], now_minute)
+    budget = block["budget"]
+    burst = {"strong": 0, "light": 0}
+
+    for npc_id in due_npcs(block, view, now_minute):
+        npc = block["npcs"].get(npc_id)
+        if not isinstance(npc, dict):
+            continue
+        npc_view = dict(view)
+        npc_view["now_minute"] = now_minute            # P7：不新建时钟
+        npc_view["campaign_seed"] = _count(block.get("campaign_seed"))
+        npc_view["layer"] = layer_of(npc, npc_view)    # N3 的 decide 读它
+        npc_view["tick_burst"] = dict(burst)
+        npc_view["budget"] = dict(budget)
+        outer_options = view.get("options")
+        npc_view["options"] = list(outer_options) if isinstance(outer_options, list) else []
+
+        # ① 日程义务（§8.4：无 AI 也照走）。
+        slot = _active_schedule_slot(npc, now_minute)
+        slot_place = _text(slot.get("place_id")) if isinstance(slot, dict) else ""
+        if slot_place and slot_place != _npc_place(npc):
+            if _tick_schedule_move(block, npc_id, slot, npc_view, port, now_minute):
+                budget = block["budget"]
+                continue
+
+        # ② 降级阶梯（§8.3）。
+        tier = degrade_tier(npc, npc_view, budget)
+        if tier == "L3":
+            block["journal"].append({
+                "kind": "idle",
+                "npc_id": npc_id,
+                "at_minute": now_minute,
+                "decision_id": "idle_" + _digest("neura.idle", npc_id,
+                                                 now_minute)[:16],
+                "reason": "plan 已 dropped 且无可行选项（§8.3 L3）",
+            })
+            npc["last_tick_minute"] = now_minute
+            continue
+
+        # ③ 硬约束 + AI 候选（预算允许才调，§5.8 ②）。
+        hard = hard_filter(npc, npc_view, now_minute)
+        options = list(hard["options"])
+        kind = TIER_CALL_KIND.get(tier)
+        if hard["ok"] and kind and hasattr(port, "generate_candidates") \
+                and can_call_ai(npc, npc_view, budget):
+            raw = port.generate_candidates(npc, npc_view, budget=budget)
+            cands = [item for item in (raw if isinstance(raw, list) else [])
+                     if _revalidate(npc, item, npc_view, now_minute)]
+            if cands:
+                npc_view["cost_tier"] = "H" if kind == "strong" else "M"
+                npc_view["ai_tokens"] = CALL_KIND_TOKENS[kind]
+                options.extend(_clone(cands))
+                block["budget"] = budget = charge(budget, kind)
+                burst[kind] += 1
+                npc_view["tick_burst"] = dict(burst)
+                npc_view["budget"] = dict(budget)
+        npc_view["options"] = options
+
+        # ④ 评分 → 选择 → journal → 窄口提交（§5.8 ③④）。
+        decision = decide(npc, npc_view)
+        block["journal"].append(decision)
+        npc["last_tick_minute"] = now_minute
+        if decision["chosen"] is None:
+            continue
+        proposal = to_proposal(decision, npc)
+        port.submit(proposal, idempotency_key=idempotency_key(decision, npc))
+        _write_back(npc, decision, now_minute)
+
+    return block
