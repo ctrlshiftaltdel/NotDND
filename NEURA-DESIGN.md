@@ -157,11 +157,14 @@
 |---|---|---|
 | 载体 | `data/scenarios/*.json` 的 `npcs[]`（既有 schema） | `snapshot.blocks.neura.npcs[<npc_id>]` |
 | 权威方 | 内容作者（`data/**`，本里程碑不改） | NEURA（经状态层提交） |
-| 内容 | 姓名 / 别名 / 角色 / 势力 / 驱动力 / 杠杆 / 面具 / 破绽 / 底线 / 秘密文本 / 态度 / `knows` | 需求水平 / 目标 / 日程 / 位置 / 关系 / 知识账本 / 秘密状态 / 记忆 / 计划 / 资源 / 预算 |
+| 内容 | 姓名 / 别名 / 角色 / 势力 / 驱动力 / 杠杆 / 面具 / 破绽 / 底线 / 秘密文本 / 态度 / `knows` | 需求水平 / 目标 / 日程 / 位置 / 关系 / 知识账本 / 秘密状态 / 记忆 / 计划 / 资源 |
 | 读法 | 只读；**不复制进 `neura` 块** | 只存**与静态档案的差异**；缺省值由 `new_block()` 给 |
 
 > 反面例子（禁止）：把 `name` / `secret` 抄进 `neura` 块。两份文本一旦漂移，秘密门会按旧文本判定——
 > 这是**越权漏洞**，不只是冗余。
+
+**`budget` 不在这一层**：成本账本是**块级**字段（`blocks.neura.budget`，每战役一份，与 `npcs` 平级），
+**不是**每个 NPC 一份；见 §4.2 的「块级字段」与 §8.2。
 
 ### 4.2 运行时字段表（字段级）
 
@@ -184,11 +187,16 @@
 | `memory` | `[Memory]`（见 §4.3） | 是 | 是 | 权威 | **摘要级**，不存原文；有上限与裁剪规则 |
 | `plan` | `{plan_id, goal_id, step_index, steps[], started_minute, until_minute, status, proposal_id}` | 否 | 是 | 权威 | `status ∈ {pending, running, done, dropped}`；一次只有一个当前计划 |
 | `resources` | `{coin, stock: {item_id: int}, obligations: [{to, kind, due_minute}]}` | 是 | 是 | 权威 | **粗账**；规则包权威库存不在此（§9.2） |
-| `budget` | `{day, strong_calls, light_calls, tokens}` | 是 | 是 | 权威 | 见 §8.2；跨日自动重置（重置本身也由提交落盘） |
 | `last_tick_minute` | `int` | 是 | 是 | 权威 | 幂等 / 补算的锚点；`== world_minute` 表示本分钟已 tick |
 | `journal` | `[DecisionRecord]`（见 §5.4），环形、上限 `JOURNAL_MAX = 256`（整战役） | 是 | 是 | 派生 | 可完整重算；裁剪规则确定（见 §9.2） |
 | `layer` | `str`，∈ `near/important_far/background/unexplored` | — | 否 | 内存 | 每次 tick 由 §7.1 现算，不落盘（避免层缓存与位置漂移） |
 | `derived_view` | `dict` | — | 否 | 内存 | `select_context()` 的产物，只活在一次调用里 |
+
+**块级字段（与 `npcs` 平级，不是每个 NPC 一份）**
+
+- `budget`：`{day, strong_calls, light_calls, tokens}`，必填、落盘、权威。每战役**一个**成本账本，
+  落 `blocks.neura.budget`（**块级，见 §8.2**）；跨日自动重置（重置本身也由提交落盘）。
+  `npcs[<npc_id>]` 里**没有** `budget`。
 
 **字段级不变量**
 
@@ -358,9 +366,11 @@ def stable_unit(*parts: str) -> float:
 
     不用 `random`（全局状态）、不用 `hash()`（PYTHONHASHSEED 随机化）、
     不用时间戳。输入必须全部来自权威状态。
+    算法用 `blake2b`，不承诺无碰撞，只承诺同输入同输出与统计均匀（§9.2 裁定第 4 条）。
     """
-    digest = hashlib.sha256("|".join(str(p) for p in parts).encode("utf-8")).digest()
-    return int.from_bytes(digest[:8], "big") / float(1 << 64)
+    payload = repr(parts).encode("utf-8")      # 参数编码：标量走 repr(tuple)，无歧义
+    digest = hashlib.blake2b(payload, digest_size=8).digest()
+    return (int.from_bytes(digest, "big") >> 11) / float(1 << 53)   # 取前 53 位
 ```
 
 **抖动不是骰点**：`jitter` 只为打破并列（否则同权重 NPC 会永远选同一个），
@@ -816,10 +826,25 @@ neura.py（纯函数；只 import 标准库）
 | 块名 | `"neura"`（与 `rules` / `atlas` / `guide` / `chron` / `room` 同级） |
 | 谁解析 | **没人解析**。`state.py` 只按 `changes` 机械写入（`state.py:226`），`neura.py` 自己解析自己写的内容 |
 | 创世态 | `_genesis_blocks()`（`state.py:491`）**不改**：`neura` 块在**首次提交**时出现（`replace_block` 会建键，`state.py:235`） |
-| 版本 | `NEURA_VERSION = 1`；块内 `schema_version` |
+| 版本 | `NEURA_VERSION = 1`；块内 **`version` 与 `schema_version` 两键同值**——`version` 是**权威键**，`schema_version` 只是兼容别名（两者不一致时以 `version` 为准）；任一键高于 `NEURA_VERSION` 都拒载 |
 | 迁移 | 惰性（`STATE-DESIGN.md` §10.1）：`migrate_block(raw, notes=None)` 补缺键、不覆盖合法值；**更高版本拒载**（抛 `NeuraError`），与 `chron.migrate_block`（`chron.py:2323`）同款 |
 | 失败降级 | 脏块（解析失败 / 校验不过）→ 丢弃该块并重建空块，记 `notes`；**不阻塞世界时间推进**（与 `chron.migrate_block` 的脏值降级同口径） |
 | 大小上限 | `JOURNAL_MAX = 256`（整战役）、`MEMORY_MAX = 128` / NPC；超过按 §4.2 规则裁剪。估算：200 NPC × (0.5 KB 记忆 + 0.2 KB 状态) + 256 × 0.4 KB ≈ 240 KB——与 `STATE-DESIGN.md` §6.3 的 1 MiB 量级阈值同一数量级，可接受；若实测越过 512 KiB 再评估分片（§12 P3） |
+
+**N1 实现裁定（2026-10-18 回填；源头：PR #345（Issue #339）的「风险」节）**
+
+> 下列 5 条是 N1（`neura.py`）**已经落地**的口径，回填单为 Issue #346。N2–N8 一律按此写；
+> 与本文其它段落冲突时**以本节为准**，并另开文档 PR 修正原文，**不得**在实现里分叉。
+
+1. **版本键双写**：`version` 与 `schema_version` **同值**，`version` 为准——唯一口径见本节上表「版本」行。
+2. **`budget` 是块级**：每战役**一个**账本，落 `blocks.neura.budget`，与 `npcs` 平级；
+   `npcs[<npc_id>]` 里**没有** `budget`（§4.2「块级字段」、§8.2、§5.8 的 `block["budget"]`）。
+3. **`needs` / `memory` / `plan` 在 `npcs` 条目内**：由 `empty_npc()` 提供；块顶层**不复制**
+   这些字段（两份真相会漂移）。依据 §4.2 的 `npc_id` 行「块内以 `npcs` 字典的键表达」。
+4. **`stable_unit` 用 `blake2b`**：内置 `hash()` 按进程加盐（`PYTHONHASHSEED`），跨进程漂移会破坏
+   「同种子同结果」；只承诺同输入同输出与统计均匀，**不承诺**绝对无碰撞（§5.3）。
+5. **`plan` 空态不写 `null`**：为空时 `plan` 键**不存在**（§4.2 字段级不变量）；`migrate_block`
+   遇到 `null` / 空 dict 会丢弃该键并记 `notes`，不保留 `null`。
 
 **提交形态（跨块，A0 合规）**
 
