@@ -125,6 +125,7 @@ import chron
 import neura
 import prism_core
 import state
+import world
 import worldgen
 
 # 导引者是**可选模块**（GUIDE-DESIGN.md §5.1）：依赖方向只允许
@@ -256,6 +257,7 @@ ACTION_ALREADY_COMMITTED = "该提案已提交"       # 409
 ACTION_NEED_CONFIRM = "需要确认"               # 409
 ACTION_BAD_VERSION = "版本不支持"              # 409
 ACTION_TOO_FREQUENT = "太频繁"                 # 429
+ECON_REJECTED = "经济结算拒单"                 # 409（出口 2.2：库存 / 余额不足）
 
 # NEURA M8 内部分支（NEURA-DESIGN §5.6 / §11 N6）——`_neura_submit` 的固定
 # 拒绝语（四态返回值里的 `reason`，不是 HTTP 短语）：
@@ -2595,6 +2597,81 @@ def _action_interrupt_conditions(entry) -> list:
     return [item for item in raw if isinstance(item, (dict, str))]
 
 
+def _action_econ_spec(entry) -> dict | None:
+    """行动表条目的**经济载荷**（W5，WORLD-DESIGN §6.4）：可选 `econ` 字段。
+
+    玩家的买入 / 卖出等经济动作 = 普通提案走 M8 管线，**提案契约零改动**
+    （V6）：交易的数量 / 单价 / 标的由世界规则包在行动表条目上声明，M8
+    结算时在这里读取。形状：
+
+        {"kind": "trade", "good_id": <str>, "quantity": <int ≥ 1>,
+         "unit_price": <int ≥ 0>}
+
+    缺失 / 形状不对（含未知 `kind`）→ `None`：按普通行动结算，不进经济
+    分支（照 `_action_schedule_hint` 的「脏值逐项丢弃，不猜」口径；世界
+    规则包是服务器侧内容，不是客户端输入）。`econ.build` 的结算函数
+    world.py 尚未提供（W4 明确归 W6）——声明了也先按普通行动走，PR
+    「风险与口径补充」登记。
+    """
+    raw = (entry or {}).get("econ")
+    if not isinstance(raw, dict) or str(raw.get("kind") or "") != "trade":
+        return None
+    good_id = str(raw.get("good_id") or "")
+    quantity = raw.get("quantity")
+    unit_price = raw.get("unit_price")
+    if not good_id or not isinstance(quantity, int) or isinstance(quantity, bool) \
+            or quantity < 1 or not isinstance(unit_price, int) \
+            or isinstance(unit_price, bool) or unit_price < 0:
+        return None
+    return {"kind": "trade", "good_id": good_id, "quantity": quantity,
+            "unit_price": unit_price}
+
+
+def _action_econ_settle(entry, handle, *, base_seq, result) -> tuple:
+    """M8 内部的**经济结算分支**（§6.4）：结算 + 组装同提交的 `world` 块变更。
+
+    行动表条目没有经济载荷 → `(None, ACTION_EVENT_TYPE)`，玩家路径逐字节
+    不变。有载荷（trade）→ `world.settle_trade` 给出经济部分的 `effects`
+    （结果契约 §5.1 既有字段装得下：逐条 Entry 折成 `resource` 效果）与
+    `world` 块变更；事件 type 换成 `econ.trade`（§6.4 枚举）。
+
+    **两本账不互改**（§6.6 铁律）：规则包库存是 M8 结算的既有事实，这里
+    零改动——双记是「同一次提交各记各的」（`changes` 双块：规则块 +
+    `world` 块），没有任何交叉写。
+
+    **拒单无账**（出口 2.2）：库存 / 余额不足时 `settle_trade` 抛
+    `WorldError` → 翻成 `_ActionError`（409 `经济结算拒单`）——结算之后、
+    排程钩子与提交之前抛出，**任何**事件都不发生（无账、无 changes）。
+
+    `event_seq`：本分支在 `base_seq` 校验之后、提交之前运行，本次提交的
+    事件号恒为 `base_seq + 1`（A0）——Entry 的 `refs.event_seq` 指向它。
+    """
+    spec = _action_econ_spec(entry)
+    if spec is None:
+        return None, ACTION_EVENT_TYPE
+    view = handle.view()
+    minute = chron.world_time_minute(view.get("world_time"))
+    minute = ACTION_EPOCH_MINUTE if minute is None else minute
+    world_before = (view.get("blocks") or {}).get("world")
+    try:
+        new_block, entries = world.settle_trade(
+            world_before, good_id=spec["good_id"], quantity=spec["quantity"],
+            unit_price=spec["unit_price"], at_minute=minute,
+            event_seq=base_seq + 1)
+    except world.WorldError as exc:
+        raise _ActionError(ECON_REJECTED, 409, str(exc)) from exc
+    actor_id = str((result.get("actor") or {}).get("id") or "")
+    for entry_row in entries:
+        result["effects"].append({"kind": "resource",
+                                  "pool": str(entry_row["account"]),
+                                  "value": int(entry_row["delta"]),
+                                  "target": actor_id})
+    change = {"block": "world", "op": "replace_block", "path": "",
+              "before": copy.deepcopy(world_before),
+              "after": copy.deepcopy(new_block)}
+    return change, ECON_TRADE_EVENT_TYPE
+
+
 def _action_prepare_proposal(session, raw) -> dict:
     """服务端**重验**客户端回带的提案（§9.2：永不信任回带的形状与实体）。
 
@@ -2801,6 +2878,12 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
         status = prism_core.action_status(perf)
         new_rules = live.snapshot()
         result = _action_result(proposal, perf, status, entry)
+        # 经济内部分支（W5，WORLD-DESIGN §6.4）：世界规则包在行动表条目上
+        # 声明经济载荷的行动，在这里多结算一笔经济账（`world` 块变更随
+        # **同一次提交**落盘，事件 type 换 `econ.trade`）；拒单（库存 / 余额
+        # 不足，出口 2.2）在排程钩子与提交**之前**抛出——无账、无 changes。
+        econ_change, econ_type = _action_econ_settle(
+            entry, handle, base_seq=base_seq, result=result)
         errors = prism_core.validate_result(result)
         if errors:
             # 结果契约不过关就**不进提交**：状态层一旦落事件就不可回滚（§7.7）。
@@ -2816,9 +2899,10 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
                   "after": copy.deepcopy(new_rules)}
         commit = handle.commit(
             base_seq=base_seq, idempotency_key=idempotency_key,
-            type=ACTION_EVENT_TYPE,
+            type=econ_type,
             actor=str((proposal.get("actor") or {}).get("id") or ""),
-            target=_action_event_target(proposal), changes=[change],
+            target=_action_event_target(proposal),
+            changes=[change] + ([econ_change] if econ_change else []),
             rules_version=ACTION_RULES_VERSION,
             roll_refs=[result["rule_ref"]["roll_ref"]]
             if result["rule_ref"].get("roll_ref") else [],
@@ -2944,6 +3028,14 @@ def _neura_submit(session, proposal, *, idempotency_key,
 
 NEURA_TICK_EVENT_TYPE = "neura.tick"      # §9.6 枚举外的块级 tick 提交（P9 登记）
 NEURA_SKIPPED_LOG_KIND = "neura_skipped"  # 失败隔离的日志 kind（§9.4）
+
+# 世界经济（M12-W5，WORLD-DESIGN §6.3 / §6.4 / §11 W5）——新事件 type 枚举
+# 按 P9 纪律在实现 PR 登记（§9.2 枚举的文档 PR 另开同步）；`world_skipped`
+# 沿 world.py 既定常量（W4 已定，照 `neura_skipped` 先例）。
+ECON_TRADE_EVENT_TYPE = "econ.trade"      # 玩家 trade 提案结算伴随（双记账）
+ECON_BUILD_EVENT_TYPE = "econ.build"      # 玩家 build 提案伴随（结算归 W6）
+WORLD_TICK_EVENT_TYPE = "econ.day"        # 日切块级提交（幂等键 `wtick_<day>`）
+WORLD_SKIPPED_LOG_KIND = world.WORLD_SKIPPED_LOG_KIND
 
 
 class _NeuraPort:
@@ -3881,6 +3973,89 @@ def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
                        "result": result}}
 
 
+# ── 世界经济日切接线（W5，WORLD-DESIGN §6.3 / §11 W5）──────────────────────
+#
+# `_world_tick` 在 `_chron_advance` 的锁内、`_neura_tick` 之后、叙事段之前
+# 调用——与 NEURA 完全同款（§6.3：不新建时钟，驱动就是既有推进入口）。
+# 日切结算是 world.py 的纯函数（`world_tick` / `catch_up`，W4 产物，本层
+# 只调用零改动）；跨屏障漏掉的日切在下一个非屏障停点**逐日补结算**
+# （每天一条独立幂等键 `wtick_<day>`、一次独立提交——保证逐日可查）。
+
+def _world_tick(session, *, stopped_at=None) -> None:
+    """世界经济日切接线（§6.3）：逐日补结算 → 块级提交。
+
+    **调用契约**：必须已在 `session.lock` 内（`_chron_advance` 的临界区）、
+    `_neura_tick` 之后、叙事段之前；`stopped_at` 透传 `chron.advance_to`
+    的停点——**屏障处不跑日切**（§6.3 屏障口径；W4 已在 `world_tick`
+    内实现屏障参数，这里透传）。
+
+    **落盘（A0）**：每结算一天恰好提交**一条**事件（type `econ.day`，
+    §6.4 枚举；`source="system"`、`visibility=gm`、幂等键 = `wtick_<day>`，
+    与块内 `economy.wticks` 登记同键——状态层持久幂等索引兜底重放）。
+    无事可做**不落事件**（§9.7 同款）：`world` 块缺失（老档 / 未接世界）
+    直接返回；同日重放（`wtick` 命中）与屏障内（W4 原样返回）都是
+    「块零变更 → 不提交」。
+
+    **两本账不互改**（§6.6）：本函数只改 `blocks.world`（宏观账），规则包
+    库存零改动；`world` 块里的 `Entry.refs.event_seq` 指向携带它的这条
+    `econ.day` 事件（`base_seq + 1`）。
+
+    **失败隔离（§6.3 硬要求）**：任何异常（块拒载 / 日切抛错 / 提交被拒）
+    只落一条 `world_skipped` 日志并返回——不阻塞 `_chron_advance`，
+    玩家到期卡已在前面结算、世界时间照走（照 `neura_skipped` 先例）。
+    """
+    try:
+        handle = session._handle or session._open_handle()
+        blocks = handle.view().get("blocks") or {}
+        if blocks.get("world") is None:
+            return                      # 没有世界运行时态：无事可做（§9.7）
+        minute = chron.world_time_minute(handle.view().get("world_time"))
+        minute = ACTION_EPOCH_MINUTE if minute is None else minute
+        current_day = minute // world.MINUTES_PER_DAY
+        block = world.migrate_block(blocks.get("world"))
+        # 逐日补结算：从「已结算日的下一日」到当前日（§6.3：补结算是把欠的
+        # `wtick_<day>` 逐日补齐，不是把多天合成一笔）。`economy.day` 与
+        # `wticks` 双护栏：`world_tick` 内部的同日幂等再拦一层。
+        while int(block["economy"]["day"]) < current_day:
+            day = int(block["economy"]["day"]) + 1
+            # 已过日期按日初结算（world.catch_up 同款口径）；当前日用实际
+            # 世界分钟——账目 `at_minute` 如实落在推进停点上。
+            now = minute if day == current_day \
+                else day * world.MINUTES_PER_DAY
+            base_seq = _int_or(handle.view().get("seq"), 0)
+            new_block, _entries, _notes = world.world_tick(
+                block, day=day, now_minute=now, event_seq=base_seq + 1,
+                stopped_at=stopped_at)
+            if new_block == block:
+                break                   # 屏障内不日切 / 同日幂等命中：不落事件
+            calendar = chron.to_calendar(minute)
+            world_time = {key: calendar[key] for key in
+                          ("world_minute", "day", "tod")}
+            change = {"block": "world", "op": "replace_block", "path": "",
+                      "before": copy.deepcopy(block),
+                      "after": copy.deepcopy(new_block)}
+            result = handle.commit(
+                base_seq=base_seq, idempotency_key=world.wtick_key(day),
+                type=WORLD_TICK_EVENT_TYPE, actor="system", changes=[change],
+                rules_version=ACTION_RULES_VERSION,
+                visibility={"scope": "gm", "subjects": []},
+                world_time=world_time, source="system")
+            if str(result.get("status") or "") not in ("committed", "replayed"):
+                # 提交被拒：本日日切丢失——下个非屏障停点按同一确定性输入
+                # 重算收敛（`wtick` 未登记会重跑），只在这里如实留痕。
+                session.add_log(WORLD_SKIPPED_LOG_KIND,
+                                "world 日切提交被拒（%s：%s）"
+                                % (result.get("status"),
+                                   result.get("error") or result.get("message")))
+                break
+            block = new_block
+    except Exception as exc:      # noqa: BLE001 — §6.3 失败隔离：不阻塞推进
+        try:
+            session.add_log(WORLD_SKIPPED_LOG_KIND, "world tick 跳过：%s" % (exc,))
+        except Exception:         # noqa: BLE001 — 日志通道也失败就静默
+            pass
+
+
 def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
     """网页层推进入口（L2 `advance_to`）：推进世界时间并**在到期点结算**。
 
@@ -3937,6 +4112,10 @@ def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
         # 玩家到期卡已在上面结算。失败隔离在 `_neura_tick` 内部
         # （`neura_skipped` 日志，不阻塞推进）；屏障处不跑远场（§10.1 的 2.4）。
         _neura_tick(session, stopped_at=out["stopped_at"])
+        # 世界经济日切接线（W5，§6.3）：同一次持锁内、NEURA 之后、叙事段
+        # 之前跑日切结算；失败隔离在 `_world_tick` 内部（`world_skipped`
+        # 日志，不阻塞推进）；屏障处不跑日切（透传 `stopped_at`）。
+        _world_tick(session, stopped_at=out["stopped_at"])
         # 第 6 段（叙事）在**锁外**跑（§7.4：模型调用不持锁）；先取冻结快照
         # （提交点的那一份，§7.5）与要叙事的行动清单。
         frozen = []

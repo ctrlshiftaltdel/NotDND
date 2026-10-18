@@ -174,12 +174,14 @@ os.environ["NOTDND_SAVE"] = _TMP
 
 sys.path.insert(0, ROOT)                     # 让 tests/ 直接跑时也能 import 根模块
 import atlas as atlas_kernel   # noqa: E402  N7：stub 确定性小地图
+import copy
 import neura                   # noqa: E402  N7：接线断言（notdnd_web 顶层已 import）
 import notdnd_web   # noqa: E402
 import chron        # noqa: E402
 import prism_core   # noqa: E402
 import prism_guide  # noqa: E402
 import state        # noqa: E402
+import world        # noqa: E402  W5：接线断言（notdnd_web 顶层已 import）
 
 _SALT_RE = re.compile(r"^[0-9a-f]{32}$")
 
@@ -6359,6 +6361,331 @@ def _commit_state_event(handle, index: int) -> None:
     assert result["status"] == "committed", result
 
 
+# ── 世界经济日切接线与玩家经济动作（M12-W5，WORLD-DESIGN §6.3 / §6.4）──────
+#
+# `_world_tick` 接线照 N7 模式断言（锁内时序 / 失败隔离 / 屏障 / 并发 /
+# 幂等）；`econ.trade` 是 M8 内部分支 + 两本账双记（§6.6：同提交各记各的，
+# 无交叉写）。`world.py` 只调用零改动——夹具直接用 `world.new_block` 造块。
+
+
+def _world_seed_block(session, block: dict, key: str) -> None:
+    """把手工 world 块提交进状态层（测试夹具；`replace_block` 建键）。"""
+    handle = session._handle or session._open_handle()
+    out = handle.commit(
+        base_seq=handle.view()["seq"], idempotency_key=key,
+        type="core.commit", actor="pc-1",
+        changes=[{"block": "world", "op": "replace_block", "path": "",
+                  "before": None, "after": block}],
+        rules_version=notdnd_web.ACTION_RULES_VERSION, source="player")
+    assert out["status"] == "committed", out
+
+
+def _world_block_of(session) -> dict:
+    """本局状态层里的 world 块（没有 → 空 dict）。"""
+    handle = session._handle or session._open_handle()
+    return (handle.view().get("blocks") or {}).get("world") or {}
+
+
+def _world_goods_block(*, stock: int = 10, coin: int = 10000) -> dict:
+    """带一种 food good 的 world 块（贸易 / 日切测试夹具）。"""
+    return world.new_block(
+        goods=[{"good_id": "grain", "name": "黑麦", "category": "food",
+                "tier": 1, "base_price": 2, "stock": stock,
+                "produced_by": ["p1"]}],
+        day=0, balances={"coin": coin})
+
+
+def _event_type_counts(session) -> dict:
+    """状态层全部事件按 type 计数（按 seq 升序）。"""
+    handle = session._handle or session._open_handle()
+    counts: dict = {}
+    for event in handle.events_since(0):
+        counts[event["type"]] = counts.get(event["type"], 0) + 1
+    return counts
+
+
+def check_world_wired_import_and_tick_updates_block():
+    """W5 验收：接线证明（`notdnd_web` 顶层 import world）+ 日切接线：
+    `advance_to` 返回后 `blocks.world` 已日切更新；同日重放不重复（幂等）；
+    A0：一天至多一条 `econ.day` 事件。"""
+    assert notdnd_web.world is world, "notdnd_web 必须在顶层 import world"
+
+    sid = "world-w5-tick"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        block = _world_goods_block()
+        block["settlements"]["s1"] = {"place_id": "p1", "population": 10}
+        _world_seed_block(session, block, "world-w5-seed-0001")
+
+        out = notdnd_web._chron_advance(session, 1500)   # day 1（1440 起）
+        assert out["status"] == "ok" and out["world_minute"] == 1500, out
+        saved = _world_block_of(session)
+        assert saved["economy"]["day"] == 1, saved["economy"]
+        assert "wtick_0001" in saved["economy"]["wticks"], saved["economy"]
+        kinds = [entry["kind"] for entry in saved["economy"]["ledger"]]
+        assert "produce" in kinds and "consume" in kinds, kinds
+        # 三等式①在日切后仍成立（§6.2；world.py 纯函数，编排层零改动调用）
+        assert world.verify_ledger(saved) == [], world.verify_ledger(saved)
+
+        # 幂等：同日再推进（wtick 命中）→ 不落第二条 econ.day、day 不动
+        out2 = notdnd_web._chron_advance(session, 2000)
+        assert out2["status"] == "ok", out2
+        counts = _event_type_counts(session)
+        assert counts.get("econ.day") == 1, counts
+        assert _world_block_of(session)["economy"]["day"] == 1, \
+            _world_block_of(session)["economy"]
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_tick_failure_isolated():
+    """W5 验收：`world_tick` 抛异常（注入）→ `_chron_advance` 正常返回 +
+    `world_skipped` 日志 + 玩家到期卡照常结算（照 `neura_skipped` 先例）。"""
+    sid = "world-w5-fail"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    session = notdnd_web.Session.load(sid)
+    try:
+        proposal = notdnd_web._action_proposal_from_id(session, "a-long", {})
+        scheduled = notdnd_web._chron_schedule(session, proposal, base_seq=0)
+        task_id = scheduled["task_id"]
+        _world_seed_block(session, _world_goods_block(), "world-w5-seed-0002")
+
+        real_tick = world.world_tick
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("world boom")
+
+        world.world_tick = boom
+        try:
+            # 第一段推进停在 B8 屏障（30）：到期卡先结算，日切还没到（day 0）
+            out = notdnd_web._chron_advance(session, 2000)
+            assert out["stopped_at"] == 30 and out["world_minute"] == 30, out
+            assert out["settled"] \
+                and out["settled"][0]["action_id"] == task_id, out
+            # 第二段推进（非屏障，跨入 day 1）：注入的日切失败被隔离
+            out2 = notdnd_web._chron_advance(session, 2000)
+        finally:
+            world.world_tick = real_tick
+        # 推进照常返回、世界时间照走
+        assert out2["status"] == "ok" and out2["world_minute"] == 2000, out2
+        # 失败隔离留痕；世界块未被改写（day 仍 0）
+        kinds = [entry["kind"] for entry in session.log]
+        assert "world_skipped" in kinds, session.log
+        assert _world_block_of(session)["economy"]["day"] == 0, \
+            _world_block_of(session)["economy"]
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_barrier_skips_day_cut():
+    """W5 验收：屏障处（`stopped_at != None`）不跑日切（W4 参数透传断言）；
+    跨屏障漏掉的日切在下一个非屏障停点**逐日补结算**（每天一条独立幂等键、
+    一条独立事件——不是把多天合成一笔）。"""
+    sid = "world-w5-barrier"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry(
+                             time_cost={"value": 1500, "unit": "minute"}))
+    session = notdnd_web.Session.load(sid)
+    try:
+        proposal = notdnd_web._action_proposal_from_id(session, "a-long", {})
+        notdnd_web._chron_schedule(session, proposal, base_seq=0)
+        _world_seed_block(session, _world_goods_block(), "world-w5-seed-0003")
+
+        # 屏障（B8 到期）在 1500：停在屏障，日切被跳过（stopped_at 透传）
+        out = notdnd_web._chron_advance(session, 3000)
+        assert out["stopped_at"] == 1500 and out["world_minute"] == 1500, out
+        assert _world_block_of(session)["economy"]["day"] == 0, \
+            _world_block_of(session)["economy"]
+        assert _event_type_counts(session).get("econ.day") is None, \
+            _event_type_counts(session)
+
+        # 非屏障推进：欠的日切逐日补齐（1500 → 3000 跨 day 1 与 day 2）
+        out2 = notdnd_web._chron_advance(session, 3000)
+        assert out2["stopped_at"] is None and out2["world_minute"] == 3000, out2
+        saved = _world_block_of(session)
+        assert saved["economy"]["day"] == 2, saved["economy"]
+        assert {"wtick_0001", "wtick_0002"} <= set(saved["economy"]["wticks"]), \
+            saved["economy"]["wticks"]
+        counts = _event_type_counts(session)
+        assert counts.get("econ.day") == 2, counts
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_concurrent_advance_no_duplicate_events():
+    """W5 验收：两线程同时 `_chron_advance` → 不出现重复 `world` 事件
+    （单局锁串行化 + `wtick_<day>` 状态层幂等兜底）。"""
+    sid = "world-w5-concurrent"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _world_seed_block(session, _world_goods_block(), "world-w5-seed-0004")
+
+        outs: list = []
+        errors: list = []
+
+        def run():
+            try:
+                outs.append(notdnd_web._chron_advance(session, 2000))
+            except Exception as exc:      # noqa: BLE001 — 收集后统一断言
+                errors.append(exc)
+
+        threads = [threading.Thread(target=run) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert not errors, errors
+        assert len(outs) == 2 and all(o["status"] == "ok" for o in outs), outs
+        counts = _event_type_counts(session)
+        assert counts.get("econ.day") == 1, counts
+        assert _world_block_of(session)["economy"]["day"] == 1, \
+            _world_block_of(session)["economy"]
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_absent_block_writes_nothing():
+    """W5 口径（§9.7 同款）：`world` 块缺失（老档 / 未接世界）→ 推进不写
+    任何 world 事件、不落 `world_skipped`。"""
+    sid = "world-w5-absent"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        out = notdnd_web._chron_advance(session, 2000)
+        assert out["status"] == "ok" and out["world_minute"] == 2000, out
+        counts = _event_type_counts(session)
+        assert counts.get("econ.day") is None, counts
+        kinds = [entry["kind"] for entry in session.log]
+        assert "world_skipped" not in kinds, session.log
+        assert "world" not in ((session._handle or session._open_handle())
+                               .view().get("blocks") or {}), "块缺失不得被创建"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_econ_trade_commit_dual_ledger_http():
+    """W5 验收：trade 提案全链路（HTTP 面）：玩家提案 → M8 结算（第 3–5 段）
+    → 事件 `econ.trade` → 同提交 `world` 块 Entry 双记（`changes` 双块）；
+    两本账不互改（§6.6）；同键重放不重复结算（§7.7）。"""
+    sid = "econ-w5-trade"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="buy-grain",
+                         label="买粮",
+                         entry={"econ": {"kind": "trade", "good_id": "grain",
+                                         "quantity": 10, "unit_price": 2}})
+    try:
+        with _LocalServer() as server:
+            # HTTP 用例必须拿**服务端缓存里的同一份**会话（get_session），
+            # 否则读的是互不知情的副本（Session.load 不进缓存）。
+            session = notdnd_web.get_session(sid)
+            _world_seed_block(session, _world_goods_block(stock=10, coin=100),
+                              "econ-w5-seed-0001")
+            status, prop = _propose_action(server, sid, action_id="buy-grain")
+            assert status == 200, (status, prop)
+            rules_before = copy.deepcopy(session.rules)
+            base_seq = prop["base_seq"]
+
+            status, body, raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], base_seq), sid=sid,
+                headers={"Idempotency-Key": "econ-w5-trade-0001"})
+            assert status == 200, (status, body)
+            frames = _parse_sse(raw)
+            result = frames[0][1]
+            assert result["committed"] is True, result
+            # 经济部分进了结果契约（§6.4：既有 `effects` 字段装得下）
+            pools = sorted((e["pool"], e["value"])
+                           for e in result["effects"]
+                           if e["kind"] == "resource")
+            assert ("coin", -20) in pools and ("grain", -10) in pools, \
+                result["effects"]
+
+            # 事件封套：type econ.trade，changes 双块（规则块 + world 块）
+            handle = session._handle or session._open_handle()
+            events = handle.events_since(0)
+            econ = [e for e in events if e["type"] == "econ.trade"]
+            assert len(econ) == 1, [e["type"] for e in events]
+            event = econ[0]
+            assert [c["block"] for c in event["changes"]] == \
+                ["rules", "world"], event["changes"]
+
+            # world 块（宏观账）：两条 trade Entry、库存 / 金库已扣
+            saved = _world_block_of(session)
+            ledger = saved["economy"]["ledger"]
+            assert [row["kind"] for row in ledger] == ["trade", "trade"], ledger
+            assert (ledger[0]["account"], ledger[0]["delta"]) == \
+                ("coin", -20), ledger
+            assert (ledger[1]["account"], ledger[1]["delta"]) == \
+                ("grain", -10), ledger
+            assert all(row["refs"]["event_seq"] == event["seq"]
+                       for row in ledger), "Entry 必须指向携带它的事件"
+            assert saved["economy"]["balances"]["coin"] == 80, saved["economy"]
+            assert saved["economy"]["goods"]["grain"]["stock"] == 0, \
+                saved["economy"]["goods"]
+            assert world.verify_ledger(saved) == [], world.verify_ledger(saved)
+
+            # 两本账不互改（§6.6 铁律）：规则包侧只发生 M8 结算的既有事实
+            # ——after 与**纯 PRISM 结算**（不含经济分支）的快照逐字节一致，
+            # 经济分支没有碰它；world 块侧各记各的（无交叉写）。
+            live = prism_core.RuleSession.from_snapshot(rules_before)
+            prism_core.perform_action(live, "buy-grain", unit_id="u-1")
+            rules_change = [c for c in event["changes"]
+                            if c["block"] == "rules"][0]
+            assert rules_change["before"] == rules_before, "结算基线被动过"
+            assert rules_change["after"] == live.snapshot(), "规则包库存被交叉改写"
+
+            # 同键重放：回首次结果，不新增事件（§7.7）
+            status2, _body2, raw2, _h2 = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], base_seq), sid=sid,
+                headers={"Idempotency-Key": "econ-w5-trade-0001"})
+            assert status2 == 200, status2
+            assert _parse_sse(raw2)[-1][1].get("replayed") is True, raw2[:300]
+            counts = _event_type_counts(session)
+            assert counts.get("econ.trade") == 1, counts
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_econ_trade_insufficient_rejected_http():
+    """W5 验收：库存不足拒单（出口 2.2）：买 10 只有 3 只 → 409 拒、无账、
+    无 changes（事件一个都不落），两本账都原样。"""
+    sid = "econ-w5-short"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="buy-grain",
+                         label="买粮",
+                         entry={"econ": {"kind": "trade", "good_id": "grain",
+                                         "quantity": 10, "unit_price": 2}})
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            seeded = _world_goods_block(stock=3, coin=100)
+            _world_seed_block(session, seeded, "econ-w5-seed-0002")
+            status, prop = _propose_action(server, sid, action_id="buy-grain")
+            assert status == 200, (status, prop)
+            rules_before = copy.deepcopy(session.rules)
+            seq_before = (session._handle or session._open_handle()).view()["seq"]
+
+            status, body, _raw, _heads = server.post(
+                "/api/action/commit",
+                _commit_body(prop["proposal"], prop["base_seq"]), sid=sid,
+                headers={"Idempotency-Key": "econ-w5-short-0001"})
+            assert status == 409, (status, body)
+            assert body.get("error") == notdnd_web.ECON_REJECTED, body
+
+            # 无账、无 changes：一个事件都没落，两本账逐字节原样
+            handle = session._handle or session._open_handle()
+            assert handle.view()["seq"] == seq_before, "拒单不得落事件"
+            assert _world_block_of(session) == seeded, "world 块被改写"
+            assert session.rules == rules_before, "规则包被改写"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 def check_api_state_view():
     """M7-4：GET /api/state —— 只读摘要（campaign_id / seq / world_time / 块存在性）。
 
@@ -7509,6 +7836,13 @@ CHECKS = (
     check_world_generate_room_auth,
     check_world_export_import_round,
     check_world_export_disposition,
+    check_world_wired_import_and_tick_updates_block,
+    check_world_tick_failure_isolated,
+    check_world_barrier_skips_day_cut,
+    check_world_concurrent_advance_no_duplicate_events,
+    check_world_absent_block_writes_nothing,
+    check_econ_trade_commit_dual_ledger_http,
+    check_econ_trade_insufficient_rejected_http,
 )
 
 
