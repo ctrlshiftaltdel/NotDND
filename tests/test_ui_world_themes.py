@@ -21,6 +21,12 @@
      缺省与显式 `modern` 同值、三主题 `--bg-0` 互不相同、同一世界「强制档 =
      跟随档」且「暗 ≠ 明」。否则「跨世界取值相同」可能只是因为三个世界
      根本没被应用（断言会假装通过）。
+  5. **W2 接线（Issue #334）**：会话加载后按快照的 `world_type` 写
+     `html[data-world]`（三主题各验一次；未知 / 缺失落 `modern` 且不残留）；
+     设置区**只读**显示「本局世界主题」且无切换控件；切存档（现代 → 奇幻 →
+     未来 → 未绑定老档）时主题随之变化，**不重放叙事、不丢滚动位置、不动焦点**；
+     显式 `modern` 与「不设属性」的计算样式逐项相同（零回归对照）。
+     这条链路用真实大厅点击驱动（菜单 → 返回列表 → 点存档），不直接改 SID。
 
 明暗轴用 CDP 的 ``Emulation.setEmulatedMedia`` 模拟系统偏好，并取四种组合：
 「系统暗 · 跟随」「系统暗 · 强制明」「系统明 · 跟随」「系统明 · 强制暗」——
@@ -54,6 +60,7 @@
 
 import json
 import os
+import pathlib
 import re
 import shutil
 import signal
@@ -166,6 +173,23 @@ def _free_port():
         return int(probe.getsockname()[1])
 
 
+def _close_page(page):
+    """收掉浏览器：`_cdp` 按进程组杀（`os.killpg`），Windows 没有这个 API
+    （AttributeError，已知平台坑）。这里兜住它并显式杀掉残留进程——收尾
+    异常不该把「全部断言已通过」的结论带走，也不留孤儿浏览器。
+    """
+    try:
+        page.__exit__(None, None, None)
+    except AttributeError:
+        proc = getattr(page, "_proc", None)
+        if proc is not None:
+            try:
+                proc.kill()
+                proc.wait(timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+
+
 class _Server:
     """起一个 notdnd_web 子进程：随机端口 + 自己的临时存档目录。
 
@@ -174,14 +198,19 @@ class _Server:
     AI 三个键显式清空：与开发机上的 `.env` / 环境变量无关，这个子进程确定离线。
     """
 
-    def __init__(self):
+    def __init__(self, seed=None):
         self.dir = tempfile.mkdtemp(prefix="notdnd-web-world-themes-")
         self.port = _free_port()
         self.log_path = os.path.join(self.dir, "server.log")
+        self.seed = seed
         self.proc = None
         self._log = None
 
     def __enter__(self):
+        # 播种必须在服务起来之前落到存档目录：服务端按需从磁盘载入，
+        # 起来后再写盘只会碰到它自己的缓存。
+        if self.seed is not None:
+            self.seed(self.dir)
         env = dict(os.environ, NOTDND_SAVE=self.dir, NOTDND_HOST="127.0.0.1",
                    NOTDND_PORT=str(self.port), PYTHONUNBUFFERED="1",
                    PYTHONIOENCODING="utf-8",
@@ -202,14 +231,17 @@ class _Server:
         if self.proc is not None:
             try:
                 os.killpg(os.getpgid(self.proc.pid), signal.SIGTERM)
-            except (ProcessLookupError, PermissionError, OSError):
+            except (ProcessLookupError, PermissionError, OSError,
+                    AttributeError):
+                # Windows 没有 killpg / getpgid（AttributeError）→ 退回杀本进程。
+                # 与 test_notdnd_web.py 同一处置；不吞掉结果、也不留孤儿服务。
                 self.proc.terminate()
             try:
                 self.proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 try:
                     os.killpg(os.getpgid(self.proc.pid), signal.SIGKILL)
-                except OSError:
+                except (OSError, AttributeError):
                     self.proc.kill()
                 self.proc.wait(timeout=10)
             self.proc = None
@@ -244,9 +276,14 @@ class _Server:
 #
 # 只做一件事：按 (world, theme) 设置 `html` 上的属性，然后把名单里每个自定义
 # 属性的**计算值**读出来。自定义属性本身可能是任意颜色写法（hex / var() 链），
-# 所以借一个隐藏探针元素把它交给浏览器解析成 `rgb()` —— 测试只解析标准形状。
+# 所以借隐藏探针元素把它交给浏览器解析成 `rgb()` —— 测试只解析标准形状。
+#
+# 探针**每个令牌新建一个**、并等两帧再读：Windows 无头 Edge 里对同一个元素
+# 连续「改色 → 读 getComputedStyle」会拿到**上一次**的值（Linux Chrome 无此现象），
+# 复用探针会让整张矩阵退化成同一个色值——断言随之假通过 / 假失败。
+# 新建元素没有旧的计算样式缓存，两帧保证这一次的样式重算已经完成。
 _READ_JS = """
-window.__wtRead = function (world, theme) {
+window.__wtRead = async function (world, theme) {
   const root = document.documentElement;
   if (world === null) { root.removeAttribute('data-world'); }
   else { root.setAttribute('data-world', world); }
@@ -255,23 +292,29 @@ window.__wtRead = function (world, theme) {
   const names = %s;
   const style = getComputedStyle(root);
   const host = document.body || root;
-  const probe = document.createElement('span');
-  probe.setAttribute('aria-hidden', 'true');
-  probe.style.position = 'absolute';
-  probe.style.visibility = 'hidden';
-  host.appendChild(probe);
+  const nextFrame = function () {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { resolve(); });
+      });
+    });
+  };
   const raw = {}, value = {};
-  names.forEach(function (name) {
+  for (const name of names) {
     const r = (style.getPropertyValue(name) || '').trim();
     raw[name] = r;
     value[name] = '';
-    if (r) {
-      probe.style.color = '';
-      probe.style.color = r;
-      value[name] = getComputedStyle(probe).color || '';
-    }
-  });
-  probe.remove();
+    if (!r) continue;
+    const probe = document.createElement('span');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.position = 'absolute';
+    probe.style.visibility = 'hidden';
+    probe.style.color = r;
+    host.appendChild(probe);
+    await nextFrame();
+    value[name] = getComputedStyle(probe).color || '';
+    probe.remove();
+  }
   return { raw: raw, value: value,
            world: root.getAttribute('data-world'),
            theme: root.getAttribute('data-theme'),
@@ -589,12 +632,287 @@ def _collect_matrix(page):
     return matrix
 
 
+# ── W2 接线（Issue #334）───────────────────────────────────────────────
+#
+# 播种四局：三主题各一局（主题来自**世界模板的 world_type 声明**），外加一局
+# **未绑定**的老档快照（没有可用的 world_type → modern）。每局十四条叙事，
+# 用来把「切档不重放叙事 / 不丢滚动位置 / 不动焦点」变成可复现的断言。
+SEED_WORLDS = (
+    ("w-fantasy", "emberfall", "well_temperature", "fantasy", "F"),
+    ("w-modern", "threshold", "rain_line_seven", "modern", "M"),
+    ("w-future", "entropic-net", "backup_forty_one", "future", "U"),
+    ("w-legacy", "", "", "modern", "L"),
+)
+SEED_LOG_COUNT = 14
+WORLD_LABEL = {"fantasy": "奇幻", "modern": "现代", "future": "未来"}
+
+_WIRING_JS = """
+window.__w2 = {};
+window.__w2.state = function () {
+  const root = document.documentElement;
+  const sc = document.getElementById('playScroll');
+  const msgs = document.querySelectorAll('#stream .msg');
+  return {
+    world: root.getAttribute('data-world'),
+    bg0: getComputedStyle(root).getPropertyValue('--bg-0').trim(),
+    view: window.VIEW,
+    sid: window.SID,
+    count: msgs.length,
+    texts: Array.prototype.map.call(msgs, function (m) { return m.textContent; }),
+    scrollTop: sc ? Math.round(sc.scrollTop) : -1,
+    scrollMax: sc ? Math.round(sc.scrollHeight - sc.clientHeight) : -1,
+    active: document.activeElement
+      ? (document.activeElement.id || document.activeElement.tagName) : ''
+  };
+};
+/* focus() 计数：切档 / 主题投影都不该动焦点，这是「不动焦点」的可测口径。 */
+window.__w2.focusWatch = function () {
+  if (!window.__focusPatched) {
+    const orig = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function () {
+      window.__focusCalls += 1;
+      return orig.apply(this, arguments);
+    };
+    window.__focusPatched = true;
+  }
+  window.__focusCalls = 0;
+  return 1;
+};
+window.__w2.settingsRow = function () {
+  const el = document.getElementById('setWorldTheme');
+  if (!el) return { present: false };
+  const row = el.closest('.set-row');
+  const label = row ? row.querySelector('.set-label') : null;
+  return {
+    present: true,
+    value: (el.textContent || '').trim(),
+    theme: el.getAttribute('data-world-theme'),
+    label: label ? label.textContent.replace(/\\s+/g, '') : '',
+    controls: row
+      ? row.querySelectorAll('button,input,select,textarea,[contenteditable]').length : -1,
+    worldControls: document.querySelectorAll(
+      '#settingsForm [data-set="world"], #settingsForm [data-toggle="world"],'
+      + ' #settingsForm [data-world-switch]').length
+  };
+};
+/* 零回归对照用的计算样式签名：只看会随令牌变的那几项。 */
+window.__w2.signature = function () {
+  const sels = ['html', 'body', '#v-play .top', '#stream', '#stream .msg',
+                '#actZone', '#turnComposer'];
+  const out = {};
+  for (const sel of sels) {
+    const el = document.querySelector(sel);
+    if (!el) { out[sel] = null; continue; }
+    const cs = getComputedStyle(el);
+    out[sel] = {
+      bg: cs.backgroundColor, color: cs.color,
+      bg0: cs.getPropertyValue('--bg-0').trim(),
+      accent: cs.getPropertyValue('--accent').trim(),
+      font: cs.fontFamily
+    };
+  }
+  return out;
+};
+window.__w2.nextFrame = function () {
+  return new Promise(function (resolve) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { resolve(1); });
+    });
+  });
+};
+return 1;
+"""
+
+
+def _click(page, selector):
+    """点一个元素；找不到返回 False（断言里就能看出「没这个按钮」）。"""
+    return page.js(
+        "const e = document.querySelector(%s);"
+        "if (!e) return false; e.click(); return true;" % json.dumps(selector))
+
+
+def _seed_sessions(save_dir):
+    """在子进程服务的存档目录里播种四局（同 test_ui_smoke 的播种手法）。"""
+    if ROOT not in sys.path:
+        sys.path.insert(0, ROOT)
+    import notdnd_web                      # 延迟导入：不跑接线用例就不碰后端模块
+
+    saved_dir = notdnd_web.SAVE_DIR
+    notdnd_web.SAVE_DIR = pathlib.Path(save_dir)
+    try:
+        for sid, world_key, scenario_id, _world, prefix in SEED_WORLDS:
+            session = notdnd_web.Session(sid)
+            session.save_name = "播种 · %s" % prefix
+            session.guide["world_key"] = world_key
+            session.guide["scenario_id"] = scenario_id
+            for i in range(1, SEED_LOG_COUNT + 1):
+                session.log.append({
+                    "seq": i, "kind": "narrate",
+                    "text": "%s-%02d 这一段叙事只属于这一局，用来核对切档有没有重放。"
+                            % (prefix, i),
+                })
+            session.seq = SEED_LOG_COUNT
+            session.save()                 # 落盘后由子进程服务按需载入
+    finally:
+        notdnd_web.SAVE_DIR = saved_dir
+        for sid, _w, _s, _t, _p in SEED_WORLDS:
+            notdnd_web._sessions.pop(sid, None)
+
+
+def _check_wiring(page):
+    """验收：按 world_type 写 html[data-world]、设置区只读、切档无副作用。"""
+    print()
+    print("W2 接线（Issue #334）：按 world_type 写 html[data-world] / 设置区只读 / 切档副作用")
+    page.js("try { localStorage.removeItem('prism.sid');"
+            " localStorage.removeItem('prism.settings'); } catch (e) {} return 1;")
+    page.navigate("/", settle=1.2)
+    listed = page.wait_for(
+        "return document.querySelectorAll('[data-open]').length >= %d;"
+        % len(SEED_WORLDS), timeout=20)
+    check("大厅列出播种的四局存档", listed is True, "存档行不足 %d 条" % len(SEED_WORLDS))
+    page.js(_WIRING_JS)
+
+    seen_bg = {}
+    previous_prefix = None
+    for sid, _world_key, _scenario, world, prefix in SEED_WORLDS:
+        label = WORLD_LABEL[world]
+        # 真实切档路径：菜单 → 返回会话列表 → 点这一局的存档行
+        if page.js("return window.VIEW;") != "v-lobby":
+            _click(page, "#btnMenu")
+            _click(page, "#btnBackToLobby")
+            page.wait_for("return window.VIEW === 'v-lobby';", timeout=10)
+        page.js("window.__w2.focusWatch(); return 1;")
+        opened = page.js(
+            "const b = document.querySelector('[data-open=%s]');"
+            "if (!b) return false; b.click(); return true;" % json.dumps(sid))
+        landed = page.wait_for(
+            "return window.SID === %s && window.VIEW === 'v-play'"
+            " && document.documentElement.getAttribute('data-world') === %s"
+            " && Array.prototype.some.call(document.querySelectorAll('#stream .msg'),"
+            "      function (m) { return m.textContent.indexOf(%s) === 0; });"
+            % (json.dumps(sid), json.dumps(world), json.dumps(prefix + "-01")),
+            timeout=25)
+        check("切到存档 %s（%s）并在主画面列出本局叙事" % (sid, label),
+              bool(opened and landed), "未进入主画面 / 叙事条数不足")
+        if not (opened and landed):
+            continue
+
+        state = page.js("return window.__w2.state();")
+        focus_calls = page.js("return window.__focusCalls;")
+        texts = state["texts"] or []
+        mine = [t for t in texts if t.startswith(prefix + "-")]
+        check("会话加载后 html[data-world]=%s（%s）" % (world, sid),
+              state["world"] == world, "实际=%r" % (state["world"],))
+        check("叙事只含本局内容且每条只出现一次（%s）" % sid,
+              len(texts) == SEED_LOG_COUNT and len(mine) == SEED_LOG_COUNT
+              and len(set(mine)) == SEED_LOG_COUNT,
+              "总条数=%d 本局=%d 去重后=%d"
+              % (len(texts), len(mine), len(set(mine))))
+        if previous_prefix:
+            leftover = [t for t in texts if t.startswith(previous_prefix + "-")]
+            check("上一局（%s）的叙事没有残留（%s）" % (previous_prefix, sid),
+                  not leftover, "仍含 %d 条 %s-*" % (len(leftover), previous_prefix))
+        check("切档过程没有调用 focus()（%s）" % sid, focus_calls == 0,
+              "focus 调用 %r 次" % (focus_calls,))
+        seen_bg[sid] = state["bg0"]
+
+        # 设置区：只读展示本局主题，无切换控件、不写回偏好
+        _click(page, "#btnPlaySettings")
+        page.wait_for("return window.VIEW === 'v-settings';", timeout=10)
+        row = page.js("return window.__w2.settingsRow();")
+        check("设置区只读显示「本局世界主题：%s」（%s）" % (label, sid),
+              row.get("present") and row.get("value") == label
+              and row.get("theme") == world and "本局世界主题" in (row.get("label") or ""),
+              "读数=%r" % (row,))
+        check("设置区没有主题切换控件（%s）" % sid,
+              row.get("controls") == 0 and row.get("worldControls") == 0,
+              "行内控件=%r 全局控件=%r" % (row.get("controls"), row.get("worldControls")))
+        _click(page, "#btnSettingsBack")
+        page.wait_for("return window.VIEW === 'v-lobby';", timeout=10)
+        previous_prefix = prefix
+
+    themed_bg = [seen_bg.get(sid) for sid, _w, _s, _t, _p in SEED_WORLDS[:3]]
+    check("三主题的实际底色互不相同（主题真的生效，不只是属性）",
+          all(themed_bg) and len(set(themed_bg)) == 3,
+          "--bg-0=%r" % (themed_bg,))
+
+    # 设置页的返回落在会话列表：再点末局（未绑定老档）回主画面做副作用对照。
+    _click(page, '[data-open="w-legacy"]')
+    back = page.wait_for(
+        "return window.VIEW === 'v-play' && window.SID === 'w-legacy'"
+        " && Array.prototype.some.call(document.querySelectorAll('#stream .msg'),"
+        "      function (m) { return m.textContent.indexOf('L-01') === 0; });",
+        timeout=25)
+    check("从设置退回列表再进末局（未绑定老档）", back is True, "未回到主画面")
+
+    # 主题重投影：换一个 world_type 再走一遍 applyState，叙事 / 滚动 / 焦点都不动。
+    page.js(
+        "const sc = document.getElementById('playScroll');"
+        "sc.scrollTop = Math.round((sc.scrollHeight - sc.clientHeight) / 2);"
+        "window.__w2mark = document.querySelector('#stream .msg');"
+        "const ta = document.getElementById('turnInput'); if (ta) ta.focus();"
+        "window.__w2.focusWatch(); return 1;")
+    time.sleep(0.2)
+    before = page.js("return window.__w2.state();")
+    settings_before = page.js("return localStorage.getItem('prism.settings');")
+    applied = page.js(
+        "window.applyState(Object.assign({}, window.ST, {world_type: 'future'}));"
+        "return document.documentElement.getAttribute('data-world');")
+    page.js("return window.__w2.nextFrame();")
+    after = page.js("return window.__w2.state();")
+    kept_node = page.js(
+        "return document.querySelector('#stream .msg') === window.__w2mark;")
+    focus_calls = page.js("return window.__focusCalls;")
+    settings_after = page.js("return localStorage.getItem('prism.settings');")
+
+    check("主题重投影把 html[data-world] 改成 future", applied == "future",
+          "实际=%r" % (applied,))
+    check("主题重投影没有重画叙事（DOM 节点仍是同一批）",
+          kept_node is True and after["count"] == before["count"],
+          "节点保留=%r 条数=%r→%r" % (kept_node, before["count"], after["count"]))
+    check("主题重投影没有丢滚动位置",
+          after["scrollTop"] == before["scrollTop"] and after["scrollTop"] > 0,
+          "scrollTop=%r→%r（max=%r）"
+          % (before["scrollTop"], after["scrollTop"], after["scrollMax"]))
+    check("主题重投影没有动焦点", after["active"] == "turnInput"
+          and after["active"] == before["active"] and focus_calls == 0,
+          "active=%r→%r focus=%r" % (before["active"], after["active"], focus_calls))
+    check("主题重投影没有写回偏好 / 存档", settings_after == settings_before,
+          "prism.settings=%r→%r" % (settings_before, settings_after))
+
+    # 未知值 / 缺失值都落 modern，且不残留上一局的取值。
+    unknown = page.js(
+        "window.applyState(Object.assign({}, window.ST, {world_type: 'scifi'}));"
+        "return document.documentElement.getAttribute('data-world');")
+    check("未知 world_type（scifi）落 modern 且不残留 future", unknown == "modern",
+          "实际=%r" % (unknown,))
+    missing = page.js(
+        "const s = Object.assign({}, window.ST); delete s.world_type;"
+        "window.applyState(s);"
+        "return document.documentElement.getAttribute('data-world');")
+    check("缺失 world_type 落 modern", missing == "modern", "实际=%r" % (missing,))
+
+    # 零回归对照：末局是未绑定的老档（快照里没有可用的 world_type），
+    # 「显式 modern」与「不设属性」的计算样式必须逐项相同。
+    page.js("document.documentElement.setAttribute('data-world', 'modern');"
+            "return window.__w2.nextFrame();")
+    explicit = page.js("return window.__w2.signature();")
+    page.js("document.documentElement.removeAttribute('data-world');"
+            "return window.__w2.nextFrame();")
+    unset = page.js("return window.__w2.signature();")
+    diff = [sel for sel in explicit if explicit[sel] != unset[sel]]
+    check("显式 modern 与未设置属性的计算样式逐项相同（零回归对照）",
+          not diff and bool(explicit.get("html")), "不一致的选择器=%r" % (diff,))
+    print("  对照选择器：%s" % "、".join(explicit))
+    print("  html 计算样式（显式 modern）：%r" % (explicit.get("html"),))
+
+
 def _run_checks():
     """真实跑一遍（前置已确认齐备）；返回进程退出码。"""
     if _mandatory():
         print("世界主题不变式（强制模式）：前置条件齐备，真实执行")
     print("世界主题不变式：起服务 → CDP 打开首页 → 按主题矩阵取计算值")
-    with _Server() as server:
+    with _Server(seed=_seed_sessions) as server:
         base = "http://127.0.0.1:%d" % server.port
         try:
             page = _cdp.Browser(base).__enter__()
@@ -630,8 +948,9 @@ def _run_checks():
             _check_sanity(matrix)
             print()
             _print_tables(matrix, accent_table)
+            _check_wiring(page)
         finally:
-            page.__exit__(None, None, None)
+            _close_page(page)
 
     print()
     print("通过 %d / 共 %d" % (len(_oks), len(_oks) + len(_fails)))
