@@ -142,6 +142,17 @@
      attachment）/ 导入（validate_world 零 error + kind 检查，坏实例 400 /
      422 拒收）。
 
+ 21. 账本只读观察面与长跑（M12-W8，WORLD-DESIGN §9.1 / §10.3，Issue #396）：
+     `GET /api/world/ledger` 只读回账本摘要（`economy.day` / `balances` /
+     `prices` / `goods`）+ 最近 `WORLD_LEDGER_TAIL` 条 Entry + 工程 / 指令
+     摘要（含 `blocked_reason`）；`?project_id=` 回单工程状态 + readiness +
+     该项目名下 Entry（「这项工程为什么停」）；全程零状态变更（改盘指纹
+     对照断言）；鉴权照 W3 同一裁定——多人房间仅房主可读（player 403）。
+     长跑：100 游戏日 × 20 NPC 纯规则（固定种子、无 AI、5 游戏日一步）
+     → 事件数 ≤ 日数 × 3、`blocks.world` 序列化 < 1 MiB（P3 实测点）、
+     `replay` 相等、`blocks.guide.npc_at` 重放 = live（D4 口径）、三等式
+     照常、背景工程 running → 完工 → 设施维护扣账全链在日切内发生。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -8169,6 +8180,192 @@ def check_world_rejudge_match_event_collects_candidates():
         notdnd_web._sessions.pop(sid, None)
 
 
+# ── W8：账本只读观察面 + 100 日长跑（§9.1 / §10.3；Issue #396）──────────────
+
+
+def check_world_ledger_view_http():
+    """W8 验收：`GET /api/world/ledger` 只读观察面——缺省回账本摘要
+    （day / balances / prices / goods）+ 最近 Entry + 工程摘要（含
+    `blocked_reason`）；`?project_id=` 回「这项工程为什么停」（状态 +
+    blocked_reason + readiness + 该项目名下 Entry）；全程零状态变更。"""
+    sid = "world-w8-ledger"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            session.ensure_atlas()
+            block = _world_project_block(status="blocked")
+            block["projects"]["p-wall"]["blocked_reason"] = "supply"
+            block["economy"]["ledger"].append(world.make_entry(
+                "e-ledger-1", at_minute=0, kind="produce", account="grain",
+                delta=5,
+                reason={"verb": "produce", "actor": "s1",
+                        "target_ref": "grain"},
+                event_seq=1, settlement_id="s1"))
+            block["economy"]["ledger"].append(world.make_entry(
+                "e-ledger-2", at_minute=0, kind="build_pay", account="coin",
+                delta=-100,
+                reason={"verb": "build", "actor": "player",
+                        "target_ref": "p-wall"},
+                event_seq=2, project_id="p-wall"))
+            _world_seed_block(session, block, "world-w8-ledger-seed-0001")
+            before = _files_fingerprint(notdnd_web.SAVE_DIR)
+
+            # 缺省：粮账摘要（这个月的粮账）
+            status, out = server.get("/api/world/ledger", sid=sid)
+            assert status == 200 and out["status"] == "ok", (status, out)
+            assert out["economy"]["day"] == 0, out
+            assert out["economy"]["balances"]["coin"] == 1000, out
+            assert out["economy"]["goods"]["grain"]["stock"] == 50, out
+            assert out["economy"]["prices"]["grain"]["price"] == 2, out
+            assert [e["kind"] for e in out["entries"]] == \
+                ["produce", "build_pay"], out
+            projects = {p["project_id"]: p for p in out["projects"]}
+            assert projects["p-wall"]["status"] == "blocked", out
+            assert projects["p-wall"]["blocked_reason"] == "supply", out
+
+            # ?project_id=：这项工程为什么停
+            status, out = server.get("/api/world/ledger?project_id=p-wall",
+                                     sid=sid)
+            assert status == 200 and out["project"]["status"] == "blocked", \
+                (status, out)
+            assert out["project"]["blocked_reason"] == "supply", out
+            assert out["readiness"] == [], out
+            assert [e["kind"] for e in out["entries"]] == ["build_pay"], out
+
+            # 未知工程 → 404（不猜）
+            status, out = server.get("/api/world/ledger?project_id=nope",
+                                     sid=sid)
+            assert status == 404 and out.get("reason") == "no_project", \
+                (status, out)
+
+            # 只读：全程不改盘（对照种块之后的状态指纹）
+            after = _files_fingerprint(notdnd_web.SAVE_DIR)
+            assert after == before, "观察面必须零状态变更"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_ledger_room_auth():
+    """鉴权裁定（照 W3 `_world_host_gate` 同一模式，PR 登记）：账本是 GM /
+    据点主人视角数据——单人会话 `X-Session` 即可；房间多名在座成员必须以
+    **房主**成员令牌调用，player / observer 一律 403 `not_authorized`。"""
+    with _Server(offline=True) as server:
+        rid = "wroom-w8-ledger"
+        status, host = server.post(
+            "/api/room/create", {"room_id": rid, "display_name": "房主"})
+        assert status == 200, (status, host)
+        status, player = server.post(
+            "/api/room/join", {"room_id": rid, "display_name": "玩家"})
+        assert status == 200, (status, player)
+
+        # 多人房间：只有 X-Session（无成员令牌）→ 401（鉴权链不过）。
+        status, denied = server.get("/api/world/ledger", sid=rid)
+        assert status == 401 and denied.get("reason") == "token_invalid", \
+            (status, denied)
+
+        # player 成员令牌 → 403（GM 视角数据不向 player 开）。
+        status, denied = server.get(
+            "/api/world/ledger", sid=rid,
+            headers={"X-Member": player["member_id"],
+                     "Authorization": "Bearer %s" % player["token"]})
+        assert status == 403 and denied.get("reason") == "not_authorized", \
+            (status, denied)
+
+        # 房主成员令牌 → 鉴权通过（本房间无 world 块 → 404 no_world）。
+        status, out = server.get(
+            "/api/world/ledger", sid=rid,
+            headers={"X-Member": host["member_id"],
+                     "Authorization": "Bearer %s" % host["token"]})
+        assert status == 404 and out.get("reason") == "no_world", \
+            (status, out)
+
+
+def check_world_soak_100_days():
+    """W8 长跑（§10.3「长期模拟测试」行；确定性、无 AI、固定种子）：
+    100 游戏日 × 20 NPC 纯规则推进（**5 游戏日一步**，N8 同款口径）→
+    事件数 ≤ 日数 × 3；`blocks.world` 序列化 < 1 MiB（P3 实测点：
+    > 512 KiB 须登记分片评估建议）；`replay` 相等；`blocks.guide.npc_at`
+    重放 = live（D4 口径）；三等式照常成立；耗时如实登记进 PR
+    （逐日 107s 为禁改路径既有成本，非 world 成本）。"""
+    sid = "world-w8-soak"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        nblock = neura.empty_block()
+        nblock["campaign_seed"] = 20261018            # 固定种子：确定性
+        for i in range(10):                           # 近场：market → gate 日程
+            nblock["npcs"]["npc-near-%02d" % i] = _neura_mover_npc(
+                npc_id="npc-near-%02d" % i)
+        for i in range(10):                           # 远场：temple 常驻在岗
+            far = neura.empty_npc("npc-far-%02d" % i, "sc-1")
+            far["importance"] = 0.9
+            far["location"]["place_id"] = "temple"
+            far["schedule"] = [{"slot_id": "s1", "place_id": "temple",
+                                "from_tod_minute": 0, "to_tod_minute": 1440}]
+            nblock["npcs"]["npc-far-%02d" % i] = far
+        _neura_seed_block(session, nblock, "world-w8-soak-neura-0001")
+
+        wblock = world.new_block(
+            goods=[{"good_id": "grain", "name": "黑麦", "category": "food",
+                    "tier": 1, "base_price": 2, "stock": 400,
+                    "produced_by": ["market"]}],
+            day=0, balances={"coin": 100000, "labor": 1000})
+        wblock["settlements"]["s1"] = {"place_id": "market", "population": 10}
+        project = world.new_project(
+            "p-soak", name="长墙", place_id="market",
+            blueprint={"kind": "wall"},
+            requirements={"goods": {"grain": 20}, "coin": 100,
+                          "labor_days": 3},
+            source="npc", wage_per_day=2, created_minute=0)
+        # running + 里程碑到期：日切第 4 步推进进度并完工（HTTP 编排路径
+        # 不注入 places，queued 背景工程自动开工未接线——W6 PR 登记口径，
+        # 故长跑以 running 起步走「逐日推进 → 完工 → 维护扣账」链）。
+        project["status"] = "running"
+        project["milestones"][0]["at_minute"] = 10 * world.MINUTES_PER_DAY
+        wblock["projects"]["p-soak"] = project
+        _world_seed_block(session, wblock, "world-w8-soak-world-0001")
+
+        started = time.time()
+        for step in range(1, 21):                     # 100 游戏日：5 日一步
+            out = notdnd_web._chron_advance(session, step * 5 * 1440)
+            assert out["status"] == "ok", (step, out)
+            assert out["stopped_at"] is None, (step, out)
+        elapsed = time.time() - started
+
+        handle = session._handle or session._open_handle()
+        events = handle.events_since(0)
+        assert len(events) <= 100 * 3, len(events)
+        saved = _world_block_of(session)
+        assert saved["economy"]["day"] == 100, saved["economy"]
+        serialized = json.dumps(saved, ensure_ascii=False).encode("utf-8")
+        assert len(serialized) < 1024 * 1024, len(serialized)
+        assert world.verify_ledger(saved) == [], world.verify_ledger(saved)
+        # 背景工程走完了日切通道（running → 逐日推进 → day 10 完工），
+        # 完工设施进据点并从此按日扣维护费
+        assert saved["projects"]["p-soak"]["status"] == "completed", \
+            saved["projects"]["p-soak"]
+        assert saved["settlements"]["s1"].get("facilities"), \
+            saved["settlements"]["s1"]
+
+        # 重放相等（§10.1 出口 2.8）+ D4 双写：guide.npc_at 重放 == live
+        replayed = handle.replay()
+        assert replayed["blocks"].get("world") == saved, "重放 world 块必须相等"
+        live_at = session.guide.get("npc_at") \
+            if isinstance(session.guide, dict) else {}
+        assert len(live_at) == 10, live_at            # 10 个近场 NPC 各移动过
+        replay_guide = replayed["blocks"].get("guide") or {}
+        assert replay_guide.get("npc_at") == live_at, \
+            (replay_guide.get("npc_at"), live_at)
+
+        assert elapsed < 60.0, elapsed
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -8323,6 +8520,9 @@ CHECKS = (
     check_world_view_projection_defaults_without_data,
     check_world_rejudge_force_due_wired,
     check_world_rejudge_match_event_collects_candidates,
+    check_world_ledger_view_http,
+    check_world_ledger_room_auth,
+    check_world_soak_100_days,
 )
 
 

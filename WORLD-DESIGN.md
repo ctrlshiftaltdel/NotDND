@@ -903,6 +903,91 @@ W1 ──────────────────► W8（数据 + 观�
 **拍板后实现顺序不变**：W1 → W2 → W3 与 W4 → W5 → W6 两条主线（W1 完成后可并行），
 见 §11「附：切片依赖图」。
 
+### 12.2 实现裁定记录（W1–W7）
+
+> M12-W8（Issue #396）按派发单职责，把 W1–W7 各实现 PR「风险与口径补充」节的
+> 设计留白裁定统一回填入册（**每条注明来源 PR**；本文正文其余章节不因回填改动，
+> 章节号不重排）。后续实现单与审查以本节为实现口径的权威索引。
+
+**W1（世界生成内核，PR #381）**
+
+1. **import 清单**：`worldgen.py` 只 import 标准库 `copy` / `hashlib` / `random`；测试内断言 import 白名单与「纯函数入参不改写」。（来源：PR #381 口径 1）
+2. **goods 校验只在 world 带 `goods` 键时生效**：三个官方世界与 fixture 没有 goods，`validate_world` 对它们保持零 error（W2 回归锚）；`spec.economy_on=True` 而合成结果缺 goods 仍是 error（`E_SPEC_ECONOMY`）。（来源：PR #381 口径 2）
+3. **era 联动规则**：`era ∈ {fantasy, modern, future}`；goods.era **高于** `world.type` → `E_GOODS_ERA` error（奇幻世界卖激光枪）；**低于** → `W_GOODS_ERA_LOW` warn（未来世界有老物件，可接受）——设计原文只给「越档 → error」的方向性示例，「低于 = warn」为本片拍板。（来源：PR #381 口径 3）
+4. **goods 落点与顶层附加键**：goods 暂放 `world.module` 顶层 `goods` 数组（条目 `{good_id, name, category, tier, base_price, stock, produced_by, era}`）；`worldgen_provenance` / `lexicon_overrides` 同为顶层附加键——已由 W8 转正进 `world.schema.json`（§9.2）。（来源：PR #381 口径 4；转正：PR #396 对应实现）
+5. **est_tokens 估算**：每次端口调用固定 `+128`（`WORLDGEN_TOKENS_PER_CALL`）；W3 接真实网关后以真实 usage 差值回填，不改 worldgen.py。（来源：PR #381 口径 5）
+6. **laws 非法 threshold**：合成期归一为 `forbid`；校验器对直接构造的非法值报 `E_LAW_THRESHOLD` error（`neura.py:111` 契约：只认 allow/tolerate 两个容忍值）。（来源：PR #381 口径 6）
+7. **ATLAS 零改动（V8）**：`atlas*.py` 三文件一行未动；W1 不调用 `compile_world`，校验对象是 `world.module` 形状本身。（来源：PR #381 口径 7）
+
+**W2（ATLAS 校验器，PR #385；修复 PR #388）**
+
+1. **C2 落地为「逐帧连通 + 零坐标分量豁免」**：unlisted / abstract 区域与其关键地点是零坐标分量（帧间只靠连接相通，经跨帧门进图，合法图外浮岛）；口径：帧内**有坐标**的分量必须并入本帧主路网，断连报 error。（来源：PR #385 新口径 7）
+2. **C5 venue 抽查只在世界 random_tables 有场地行时执行**（世界无场地行时生成器落 system 兜底表，worldgen 零 IO 读不到、无法核对）。（来源：PR #385 新口径 8）
+3. **C6 白名单抽查表为最小实现**：`C6_SPOT_CHECKS` 精确名匹配（wilderness × 铁锭/聚变电池/脉冲步枪/激光枪 等）；`regions[].economy` 的 `produces` 声明同表抽查（该字段 W8 转正前为可选）。（来源：PR #385 新口径 9）
+4. **C7「zone_steps 折算」**：metric 地点/战术帧上相邻一格 = 1 跨区，带档只能是 short；世界帧不查几何——编译器连接的是脚印边缘而非锚点格（防误伤）。（来源：PR #385 新口径 10）
+5. **repair 边界**：只修三类 error（C2 断链补边 / C3 缺门补门 / C4 不可达挂接），**只新增边**；C3 多门不修（违反只新增边原则）如实报；「该帧整体重掷」由生成流水线编排（§5.2），repair 本身确定性执行。（来源：PR #385 新口径 11）
+6. **`_bridge_components` 键归一**：`placed` / `analysis`（short rid）与 `cells_by_rid`（full id）两形态经局部 `_lookup` 归一（直接命中，否则取 full id 尾段 short rid 查表），不改 `components()` 返回形态——修复合成世界地面触碰图断连补桥时的 KeyError。（来源：PR #388）
+
+**W3（生成会话编排，PR #389）**
+
+1. **鉴权裁定（§6.5）**：生成 / 提交 / 导出 / 导入是**管理性**操作——单人会话 `X-Session` 即可；房间多名在座成员必须以**房主**成员令牌调用，player / observer 一律 403 `not_authorized`；预览只回给调用者、不进房间事件流。（来源：PR #389 口径 1）
+2. **会话过期口径**：进程内 TTL `WORLDGEN_SESSION_TTL_S = 3600` 惰性清理；commit 一次性（成功即销毁会话，防重复入库）；服务重启 = 会话全失（重新 generate 即可，生成幂等可重跑）；预算计数器不落盘（V14）。（来源：PR #389 口径 2）
+3. **导出 / 导入**：已落地（P6 v1 文件级）；运行时导入校验 v1 = `validate_world` 零 error + kind 检查；`validate_data` / 内容防火墙是 CI 对已跟踪仓库文件的门，运行时导入不跑 shell（v1 边界）。（来源：PR #389 口径 3）
+4. **预算计数对齐**：端口每次调用后用网关回的**真实 usage**（prompt + completion）差值回填 `est_tokens`；离线时计数恒 `{calls: 0, est_tokens: 0}`。（来源：PR #389 口径 4）
+5. **离线口径**：离线时给 worldgen 传 **`port=None`**（不是不可用端口对象）——「端口对象存在」会被当作在线记账记出幽灵调用；`None` 才是 worldgen 语义里的「无模型」。（来源：PR #389 口径 5）
+6. **overrides 覆盖面**：v1 只覆盖 regions / factions / laws；goods 不进 overrides（属 P3 文本 / 结构重生成，另单）；已存在条目的 `scope_place_ids` 不被 upsert 改写。（来源：PR #389 口径 6）
+7. **导入实例的 `spec` 不参与校验**：`validate_world(world)` 不带 spec（导入物可能来自别处，C8 规格核对只对合成路径有意义）。（来源：PR #389 口径 7）
+
+**W4（world 内核，PR #384）**
+
+1. **幂等键形状**：`wtick_key(day) = "wtick_%04d"`（如 `wtick_0001`）——零填充对齐 A0 幂等键 `^[A-Za-z0-9_-]{8,64}$`（裸 `wtick_1` 只有 7 字符）。（来源：PR #384 口径 1）
+2. **幂等键载体**：`economy.wticks`（chron 块 `idempotency` 同位；§6.1 形状表的块形状补充）。（来源：PR #384 口径 2）
+3. **genesis 重放基线**：`economy.genesis = {balances, goods}` 创建时一次写入——三等式①「replay(genesis, events)」的 genesis 落点；旧形状块迁移时用当前快照回填一次并记 note。（来源：PR #384 口径 3）
+4. **goods 键控存储**：worldgen 产物是 list，进块转 `{good_id: {...}}`，条目字段逐字保留。（来源：PR #384 口径 4）
+5. **生产/消费 v1 公式**：生产 = `SETTLEMENT_YIELD_PER_DAY(2)` × 位于 `produced_by` 地点的活跃据点数；消费 = 食/住两类必需品按人口 × `CONSUMPTION_PER_CAPITA(1)` 均摊（余数按 good_id 字典序），受当日可用库存钳制（吃不起就少吃，不拒日切）；净额为 0 不记 Entry。（来源：PR #384 口径 5）
+6. **价格步进**：短缺 → 涨、过剩 → 跌、库存缓冲内不动；`step = max(1, floor(price × 0.10))`——最小步长 1 是整数价格下 ±10% 钳制的最低可动幅度（低价 good 一步可超 10%）。（来源：PR #384 口径 6）
+7. **seed 哈希**：`sha256("world|<seed>|<rule_id>|<day>|<salt>")` 前 8 hex mod 1000（内建 `hash()` 跨进程不稳定，禁用）。（来源：PR #384 口径 7）
+8. **prism 模式不开自由骰**：world 不 import prism；检定结果由编排层经 `prism_results={rule_id: bool}` 显式传入，未传 = 不触发。（来源：PR #384 口径 8）
+9. **工资/维护付款来源** = `balances["coin"]` 中央金库（v1 宏观账单账户口径）；发不出 → `blocked_reason="funds"` 且无 Entry。（来源：PR #384 口径 9）
+10. **工程里程碑推进与建造材料结算归 W6**；W4 只做工程工资结算与「所需 good 断供 → blocked」的结构化判定（供应链断/资金断两类；敌对占领经扰动表 `place_lost` 事实驱动）。（来源：PR #384 口径 10）
+11. **扰动冷却落点**：`projects[pid].cooldowns[rule_id] = day`。（来源：PR #384 口径 11）
+12. **good_price_spike 作用对象** = 匹配事实的 `subject_ref`（须是块内 good_id）——扰动对象由事实本身指认。（来源：PR #384 口径 12）
+13. **人口摘要档位**：0=empty / 1–9=low / 10–49=mid / 50+=high。（来源：PR #384 口径 13）
+14. **catch_up 折叠路径**：价格只按末日步进一步；折叠日不写 wtick 键，`economy.day` 推进本身即幂等护栏（倒退日切被 `world_tick` 拒绝）。（来源：PR #384 口径 14）
+
+**W5（玩家经济动作接线，PR #391）**
+
+1. **事件 type 枚举**：`econ.trade`（玩家 trade 提案伴随）、`econ.build`（玩家 build 提案伴随；常量已登记、结算路径 W6 接）、`econ.day`（日切块级提交，幂等键 `wtick_<day>`，`source="system"`、`visibility=gm`）。（来源：PR #391 口径 1）
+2. **行动表 `econ` 载荷**：世界规则包在行动表条目上声明交易参数（提案契约零改动）；缺失 / 形状不对 / 未知 kind → 按普通行动结算（「脏值逐项丢弃，不猜」口径）。（来源：PR #391 口径 2）
+3. **双记组装点**：`changes` 双块在 `_action_settle_commit` 内组装（`[rules_change] + [world_change]`），一次 `handle.commit`（A0）；`Entry.refs.event_seq` 指向携带它的事件。（来源：PR #391 口径 3）
+4. **接线时序**：与 NEURA 完全同款，唯一新口径是**逐日补结算循环**——已过日期按日初（`day × 1440`）结算、当前日按实际世界分钟；同日不重复由「`economy.day` 循环条件 + 块内 `wticks` 命中」两层保证。（来源：PR #391 口径 4）
+5. **`world` 块缺失 = 未接世界**：老档 / 未开世界的会话推进不创建 `world` 块、不落任何事件（§9.7 同款「无事可做不落事件」）。（来源：PR #391 口径 5）
+6. **econ 分支只在同步路径**（`_action_settle_commit`）；长行动到期结算的经济分支归 W6（工程 / 指令是长周期动作）。（来源：PR #391 口径 6）
+7. **贸易的 coin 账户语义**：`settle_trade` 扣的是 `blocks.world.economy.balances["coin"]`（§7.2 中央金库口径的宏观账），**不是** PRISM 角色钱袋——两本账各记各的，转移只发生在 M8 结算过的动作边界（§6.6）。（来源：PR #391 口径 7）
+
+**W6（建造与委托式管理，PR #393）**
+
+1. **工期折算是速率常数**：`ceil(labor_days / LABOR_EFFICIENCY_PER_DAY) × MINUTES_PER_DAY`——劳动效率是人日/日的速率常数，不是时间常数；时间单位只有 CHRON §2.3 的分钟。（来源：PR #393 风险节 2）
+2. **卡时长与工期解耦**：CHRON 卡到期 = **开工**结算（材料/资金/劳力承诺）；里程碑到期（开工 + 工期）由日切第 4 步完工——行动表声明行动时长，工期由 requirements 折算，两者互不绑定。（来源：PR #393 风险节 2）
+3. **新事件 type `world.manage`**：管理类变更（暂停/复工/撤销/指令操作）走薄路由 `POST /api/world/project` / `POST /api/world/directive` + `world.manage` 事件；建造本体仍走既有通道（M8 提案 `econ.build`；CHRON 卡到期结算不开独立事件，A0）——管理操作不是「行动」，塞进 M8 提案需要伪造行动表条目。（来源：PR #393 风险节 1）
+4. **开工条件四/五由编排层注入**：`place = {place_id, kind, validated}`（`_world_place_view` 从本局 atlas 投影 + C1–C4 零 error 缓存判定）；world.py 零 import atlas（§9.1 依赖方向）。HTTP 编排路径的日切（`_world_tick`）不注入 places——queued 背景工程自动开工在编排面未接线，纯函数层以 `places` 参数验证（后续开档流程接线时收紧）。（来源：PR #393 风险节 2；编排面注记：PR #396 长跑实测）
+5. **扰动联动作用面**：扰动效果只作用于**在场工程**（`DISRUPTIBLE_STATUSES = (running, active)`；`active` 为 W4 夹具兼容值）；`progress_loss` 吃 `progress.labor_done_days`（int 形状保留兼容分支）；劳动力账户 = `balances["labor"]`（人日池，开工一次性承诺扣足 `labor_days`，新 Entry kind `labor_commit`）。（来源：PR #393 风险节 2/3）
+
+**W7（NEURA 挂接，PR #395）**
+
+1. **`known_refs` = `guide.known_clues`**：M7 起玩家已知线索的运行时权威就是它（state 事件日志没有 clue 事件类型——§8.2 表「线索事件」在现实现中的落点）；P10：无日志按空表，**不实现**「剧本全集降级」。（来源：PR #395 投影节）
+2. **`main_thread_refs` / `faction_refs`**：主线 thread 参与人存的是**名字**，经档案 `name→id` 映射（映射不到的原样保留）；faction_refs = 静态档案 faction 非空 npc_id 集，`world_module.factions` 给了就按其 id/name 校准（不在势力表的不计）。（来源：PR #395 投影节）
+3. **`importance_overrides` / `world_facts`**：来自 `blocks.world.facts` 里 `kind="importance_override"` 条目（后写覆盖先写，facts 按 (minute, fact_id) 有序）；`world_facts` 投影成 `{subject_ref: [fact]}`，法律事实同走此处。（来源：PR #395 投影节）
+4. **`travel_minutes` 不定义新时间常数**：档位→分钟表由编排层把 `BAND_MINUTES` 原样注入（same→0 / adjacent→short / near→medium / mid→long / far→dangerous）；同目的地多出发点取最小；`dangerous` 档给常量值，风险归 PRISM。（来源：PR #395 投影节）
+5. **laws 恰一实例才采用**：世界实例（sidecar）的 `world.module.laws` 逐字段清洗进 view；**恰有一个**实例时采用（campaign-scoped；零个 = 无法律 M11 行为；多个 = 歧义不猜，等开档流程绑定实例后收紧）。（来源：PR #395 投影节）
+6. **重判匹配与预算落盘**：`match_event` 三规则（地点 / 引用 / 势力级事实）；层过滤归编排层（world.py 不 import neura）；只挂主结算路径（`stuck`/`failed` 收尾路径不收集——失败回执无世界语义）；`register_rejudge` 的 counts 变更随本 tick 的块级提交落盘，不单开重判事件（A0）；`force_due_ids` 是**下一次** tick 的输入。（来源：PR #395 重判节）
+7. **populate 不接 genesis 批**：`populate` 交付为纯函数 + 测试；编排层「战役 genesis 批」接线待开档流程（W3 裁定不接 `blocks.world`，实例绑定尚不存在）；运行时块键面镜像 `neura.empty_npc`（extra 键会被 `neura.migrate_block` 丢弃）；needs 抖动用 sha256 种子公式（不 import random）；日程 slot 仅在 `places` 注入地点时生成。（来源：PR #395 populate 节）
+8. **individuals 保留 docs 指针**：产物 `source` = `docs/scenario/worldgen-individuals.md:1`（$defs.npc 的 source 是 docs 指针纪律，生成个体没有真实 docs 落点）；`count_hint` 缺省按 `SCALE_INDIVIDUALS["region"]`（3..6）确定性抽取；模型润色（name/drive）归生成会话流端口，v1 只做离线确定性合成；`unexplored` 层不产生具名 NPC。（来源：PR #395 populate 节；`docs/` 指针落点遗留问题见本节末待办）
+
+**W8 待办（本单登记，不在本 PR 处理）**
+
+- W7 遗留：`docs/scenario/worldgen-individuals.md:1` 是**指针性 source**（$defs.npc 纪律要求 docs 指针，但该文档尚不存在/未含个体生成节）——按派发单禁改 `docs/**`，由 Master 后续**独自成 PR** 的文档单处理（`docs/` 新文档不得夹带在实现 PR 内）。（来源：PR #395 populate 节；PR #396 登记）
+
 ---
 
 ## 附录 A · 与其它设计单的接口一览（便于交叉审查）
