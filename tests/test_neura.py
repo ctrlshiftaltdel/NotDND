@@ -1910,6 +1910,39 @@ def check_due_npcs_frequencies_and_order():
     assert neura.due_npcs(_n5_block([anon]), view, 600) == []
 
 
+def check_force_due_ids_forces_due():
+    """§8.4（V12）：view.force_due_ids 注入 → 该 NPC 本 tick 强制到期。"""
+    far = _n5_npc("npc-f", place="temple", importance=0.9)
+    bg = _n5_npc("npc-g", place="temple")
+    view = _view()
+    view["bands"] = {}                       # temple 与 market 不相邻
+    block = _n5_block([far, bg])
+    # 同日已判过：缺注入键（M11 行为）→ important_far / background 都不到期。
+    block["npcs"]["npc-f"]["last_tick_minute"] = 100
+    block["npcs"]["npc-g"]["last_tick_minute"] = 100
+    assert neura.due_npcs(block, view, 600) == []
+    # 注入 → 强制到期（无视层频率）。
+    view["force_due_ids"] = ["npc-f"]
+    assert neura.due_npcs(block, view, 600) == ["npc-f"]
+    # background 也认注入（编排层只发 important_far，neura 侧不重复过滤）。
+    view["force_due_ids"] = ["npc-g"]
+    assert neura.due_npcs(block, view, 600) == ["npc-g"]
+    # 注入不存在的 id / 空 id / 非 string 不影响别人；空表 = 缺键同款。
+    view["force_due_ids"] = ["npc-x", 123, "", None]
+    assert neura.due_npcs(block, view, 600) == []
+    view["force_due_ids"] = []
+    assert neura.due_npcs(block, view, 600) == []
+
+
+def check_force_due_ids_does_not_resurrect_unexplored():
+    """§8.4：unexplored（未具名）不因注入复活——该层不承载具名 NPC。"""
+    anon = _n5_npc("", place="temple")
+    view = _view()
+    view["bands"] = {}
+    view["force_due_ids"] = ["", "npc-01"]
+    assert neura.due_npcs(_n5_block([anon]), view, 600) == []
+
+
 def check_charge_and_cross_day_reset():
     """§8.2 记账（纯函数、rule 不计数）+ 跨日（day 变化）计数归零。"""
     budget = {"day": 1, "strong_calls": 0, "light_calls": 0, "tokens": 0}
@@ -2302,6 +2335,8 @@ def main():
         check_layer_of_goal_target_and_importance_formula,
         check_layer_recomputed_same_tick,
         check_due_npcs_frequencies_and_order,
+        check_force_due_ids_forces_due,
+        check_force_due_ids_does_not_resurrect_unexplored,
         check_charge_and_cross_day_reset,
         check_can_call_ai_gates,
         check_degrade_ladder_and_monotonic,

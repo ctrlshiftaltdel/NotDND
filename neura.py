@@ -2340,6 +2340,10 @@ def due_npcs(block, view, now_minute):
     到期——日程移动是规则动作、零 token，不受层频率限制（§8.4 离线底线）。
     返回顺序确定：near → important_far → background，层内按 importance 降序、
     再按 npc_id 字典序（可重放）。
+
+    §8.4（V12）：`view.force_due_ids`（缺省空表）里的 id 无视层频率直接到期
+    ——编排层经 `world.match_event` + 重判预算（`world.register_rejudge`）
+    注入；缺键 = M11 行为逐字节不变（WORLD-DESIGN §8.4 的口径）。
     """
     block = block if isinstance(block, dict) else {}
     view = view if isinstance(view, dict) else {}
@@ -2347,6 +2351,10 @@ def due_npcs(block, view, now_minute):
     npcs = block.get("npcs")
     if not isinstance(npcs, dict):
         return []
+    forced = view.get("force_due_ids")
+    forced = {str(item) for item in forced
+              if isinstance(item, (str, int)) and not isinstance(item, bool)
+              and str(item)} if isinstance(forced, (list, tuple, set)) else set()
     day = now_minute // MINUTES_PER_DAY
     due = []
     for npc_id in sorted(npcs, key=str):
@@ -2366,7 +2374,7 @@ def due_npcs(block, view, now_minute):
             frequency_due = \
                 last_day + LAYER_MIN_INTERVAL_DAYS["background"] <= day
         schedule_due = last < now_minute and _schedule_needs_move(npc, now_minute)
-        if frequency_due or schedule_due:
+        if frequency_due or schedule_due or npc_id in forced:
             due.append((LAYER_ORDER[layer],
                         -_effective_importance(npc, view), npc_id))
     due.sort()
