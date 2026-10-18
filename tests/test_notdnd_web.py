@@ -149,6 +149,8 @@ _TMP = tempfile.mkdtemp(prefix="notdnd-web-test-")
 os.environ["NOTDND_SAVE"] = _TMP
 
 sys.path.insert(0, ROOT)                     # 让 tests/ 直接跑时也能 import 根模块
+import atlas as atlas_kernel   # noqa: E402  N7：stub 确定性小地图
+import neura                   # noqa: E402  N7：接线断言（notdnd_web 顶层已 import）
 import notdnd_web   # noqa: E402
 import chron        # noqa: E402
 import prism_core   # noqa: E402
@@ -5566,6 +5568,294 @@ def check_action_settle_commit_source_default_player():
         notdnd_web._sessions.pop(sid, None)
 
 
+# --------------------------------------------------------------------------
+# NEURA 编排接线（N7，NEURA-DESIGN §9.4 / §11 N7）
+#
+# `_neura_tick` 在 `_chron_advance` 锁内、叙事段之前跑：view → `neura.tick`
+# → 块级变更随 tick 末一次 `neura.tick` 事件落盘（A0：动作事件经
+# `_neura_submit` 每 NPC ≤ 1 条；块级变更不单独开每 NPC 事件）。全部走
+# 本进程直调 `_chron_advance`（接线本身无 HTTP 路由）；NPC 运行时态用
+# 手工 neura 块夹具（种群初始化归 M12 内容切片），地图用确定性 stub。
+# --------------------------------------------------------------------------
+
+
+def _neura_seed_block(session, block: dict, key: str) -> None:
+    """把手工 neura 块提交进状态层（测试夹具；`replace_block` 建键）。"""
+    handle = session._handle or session._open_handle()
+    out = handle.commit(
+        base_seq=handle.view()["seq"], idempotency_key=key,
+        type="core.commit", actor="pc-1",
+        changes=[{"block": "neura", "op": "replace_block", "path": "",
+                  "before": None, "after": block}],
+        rules_version=notdnd_web.ACTION_RULES_VERSION, source="player")
+    assert out["status"] == "committed", out
+
+
+def _neura_block_of(session) -> dict:
+    """本局状态层里的 neura 块（没有 → 空 dict）。"""
+    handle = session._handle or session._open_handle()
+    return (handle.view().get("blocks") or {}).get("neura") or {}
+
+
+def _neura_stub_world(session) -> None:
+    """确定性三地点小地图（market—gate—temple），队伍在 market。
+
+    只填内存运行时态（`_atlas` / `_locus`），不碰存档——`_neura_view` 读
+    的就是这两个字段；不触发 `ensure_atlas` 的懒编译（种子不可复现）。
+    """
+    atlas = atlas_kernel.new_atlas("w-n7", 1)
+    atlas_kernel.add_frame(atlas, "f1", space="metric", z_meaning="街区",
+                           cell="一次走位")
+    for pid, name in (("market", "集市"), ("gate", "城门"), ("temple", "神庙")):
+        atlas_kernel.add_place(atlas, {"id": pid, "name": name,
+                                       "kind": "room", "frame_id": "f1"})
+    atlas_kernel.add_link(atlas, "f1", "market", "gate", "北")
+    atlas_kernel.add_link(atlas, "f1", "gate", "temple", "北")
+    session._atlas = atlas
+    session._locus = {"frame_id": "f1", "place_id": "market"}
+
+
+def _neura_mover_npc(npc_id="npc-guard", place="market",
+                     slot_place="gate") -> dict:
+    """有全天日程 slot 的近场 NPC：每次 tick 都该按日程移动。"""
+    npc = neura.empty_npc(npc_id, "sc-1")
+    npc["location"]["place_id"] = place
+    npc["schedule"] = [{"slot_id": "s1", "place_id": slot_place,
+                        "from_tod_minute": 0, "to_tod_minute": 1440}]
+    return npc
+
+
+def _neura_all_events(session) -> list:
+    """状态层全部事件（按 seq 升序的 (type, actor) 表）。"""
+    handle = session._handle or session._open_handle()
+    return [(e["type"], e.get("actor") or "")
+            for e in handle.events_since(0)]
+
+
+def check_neura_wired_import_and_tick_updates_block():
+    """N7 验收 1 + 接线证明：`import neura` 只在 notdnd_web 顶层出现；
+    `advance_to` 返回后 `blocks.neura` 已更新且 `last_tick_minute == world_minute`；
+    A0：每 NPC 每 tick 最多 1 条动作事件 + 块级变更只落 1 条 `neura.tick`。"""
+    # 接线断言（N6 的「删 neura.py 仍 import 成功」在本单反转为「接线后
+    # import neura 且行为正确」；既有 114 项里没有该类断言，见 PR 正文说明）
+    assert notdnd_web.neura is neura, "notdnd_web 必须在顶层 import neura"
+
+    sid = "neura-n7-tick"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-n7-seed-0001")
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["status"] == "ok" and out["world_minute"] == 10, out
+        assert out["stopped_at"] is None, out
+
+        saved = _neura_block_of(session)
+        guard = saved["npcs"]["npc-guard"]
+        assert guard["last_tick_minute"] == out["world_minute"] == 10, guard
+        # 日程移动真走了：位置到 slot 地点、有决策留痕
+        assert guard["location"]["place_id"] == "gate", guard
+        assert saved["journal"], "journal 必须有决策记录"
+
+        # A0：每 NPC 每 tick ≤ 1 条动作事件（这里是 1 条）+ 块级变更 1 条
+        events = _neura_all_events(session)
+        action_events = [e for e in events
+                         if e[0] == notdnd_web.ACTION_EVENT_TYPE]
+        assert [actor for _t, actor in action_events] == ["npc-guard"], events
+        assert [t for t, _a in events].count("neura.tick") == 1, events
+        # 事件封套仍是 N6 的口径
+        handle = session._handle or session._open_handle()
+        npc_event = [e for e in handle.events_since(0)
+                     if e["type"] == notdnd_web.ACTION_EVENT_TYPE][0]
+        assert npc_event["source"] == "npc", npc_event
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_tick_failure_isolated():
+    """N7 验收 3：`neura.tick` 抛异常 → `_chron_advance` 正常返回
+    （`neura_skipped` 记录），玩家到期卡照常结算，世界时间照走。"""
+    sid = "neura-n7-fail"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry())
+    session = notdnd_web.Session.load(sid)
+    try:
+        proposal = notdnd_web._action_proposal_from_id(session, "a-long", {})
+        scheduled = notdnd_web._chron_schedule(session, proposal, base_seq=0)
+        task_id = scheduled["task_id"]
+
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-n7-seed-0002")
+
+        real_tick = neura.tick
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("neura boom")
+
+        neura.tick = boom
+        try:
+            out = notdnd_web._chron_advance(session, 100)
+        finally:
+            neura.tick = real_tick
+        # 推进照常返回、玩家到期卡已结算（§9.4：结算在 tick 之前）
+        assert out["status"] == "ok" and out["world_minute"] == 30, out
+        assert out["stopped_at"] == 30, out
+        assert out["settled"] and out["settled"][0]["action_id"] == task_id, out
+        # 失败隔离留痕
+        kinds = [entry["kind"] for entry in session.log]
+        assert "neura_skipped" in kinds, session.log
+        # NPC 一动不动（块没被 tick 改写）
+        saved = _neura_block_of(session)
+        assert saved["npcs"]["npc-guard"]["last_tick_minute"] == 0, saved
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_barrier_skips_far_field():
+    """N7 验收 4（§10.1 的 2.4）：屏障处（`stopped_at != None`）不跑远场——
+    远场层 `last_tick_minute` 不变；跨过屏障后的非屏障推进照常到期。"""
+    sid = "neura-n7-barrier"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="a-long",
+                         entry=_long_entry(
+                             time_cost={"value": 1500, "unit": "minute"}))
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        proposal = notdnd_web._action_proposal_from_id(session, "a-long", {})
+        notdnd_web._chron_schedule(session, proposal, base_seq=0)
+
+        block = neura.empty_block()
+        block["npcs"]["npc-near"] = _neura_mover_npc(npc_id="npc-near")
+        far = neura.empty_npc("npc-far", "sc-1")
+        far["importance"] = 0.9            # P5：≥ 0.7 → important_far
+        far["location"]["place_id"] = "temple"
+        block["npcs"]["npc-far"] = far
+        _neura_seed_block(session, block, "neura-n7-seed-0003")
+
+        # 屏障（B8 到期）在第二天：远场 NPC 按日切本该到期，但屏障处不跑
+        out = notdnd_web._chron_advance(session, 3000)
+        assert out["stopped_at"] == 1500 and out["world_minute"] == 1500, out
+        saved = _neura_block_of(session)
+        near = saved["npcs"]["npc-near"]
+        far_npc = saved["npcs"]["npc-far"]
+        assert near["last_tick_minute"] == 1500, near     # 近场照常
+        assert far_npc["last_tick_minute"] == 0, far_npc  # 远场不动（2.4）
+        # 远场没交出任何提案（无 npc 动作事件、journal 无 npc-far 决策）
+        decisions = [e.get("npc_id") for e in saved.get("journal", [])
+                     if isinstance(e, dict)]
+        assert "npc-far" not in decisions, saved["journal"]
+
+        # 已到过的屏障不再拦：非屏障推进里远场照常到期（日切差 ≥ 1）
+        out2 = notdnd_web._chron_advance(session, 3000)
+        assert out2["stopped_at"] is None and out2["world_minute"] == 3000, out2
+        saved2 = _neura_block_of(session)
+        assert saved2["npcs"]["npc-far"]["last_tick_minute"] == 3000, saved2
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_concurrent_advance_no_duplicate_events():
+    """N7 验收 5：两个线程同时 `_chron_advance` → 不出现重复 neura 事件
+    （单局锁串行化；`base_seq` 冲突被状态层幂等正确归类，不重复副作用）。"""
+    sid = "neura-n7-concurrent"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-n7-seed-0004")
+
+        outs = []
+        errors = []
+
+        def run():
+            try:
+                outs.append(notdnd_web._chron_advance(session, 60))
+            except Exception as exc:      # noqa: BLE001 — 收集后统一断言
+                errors.append(exc)
+
+        threads = [threading.Thread(target=run) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert not errors, errors
+        assert len(outs) == 2 and all(o["status"] == "ok" for o in outs), outs
+        assert all(o["world_minute"] == 60 for o in outs), outs
+
+        events = _neura_all_events(session)
+        action_events = [actor for t, actor in events
+                         if t == notdnd_web.ACTION_EVENT_TYPE]
+        assert action_events.count("npc-guard") == 1, events  # 不重复提交
+        assert [t for t, _a in events].count("neura.tick") == 1, events
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_restart_replay_identical():
+    """N7 验收 6（§10.1 的 2.2）：重启后 `advance_to` 到同一分钟 →
+    `neura` 块与事件序列全等（存档 → 重新载入 → 再推进不新增任何事件）。"""
+    sid = "neura-n7-restart"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-n7-seed-0005")
+
+        out = notdnd_web._chron_advance(session, 10)
+        assert out["world_minute"] == 10, out
+        session.save()
+        before_block = _neura_block_of(session)
+        before_events = [
+            e for e in (session._handle or session._open_handle()).events_since(0)]
+
+        notdnd_web._sessions.pop(sid, None)     # 「重启」：丢缓存走真实读盘
+        revived = notdnd_web.Session.load(sid)
+        out2 = notdnd_web._chron_advance(revived, 10)
+        assert out2["status"] == "ok" and out2["world_minute"] == 10, out2
+        assert out2["events"] == [], out2       # 世界时间没动：无新事件
+
+        handle = revived._handle or revived._open_handle()
+        after_events = handle.events_since(0)
+        assert len(after_events) == len(before_events), "重启不得新增事件"
+        assert [e["event_id"] for e in after_events] == \
+            [e["event_id"] for e in before_events], "事件序列必须全等"
+        assert _neura_block_of(revived) == before_block, "neura 块必须全等"
+        assert revived.log == session.log, "neura_skipped 不得混入日志"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_empty_block_writes_nothing():
+    """§9.7：`blocks.neura` 缺失（老档）→ 视为空块，首次 tick 不写任何东西；
+    无 AI 配置 = 正常路径（验收：不因候选缺失报错、不阻塞时间推进）。"""
+    sid = "neura-n7-empty"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    session = notdnd_web.Session.load(sid)
+    try:
+        before_events = _neura_all_events(session)
+        out = notdnd_web._chron_advance(session, 30)
+        assert out["status"] == "ok" and out["world_minute"] == 30, out
+        added = [t for t, _a in _neura_all_events(session)][len(before_events):]
+        assert added == ["clock.advance"], added   # 只有时钟推进，没有 neura 事件
+        handle = session._handle or session._open_handle()
+        assert (handle.view().get("blocks") or {}).get("neura") is None, \
+            "空块首次 tick 不得创建 neura 块"
+        assert all(entry["kind"] != "neura_skipped" for entry in session.log)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 
 # --------------------------------------------------------------------------
 # 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
@@ -6405,6 +6695,12 @@ CHECKS = (
     check_neura_submit_unsupported_no_event,
     check_neura_submit_rejected_zero_escape,
     check_action_settle_commit_source_default_player,
+    check_neura_wired_import_and_tick_updates_block,
+    check_neura_tick_failure_isolated,
+    check_neura_barrier_skips_far_field,
+    check_neura_concurrent_advance_no_duplicate_events,
+    check_neura_restart_replay_identical,
+    check_neura_empty_block_writes_nothing,
     check_api_state_view,
     check_api_events_incremental,
     check_api_events_across_archives,

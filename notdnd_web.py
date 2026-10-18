@@ -111,6 +111,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import atlas as atlas_kernel
 import atlas_compile
 import chron
+import neura
 import prism_core
 import state
 
@@ -2922,6 +2923,193 @@ def _neura_submit(session, proposal, *, idempotency_key,
             "event_id": event_id}
 
 
+# ── NEURA 编排接线（N7，NEURA-DESIGN §9.4 / §11 N7）────────────────────────
+#
+# `_neura_tick` 在 `_chron_advance` 的锁内、叙事段（锁外）之前调用：构造只读
+# `view` → `neura.tick`（纯函数）→ 块级变更随 tick 末**一次**提交落盘。失败
+# 隔离（§9.4 硬要求）：任何异常只落一条 `neura_skipped` 日志，**不阻塞**
+# `_chron_advance` 返回——玩家到期卡在此之前已结算（§9.4 时序）。
+
+NEURA_TICK_EVENT_TYPE = "neura.tick"      # §9.6 枚举外的块级 tick 提交（P9 登记）
+NEURA_SKIPPED_LOG_KIND = "neura_skipped"  # 失败隔离的日志 kind（§9.4）
+
+
+class _NeuraPort:
+    """`ActingPort` 注入（§5.6）：`submit` 直通 `_neura_submit`。
+
+    **不带** `generate_candidates`：`neura.tick` 用 `hasattr` 探测，没有它
+    就是「无 AI 配置」的正常路径（§8.4）——NPC 仍按日程移动、按需求阈值
+    行动、硬约束照拦，本单不接候选生成（M12 内容切片 / AI 接入另立）。
+    """
+
+    def __init__(self, session):
+        self._session = session
+
+    def submit(self, proposal, *, idempotency_key, source: str = "npc") -> dict:
+        return _neura_submit(self._session, proposal,
+                             idempotency_key=idempotency_key, source=source)
+
+
+def _neura_party_refs(session) -> list:
+    """`view.party_refs`（§6.5）：PC id 集，取 `rules.party` 的 unit id。"""
+    party = session.rules.get("party") if isinstance(session.rules, dict) else None
+    ids = []
+    for unit in party or []:
+        if isinstance(unit, dict) and str(unit.get("id") or ""):
+            ids.append(str(unit["id"]))
+    return ids
+
+
+def _neura_places_of(block) -> set:
+    """块内值得算距离的地点集：NPC 现位置 + 日程 slot 的 place_id。"""
+    places = set()
+    npcs = block.get("npcs") if isinstance(block, dict) else None
+    for npc in (npcs or {}).values():
+        if not isinstance(npc, dict):
+            continue
+        location = npc.get("location")
+        if isinstance(location, dict) and location.get("place_id"):
+            places.add(str(location["place_id"]))
+        schedule = npc.get("schedule")
+        for slot in schedule if isinstance(schedule, list) else []:
+            if isinstance(slot, dict) and slot.get("place_id"):
+                places.add(str(slot["place_id"]))
+    return places
+
+
+def _neura_view(session, block) -> dict:
+    """§6.5 / §9.1 的只读 `view`（编排层构造；N5 裁定 4/5/9 的注入键在这里）。
+
+    - `party_places` / `bands`：队伍位置取**已编译**的运行时地图
+      （`session._locus` / `session._atlas`）；不为 tick 触发懒编译
+      （§9.7「view 构造失败 → 跳过 tick」，编译失败由调用方隔离）。
+      `bands` 的键是 `(from, to)` 元组（neura `_band_of` 口径，内存构造），
+      只对「块内地点 × 队伍地点」同帧求 `range_band`。
+    - `party_refs`：PC id 集；`known_refs` / `main_thread_refs` /
+      `faction_refs` / `importance_overrides`：现无数据源（threads / faction
+      档案 / 显式 importance 归 M12 内容切片），缺省空 = 对应公式输入按
+      「不在」（N5 裁定 5 的缺键口径）。
+    - `tick_burst` 由 `neura.tick` 内部维护并按 NPC 注入（N5 裁定 9），
+      编排层不预置（注入了也会被覆盖）。
+    - `options` 恒为空：候选池第一版只来自日程义务（tick 内合成，N5 裁定
+      12）；其余候选归 M12 / AI 接入。
+    - `laws` / `law_source`：P8 第一版空表不拒；`world_facts`：M12 前无投影。
+    """
+    view = {
+        "campaign_id": str(session.sid),
+        "party_refs": _neura_party_refs(session),
+        "known_refs": [],
+        "main_thread_refs": [],
+        "faction_refs": [],
+        "importance_overrides": {},
+        "options": [],
+        "laws": [],
+        "law_source": "none",
+        "world_facts": {},
+        "known_places": {},
+        "travel_minutes": {},
+        "ai_configured": False,
+    }
+    locus = getattr(session, "_locus", None)
+    atlas = getattr(session, "_atlas", None)
+    party_places = []
+    if isinstance(locus, dict) and str(locus.get("place_id") or ""):
+        party_places = [str(locus["place_id"])]
+    view["party_places"] = party_places
+    bands = {}
+    if isinstance(atlas, dict) and party_places:
+        here = party_places[0]
+        frame_id = None
+        for fid in sorted(atlas.get("frames") or {}):
+            if here in (atlas["frames"][fid].get("places") or {}):
+                frame_id = fid
+                break
+        if frame_id is not None:
+            places = _neura_places_of(block) | set(party_places)
+            for a in sorted(places):
+                for b in sorted(places):
+                    if a != b:
+                        bands[(a, b)] = atlas_kernel.range_band(
+                            atlas, frame_id, a, b)
+    view["bands"] = bands
+    return view
+
+
+def _neura_tick(session, *, stopped_at=None) -> None:
+    """NEURA 编排接线（§9.4 时序）：构造 view → `neura.tick` → 块级提交。
+
+    **调用契约**：必须已在 `session.lock` 内（`_chron_advance` 的临界区）；
+    `stopped_at` 透传 `chron.advance_to` 的停点——**屏障处不跑远场**
+    （§7.3 / §10.1 的 2.4）：远场层（`important_far` / `background`）的 NPC
+    从本次 tick 的块里滤掉、tick 后原样放回（tick 不碰缺席者，
+    `last_tick_minute` 原值保留），近场照常。
+
+    **落盘（A0 裁定，详见 PR「风险与口径补充」）**：动作事件由
+    `port.submit` → `_neura_submit` 逐 NPC 落（每 NPC 每 tick ≤ 1 条，
+    幂等键同计划同步骤恒定）；`write_back` / journal / budget 等**块级**
+    变更随 tick 末**一次**提交（`type="neura.tick"`，`source="system"`，
+    `visibility=gm`）落盘——`write_back` 在 `submit` 之后发生（§5.8 顺序，
+    neura.py 一字不动），动作事件提交点物理上无法携带其后的块变更。
+    无事可做（块为空 / 无到期 / 无变更）**不落事件**（§9.7：老档首次
+    tick 不写任何东西）。
+
+    **失败隔离（§9.4 硬要求）**：任何异常（块拒载 / view 构造失败 /
+    tick 抛错 / 提交被拒）只落一条 `neura_skipped` 日志并返回——不阻塞
+    `_chron_advance`，NPC 不动、世界照走。
+    """
+    try:
+        handle = session._handle or session._open_handle()
+        blocks = handle.view().get("blocks") or {}
+        block = neura.migrate_block(blocks.get("neura"))
+        if not block.get("npcs"):
+            return                      # 没有 NPC 运行时态：无事可做（§9.7）
+        view = _neura_view(session, block)
+        minute = chron.world_time_minute(handle.view().get("world_time"))
+        far: dict = {}
+        if stopped_at is not None:
+            far = {npc_id: copy.deepcopy(npc)
+                   for npc_id, npc in block["npcs"].items()
+                   if neura.layer_of(npc, view)
+                   in ("important_far", "background")}
+            if far:
+                block["npcs"] = {npc_id: npc
+                                 for npc_id, npc in block["npcs"].items()
+                                 if npc_id not in far}
+        new_block = neura.tick(block, view, port=_NeuraPort(session),
+                               now_minute=minute)
+        for npc_id, npc in far.items():
+            new_block["npcs"][npc_id] = npc     # 原样放回（2.4：远场不动）
+        if new_block == block:
+            return                      # 本 tick 无块级变更：不落事件
+        # `world_time` 现算（§3.1 唯一写法）：`handle.view()` 里的值会被本 tick
+        # 内的动作提交（不传 `world_time`）重置为 None，不可作为输入。
+        calendar = chron.to_calendar(minute)
+        world_time = {key: calendar[key] for key in
+                      ("world_minute", "day", "tod")}
+        change = {"block": "neura", "op": "replace_block", "path": "",
+                  "before": copy.deepcopy(block),
+                  "after": copy.deepcopy(new_block)}
+        result = handle.commit(
+            base_seq=_int_or(handle.view().get("seq"), 0),
+            idempotency_key="ntick_%07d" % minute,
+            type=NEURA_TICK_EVENT_TYPE, actor="system",
+            changes=[change], rules_version=ACTION_RULES_VERSION,
+            visibility={"scope": "gm", "subjects": []},
+            world_time=world_time, source="system")
+        if str(result.get("status") or "") not in ("committed", "replayed"):
+            # 提交被拒：动作事件已落、块级变更本 tick 丢失——下个 tick 用
+            # 同一确定性输入重算收敛（决策幂等），只在这里如实留痕。
+            session.add_log(NEURA_SKIPPED_LOG_KIND,
+                            "NEURA tick 块提交被拒（%s：%s）"
+                            % (result.get("status"),
+                               result.get("error") or result.get("message")))
+    except Exception as exc:      # noqa: BLE001 — §9.4 失败隔离：不阻塞推进
+        try:
+            session.add_log(NEURA_SKIPPED_LOG_KIND, "NEURA tick 跳过：%s" % (exc,))
+        except Exception:         # noqa: BLE001 — 日志通道也失败就静默
+            pass
+
+
 # ── 第 6 段（叙事，可选后置）与进程内短期记忆 ─────────────────────────────
 
 
@@ -3486,6 +3674,10 @@ def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
             block, seq = commit["block"], commit["seq"]
             events.append({"event_id": clock["event_id"], "type": clock["type"],
                            "world_time": clock["world_time"]})
+        # NEURA 接线（N7，§9.4）：同一次持锁内、叙事段之前跑 NPC 自主行动；
+        # 玩家到期卡已在上面结算。失败隔离在 `_neura_tick` 内部
+        # （`neura_skipped` 日志，不阻塞推进）；屏障处不跑远场（§10.1 的 2.4）。
+        _neura_tick(session, stopped_at=out["stopped_at"])
         # 第 6 段（叙事）在**锁外**跑（§7.4：模型调用不持锁）；先取冻结快照
         # （提交点的那一份，§7.5）与要叙事的行动清单。
         frozen = []
