@@ -244,6 +244,11 @@ ACTION_NEED_CONFIRM = "需要确认"               # 409
 ACTION_BAD_VERSION = "版本不支持"              # 409
 ACTION_TOO_FREQUENT = "太频繁"                 # 429
 
+# NEURA M8 内部分支（NEURA-DESIGN §5.6 / §11 N6）——`_neura_submit` 的固定
+# 拒绝语（四态返回值里的 `reason`，不是 HTTP 短语）：
+NEURA_NO_DICE = "NPC 行动不掷骰"               # P2：第一版不掷骰
+NEURA_NO_DEFER = "NPC 提案不支持长行动"         # P7：NPC 提案永远同步
+
 # `propose` 回执里的 `type`（§9.2）与 `commit` 的 SSE 事件名（§9.3）。
 ACTION_TYPE_PROPOSAL = "proposal"
 ACTION_TYPE_CLARIFY = "clarify"
@@ -2728,7 +2733,7 @@ def _action_snapshot(rules, guide) -> dict:
 
 
 def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
-                          unit_id: str = "") -> dict:
+                          unit_id: str = "", source: str = "player") -> dict:
     """第 3–5 段 + 提交点冻结快照（§7 / §8.2 / §10.1），全程持**单局锁**。
 
     「结算 → 提交 → 取提交后快照」是设计里那一小段临界区（§7.4 锁边界）；
@@ -2746,6 +2751,9 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
     `unit_id` 是**行动的执行者**（§6.4 前置条件面）：缺省空串 = 沿用会话的
     `active_unit_id` / `party[0]`（单人路径逐字节不变）；房间层按成员的角色
     （`member.character_id`）显式传入（M10-S4），使「谁在行动」落在成员身上。
+
+    `source` 是事件封套的审计来源（NEURA-DESIGN §9.4 N6）：缺省 `"player"`
+    保持玩家路径逐字节不变；NPC 提案经 `_neura_submit` 传 `"npc"`。
     """
     with session.lock:
         handle = session._handle or session._open_handle()   # 开句柄在锁内：并发不重开
@@ -2801,7 +2809,7 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
             rules_version=ACTION_RULES_VERSION,
             roll_refs=[result["rule_ref"]["roll_ref"]]
             if result["rule_ref"].get("roll_ref") else [],
-            source="player")
+            source=source)
         # §5.5：**提交成功之后**扇出（M10-S2）——推送只是交付，不影响提交。
         _room_publish_after_commit(handle, commit, session.sid)
         _action_apply_commit(session, result, commit, new_rules)
@@ -2816,6 +2824,102 @@ def _action_settle_commit(session, proposal, *, base_seq, idempotency_key,
         except SaveError:
             saved = False
     return {"result": result, "snapshot": snapshot, "saved": saved}
+
+
+def _neura_submit(session, proposal, *, idempotency_key,
+                  source: str = "npc") -> dict:
+    """NEURA 的 `ActingPort.submit` 实现（NEURA-DESIGN §5.6 / §11 N6）。
+
+    把一条**已通过 neura 侧硬约束**的 NPC 计划提案交进 M8 行动管线（第 3–5
+    段），复用 `_action_settle_commit`——结算 / 提交 / 快照顺序一行不改，
+    只在事件封套上把 `source` 换成 `"npc"`（§9.4 第一行的参数化）。
+
+    返回四态（**不抛异常**：失败也是返回值；不做 HTTP；不产出叙事）：
+
+        {"status": "committed"|"rejected"|"conflict"|"unsupported",
+         "result": dict|None, "reason": str|None, "event_id": str|None}
+
+    - `committed`：已落一条事件（A0），`event_id` 取自提交回执；
+    - `conflict`：`base_seq` 过期 / 幂等键撞车——**不落事件**，调用方下个
+      tick 重试即可（§5.7：计划保留 `pending`）；
+    - `unsupported`：计划形态 NPC 做不了（动作表没有 / 需要掷骰 / 长行动）
+      ——**前置守卫，不进管线、不写事件**（U10）；
+    - `rejected`：其余 `_ActionError`（战斗锁等）与**任何**意外异常。
+
+    幂等（§7.7）：与玩家 `commit` 共用同一张进程内幂等表（`_action_idem`，
+    键空间按 `(sid, key)` 天然隔离）——**任何结算之前**查表，同键重投直接回
+    首次结果，不重复结算、不重复副作用；进程重启后表丢了，状态层的持久
+    幂等索引仍兜底（同键同载荷 → `replayed`，键不同载荷 → `conflict`，
+    一样不重复副作用）。
+
+    依赖方向：本函数**不 import `neura`**——幂等键与 `created_at`（世界分钟
+    × 60000，不取墙钟）都由 neura 侧（N1–N5）填好，这里只透传、不改写。
+
+    前置守卫（§5.6 的两条 P 约定，全部在**进入管线之前**判定，不落事件）：
+
+    - `_action_is_deferred`（`can_defer` 或带中断条件）→ `unsupported`：
+      NPC 提案**永远同步**（P7），绝不触发长行动分叉的 `scheduled` 回执；
+    - 行动条目不在场景行动表 → `unsupported`（与 §9.5 同判据）；
+    - 行动条目未声明 `auto_pass` → `unsupported`：结算会走全局随机掷骰，
+      破坏「同输入同输出」的纯函数口径（P2：第一版不掷骰）。
+    """
+    proposal = proposal if isinstance(proposal, dict) else {}
+    # 进程内幂等查表（§7.7）：**任何结算之前**——命中即回首次结果。
+    replay = _action_idem_get(session.sid, idempotency_key)
+    if isinstance(replay, dict):
+        replay_ids = replay.get("event_ids") or []
+        return {"status": "committed", "result": replay, "reason": None,
+                "event_id": str(replay_ids[0]) if replay_ids else None}
+    try:
+        with session.lock:
+            # 前置守卫：形态不对的计划在这里就挡下，不结算、不提交、不落事件。
+            if _action_is_deferred(proposal):
+                return {"status": "unsupported", "result": None,
+                        "reason": NEURA_NO_DEFER, "event_id": None}
+            action_id = str((proposal.get("intent") or {}).get("verb") or "")
+            entry = _action_scene_entry(session.rules, action_id)
+            if entry is None:
+                return {"status": "unsupported", "result": None,
+                        "reason": ACTION_NO_ACTION, "event_id": None}
+            if not entry.get("auto_pass"):
+                return {"status": "unsupported", "result": None,
+                        "reason": NEURA_NO_DICE, "event_id": None}
+            # `base_seq` 自取自用（§5.6 的 `submit` 没有 base_seq 形参）：开句柄
+            # 在锁内（并发不重开）；取完即放锁，提交点由 `_action_settle_commit`
+            # 重新核验——两段锁之间若被别人提交，走到它的 `base_seq` 检查就是
+            # `conflict`（§7.4），调用方重试即可。
+            handle = session._handle or session._open_handle()
+            base_seq = _int_or(handle.view().get("seq"), 0)
+        out = _action_settle_commit(session, proposal, base_seq=base_seq,
+                                    idempotency_key=idempotency_key,
+                                    source=source)
+    except _ActionError as exc:
+        if exc.phrase in (ACTION_STALE_SEQ, ACTION_ALREADY_COMMITTED):
+            status, reason = "conflict", exc.phrase
+        elif exc.phrase == ACTION_NO_ACTION:
+            status, reason = "unsupported", exc.phrase
+        else:
+            status, reason = "rejected", exc.phrase
+        return {"status": status, "result": None, "reason": reason,
+                "event_id": None}
+    except Exception as exc:    # noqa: BLE001 — 零异常逃逸：失败也是返回值
+        return {"status": "rejected",
+                "reason": "服务器内部错误：%s" % (exc,), "result": None,
+                "event_id": None}
+    # 长行动分叉在守卫里已挡死，这里是最后防线：真到了也按 unsupported 拒绝
+    # （排程事件可能已落盘，登记 PR「风险与口径补充」，正常流不可达）。
+    if isinstance(out.get("scheduled"), dict):
+        return {"status": "unsupported", "result": None,
+                "reason": NEURA_NO_DEFER, "event_id": None}
+    result = out.get("result") if isinstance(out.get("result"), dict) else None
+    event_ids = result.get("event_ids") if result else []
+    event_id = str(event_ids[0]) if event_ids else None
+    if result is not None:
+        # 记下首次结果（与玩家 commit 同一张表、同一生命周期）：
+        # 同键重投从这里原样取回，不再结算。
+        _action_idem_put(session.sid, idempotency_key, result)
+    return {"status": "committed", "result": result, "reason": None,
+            "event_id": event_id}
 
 
 # ── 第 6 段（叙事，可选后置）与进程内短期记忆 ─────────────────────────────
