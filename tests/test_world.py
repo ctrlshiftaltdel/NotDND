@@ -24,6 +24,7 @@
 import json
 import os
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -1375,6 +1376,68 @@ def test_w7_populate_roster_list_and_purity():
     assert snapshot == _dumps(roster), "populate 不得改写档案"
     # 无 threads 的 list 来源 → 主线项 0；同 (spec, seed) 逐字节相等。
     assert _dumps(block) == _dumps(world.populate(roster, seed=42))
+
+
+# ── W8：schema 扩展验收（Issue #396） ─────────────────────────────────────
+
+def test_w8_schema_extension_accepts_new_keys():
+    """W8 schema 扩展：`world.schema.json` 新增的 laws / goods /
+    worldgen_provenance / lexicon_overrides / regions[].economy 全部是
+    **可选属性**——官方世界正文（不带新键）照常过校验；官方世界 + W1
+    合成产物的新键过校验（goods 含 era、provenance 三来源、laws 双轨
+    source）；形状非法的新键被拒。"""
+    sys.path.insert(0, os.path.join(ROOT, "tests"))
+    import validate_data
+
+    schema_dir = os.path.join(ROOT, "data", "schema")
+    worlds_dir = os.path.join(ROOT, "data", "worlds")
+    # ① 三个官方世界正文零改动仍过校验（新键全部可选）
+    for name in sorted(os.listdir(worlds_dir)):
+        if not name.endswith(".json"):
+            continue
+        errs = validate_data.validate_file(os.path.join(worlds_dir, name),
+                                           schema_dir, ROOT)
+        assert errs == [], (name, errs)
+
+    spec = worldgen.normalize_spec({
+        "world_type": "fantasy", "scale": "region", "economy_on": True,
+        "laws_req": [{"name": "禁武令", "forbid_tags": ["武器"]}],
+        "tone_terms": ["港口"]})
+    base = worldgen.choose_base(spec)
+    synthesized = worldgen.synthesize(spec, base, seed=42)
+
+    doc = json.load(open(os.path.join(worlds_dir, "emberfall.json"),
+                         encoding="utf-8"))
+    doc["laws"] = synthesized["laws"]
+    doc["goods"] = synthesized["goods"]
+    doc["worldgen_provenance"] = synthesized["worldgen_provenance"]
+    doc["lexicon_overrides"] = synthesized["lexicon_overrides"]
+    doc["regions"][0]["economy"] = {"produces": [synthesized["goods"][0]["name"]]}
+    tmp = tempfile.mkdtemp(prefix="w8-schema-")
+    path = os.path.join(tmp, "w8_schema_probe.json")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(doc, fh, ensure_ascii=False)
+    try:
+        # ② 官方世界 + 合成产物新键过校验（goods 顶层键转正闭环）
+        errs = validate_data.validate_file(path, schema_dir, ROOT)
+        assert errs == [], errs
+
+        # ③ 形状非法的新键被拒：threshold 三值之外 / goods 缺 era
+        doc["laws"][0]["threshold"] = "sometimes"
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh, ensure_ascii=False)
+        errs = validate_data.validate_file(path, schema_dir, ROOT)
+        assert errs, "threshold 非法值必须被拒"
+
+        doc["laws"][0]["threshold"] = "forbid"
+        doc["goods"][0].pop("era")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(doc, fh, ensure_ascii=False)
+        errs = validate_data.validate_file(path, schema_dir, ROOT)
+        assert errs, "goods 缺 era 必须被拒"
+    finally:
+        os.remove(path)
+        os.rmdir(tmp)
 
 
 def main():

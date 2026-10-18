@@ -88,6 +88,14 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     文件级分享（导出 attachment / 导入过 `validate_world` 零 error）。鉴权裁定：
     单人会话 `X-Session` 即可，多人房间仅**房主**成员令牌可操作（player 无权、
     预览不进事件流）。
+  · 账本只读观察面（M12-W8，WORLD-DESIGN.md §9.1 / §10.3）：`GET /api/world/ledger`
+    回答「这个月的粮账 / 这项工程为什么停」——缺省回账本摘要（`economy.day` /
+    `balances` / `prices`）+ 最近 `WORLD_LEDGER_TAIL` 条 Entry + 工程 / 指令摘要
+    （含 `blocked_reason`）；`?project_id=` 指定单个工程时回其完整状态、开工缺项
+    `readiness` 与该项目名下的最近 Entry。全程只读（不 commit / 不 save）；
+    账本是 GM / 据点主人视角数据（`econ.day` 等事件 `visibility=gm`），鉴权照
+    W3 同一裁定：单人会话 `X-Session` 即可，房间多名在座成员必须以**房主**
+    成员令牌调用（player / observer 一律 403）。
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -4506,6 +4514,10 @@ WORLDGEN_RATE_LIMIT = 6              # 每分钟 generate 次数上限（复用 
 WORLDGEN_INSTANCES_FILE = "world_instances.json"   # 玩家存档内的实例 sidecar
 WORLDGEN_DIFF_TEXT_LIMIT = 80        # diff 展示值的文本截断（预览卡可读）
 
+# 账本观察面（W8，§10.3）：缺省回最近 N 条 Entry（账本摘要的一角；
+# 全量账目走事件日志权威，块内 ledger 会被 LEDGER_MAX 裁剪）。
+WORLD_LEDGER_TAIL = 20
+
 # 端口的系统提示词：只产出**单个字段**的最小可用文本（P4：文案打磨另开内容单）。
 WORLDGEN_PORT_SYSTEM = (
     "你是世界生成助手。按给定的世界设定为指定字段写一小段中文文本："
@@ -5191,6 +5203,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/world/directive":
                 # 指令可解释六项（W6，P9 / §6.5）：?settlement_id=&directive_id=。
                 return self._world_directive_view()
+            if path == "/api/world/ledger":
+                # 账本只读观察面（W8，§10.3）：?project_id= 单工程为何停。
+                return self._world_ledger_view()
             # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
@@ -6459,6 +6474,80 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"status": "ok", "directives": summary})
         except world.WorldError as exc:
             return self._err(str(exc), 404, "no_directive")
+
+    def _world_ledger_view(self):
+        """`GET /api/world/ledger`：账本只读观察面（W8，§9.1 / §10.3）。
+
+        回答两个问题——「这个月的粮账」（缺省：账本摘要 + 最近
+        `WORLD_LEDGER_TAIL` 条 Entry + 工程 / 指令摘要）与「这项工程为什么停」
+        （`?project_id=`：完整状态 + `blocked_reason` + 开工缺项 `readiness` +
+        该项目名下最近 Entry）。只读：不 commit、不 save、不触发日切。
+
+        鉴权裁定（照 W3 `_world_host_gate` 同一模式）：账本是 GM / 据点主人
+        视角数据（`econ.day` / `world.genesis` 事件 `visibility=gm`）——单人
+        会话 `X-Session` 即可；房间多名在座成员必须以**房主**成员令牌调用，
+        player / observer 一律 403 `not_authorized`。
+        """
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        try:
+            with session.lock:
+                handle = session._handle or session._open_handle()
+                world_block = (handle.view().get("blocks") or {}).get("world")
+                if world_block is None:
+                    return self._err("没有世界运行时态", 404, "no_world")
+                block = world.migrate_block(world_block)
+                economy = block["economy"]
+                ledger = [entry for entry in economy.get("ledger") or []
+                          if isinstance(entry, dict)]
+                q = urllib.parse.parse_qs(
+                    urllib.parse.urlparse(self.path).query)
+                pid = (q.get("project_id") or [""])[0]
+                if pid:
+                    project = block["projects"].get(pid)
+                    if not isinstance(project, dict):
+                        return self._err("没有这个工程", 404, "no_project")
+                    project_entries = [
+                        entry for entry in ledger
+                        if isinstance(entry.get("refs"), dict)
+                        and str(entry["refs"].get("project_id") or "") == pid]
+                    return self._json({
+                        "status": "ok",
+                        "project": copy.deepcopy(project),
+                        "readiness": world.project_readiness(
+                            block, project,
+                            place=_world_place_view(
+                                session, project.get("place_id"))),
+                        "entries": copy.deepcopy(
+                            project_entries[-WORLD_LEDGER_TAIL:]),
+                    })
+                projects = [{"project_id": key, "name": item.get("name"),
+                             "place_id": item.get("place_id"),
+                             "status": item.get("status"),
+                             "blocked_reason": item.get("blocked_reason", ""),
+                             "source": item.get("source")}
+                            for key, item in sorted(block["projects"].items())
+                            if isinstance(item, dict)]
+                return self._json({
+                    "status": "ok",
+                    "economy": {
+                        "day": economy.get("day"),
+                        "balances": copy.deepcopy(
+                            economy.get("balances") or {}),
+                        "prices": copy.deepcopy(economy.get("prices") or {}),
+                        "goods": {good_id: {"name": item.get("name"),
+                                            "stock": item.get("stock")}
+                                  for good_id, item in sorted(
+                                      (economy.get("goods") or {}).items())
+                                  if isinstance(item, dict)},
+                    },
+                    "entries": copy.deepcopy(ledger[-WORLD_LEDGER_TAIL:]),
+                    "projects": projects,
+                })
+        except world.WorldError as exc:
+            return self._err(str(exc), 409, "world_rejected")
 
     # ── 多人房间（M10-S1，§4）────────────────────────────────
     def _bearer_token(self) -> str:
