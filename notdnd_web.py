@@ -3227,6 +3227,136 @@ def _neura_tick(session, *, stopped_at=None) -> None:
             pass
 
 
+# ── NEURA 只读观察面（N8，NEURA-DESIGN §9.4 / §10.3 / §11 N8）───────────────
+#
+# `GET /api/neura/view?npc_id=…`：单个 NPC 的模拟状态快照（layer / needs /
+# plan / 最近 5 条 journal）。**只读**：不写任何块、不触发 tick、零状态变更
+# ——读的是状态层句柄的块视图 + 复用 N7 的 `_neura_view` 构造（不为 tick
+# 之外的目的触发地图懒编译）+ 复用 `neura.migrate_block`（安全载入，纯函数）
+# 与 `neura.layer_of`（§7.1 分层**现算**，不缓存）。
+#
+# 鉴权与可见性裁定（PR「风险与口径补充」登记）：
+# - 会话定位：`X-Room` 头优先（房间语义）；否则沿既有 `_sess()`（`X-Session`
+#   / `?sid=`，单人语义）。房间块里**已有成员记录**的会话一律走 `_room_auth`
+#   成员鉴权链（§4.1）——不论请求带的是哪个头；缺令牌 / 令牌错 401，不回显缘由。
+# - **observer**：观察面是玩家 / GM 视角的数据（NPC 内部状态）；observer 的
+#   既有可见域只有 world / ooc 公共频道（MPI §4.2）——一律 404，不泄露存在性。
+# - **host / player**：可见且仅可见 `layer == "near"` 的 NPC（§7.1 分层现算
+#   ——队伍空间共在 = 玩家感知所得；远场 / 背景是离线模拟内部态，不给看）。
+# - **旧单人档**（房间块无成员记录）：沿 `_sess()` 的既有信任模型，视同 GM，
+#   任意具名 NPC 可见。
+# - 「npc_id 缺失」「块缺失」「npc_id 不存在」「无权看」一律回**同一个**
+#   `404 {"status": "forbidden"}`——不区分，不泄露存在性（验收第 2 条）。
+#
+# 不泄露（硬约束 2）：`needs` / `plan` / `journal` 都是结构化数据（§10.3）；
+# `memory`（summary 是自由文本）、`knowledge`（claim 的 proposition 是自由
+# 文本）、`secrets`（proposition / reveal_conditions）**一律不返回**。
+# `journal` 按 §9.4「最近 5 条」回该 NPC 的决策记录，投影只取白名单结构键
+# （`_neura_journal_view`）；`plan` 只取 `_write_back` 写下的六个固定键。
+
+NEURA_VIEW_JOURNAL_TAIL = 5    # §9.4：观察面回最近 5 条 journal
+
+_NEURA_PLAN_KEYS = ("plan_id", "goal_id", "step_index", "status",
+                    "started_minute", "until_minute")
+
+
+def _neura_journal_view(entry) -> dict:
+    """journal 条目（§5.4 DecisionRecord）→ 观察面的白名单投影。
+
+    journal 本身**不含自由文本**（§10.3：`why` 只在 AI 候选里、不进
+    journal），但 `hard.rejected[].detail` / `hard.notes` 是规则文案、
+    `scores[].terms` 是逐需求分解——观察面按「回答他为什么这么做」（§10.3）
+    只取**结构键**：决策 id / 分钟 / 层 / 切换理由 / 选中摘要（option /
+    verb / goal / place / 分钟 / 风险 / 来源）/ 成本 / AI 使用位 / 硬约束
+    概要（拒绝码列表，**不带** detail 文案）。文案类字段一律不投影。
+    """
+    entry = entry if isinstance(entry, dict) else {}
+    chosen = entry.get("chosen")
+    if isinstance(chosen, dict):
+        risk = chosen.get("risk")
+        chosen_view = {
+            "option_id": str(chosen.get("option_id") or ""),
+            "verb": str(chosen.get("verb") or ""),
+            "goal_id": str(chosen.get("goal_id") or ""),
+            "place_id": str(chosen.get("place_id") or ""),
+            "minutes": _int_or(chosen.get("minutes"), 0),
+            "risk": risk if isinstance(risk, (int, float)) else 0.0,
+            "source": str(chosen.get("source") or ""),
+        }
+    else:
+        chosen_view = None
+    hard = entry.get("hard") if isinstance(entry.get("hard"), dict) else {}
+    rejected = hard.get("rejected") if isinstance(hard, dict) else None
+    codes = [str(item["code"]) for item in
+             (rejected if isinstance(rejected, list) else [])
+             if isinstance(item, dict) and item.get("code")]
+    cost = entry.get("cost") if isinstance(entry.get("cost"), dict) else {}
+    return {
+        "decision_id": str(entry.get("decision_id") or ""),
+        "npc_id": str(entry.get("npc_id") or ""),
+        "at_minute": _int_or(entry.get("at_minute"), 0),
+        "layer": str(entry.get("layer") or ""),
+        "chosen": chosen_view,
+        "switch_reason": str(entry.get("switch_reason") or ""),
+        "cost": {"tier": str(cost.get("tier") or ""),
+                 "tokens": _int_or(cost.get("tokens"), 0)},
+        "ai_used": bool(entry.get("ai_used")),
+        "hard": {"ok": bool(hard.get("ok")),
+                 "kept": _int_or(hard.get("kept"), 0),
+                 "rejected": codes},
+    }
+
+
+def _neura_view_payload(session, member, npc_id) -> tuple:
+    """观察面响应的构造（路由薄壳调用；测试可直调）。
+
+    返回 `(http_code, payload)`。所有「看不到」的情形（npc_id 缺失 / 块缺失
+    / npc_id 不存在 / 无权看）都回 `(404, {"status": "forbidden"})`——同一
+    响应，不泄露存在性。读取全程持 `session.lock`：块视图与分层判定同帧；
+    句柄只在锁内开（与 `_neura_tick` 同一约定）。
+    """
+    npc_id = str(npc_id or "").strip()
+    forbidden = (404, {"status": "forbidden"})
+    if not npc_id:
+        return forbidden
+    with session.lock:
+        handle = session._handle or session._open_handle()
+        blocks = handle.view().get("blocks") or {}
+        raw = blocks.get("neura")
+        if not isinstance(raw, dict) or not raw.get("npcs"):
+            return forbidden
+        try:
+            block = neura.migrate_block(raw)    # 复用既有安全载入（纯函数）
+        except neura.NeuraError:
+            return forbidden                    # 版本高于本实现：按「看不到」处理
+        npc = block["npcs"].get(npc_id)
+        if not isinstance(npc, dict):
+            return forbidden
+        view = _neura_view(session, block)      # 复用 N7 view 构造（不懒编译）
+        layer = neura.layer_of(npc, view)       # §7.1：分层现算，不缓存
+        if member is not None:
+            if str(member.get("role") or "") == "observer":
+                return forbidden                # observer：观察面不给（裁定见上）
+            if layer != "near":
+                return forbidden                # host / player 只看近场（空间共在）
+        journal = [entry for entry in block.get("journal") or []
+                   if isinstance(entry, dict)
+                   and str(entry.get("npc_id") or "") == npc_id]
+        payload = {
+            "status": "ok",
+            "npc_id": npc_id,
+            "layer": layer,
+            "needs": copy.deepcopy(npc.get("needs") or {}),
+            "journal": [_neura_journal_view(entry) for entry in
+                        journal[-NEURA_VIEW_JOURNAL_TAIL:]],
+        }
+        plan = npc.get("plan")
+        if isinstance(plan, dict) and plan:
+            payload["plan"] = {key: copy.deepcopy(plan[key])
+                               for key in _NEURA_PLAN_KEYS if key in plan}
+        return 200, payload
+
+
 # ── 第 6 段（叙事，可选后置）与进程内短期记忆 ─────────────────────────────
 
 
@@ -4089,6 +4219,10 @@ class Handler(BaseHTTPRequestHandler):
                 # 房间事件流（M10-S2，§5.1 / §5.4 / §5.5）：SSE 推送 + 同一路径
                 # 的短轮询降级；鉴权 / 补发 / 过滤全在 _room_stream_route 里。
                 return self._room_stream_route()
+            if path == "/api/neura/view":
+                # NPC 模拟状态只读观察面（N8，NEURA §9.4 / §11 N8）：不写块、
+                # 不触发 tick、零状态变更；鉴权与可见性裁定见 _neura_view_route。
+                return self._neura_view_route()
             # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
@@ -4900,6 +5034,32 @@ class Handler(BaseHTTPRequestHandler):
             if from_minute < 0:
                 return self._err(CHRON_BAD_TARGET, 400)
         return self._json(_chron_next_barrier(session, from_minute))
+
+    def _neura_view_route(self):
+        """`GET /api/neura/view?npc_id=…`：NPC 模拟状态只读观察面（N8）。
+
+        会话定位与可见性裁定见「NEURA 只读观察面」节的节注；payload 构造在
+        `_neura_view_payload`（测试直调同一入口）。房间块有成员记录的会话
+        **必须**过成员鉴权链——不管请求带的是哪个头；缺令牌 / 令牌错 401，
+        不回显缘由（与 `_room_auth` 的其余端点同一口径）。
+        """
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        npc_id = str((q.get("npc_id") or [""])[0])
+        room_id = self._header_room()
+        if room_id:
+            session = get_session(room_id)
+            if session is None:
+                return self._err("会话不存在或已过期", 400)
+        else:
+            session = self._sess()      # ValueError → do_GET 既有 400 语义
+        member = None
+        if isinstance(session.room, dict) and session.room.get("members"):
+            try:
+                session, member = self._room_auth(session.sid)
+            except _RoomAuthError as exc:
+                return self._err(exc.msg, exc.code, exc.reason)
+        code, payload = _neura_view_payload(session, member, npc_id)
+        return self._json(payload, code)
 
     # ── 建局（M4-B1，UI-DESIGN §2.1 / §7 缺口 B1）──────────
     def _session_create(self):
