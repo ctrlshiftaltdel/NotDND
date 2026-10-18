@@ -2940,14 +2940,31 @@ class _NeuraPort:
     **不带** `generate_candidates`：`neura.tick` 用 `hasattr` 探测，没有它
     就是「无 AI 配置」的正常路径（§8.4）——NPC 仍按日程移动、按需求阈值
     行动、硬约束照拦，本单不接候选生成（M12 内容切片 / AI 接入另立）。
+
+    D4 双写（NEURA-DESIGN §12.1，Issue #372）：`submit` 是 `neura.tick`
+    内部唯一能观察到提交结果的窄口（返回值被 `neura.tick` 丢弃，neura.py
+    一字不动），这里顺手记下**移动**提交的结果——`move_ok` 里的 npc_id
+    表示本 tick 内该 NPC 的移动提案已落事件（`committed`），`_neura_tick`
+    末尾的 guide `npc_at` 双写以它为准：`conflict` / `rejected` /
+    `unsupported` 的移动**不写** `npc_at`（N5 裁定 13「conflict 不回写」
+    延伸到 guide 侧，下个 tick 收敛时再写）。
     """
 
     def __init__(self, session):
         self._session = session
+        self.move_ok: set = set()   # D4：本 tick 内移动提交成功的 npc_id
 
     def submit(self, proposal, *, idempotency_key, source: str = "npc") -> dict:
-        return _neura_submit(self._session, proposal,
-                             idempotency_key=idempotency_key, source=source)
+        result = _neura_submit(self._session, proposal,
+                               idempotency_key=idempotency_key, source=source)
+        actor = proposal.get("actor") if isinstance(proposal, dict) else None
+        intent = proposal.get("intent") if isinstance(proposal, dict) else None
+        npc_id = str(actor.get("id") or "") if isinstance(actor, dict) else ""
+        if npc_id and isinstance(intent, dict) \
+                and str(intent.get("verb") or "") == "move" \
+                and str(result.get("status") or "") == "committed":
+            self.move_ok.add(npc_id)
+        return result
 
 
 def _neura_party_refs(session) -> list:
@@ -3035,6 +3052,80 @@ def _neura_view(session, block) -> dict:
     return view
 
 
+def _neura_guide_change(session, guide_view, block, new_block, port) -> tuple:
+    """D4 双写（NEURA-DESIGN §12.1 / §4.4，Issue #372）：算 guide 块变更。
+
+    neura 权威发生 NPC 移动后，同步更新 `guide.npc_at[npc_id] = place_id`，
+    随 tick 末的**同一条** `neura.tick` 提交落盘（`changes` 双块，A0：不得
+    为 guide 单开事件）。返回 `(change, updates)`——`change` 为 `None` 表示
+    本 tick 无需 guide 变更（`changes` 里就不出现 guide 块，防噪音）。
+
+    口径（PR「风险与口径补充」登记）：
+
+    - **只在位置实际变化时写**：以 `neura` 块 `npcs[npc].location.place_id`
+      为权威，本 tick 内真的移动了（tick 前 place != tick 后 place）才考虑；
+      位置未动的 NPC（含被原样放回的远场）不产生 guide 变更。
+    - **移动提交没成功不写**（N5 裁定 13 延伸）：`port.move_ok` 没记到的
+      npc_id（`conflict` / `rejected` / `unsupported`）跳过——下个 tick
+      收敛时再写。
+    - **幂等**：与 `session.guide["npc_at"]` 现值相同就不重复写。
+    - **落盘 base**：guide 变更的 `after` 以**事件流视角**的 guide 块
+      （`handle.view()`，经 `_guide_from` 清洗还原）为 base 加 `npc_at`
+      更新——不夹带 live 侧未落盘的叙事写入（`beats_of` 的就地改动仍只随
+      检查点落盘，§11 口径不变）；`before` 如实记录视图前态。
+    - **失败隔离**：guide 侧任何异常只记 `neura_skipped` 日志并放弃本次
+      双写，**不阻塞** tick 与推进（neura 块照常提交）。
+    - live 侧（`session.guide`）**不在这里改**：由 `_neura_tick` 在提交
+      确认 `committed` / `replayed` 后才按 `updates` 落到内存态——提交被拒
+      不预写，两侧不出现「只写一侧」。
+    """
+    try:
+        guide = session.guide if isinstance(session.guide, dict) else None
+        npc_at = guide.get("npc_at") if isinstance(guide, dict) else None
+        if not isinstance(npc_at, dict):
+            return None, {}
+        npcs_old = block.get("npcs") if isinstance(block, dict) else None
+        npcs_new = new_block.get("npcs") if isinstance(new_block, dict) else None
+        updates: dict = {}
+        for npc_id, npc in (npcs_new if isinstance(npcs_new, dict) else {}).items():
+            if not isinstance(npc, dict):
+                continue
+            location = npc.get("location")
+            place = str(location.get("place_id") or "") \
+                if isinstance(location, dict) else ""
+            if not place:
+                continue
+            old = npcs_old.get(npc_id) if isinstance(npcs_old, dict) else None
+            old_loc = old.get("location") if isinstance(old, dict) else None
+            old_place = str(old_loc.get("place_id") or "") \
+                if isinstance(old_loc, dict) else ""
+            if place == old_place:          # 本 tick 没移动：不写（防噪音）
+                continue
+            if npc_id not in port.move_ok:  # 移动提交没成功：不写（下 tick 收敛）
+                continue
+            if npc_at.get(npc_id) == place:  # guide 已一致：幂等，不重复写
+                continue
+            updates[str(npc_id)] = place
+        if not updates:
+            return None, {}
+        base = _guide_from(guide_view)      # 事件流视角的 guide 块（清洗还原）
+        base_npc_at = base.get("npc_at")
+        if not isinstance(base_npc_at, dict):
+            return None, {}
+        for npc_id, place in updates.items():
+            base_npc_at[npc_id] = place
+        change = {"block": "guide", "op": "replace_block", "path": "",
+                  "before": copy.deepcopy(guide_view), "after": base}
+        return change, updates
+    except Exception as exc:      # noqa: BLE001 — 失败隔离：不阻塞 tick
+        try:
+            session.add_log(NEURA_SKIPPED_LOG_KIND,
+                            "NEURA guide 双写跳过：%s" % (exc,))
+        except Exception:         # noqa: BLE001 — 日志通道也失败就静默
+            pass
+        return None, {}
+
+
 def _neura_tick(session, *, stopped_at=None) -> None:
     """NEURA 编排接线（§9.4 时序）：构造 view → `neura.tick` → 块级提交。
 
@@ -3052,6 +3143,13 @@ def _neura_tick(session, *, stopped_at=None) -> None:
     neura.py 一字不动），动作事件提交点物理上无法携带其后的块变更。
     无事可做（块为空 / 无到期 / 无变更）**不落事件**（§9.7：老档首次
     tick 不写任何东西）。
+
+    **D4 双写（P6 / §12.1，Issue #372）**：neura 权威发生 NPC 移动且移动
+    提交成功（`committed`）时，`guide.npc_at` 的同步变更并入**同一条**
+    `neura.tick` 提交（`changes` 双块：`neura` + `guide`；无移动 / 位置
+    未变 / 提交失败 → `changes` 只含 `neura`，不产生 guide 噪音变更）。
+    落盘确认后才把更新落到 live `session.guide`——同一次提交、两侧一致，
+    不得只写一侧。详见 `_neura_guide_change`。
 
     **失败隔离（§9.4 硬要求）**：任何异常（块拒载 / view 构造失败 /
     tick 抛错 / 提交被拒）只落一条 `neura_skipped` 日志并返回——不阻塞
@@ -3075,8 +3173,8 @@ def _neura_tick(session, *, stopped_at=None) -> None:
                 block["npcs"] = {npc_id: npc
                                  for npc_id, npc in block["npcs"].items()
                                  if npc_id not in far}
-        new_block = neura.tick(block, view, port=_NeuraPort(session),
-                               now_minute=minute)
+        port = _NeuraPort(session)
+        new_block = neura.tick(block, view, port=port, now_minute=minute)
         for npc_id, npc in far.items():
             new_block["npcs"][npc_id] = npc     # 原样放回（2.4：远场不动）
         if new_block == block:
@@ -3089,11 +3187,18 @@ def _neura_tick(session, *, stopped_at=None) -> None:
         change = {"block": "neura", "op": "replace_block", "path": "",
                   "before": copy.deepcopy(block),
                   "after": copy.deepcopy(new_block)}
+        # D4 双写（P6 / §12.1）：neura 权威移动 → guide.npc_at 随**同一条**
+        # 提交落盘（`changes` 双块或单块，A0：不单开事件）。落盘 base 用
+        # 事件流视角的 guide 块——`handle.view()` 此刻的动作事件尚未把它
+        # 改动（动作只动 rules / chron），直接取 tick 开头的快照即可。
+        guide_change, guide_updates = _neura_guide_change(
+            session, blocks.get("guide"), block, new_block, port)
+        changes = [change] + ([guide_change] if guide_change else [])
         result = handle.commit(
             base_seq=_int_or(handle.view().get("seq"), 0),
             idempotency_key="ntick_%07d" % minute,
             type=NEURA_TICK_EVENT_TYPE, actor="system",
-            changes=[change], rules_version=ACTION_RULES_VERSION,
+            changes=changes, rules_version=ACTION_RULES_VERSION,
             visibility={"scope": "gm", "subjects": []},
             world_time=world_time, source="system")
         if str(result.get("status") or "") not in ("committed", "replayed"):
@@ -3103,6 +3208,18 @@ def _neura_tick(session, *, stopped_at=None) -> None:
                             "NEURA tick 块提交被拒（%s：%s）"
                             % (result.get("status"),
                                result.get("error") or result.get("message")))
+        elif guide_updates:
+            # 落盘确认后才写 live（提交被拒不预写，两侧不「只写一侧」）。
+            # `npc_at` 形状由加载合同（`_guide_from`）保证是 dict；脏值时
+            # 跳过 live 写、如实留痕（磁盘侧已在 after 里清洗过）。
+            npc_at = session.guide.get("npc_at") \
+                if isinstance(session.guide, dict) else None
+            if isinstance(npc_at, dict):
+                for npc_id, place in guide_updates.items():
+                    npc_at[npc_id] = place
+            else:
+                session.add_log(NEURA_SKIPPED_LOG_KIND,
+                                "NEURA guide 双写跳过：live npc_at 形状不对")
     except Exception as exc:      # noqa: BLE001 — §9.4 失败隔离：不阻塞推进
         try:
             session.add_log(NEURA_SKIPPED_LOG_KIND, "NEURA tick 跳过：%s" % (exc,))
