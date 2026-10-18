@@ -77,6 +77,17 @@ notdnd_web.py —— NotDND 网页后端骨架（M3 前置）
     `GET /api/events?since=` 按事件 `seq` 增量拉取（只回 `seq > since`，跨归档段
     由状态层拼接校验）。两条都**只读**：不落盘、不触发检查点、不为未迁移老档开
     句柄（老档在同一形状下按内存门面派生，`seq` 为 0）；非法 `since` → 400 固定短语。
+  · 世界生成会话编排（M12-W3，WORLD-DESIGN.md §4 / §11 W3）：`POST /api/world/generate`
+    把 spec 走完 P1–P5（normalize_spec / choose_base / synthesize / compile_world /
+    validate_world + validate_atlas），文本字段经 `_WorldGenPort` 复用 GUIDE 网关
+    既有调用通道（离线 = 正常路径，`port=None` 交给 worldgen），会话级预算计数
+    ≤ `WORLDGEN_CALL_BUDGET=24`（真实 usage 差值回填），error 阻断（422，不建会话）
+    后返回预览卡（结构摘要 + overrides diff，**不落任何块**）；`POST /api/world/commit`
+    把完整世界实例写进**玩家战役存档**的 sidecar（P6：不入系统库 `data/worlds/`、
+    本单不接 `blocks.world`），commit 一次性；`/api/world/export|import` 是 P6 v1
+    文件级分享（导出 attachment / 导入过 `validate_world` 零 error）。鉴权裁定：
+    单人会话 `X-Session` 即可，多人房间仅**房主**成员令牌可操作（player 无权、
+    预览不进事件流）。
 
 「规则会话核心」与「AI 导引者」分属独立模块；需要 PRISM 业务语义之处
 一律留 TODO(M3)，由后续 Issue 按 PRISM 命名（六维 MGT / FIN / VIG / INS /
@@ -114,6 +125,7 @@ import chron
 import neura
 import prism_core
 import state
+import worldgen
 
 # 导引者是**可选模块**（GUIDE-DESIGN.md §5.1）：依赖方向只允许
 # notdnd_web → prism_guide → prism_core。import 失败（缺文件 / 语法错 / 缺依赖）
@@ -3994,6 +4006,463 @@ def _chron_next_barrier(session, from_minute=None) -> dict:
                 "next_barrier": minute}
 
 
+# ── 世界生成会话编排（M12-W3，WORLD-DESIGN.md §4 / §11 W3，Issue #387）────
+#
+# `POST /api/world/generate`：spec（世界类型 / 剧本 / 描述 / overrides）→ 建
+# **生成会话**（`worldgen.new_session()` 预算计数器，进程内、不落盘）→
+# `normalize_spec` / `choose_base` / `synthesize` → `atlas_compile.compile_world`
+# + `validate_world` / `validate_atlas`（W2 的 C 系列）→ **error 阻断** →
+# 返回预览卡（结构摘要 + overrides diff）。预览**不落任何块**、不写 `data/worlds/`。
+#
+# `POST /api/world/commit`：预览确认 → 世界实例（完整 world.module + spec +
+# seed）写入**玩家战役存档目录**的 sidecar 文件（P6 拍板：不入系统库
+# `data/worlds/`；本单不接 `blocks.world`——实例进战役是后续开档流程）。
+#
+# 口径登记（PR「风险与口径补充」逐条展开）：
+# - 会话状态进程内（照 `_action_idem` 先例）：TTL `WORLDGEN_SESSION_TTL_S`、
+#   访问时惰性清理；commit **一次性**（成功即销毁，防重复入库）；服务重启 =
+#   会话全失（commit 回 404，重新 generate 即可——生成幂等可重跑）。
+# - 鉴权（§6.5 裁定）：生成 / 提交 / 导出 / 导入都是**管理性**操作——单人
+#   会话 `X-Session` 即可；房间有多名在座成员时必须以**房主**成员令牌调用
+#   （host 发起），player / observer 无权；预览只回给调用者、不进房间事件流
+#   （player 不可见预览）。
+# - P1 模型端口接线（`_WorldGenPort`）：复用 GUIDE 网关既有调用通道
+#   （`prism_guide.call_narrative`），**不开新调用通道**；离线（无模型 / 模块
+#   缺失）是正常路径，三级文本来源落到模板 / 内置兜底短语，不报错。
+# - 预算计数对齐：`WORLDGEN_TOKENS_PER_CALL` 是 worldgen 冻结的估算常量
+#   （W1 无真实网关）；端口每次调用后用**真实 usage** 差值回填预算计数器的
+#   `est_tokens`（不改 worldgen.py）；离线时计数恒 0。
+# - overrides（§4.4 v1 单层）应用于**合成结果**之上；diff = 覆盖前后
+#   regions / factions / laws 三节的字段级 JSON 对比（可读列表）。
+# - 导入校验 v1 = `validate_world` 零 error + kind 检查；`validate_data` /
+#   内容防火墙是 CI 对**已跟踪仓库文件**的门，运行时导入不跑 shell。
+
+WORLDGEN_SESSION_TTL_S = 3600.0      # 生成会话过期时间（登记口径）
+WORLDGEN_RATE_LIMIT = 6              # 每分钟 generate 次数上限（复用 _rate_ok）
+WORLDGEN_INSTANCES_FILE = "world_instances.json"   # 玩家存档内的实例 sidecar
+WORLDGEN_DIFF_TEXT_LIMIT = 80        # diff 展示值的文本截断（预览卡可读）
+
+# 端口的系统提示词：只产出**单个字段**的最小可用文本（P4：文案打磨另开内容单）。
+WORLDGEN_PORT_SYSTEM = (
+    "你是世界生成助手。按给定的世界设定为指定字段写一小段中文文本："
+    "只输出正文本身，不要引号、列表、标题或任何解释，不超过 80 字。")
+
+_WORLDGEN_LOCK = threading.Lock()
+# (sid, session_id) → record {sid, spec, seed, world, issues, ts}
+_WORLDGEN_SESSIONS: dict = {}
+
+
+class _WorldGenPort:
+    """worldgen 的模型端口（§4.3）：`port = {suggest(spec, field) -> str|None}`。
+
+    与 NEURA 的 `port.generate_candidates` 同款鸭子类型；`available=False`
+    （离线 / 模块缺失 / 网关未配置）= 正常路径，`suggest` 恒回 None，
+    worldgen 的三级文本来源落到模板同字段 / 内置兜底短语（不抛错）。
+    """
+
+    def __init__(self, budget: dict, description: str = ""):
+        self._budget = budget if isinstance(budget, dict) else {}
+        self._description = str(description or "").strip()
+        self.available = False
+        try:
+            self.available = (prism_guide is not None
+                              and bool(prism_guide.status().get("chat")))
+        except Exception:       # noqa: BLE001 — 环境读不出来按离线处理
+            self.available = False
+
+    def suggest(self, spec, field):
+        if not self.available:
+            return None
+        env = prism_guide.load_env()
+        messages = [
+            {"role": "system", "content": WORLDGEN_PORT_SYSTEM},
+            {"role": "user", "content": _worldgen_port_user(
+                spec, field, self._description)},
+        ]
+        completion = prism_guide.call_narrative(messages, env=env)
+        if not isinstance(completion, dict):
+            return None
+        # 预算计数对齐真实用量：worldgen._port_call 每次先按
+        # WORLDGEN_TOKENS_PER_CALL 常量记账，这里用网关回的真实 usage 差值
+        # 回填（不改 worldgen.py；读取失败按估算值保留）。
+        try:
+            usage = prism_guide.read_usage(completion.get("usage") or {})
+            used = int(usage.get("prompt_tokens") or 0) \
+                + int(usage.get("completion_tokens") or 0)
+            self._budget["est_tokens"] = max(0, int(
+                self._budget.get("est_tokens") or 0)
+                - worldgen.WORLDGEN_TOKENS_PER_CALL + used)
+        except Exception:       # noqa: BLE001 — 计数失败不影响生成
+            pass
+        text = str(completion.get("content") or "").strip()
+        return text or None
+
+
+def _worldgen_port_user(spec, field: str, description: str = "") -> str:
+    """端口请求的 user 消息：世界设定 + 玩家描述 + 目标字段
+    （field 形如 `world_name` / `region_summary:region-01`）。"""
+    head = "世界设定：类型 %s、基调 %s、规模 %s。" % (
+        spec.get("world_type"), "、".join(spec.get("tone_terms") or []) or "未指定",
+        spec.get("scale"))
+    if description:
+        head += "\n玩家描述：%s" % description[:500]
+    if field == "world_name":
+        return head + "\n字段：世界名称（一个名字）。"
+    if ":" in field:
+        kind, _, ref = field.partition(":")
+        return head + "\n字段：%s（%s）。" % (kind.replace("_", " "), ref)
+    return head + "\n字段：%s。" % field.replace("_", " ")
+
+
+def _worldgen_load_templates() -> dict:
+    """P2 的模板底座：官方目录里的世界模组（只读，`_load_world` 自带缓存）。"""
+    templates = {}
+    for key in sorted(set(worldgen.DEFAULT_BASE_CATALOG.values())):
+        try:
+            templates[key] = _load_world(key)
+        except (ValueError, OSError):
+            continue                # 缺某个官方模组：底座缺文本兜底，不致命
+    return templates
+
+
+def _worldgen_session_prune(now: float) -> None:
+    """过期生成会话惰性清理（访问时顺手；进程内 TTL，重启即全失）。"""
+    stale = [key for key, record in _WORLDGEN_SESSIONS.items()
+             if now - float(record.get("ts") or 0) > WORLDGEN_SESSION_TTL_S]
+    for key in stale:
+        _WORLDGEN_SESSIONS.pop(key, None)
+
+
+def _worldgen_session_put(sid: str, record: dict) -> str:
+    """建一个生成会话（进程内，照 `_action_idem` 先例）；返回 `session_id`。"""
+    now = time.time()
+    session_id = "wg_" + secrets.token_hex(16)
+    entry = dict(record)
+    entry["ts"] = now
+    with _WORLDGEN_LOCK:
+        _worldgen_session_prune(now)
+        _WORLDGEN_SESSIONS[(str(sid), session_id)] = entry
+    return session_id
+
+
+def _worldgen_session_take(sid: str, session_id: str) -> dict | None:
+    """取走一个生成会话（**一次性**：commit 成功路径上取走即销毁）。"""
+    now = time.time()
+    key = (str(sid), str(session_id))
+    with _WORLDGEN_LOCK:
+        _worldgen_session_prune(now)
+        return _WORLDGEN_SESSIONS.pop(key, None)
+
+
+def _worldgen_new_id(world: dict, kind: str) -> str:
+    """overrides 新增条目的 id：`<kind>-new-NN`，保证在现有 id 里不撞。"""
+    existing = {str(r.get("id") or "") for r in (world.get(kind) or [])
+                if isinstance(r, dict)}
+    index = 1
+    while "%s-new-%02d" % (kind, index) in existing:
+        index += 1
+    return "%s-new-%02d" % (kind, index)
+
+
+def _worldgen_upsert(entries: list, up: dict, fields: tuple,
+                     world: dict, kind: str, new_entry) -> None:
+    """单条 upsert：按 id（或 name）配对则就地补字段，未命中则追加。"""
+    match = None
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        if str(up.get("id") or "") and entry.get("id") == up.get("id"):
+            match = entry
+            break
+        if str(up.get("name") or "") and entry.get("name") == up.get("name"):
+            match = entry
+            break
+    if match is None:
+        match = new_entry(world)
+        entries.append(match)
+    for key in fields:
+        if key in up:
+            match[key] = copy.deepcopy(up[key])
+
+
+def _worldgen_drop(entries: list, keys: list) -> list:
+    """removals：按 id 或 name 剔除（v1：名字与 id 等价匹配）。"""
+    dropped = set(str(k) for k in keys)
+    return [entry for entry in entries
+            if not (isinstance(entry, dict)
+                    and (str(entry.get("id") or "") in dropped
+                         or str(entry.get("name") or "") in dropped))]
+
+
+def _worldgen_apply_overrides(world: dict, overrides: dict) -> tuple:
+    """§4.4 v1 单层 overrides（应用顺序固定：upserts → removals）。
+
+    应用于**合成结果**之上（口径登记）；返回 `(new_world, diff)`——diff 是
+    regions / factions / laws 三节的字段级对比（`_worldgen_diff`）。
+    """
+    new_world = copy.deepcopy(world)
+
+    regions = [r for r in new_world.get("regions") or [] if isinstance(r, dict)]
+    for up in overrides.get("region_upserts") or []:
+        if isinstance(up, dict) and (up.get("id") or up.get("name")):
+            _worldgen_upsert(
+                regions, up, ("name", "summary", "atmosphere",
+                              "key_places", "events"), new_world, "regions",
+                lambda w: {"id": _worldgen_new_id(w, "regions"),
+                           "source": "worldgen:override"})
+    removed_regions = _worldgen_drop(
+        regions, overrides.get("region_removals") or [])
+
+    factions = [f for f in new_world.get("factions") or []
+                if isinstance(f, dict)]
+    for up in overrides.get("faction_upserts") or []:
+        if isinstance(up, dict) and (up.get("id") or up.get("name")):
+            _worldgen_upsert(
+                factions, up, ("name", "alignment", "summary"),
+                new_world, "factions",
+                lambda w: {"id": _worldgen_new_id(w, "factions"),
+                           "source": "worldgen:override"})
+    removed_factions = _worldgen_drop(
+        factions, overrides.get("faction_removals") or [])
+
+    laws = [l for l in new_world.get("laws") or [] if isinstance(l, dict)]
+    region_ids = [r.get("id") for r in removed_regions if r.get("id")]
+    for up in overrides.get("law_upserts") or []:
+        if not isinstance(up, dict) or not up.get("name"):
+            continue
+        threshold = up.get("threshold") \
+            if up.get("threshold") in ("forbid", "tolerate", "allow") else "forbid"
+        scope = up.get("scope") if up.get("scope") in ("all", "regions") else "all"
+
+        def new_law(w, threshold=threshold, scope=scope, region_ids=region_ids):
+            return {"id": _worldgen_new_id(w, "laws"),
+                    "forbid_tags": [], "threshold": threshold,
+                    "scope_place_ids": list(region_ids) if scope == "regions" else [],
+                    "penalty": "叙事处置（由导引者按世界规则给出）",
+                    "source": "worldgen:override"}
+
+        _worldgen_upsert(laws, up, ("name", "forbid_tags", "threshold"),
+                         new_world, "laws", new_law)
+        # scope 只是新法律的建法口径（ regions → 全部区域），已存在条目的
+        # scope_place_ids 不被 upsert 改写（v1：结构字段不进 upsert 白名单）。
+    removed_laws = _worldgen_drop(laws, overrides.get("law_removals") or [])
+
+    new_world["regions"] = removed_regions
+    new_world["factions"] = removed_factions
+    new_world["laws"] = removed_laws
+
+    diff = []
+    for key in ("regions", "factions", "laws"):
+        diff.extend(_worldgen_diff(world.get(key) or [], new_world.get(key) or [], key))
+    return new_world, diff
+
+
+def _worldgen_diff_show(value):
+    """diff 的展示值：长文本截断（预览卡可读），结构原样（深拷贝防改写）。"""
+    if isinstance(value, str):
+        return value if len(value) <= WORLDGEN_DIFF_TEXT_LIMIT \
+            else value[:WORLDGEN_DIFF_TEXT_LIMIT - 1] + "…"
+    if isinstance(value, (dict, list)):
+        return copy.deepcopy(value)
+    return value
+
+
+def _worldgen_diff(before, after, path: str = "", out: list | None = None) -> list:
+    """§4.4 字段级 JSON diff：`{op: add|remove|change, path, before?, after?}`。
+
+    列表元素是带 `id` 的 dict 时按 id 配对（region / faction / law 的天然键），
+    否则按下标；路径形如 `regions[region-03].summary`——改了什么一目了然。
+    """
+    if out is None:
+        out = []
+    if isinstance(before, dict) and isinstance(after, dict):
+        for key in sorted(set(before) | set(after),
+                          key=lambda k: str(k)):
+            sub = "%s.%s" % (path, key) if path else str(key)
+            if key not in before:
+                out.append({"op": "add", "path": sub,
+                            "after": _worldgen_diff_show(after[key])})
+            elif key not in after:
+                out.append({"op": "remove", "path": sub,
+                            "before": _worldgen_diff_show(before[key])})
+            else:
+                _worldgen_diff(before[key], after[key], sub, out)
+    elif isinstance(before, list) and isinstance(after, list):
+        before_by_id = {b.get("id"): b for b in before
+                        if isinstance(b, dict) and b.get("id")}
+        after_by_id = {a.get("id"): a for a in after
+                       if isinstance(a, dict) and a.get("id")}
+        if before_by_id or after_by_id:
+            for key, item in before_by_id.items():
+                sub = "%s[%s]" % (path, key)
+                if key in after_by_id:
+                    _worldgen_diff(item, after_by_id[key], sub, out)
+                else:
+                    out.append({"op": "remove", "path": sub,
+                                "before": _worldgen_diff_show(item)})
+            for key, item in after_by_id.items():
+                if key not in before_by_id:
+                    out.append({"op": "add", "path": "%s[%s]" % (path, key),
+                                "after": _worldgen_diff_show(item)})
+        else:
+            for index in range(max(len(before), len(after))):
+                sub = "%s[%d]" % (path, index)
+                if index >= len(before):
+                    out.append({"op": "add", "path": sub,
+                                "after": _worldgen_diff_show(after[index])})
+                elif index >= len(after):
+                    out.append({"op": "remove", "path": sub,
+                                "before": _worldgen_diff_show(before[index])})
+                else:
+                    _worldgen_diff(before[index], after[index], sub, out)
+    elif before != after:
+        out.append({"op": "change", "path": path,
+                    "before": _worldgen_diff_show(before),
+                    "after": _worldgen_diff_show(after)})
+    return out
+
+
+def _worldgen_pipeline(sid: str, raw_spec, overrides, description: str) -> dict:
+    """P1–P5 流水线（生成会话编排）：返回 `{ok, preview}` 或 `{ok: False, issues}`。
+
+    同 spec 同 seed 连跑结果逐字节相等（worldgen 的确定性保证）；seed 由
+    `seed_hint` 派生（重试 = 换 hint 或省略 → 新掷）。
+    """
+    spec = worldgen.normalize_spec(raw_spec)
+    budget = worldgen.new_session()
+    port = _WorldGenPort(budget, description=description)
+    hint = spec.get("seed_hint")
+    seed = worldgen.derive_seed(str(hint), "worldgen") if hint \
+        else worldgen.derive_seed(secrets.token_hex(16), "worldgen")
+    base = worldgen.choose_base(spec, templates=_worldgen_load_templates())
+    # 离线（网关未配置）= 正常路径：把 **port=None** 交给 worldgen——
+    # `_port_call` 把「端口对象存在」当作在线记账，离线时传对象会记出
+    # 幽灵调用（calls 虚增、est_tokens 按常量 128 虚计）；None 才是
+    # worldgen 语义里的「无模型」。
+    world = worldgen.synthesize(spec, base, seed=seed,
+                                port=(port if port.available else None),
+                                budget=budget)
+
+    # overrides（v1 单层，应用于合成结果之上；diff 覆盖前后）。
+    diff: list = []
+    note = ""
+    if overrides:
+        world, diff = _worldgen_apply_overrides(world, overrides)
+        note = str(overrides.get("note") or "")
+
+    # P5 一致性检查：world 级 + atlas 级（compile 后跑 C1–C4）。
+    issues = list(worldgen.validate_world(world, spec=spec))
+    try:
+        atlas = atlas_compile.compile_world(world, _load_lexicon(), seed)
+        issues += list(worldgen.validate_atlas(
+            atlas, world=world, checks=worldgen.ATLAS_CHECKS_POST_COMPILE))
+    except Exception:            # noqa: BLE001 — 编译失败按 error 阻断（1.7）
+        issues.append({"code": "E_ATLAS_COMPILE", "level": "error",
+                       "hint": "地图编译失败，无法进入下一步"})
+
+    if worldgen.has_errors(issues):
+        # error 阻断：不建生成会话（没有 session_id 就没有可 commit 的东西）。
+        return {"ok": False, "issues": issues,
+                "spec": spec, "seed": seed, "budget": dict(budget)}
+
+    provenance = world.get("worldgen_provenance") or {}
+    session_id = _worldgen_session_put(sid, {
+        "sid": str(sid), "spec": spec, "seed": seed,
+        "world": copy.deepcopy(world),
+        "issues": [i for i in issues if i.get("level") != "error"]})
+    preview = {
+        "status": "ok",
+        "session_id": session_id,
+        "seed": seed,
+        "world": {
+            "key": (world.get("world") or {}).get("key"),
+            "name": (world.get("world") or {}).get("name"),
+            "engine": (world.get("world") or {}).get("engine"),
+            "world_type": (world.get("world") or {}).get("world_type"),
+        },
+        "scale": spec["scale"],
+        "estimate": worldgen.estimate(spec),
+        "regions": [{"id": r.get("id"), "name": r.get("name"),
+                     "key_places": len(r.get("key_places") or [])}
+                    for r in world.get("regions") or []],
+        "factions": [{"id": f.get("id"), "name": f.get("name")}
+                     for f in world.get("factions") or []],
+        "laws": [{"id": l.get("id"), "name": l.get("name")}
+                 for l in world.get("laws") or []],
+        "goods_count": len(world.get("goods") or []),
+        "issues": [i for i in issues if i.get("level") != "error"],
+        "spec_notes": list(spec.get("spec_notes") or []),
+        "budget": provenance.get("budget") or dict(budget),
+        "degraded": bool(provenance.get("degraded")),
+        "text_sources": dict((provenance.get("texts") or {})),
+        "lexicon_overrides": world.get("lexicon_overrides") or [],
+        "overrides": {"note": note, "diff": diff},
+    }
+    return {"ok": True, "preview": preview}
+
+
+def _world_instances_path(sid: str) -> pathlib.Path:
+    """玩家存档内的世界实例 sidecar（P6：不入系统库 `data/worlds/`）。"""
+    return _campaign_dir(sid) / WORLDGEN_INSTANCES_FILE
+
+
+def _world_instances_load(sid: str) -> list:
+    """读实例 sidecar；缺文件 = 空，坏文件 = 空且不崩（运行时容错）。"""
+    try:
+        data = json.loads(_world_instances_path(sid).read_text(encoding="utf-8"))
+    except (FileNotFoundError, NotADirectoryError):
+        return []
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict) or not isinstance(data.get("instances"), list):
+        return []
+    return [item for item in data["instances"] if isinstance(item, dict)]
+
+
+def _world_instances_save(sid: str, instances: list) -> None:
+    """写实例 sidecar（`.tmp` + `os.replace` 原子替换，与 state 同款手法）。"""
+    path = _world_instances_path(sid)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps({"version": 1, "instances": instances},
+                              ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, path)
+
+
+def _world_host_gate(self_handler, session) -> None:
+    """§6.5 鉴权裁定（PR 登记）：世界生成是管理性操作。
+
+    - 单人会话（房间无在座成员或只有房主本人）：`X-Session` 即可；
+    - 房间有多名在座成员：必须以**房主**成员令牌（`X-Member` + Bearer）调用，
+      player / observer 一律 403——host 发起，player 不可见预览。
+    失败抛 `_RoomAuthError`（路由层就地翻译成 HTTP）。
+    """
+    room = session.room if isinstance(session.room, dict) else {}
+    members = room.get("members") if isinstance(room.get("members"), dict) else {}
+    active = [m for m in members.values()
+              if isinstance(m, dict) and m.get("state") == "active"]
+    if len(active) <= 1:
+        return
+    _, member = self_handler._room_auth(str(session.sid))
+    if not _room_caller_is_host(session.room, member):
+        raise _RoomAuthError(403, "只有房主可以操作世界生成", "not_authorized")
+
+
+def _world_instance_from_record(record: dict, imported: bool = False) -> dict:
+    """世界实例（P6 完整实例：world.module + spec + seed 一起存）。"""
+    world = record.get("world") if isinstance(record.get("world"), dict) else {}
+    spec = record.get("spec") if isinstance(record.get("spec"), dict) else None
+    return {
+        "instance_id": "wi_" + secrets.token_hex(12),
+        "created_at": int(time.time() * 1000),
+        "template_key": (world.get("world") or {}).get("key") or "",
+        "seed": int(record.get("seed") or 0),
+        "spec": spec,
+        "world": world,
+        **({"imported": True} if imported else {}),
+    }
+
+
 def _wants_json(accept) -> bool:
     """`Accept: application/json`（且没点名 SSE）时回**非流式**结果（§9.3）。"""
     text = str(accept or "").lower()
@@ -4278,6 +4747,18 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/chron/cancel":
                 return self._chron_cancel_route(b)
+
+            if path == "/api/world/generate":
+                return self._world_generate(b)
+
+            if path == "/api/world/commit":
+                return self._world_commit(b)
+
+            if path == "/api/world/export":
+                return self._world_export(b)
+
+            if path == "/api/world/import":
+                return self._world_import(b)
 
             if path == "/api/room/create":
                 return self._room_create(b)
@@ -5102,6 +5583,138 @@ class Handler(BaseHTTPRequestHandler):
             view = rules_view(session)
         view["status"] = "ok"
         return self._json(view)
+
+    # ── 世界生成会话编排（M12-W3，WORLD-DESIGN §4 / §11 W3）──
+    def _world_gate(self, session):
+        """世界生成路由的公共门：鉴权裁定（§6.5，host 发起）。"""
+        try:
+            _world_host_gate(self, session)
+        except _RoomAuthError as exc:
+            return self._err(exc.msg, exc.code, exc.reason)
+        return None
+
+    def _world_generate(self, body: dict):
+        """`POST /api/world/generate`：spec → 生成会话 → 预览卡。
+
+        离线（无模型）全流程成功；error 阻断（1.7）：带 error 的生成物**不建
+        会话**（422 + issues），没有 session_id 就没有可 commit 的东西。
+        预览不落任何块、不写 `data/worlds/`。
+        """
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        if not _rate_ok(session.sid, "worldgen", WORLDGEN_RATE_LIMIT):
+            return self._err("太频繁", 429, "rate_limited")
+        overrides = body.get("overrides")
+        if overrides is not None and not isinstance(overrides, dict):
+            return self._err("overrides 不合法", 400, "bad_overrides")
+        raw_spec = body.get("spec") if isinstance(body.get("spec"), dict) else body
+        out = _worldgen_pipeline(session.sid, raw_spec, overrides,
+                                 description=str(body.get("description") or ""))
+        if not out["ok"]:
+            return self._json({"status": "error",
+                               "error": "生成物校验未通过",
+                               "issues": out["issues"]}, 422)
+        return self._json(out["preview"])
+
+    def _world_commit(self, body: dict):
+        """`POST /api/world/commit`：预览确认 → 世界实例入**玩家存档**。
+
+        会话一次性（成功即销毁）；实例写玩家战役存档目录的 sidecar 文件
+        （P6：不入系统库 `data/worlds/`，本单不接 `blocks.world`）。
+        """
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        record = _worldgen_session_take(
+            session.sid, str(body.get("session_id") or ""))
+        if record is None:
+            return self._err("生成会话不存在或已过期", 404,
+                             "no_worldgen_session")
+        world = record.get("world") if isinstance(record.get("world"), dict) else {}
+        # 双保险（1.7）：error 生成物绝不进存档——即便会话状态被绕过。
+        if worldgen.has_errors(worldgen.validate_world(world)):
+            return self._err("生成物校验未通过", 422, "worldgen_issues")
+        instance = _world_instance_from_record(record)
+        with session.lock:
+            instances = _world_instances_load(session.sid)
+            instances.append(instance)
+            try:
+                _world_instances_save(session.sid, instances)
+            except OSError:
+                # 落盘失败：会话已被取走——如实回报，玩家重新 generate 即可
+                # （生成幂等可重跑），绝不谎报「已入库」。
+                return self._err("保存失败，请重试", 500)
+        return self._json({"status": "ok",
+                           "instance_id": instance["instance_id"],
+                           "world_name": (world.get("world") or {}).get("name"),
+                           "world_key": (world.get("world") or {}).get("key")})
+
+    def _world_export(self, body: dict):
+        """`POST /api/world/export`：世界实例 → JSON 文件下载（P6 v1 文件级）。"""
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        instance_id = str(body.get("instance_id") or "")
+        with session.lock:
+            found = next((i for i in _world_instances_load(session.sid)
+                          if str(i.get("instance_id") or "") == instance_id),
+                         None)
+        if found is None:
+            return self._err("没有这个世界实例", 404, "no_world_instance")
+        payload = json.dumps(found, ensure_ascii=False, indent=1).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Disposition",
+                         "attachment; filename=world-%s.json" % instance_id)
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        try:
+            self.wfile.write(payload)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        return None
+
+    def _world_import(self, body: dict):
+        """`POST /api/world/import`：JSON 文件 → 校验 → 入玩家存档（P6 v1）。
+
+        校验 v1 = `validate_world` 零 error + kind 检查；`validate_data` /
+        内容防火墙是 CI 对已跟踪仓库文件的门，运行时导入不跑 shell（口径登记）。
+        """
+        session = self._sess()
+        gate = self._world_gate(session)
+        if gate is not None:
+            return gate
+        incoming = body.get("instance")
+        if not isinstance(incoming, dict):
+            return self._err("导入的世界实例不合法", 400, "bad_instance")
+        world = incoming if incoming.get("kind") == "world.module" \
+            else incoming.get("world")
+        if not isinstance(world, dict) or world.get("kind") != "world.module":
+            return self._err("导入的世界实例不合法", 400, "bad_instance")
+        issues = worldgen.validate_world(world)
+        if worldgen.has_errors(issues):
+            return self._json({"status": "error",
+                               "error": "导入的世界未通过校验",
+                               "issues": issues}, 422)
+        record = {"seed": incoming.get("seed") or 0,
+                  "spec": incoming.get("spec"),
+                  "world": world}
+        instance = _world_instance_from_record(record, imported=True)
+        with session.lock:
+            instances = _world_instances_load(session.sid)
+            instances.append(instance)
+            try:
+                _world_instances_save(session.sid, instances)
+            except OSError:
+                return self._err("保存失败，请重试", 500)
+        return self._json({"status": "ok",
+                           "instance_id": instance["instance_id"],
+                           "world_name": (world.get("world") or {}).get("name")})
 
     # ── 多人房间（M10-S1，§4）────────────────────────────────
     def _bearer_token(self) -> str:

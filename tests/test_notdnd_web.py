@@ -129,6 +129,19 @@
      < 1 MiB、`replay` 相等、`blocks.guide.npc_at` 与 live 相等（D4 双写
      新口径）、耗时 < 30 秒（5 游戏日一步推进，口径见用例 docstring）。
 
+ 20. 世界生成会话编排（M12-W3，WORLD-DESIGN §4 / §11 W3，Issue #387）：
+     `POST /api/world/generate` 离线全流程成功（预算计数 ≤ 24、离线为 0、
+     上限 = 人拍板 P4 的 24），预览卡 + overrides diff 可读（change / add /
+     remove 的 op + path），error 阻断（越档 goods → 422 + E_GOODS_ERA、
+     无 session_id 可 commit）；`POST /api/world/commit` 一次性（重放 404），
+     完整世界实例入**玩家存档** sidecar（不入系统库 `data/worlds/`，全程
+     逐文件 sha256 不变；预览不落块——`GET /api/state` 无 world 块）；同
+     seed_hint 同结果（修订幂等）；P1 模型端口经 GUIDE 网关既有通道
+     （调用数 == 预算 calls、`est_tokens` 对齐真实 usage）；鉴权裁定：多人
+     房间仅房主可生成 / 提交（player 403）；P6 导出（Content-Disposition
+     attachment）/ 导入（validate_world 零 error + kind 检查，坏实例 400 /
+     422 拒收）。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -7022,6 +7035,342 @@ def check_room_modes():
         assert cleaned["mode"] == "free"
 
 
+# --------------------------------------------------------------------------
+# 世界生成会话编排（M12-W3，WORLD-DESIGN.md §4 / §11 W3，Issue #387）
+# --------------------------------------------------------------------------
+
+
+def _world_gen_body(**patch) -> dict:
+    """一份合法的生成请求体（离线全流程可过校验的最小 spec）。"""
+    body = {"world_type": "fantasy", "scale": "region",
+            "tone_terms": ["港口"], "seed_hint": "seed-w3"}
+    body.update(patch)
+    return body
+
+
+def _world_instances_file(save_dir: str, sid: str) -> str:
+    """玩家存档内的实例 sidecar 路径（P6：实例存玩家战役存档内）。"""
+    return os.path.join(save_dir, "campaigns", sid,
+                        notdnd_web.WORLDGEN_INSTANCES_FILE)
+
+
+def _worlds_dir_digest() -> dict:
+    """`data/worlds/` 逐文件 sha256（验收：系统库零变化）。"""
+    out = {}
+    root = os.path.join(ROOT, "data", "worlds")
+    for name in sorted(os.listdir(root)):
+        if name.endswith(".json"):
+            with open(os.path.join(root, name), "rb") as handle:
+                out[name] = hashlib.sha256(handle.read()).hexdigest()
+    return out
+
+
+def check_world_generate_commit_round():
+    """离线全流程：generate 200 → 预览卡 → commit 入玩家存档。
+
+    断言：预算计数 ≤ 24（离线为 0）；预览不落块（`GET /api/state` 无 world
+    块）；实例落玩家存档 sidecar；`data/worlds/` 逐文件不变；commit 一次性。
+    """
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+
+        worlds_before = _worlds_dir_digest()
+        status, preview = server.post("/api/world/generate",
+                                      _world_gen_body(), sid=sid)
+        assert status == 200, (status, preview)
+        assert preview["status"] == "ok", preview
+        assert preview["session_id"].startswith("wg_"), preview
+        # 离线：0 次调用；预算上限是人拍板 P4 的 24。
+        assert preview["budget"] == {"calls": 0, "est_tokens": 0,
+                                     "limit": 24}, preview["budget"]
+        assert preview["world"]["key"] == "emberfall", preview["world"]
+        assert preview["estimate"]["regions"] == 5, preview["estimate"]
+        assert len(preview["regions"]) == 5, preview["regions"]
+        assert preview["goods_count"] > 0, preview
+        assert preview["overrides"]["diff"] == [], preview["overrides"]
+        # 空的 seed_hint 请求也会拿到一个 seed（重试/重掷要靠它）。
+        assert isinstance(preview["seed"], int), preview["seed"]
+
+        status, state = server.get("/api/state", sid=sid)
+        assert status == 200, (status, state)
+        assert "world" not in state["blocks"], state      # 预览不落块
+
+        status, committed = server.post("/api/world/commit",
+                                        {"session_id": preview["session_id"]},
+                                        sid=sid)
+        assert status == 200, (status, committed)
+        assert committed["instance_id"].startswith("wi_"), committed
+        assert committed["world_name"] == preview["world"]["name"], committed
+
+        # commit 一次性：同一 session_id 二次提交 → 404（防重复入库）。
+        status, again = server.post("/api/world/commit",
+                                    {"session_id": preview["session_id"]},
+                                    sid=sid)
+        assert status == 404, (status, again)
+
+        # 实例在**玩家战役存档**里（sidecar），完整世界实例随存档持久。
+        with open(_world_instances_file(server.dir, sid), encoding="utf-8") as fh:
+            stored = json.load(fh)
+        assert stored["version"] == 1 and len(stored["instances"]) == 1, stored
+        instance = stored["instances"][0]
+        assert instance["instance_id"] == committed["instance_id"], instance
+        assert instance["world"]["kind"] == "world.module", instance
+        assert instance["seed"] == preview["seed"], instance
+        assert instance["spec"]["world_type"] == "fantasy", instance
+
+        # 系统库零变化：generate/commit 全程没碰 `data/worlds/`。
+        assert _worlds_dir_digest() == worlds_before
+
+
+def check_world_generate_error_blocks_commit():
+    """error 阻断（1.7）：越档 goods → 422 + issues，无预览、无会话可 commit。
+
+    构造：奇幻世界 + goods_extra era=future（激光枪）→ E_GOODS_ERA error。
+    """
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+
+        status, body = server.post("/api/world/generate", _world_gen_body(
+            goods_extra=[{"name": "激光枪", "era": "future",
+                          "category": "military"}]), sid=sid)
+        assert status == 422, (status, body)
+        assert body["status"] == "error", body
+        assert any(i["code"] == "E_GOODS_ERA" and i["level"] == "error"
+                   for i in body["issues"]), body["issues"]
+        assert "session_id" not in body, body      # 没有可 commit 的会话
+
+        # 无预览可 commit：任意 session_id 都打不进存档。
+        status, refused = server.post(
+            "/api/world/commit",
+            {"session_id": "wg_" + "0" * 32}, sid=sid)
+        assert status == 404, (status, refused)
+        assert not os.path.exists(_world_instances_file(server.dir, sid))
+
+
+def check_world_generate_overrides_diff():
+    """overrides diff 可读：改一处 / 加两处 / 删一处，op + path 一目了然。"""
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+
+        overrides = {
+            "region_upserts": [{"id": "region-01",
+                                "summary": "改写后的区域短文。"},
+                               {"name": "新地区", "summary": "新长的区域。"}],
+            "region_removals": ["region-05"],
+            "faction_upserts": [{"name": "新势力", "alignment": "中立"}],
+            "law_upserts": [{"name": "宵禁", "forbid_tags": ["夜行"]}],
+            "note": "改一处、加三处、删一处",
+        }
+        status, preview = server.post("/api/world/generate",
+                                      _world_gen_body(overrides=overrides),
+                                      sid=sid)
+        assert status == 200, (status, preview)
+        diff = preview["overrides"]["diff"]
+        assert preview["overrides"]["note"] == "改一处、加三处、删一处"
+        ops = {(d["op"], d["path"]) for d in diff}
+        assert ("change", "regions[region-01].summary") in ops, diff
+        assert ("remove", "regions[region-05]") in ops, diff
+        assert any(op == "add" and path.startswith("regions[regions-new-")
+                   for op, path in ops), diff
+        assert any(op == "add" and path.startswith("factions[factions-new-")
+                   for op, path in ops), diff
+        assert any(op == "add" and path.startswith("laws[laws-new-")
+                   for op, path in ops), diff
+        assert len(preview["regions"]) == 5, preview["regions"]   # 4 保留 + 1 新增
+        # diff 里的展示值带前后文（可读），且截断过（预览卡不被长文淹没）。
+        changed = next(d for d in diff if d["path"] == "regions[region-01].summary")
+        assert changed["before"] and changed["after"] == "改写后的区域短文。", changed
+
+        status, committed = server.post("/api/world/commit",
+                                        {"session_id": preview["session_id"]},
+                                        sid=sid)
+        assert status == 200, (status, committed)
+        with open(_world_instances_file(server.dir, sid), encoding="utf-8") as fh:
+            stored = json.load(fh)
+        world = stored["instances"][0]["world"]
+        assert len(world["regions"]) == 5, world["regions"]
+        assert world["regions"][0]["summary"] == "改写后的区域短文。", world["regions"][0]
+        assert any(law["name"] == "宵禁" for law in world["laws"]), world["laws"]
+
+
+def check_world_generate_seed_determinism():
+    """同 seed_hint 同结果（§4.4 修订幂等）；不同会话互不串号。"""
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+
+        status, first = server.post("/api/world/generate",
+                                    _world_gen_body(seed_hint="det-42"),
+                                    sid=sid)
+        status2, second = server.post("/api/world/generate",
+                                      _world_gen_body(seed_hint="det-42"),
+                                      sid=sid)
+        assert status == 200 and status2 == 200, (status, status2)
+        assert first["session_id"] != second["session_id"]
+        assert first["seed"] == second["seed"], (first["seed"], second["seed"])
+        assert first["world"]["name"] == second["world"]["name"]
+        assert ([r["name"] for r in first["regions"]]
+                == [r["name"] for r in second["regions"]])
+
+
+def check_world_generate_budget_and_port():
+    """P1 模型端口接线：文本走 GUIDE 网关既有通道，预算计数对齐真实用量。
+
+    每次真实 usage = prompt 7 + completion 3 = 10 tokens；断言 calls ≤ 24、
+    `est_tokens == calls × 10`（差值回填，不再按常量 128 估算）、文本来源
+    记 `port`。
+    """
+    transport = _FakeTransport()
+    with _LocalServer() as server:
+        with _guide_online(_ONLINE_ENV, transport):
+            status, created, _, _ = server.post("/api/session/create", {})
+            assert status == 200, (status, created)
+            sid = created["sid"]
+            status, preview, _, _ = server.post(
+                "/api/world/generate", _world_gen_body(
+                    world_type="modern", scale="sketch", seed_hint="port-1"),
+                sid=sid)
+        assert status == 200, (status, preview)
+        # 生成调用全部经假传输（GUIDE 网关同一条通道），没有第二个出口。
+        assert len(transport.calls) == preview["budget"]["calls"], (
+            len(transport.calls), preview["budget"])
+        calls = preview["budget"]["calls"]
+        assert 1 <= calls <= 24, calls
+        assert preview["budget"]["limit"] == 24
+        assert preview["budget"]["est_tokens"] == calls * 10, preview["budget"]
+        assert preview["text_sources"]["world_name"] == "port", preview["text_sources"]
+        assert preview["world"]["name"], preview["world"]
+
+
+def check_world_generate_room_auth():
+    """鉴权裁定（§6.5）：多人房间仅房主可生成 / 提交，player 无权。
+
+    单人会话 `X-Session` 即可；房间有多名在座成员时必须带**房主**成员令牌。
+    """
+    with _Server(offline=True) as server:
+        rid = "wroom-w3"
+        status, host = server.post(
+            "/api/room/create", {"room_id": rid, "display_name": "房主"})
+        assert status == 200, (status, host)
+        status, player = server.post(
+            "/api/room/join", {"room_id": rid, "display_name": "玩家"})
+        assert status == 200, (status, player)
+
+        # 多人房间：只有 X-Session（无成员令牌）→ 401（鉴权链不过）。
+        status, denied = server.post("/api/world/generate", _world_gen_body(),
+                                     sid=rid)
+        assert status == 401, (status, denied)
+        assert denied.get("reason") == "token_invalid", denied
+
+        # player 成员令牌 → 403（host 发起，player 不可见预览）。
+        status, denied = server.post(
+            "/api/world/generate", _world_gen_body(), sid=rid,
+            headers={"X-Member": player["member_id"],
+                     "Authorization": "Bearer %s" % player["token"]})
+        assert status == 403, (status, denied)
+
+        # 房主成员令牌 → 200，commit 也要房主。
+        host_headers = {"X-Member": host["member_id"],
+                        "Authorization": "Bearer %s" % host["token"]}
+        status, preview = server.post("/api/world/generate", _world_gen_body(),
+                                      sid=rid, headers=host_headers)
+        assert status == 200, (status, preview)
+        status, committed = server.post(
+            "/api/world/commit", {"session_id": preview["session_id"]},
+            sid=rid, headers=host_headers)
+        assert status == 200, (status, committed)
+
+
+def check_world_export_import_round():
+    """P6 保存与分享（v1 文件级）：export 原样带 Content-Disposition；
+    import 过 validate_world 零 error 后入玩家存档；坏实例拒收。"""
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        status, preview = server.post("/api/world/generate", _world_gen_body(),
+                                      sid=sid)
+        assert status == 200, (status, preview)
+        status, committed = server.post("/api/world/commit",
+                                        {"session_id": preview["session_id"]},
+                                        sid=sid)
+        assert status == 200, (status, committed)
+
+        status, raw, _ = _export_instance(server, sid, committed["instance_id"])
+        assert status == 200 and raw["instance_id"] == committed["instance_id"]
+        assert raw["world"]["kind"] == "world.module", raw
+
+        # 导入：同一份导出文件 → 新 instance_id，sidecar 里两份实例。
+        status, imported = server.post("/api/world/import",
+                                       {"instance": raw}, sid=sid)
+        assert status == 200, (status, imported)
+        assert imported["instance_id"].startswith("wi_"), imported
+        assert imported["instance_id"] != committed["instance_id"]
+        with open(_world_instances_file(server.dir, sid), encoding="utf-8") as fh:
+            stored = json.load(fh)
+        assert len(stored["instances"]) == 2, stored
+        assert stored["instances"][1].get("imported") is True
+
+        # 坏实例：不是 world.module → 400。
+        status, bad = server.post("/api/world/import",
+                                  {"instance": {"kind": "nope"}}, sid=sid)
+        assert status == 400, (status, bad)
+        # 越档 goods → validate_world error → 422（与生成同一条阻断）。
+        status, bad = server.post("/api/world/import", {"instance": {
+            "kind": "world.module",
+            "world": {"key": "x", "engine": "tactics", "world_type": "fantasy"},
+            "regions": [],
+            "goods": [{"good_id": "g1", "name": "激光枪", "category": "military",
+                       "tier": 1, "base_price": 5, "stock": 5,
+                       "produced_by": [], "era": "future"}],
+        }}, sid=sid)
+        assert status == 422, (status, bad)
+        assert any(i["code"] == "E_GOODS_ERA" for i in bad["issues"]), bad
+
+
+def _export_instance(server, sid: str, instance_id: str):
+    """POST /api/world/export 的裸响应：返回 (状态码, JSON, 响应头字典)。"""
+    conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=10)
+    body = json.dumps({"instance_id": instance_id}, ensure_ascii=False).encode()
+    try:
+        conn.request("POST", "/api/world/export", body=body,
+                     headers={"Content-Type": "application/json",
+                              "X-Session": sid})
+        response = conn.getresponse()
+        heads = {key.lower(): value for key, value in response.getheaders()}
+        return response.status, _load_json(response.read()), heads
+    finally:
+        conn.close()
+
+
+def check_world_export_disposition():
+    """export 带 `Content-Disposition: attachment`（v1「文件下载」的落点）。"""
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        status, preview = server.post("/api/world/generate", _world_gen_body(),
+                                      sid=sid)
+        status, committed = server.post("/api/world/commit",
+                                        {"session_id": preview["session_id"]},
+                                        sid=sid)
+        assert status == 200, (status, committed)
+        status, raw, heads = _export_instance(server, sid,
+                                              committed["instance_id"])
+        assert status == 200, (status, raw)
+        assert heads.get("content-disposition", "").startswith("attachment"), heads
+        # 不存在的实例 → 404（不泄露其它存档的内容）。
+        status, missing, _ = _export_instance(server, sid, "wi_" + "0" * 24)
+        assert status == 404, (status, missing)
+
+
 CHECKS = (
     check_import_has_no_side_effects,
     check_roundtrip_snapshot,
@@ -7152,6 +7501,14 @@ CHECKS = (
     check_api_events_across_archives,
     check_api_state_readonly,
     check_api_state_legacy_readonly,
+    check_world_generate_commit_round,
+    check_world_generate_error_blocks_commit,
+    check_world_generate_overrides_diff,
+    check_world_generate_seed_determinism,
+    check_world_generate_budget_and_port,
+    check_world_generate_room_auth,
+    check_world_export_import_round,
+    check_world_export_disposition,
 )
 
 
