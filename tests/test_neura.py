@@ -2267,6 +2267,136 @@ def check_tick_is_pure():
     assert _json_roundtrip(result) == result
 
 
+# --------------------------------------------------------------------------
+# §5.7 / Issue #400：回写跟随 M8 提交结果（committed / replayed 才回写）
+# --------------------------------------------------------------------------
+
+class _StatusPort(_SubmitOnlyPort):
+    """按配置返回固定提交状态的假 port（四态覆盖，形状照抄 `_neura_submit`）。"""
+
+    def __init__(self, status):
+        _SubmitOnlyPort.__init__(self)
+        self._status = status
+
+    def submit(self, proposal, idempotency_key=None):
+        self.submits.append({"proposal": proposal, "key": idempotency_key})
+        return {"status": self._status, "result": None,
+                "reason": "fake-%s" % self._status, "event_id": None}
+
+
+_NOT_COMMITTED = ("conflict", "rejected", "unsupported")
+
+
+def _schedule_move_fixture():
+    """日程移动路径的公共夹具：gate → forge 的到点上班。"""
+    npc = _n5_npc(place="gate",
+                  schedule=[{"slot_id": "sl-forge", "from_tod_minute": 480,
+                             "to_tod_minute": 720, "place_id": "forge",
+                             "activity": "work", "interruptible": False}])
+    view = _view()
+    view["bands"][("gate", "forge")] = "adjacent"
+    return npc, view
+
+
+def _submit_notes(journal):
+    return [entry for entry in journal
+            if entry.get("kind") == "submit_not_committed"]
+
+
+def check_tick_schedule_move_writeback_follows_submit():
+    """#400：日程移动回写严格跟随提交结果。
+
+    `committed`（含幂等重放 `replayed`）才更新 `location`；`conflict` /
+    `rejected` / `unsupported` 不动 `place_id` / `since_minute`，journal 留
+    可解释记录（下个 tick 重试）。
+    """
+    for status, expect_move in ([("committed", True), ("replayed", True)]
+                                + [(s, False) for s in _NOT_COMMITTED]):
+        npc, view = _schedule_move_fixture()
+        block = _n5_block([npc])
+        port = _StatusPort(status)
+
+        ticked = neura.tick(block, view, port=port, now_minute=600)
+
+        assert len(port.submits) == 1, status
+        location = ticked["npcs"]["npc-01"]["location"]
+        if expect_move:
+            assert location["place_id"] == "forge", status
+            assert location["since_minute"] == 600, status
+            assert _submit_notes(ticked["journal"]) == [], status
+        else:
+            assert location["place_id"] == "gate", status
+            assert location["since_minute"] == 0, status
+            notes = _submit_notes(ticked["journal"])
+            assert len(notes) == 1, status
+            assert notes[0]["npc_id"] == "npc-01", status
+            assert notes[0]["at_minute"] == 600, status
+            assert notes[0]["status"] == status, status
+            assert notes[0]["reason"] == "fake-%s" % status, status
+        assert _json_roundtrip(ticked) == ticked, status
+
+
+def check_tick_schedule_move_conflict_retries_next_tick():
+    """§5.7：conflict 不回写但保留可重试态——下个 tick 重投成功后照常回写。"""
+    npc, view = _schedule_move_fixture()
+    block = _n5_block([npc])
+
+    block = neura.tick(block, view, port=_StatusPort("conflict"),
+                       now_minute=600)
+    assert block["npcs"]["npc-01"]["location"]["place_id"] == "gate"
+
+    block = neura.tick(block, view, port=_StatusPort("committed"),
+                       now_minute=610)
+    assert block["npcs"]["npc-01"]["location"]["place_id"] == "forge"
+    assert block["npcs"]["npc-01"]["location"]["since_minute"] == 610
+
+
+def check_tick_plan_writeback_follows_submit():
+    """#400：普通计划回写严格跟随提交结果——未提交的长计划不变为 `running`。"""
+    for status, expect_plan in ([("committed", True), ("replayed", True)]
+                                + [(s, False) for s in _NOT_COMMITTED]):
+        npc = _n5_npc(place="market")
+        block = _n5_block([npc])
+        view = _view(options=[_option("op-work", verb="work")])
+        port = _StatusPort(status)
+
+        ticked = neura.tick(block, view, port=port, now_minute=600)
+
+        assert len(port.submits) == 1, status
+        if expect_plan:
+            plan = ticked["npcs"]["npc-01"]["plan"]
+            assert plan["status"] == "running", status
+            assert plan["until_minute"] == 610, status
+            assert _submit_notes(ticked["journal"]) == [], status
+        else:
+            assert "plan" not in ticked["npcs"]["npc-01"], status
+            notes = _submit_notes(ticked["journal"])
+            assert len(notes) == 1, status
+            assert notes[0]["npc_id"] == "npc-01", status
+            assert notes[0]["status"] == status, status
+        assert _json_roundtrip(ticked) == ticked, status
+
+
+def check_tick_plan_not_committed_keeps_retryable_state():
+    """#400：rejected / unsupported 不写 running——既有计划逐字保留（步骤
+    索引不动），journal 留痕、可追溯、可重试。"""
+    old_plan = {"plan_id": "pl-old", "goal_id": "g-1", "step_index": 1,
+                "status": "running", "started_minute": 590,
+                "until_minute": 700}
+    for status in _NOT_COMMITTED:
+        npc = _n5_npc(place="market", plan=dict(old_plan))
+        block = _n5_block([npc])
+        view = _view(options=[_option("op-work", verb="work")])
+
+        ticked = neura.tick(block, view, port=_StatusPort(status),
+                            now_minute=600)
+
+        assert ticked["npcs"]["npc-01"]["plan"] == old_plan, status
+        notes = _submit_notes(ticked["journal"])
+        assert len(notes) == 1 and notes[0]["status"] == status, status
+        assert _json_roundtrip(ticked) == ticked, status
+
+
 def main():
     checks = (
         check_constants,
@@ -2349,6 +2479,10 @@ def main():
         check_catch_up_small_gap_no_defer,
         check_catch_up_idempotent,
         check_tick_is_pure,
+        check_tick_schedule_move_writeback_follows_submit,
+        check_tick_schedule_move_conflict_retries_next_tick,
+        check_tick_plan_writeback_follows_submit,
+        check_tick_plan_not_committed_keeps_retryable_state,
     )
     failures = 0
     for check in checks:
