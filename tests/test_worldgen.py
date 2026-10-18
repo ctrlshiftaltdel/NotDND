@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""worldgen 内核（M12-W1，Issue #379）回归测试。
+"""worldgen 内核（M12-W1/W2，Issue #379 / #382）回归测试。
 
 覆盖 Issue #379 验收清单：
 
@@ -15,11 +15,23 @@
 - 三个官方世界 + `tests/fixtures/atlas_fiction_world.json` 对 validate_world
   零 error（warn 允许）——W2 回归锚；
 - `worldgen` 只 import 标准库（copy/hashlib/random）、零 IO 纯函数。
+
+覆盖 Issue #382（M12-W2）验收清单：
+
+- `validate_atlas` C1–C7 每条专测：构造破损输入 → 断言对应 error/warn；
+- 回归锚扩展到 C 系列：三官方世界 + fixture 编译、全部 site 帧生成、
+  战术帧投影之后 validate_atlas 零 error（warn 允许）；
+- `repair` 三类（C2 断链 / C3 缺门 / C4 不可达关键地点）各有单测：
+  构造破损 → repair → 全量校验零 error，且修复只新增边（边集单调增）；
+  不可修类（C1 等）不误修、如实保留；
+- provenance 断言：修复过的连接带 `source: worldgen:repair`，可识别来源；
+- `atlas*.py` 三文件零改动（V8）：worldgen 只消费输出形状，不 import atlas。
 """
 
 import copy
 import json
 import os
+import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -41,6 +53,18 @@ def _load_fixture():
     path = os.path.join(ROOT, "tests", "fixtures", "atlas_fiction_world.json")
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
+
+
+def _load_lexicon():
+    path = os.path.join(ROOT, "data", "atlas", "lexicon.json")
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _load_system_tables():
+    path = os.path.join(ROOT, "data", "random_tables", "system.json")
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)["tables"]
 
 
 def _templates():
@@ -378,7 +402,478 @@ def test_pure_function_inputs_untouched():
     assert _dumps(templates) == templates_before, "synthesize 不应改写模板"
 
 
-# ── main ──────────────────────────────────────────────────────────────────
+# ── 9. W2：ATLAS 校验器（Issue #382 C1–C7） ───────────────────────────────
+
+import atlas as al  # noqa: E402  （测试允许 import atlas；worldgen 不行，V8）
+import atlas_compile as ac  # noqa: E402
+import atlas_gen as ag  # noqa: E402
+
+_LEXICON = _load_lexicon()
+_SYSTEM_TABLES = _load_system_tables()
+
+
+def _world_doc(key):
+    """官方世界或 fixture 的 world.module dict（每次新读，防串改）。"""
+    if key == "fixture":
+        return _load_fixture()
+    return _load_world(key)
+
+
+def _compiled(key, seed=0):
+    """(atlas, world)：编译好的 atlas 与其 world.module。"""
+    world = _world_doc(key)
+    return ac.compile_world(world, _LEXICON, seed=seed), world
+
+
+def _anchors(atlas):
+    return sorted(pid for frame in atlas["frames"].values()
+                  for pid, place in frame["places"].items()
+                  if place["kind"] in ("region", "site"))
+
+
+def _generate_all_sites(atlas, world):
+    for anchor in _anchors(atlas):
+        ag.generate_site(atlas, anchor, world=world, system_tables=_SYSTEM_TABLES)
+
+
+def _error_issues(issues):
+    return [i for i in issues if i.get("level") == "error"]
+
+
+def _edge_records(atlas):
+    """全部连接记录的元组集（修边单调性断言用）。"""
+    out = set()
+    for frame in atlas["frames"].values():
+        for pid, place in frame["places"].items():
+            for link in place["links"]:
+                out.add((pid, link["to"], link["via"], link.get("band"),
+                         bool(link.get("oneway"))))
+    return out
+
+
+def _remove_records(atlas, a_id, b_id):
+    """删掉 a↔b 之间的全部连接记录（构造破损输入用，仅测试）。"""
+    for place in (al.find_place(atlas, a_id), al.find_place(atlas, b_id)):
+        if place is not None:
+            place["links"] = [l for l in place["links"]
+                              if l["to"] not in (a_id, b_id)]
+
+
+def _in_frame_components(frame):
+    pids = set(frame["places"])
+    adj = {pid: set() for pid in pids}
+    for pid in pids:
+        for link in frame["places"][pid]["links"]:
+            if link["to"] in adj:
+                adj[pid].add(link["to"])
+                adj[link["to"]].add(pid)
+    seen, comps = set(), []
+    for pid in sorted(pids):
+        if pid in seen:
+            continue
+        stack, comp = [pid], set()
+        while stack:
+            cur = stack.pop()
+            if cur in comp:
+                continue
+            comp.add(cur)
+            stack.extend(adj[cur] - comp)
+        seen |= comp
+        comps.append(comp)
+    return comps
+
+
+def _break_c2(atlas):
+    """在某个 site 帧里删一条桥边制造断连（本地判定找边，确定性）。"""
+    for fid in sorted(atlas["frames"]):
+        frame = atlas["frames"][fid]
+        if "/site/" not in fid or len(_in_frame_components(frame)) != 1:
+            continue
+        for pid in sorted(frame["places"]):
+            for link in list(frame["places"][pid]["links"]):
+                to = link["to"]
+                if to not in frame["places"] or pid >= to:
+                    continue
+                links_a = list(frame["places"][pid]["links"])
+                links_b = list(frame["places"][to]["links"])
+                frame["places"][pid]["links"] = [l for l in links_a if l["to"] != to]
+                frame["places"][to]["links"] = [l for l in links_b if l["to"] != pid]
+                if len(_in_frame_components(frame)) > 1:
+                    return fid, pid, to
+                frame["places"][pid]["links"] = links_a
+                frame["places"][to]["links"] = links_b
+    raise AssertionError("找不到可断链的桥边")
+
+
+def test_atlas_validate_regression_anchor():
+    """W2 回归锚：三官方世界 + fixture，编译 / 全量 site 生成 / 战术帧
+    投影三个时点上 validate_atlas 零 error（warn 允许）。"""
+    for key in OFFICIAL_WORLDS + ["fixture"]:
+        atlas, world = _compiled(key)
+        issues = worldgen.validate_atlas(atlas, world=world)
+        assert not _error_issues(issues), (key, "compile", _error_issues(issues))
+        issues = worldgen.validate_atlas(atlas, world=world,
+                                         checks=worldgen.ATLAS_CHECKS_POST_COMPILE)
+        assert not _error_issues(issues), (key, "post-compile", _error_issues(issues))
+        _generate_all_sites(atlas, world)
+        rooms = sorted(pid for frame in atlas["frames"].values()
+                       for pid, place in frame["places"].items()
+                       if place["kind"] == "room")[:4]
+        for room in rooms:
+            ag.generate_tactical(atlas, room)
+        issues = worldgen.validate_atlas(atlas, world=world)
+        assert not _error_issues(issues), (key, "generated", _error_issues(issues))
+
+
+def test_atlas_checks_timing_constants():
+    """§5.1 时点表：compile 之后 C1–C4（C8 在 validate_world），site /
+    tactical 生成之后 C1–C7。C7 破损在 POST_COMPILE 时点下不报。"""
+    assert worldgen.ATLAS_CHECKS_POST_COMPILE == ("C1", "C2", "C3", "C4")
+    assert worldgen.ATLAS_CHECKS_POST_GENERATE == tuple("C%d" % n for n in range(1, 8))
+    atlas, _world = _compiled("fixture")
+    link = next(l for frame in atlas["frames"].values()
+                for place in frame["places"].values() for l in place["links"])
+    link["band"] = "far"
+    assert not _error_issues(worldgen.validate_atlas(
+        atlas, checks=worldgen.ATLAS_CHECKS_POST_COMPILE))
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C7_BAND" in codes, codes
+
+
+def test_c1_duplicate_positions():
+    atlas, _world = _compiled("fixture")
+    surface = atlas["frames"]["fiction-test/surface"]
+    region = surface["places"]["fiction-test/r-core"]
+    # 同帧同格（footprint 展开后重叠）→ error。
+    al.add_place(atlas, {"id": "fiction-test/r-core/g0_0_9", "name": "叠格",
+                         "kind": "fill", "frame_id": "fiction-test/surface",
+                         "x": region["x"], "y": region["y"], "z": 0})
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C1_CELL_DUP" in codes, codes
+    # id 字段与登记键不一致 → error。
+    some_pid = next(iter(surface["places"]))
+    surface["places"][some_pid]["id"] = "mismatched-id"
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C1_DUP_ID" in codes, codes
+    # 跨帧重复登记同一 id → error。
+    atlas["frames"]["fiction-test/abstract"]["places"]["fiction-test/r-core"] = \
+        copy.deepcopy(region)
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C1_DUP_ID" in codes, codes
+
+
+def test_c2_connectivity():
+    # 有向 oneway：a→b、c→b 时无起点能遍历全帧 → error；补成环路后通过。
+    tiny = al.new_atlas("tiny", 1)
+    al.add_frame(tiny, "tiny/surface", space="metric", z_meaning="层", cell="街区")
+    for i, pid in enumerate(("a", "b", "c")):
+        al.add_place(tiny, {"id": pid, "name": pid, "kind": "room",
+                            "frame_id": "tiny/surface", "x": i, "y": 0, "z": 0})
+    al.add_link(tiny, "tiny/surface", "a", "b", "东", oneway=True)
+    al.add_link(tiny, "tiny/surface", "c", "b", "西", oneway=True)
+    codes = [i["code"] for i in worldgen.validate_atlas(tiny)]
+    assert "C2_ONEWAY" in codes, codes
+    al.add_link(tiny, "tiny/surface", "b", "c", "东", oneway=True)
+    assert not _error_issues(worldgen.validate_atlas(tiny)), codes
+    # site 帧断连 → error。
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    fid, pid, to = _break_c2(atlas)
+    issues = worldgen.validate_atlas(atlas)
+    errors = _error_issues(issues)
+    assert any(i["code"] == "C2_DISCONNECTED" for i in errors), errors
+    assert errors[0]["frame_id"] == fid
+
+
+def test_c2_unlisted_float_islands_exempt():
+    """entropic-net 的 unlisted 区域与其关键地点是零坐标浮岛（合法）：
+    校验器不得误伤（entropic-net 实测有 region-09 浮岛）。"""
+    atlas, world = _compiled("entropic-net")
+    issues = worldgen.validate_atlas(atlas, world=world)
+    assert not _error_issues(issues), _error_issues(issues)
+
+
+def test_c3_gate_existence():
+    anchor_id = "fiction-test/r-core"
+    fid = "fiction-test/site/fiction-test/r-core"
+
+    def fresh():
+        atlas, world = _compiled("fixture")
+        _generate_all_sites(atlas, world)
+        return atlas, world
+
+    # 缺门：删掉锚门两端的记录 → error。
+    atlas, world = fresh()
+    anchor = al.find_place(atlas, anchor_id)
+    frame = atlas["frames"][fid]
+    gate_to = next(l["to"] for l in anchor["links"]
+                   if l["via"] == "门" and l["to"] in frame["places"])
+    _remove_records(atlas, anchor_id, gate_to)
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C3_NO_GATE" in codes, codes
+    # 多门（应恰有一条）→ error。
+    atlas, _w = fresh()
+    anchor = al.find_place(atlas, anchor_id)
+    frame = atlas["frames"][fid]
+    other_cell = next(pid for pid in sorted(frame["places"])
+                      if pid != gate_to and frame["places"][pid]["kind"] == "room")
+    al.add_link(atlas, fid, anchor_id, other_cell, "门")
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C3_GATE_DUP" in codes, codes
+    # 入口格缺回程门 → error。
+    atlas, _w = fresh()
+    entrance = al.find_place(atlas, gate_to)
+    entrance["links"] = [l for l in entrance["links"]
+                         if not (l["to"] == anchor_id and l["via"] == "门")]
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C3_NO_BACK" in codes, codes
+    # 区域帧至少一条边：孤立区域 → error。
+    atlas, _w = fresh()
+    al.find_place(atlas, "fiction-test/r-ring")["links"] = []
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C3_REGION_EDGE" in codes, codes
+
+
+def test_c4_key_places_reachable():
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    region_id, kp_id = "fiction-test/r-north", "fiction-test/r-north/k0"
+    # discovered 与校验无关：全部 unseen 也不报（校验结构不是探索态）。
+    for frame in atlas["frames"].values():
+        for place in frame["places"].values():
+            place["discovered"] = "unseen"
+    assert not _error_issues(worldgen.validate_atlas(atlas))
+    # 删掉 kp 与区域之间的门 → 关键地点不可达 → error。
+    _remove_records(atlas, region_id, kp_id)
+    issues = worldgen.validate_atlas(atlas)
+    errors = _error_issues(issues)
+    assert any(i["code"] == "C4_KP_UNREACHABLE" and i["place_id"] == kp_id
+               for i in errors), errors
+
+
+def test_c5_kind_and_venue():
+    craft = {
+        "kind": "world.module", "world": {"key": "venue-test", "name": "场地测试"},
+        "regions": [{"id": "r1", "name": "测试区", "summary": "普通街区"}],
+        "random_tables": [{"rows": [{"tag": "掩体", "result": "木箱堆"},
+                                    {"tag": "危险", "result": "塌陷的地面"}]}],
+    }
+    atlas, _w = _compiled("fixture")
+    ag.generate_site(atlas, "fiction-test/r-core", world=craft,
+                     system_tables=_SYSTEM_TABLES)
+    fid = "fiction-test/site/fiction-test/r-core"
+    frame = atlas["frames"][fid]
+    # 生成器从池里取 venue → 无 C5 warn。
+    issues = worldgen.validate_atlas(atlas, world=craft)
+    assert "C5_VENUE" not in [i["code"] for i in issues], issues
+    # 不在池里的 venue 行 → warn（不阻断）。
+    room = next(frame["places"][pid] for pid in sorted(frame["places"])
+                if frame["places"][pid]["kind"] == "room")
+    room.setdefault("features", []).append({"tag": "危险", "text": "来历不明之物"})
+    issues = worldgen.validate_atlas(atlas, world=craft)
+    warns = [i for i in issues if i["code"] == "C5_VENUE"]
+    assert warns and all(i["level"] == "warn" for i in warns), issues
+    # kind 不合法 → warn；且 warn 不阻断。
+    frame["places"]["bad-kind"] = {"id": "bad-kind", "name": "怪", "kind": "castle",
+                                   "frame_id": fid, "links": [], "traits": [],
+                                   "discovered": "unseen", "source": "authored"}
+    issues = worldgen.validate_atlas(atlas, world=craft)
+    kind_warns = [i for i in issues if i["code"] == "C5_KIND"]
+    assert kind_warns and kind_warns[0]["level"] == "warn", issues
+    assert not worldgen.has_errors(issues)
+
+
+def test_c6_economy_contradiction():
+    atlas, world = _compiled("fixture")
+    assert "wilderness" in atlas["region_info"]["fiction-test/r-north"]["traits"]
+    # 经济开档：荒野区域产出「铁锭」→ warn（白名单抽查）。
+    world["goods"] = [{"good_id": "good-01", "name": "铁锭", "category": "tool",
+                       "tier": 2, "base_price": 12, "stock": 40,
+                       "produced_by": ["r-north"], "era": "fantasy"}]
+    issues = worldgen.validate_atlas(atlas, world=world)
+    warns = [i for i in issues if i["code"] == "C6_GOODS_TRAIT"]
+    assert warns and warns[0]["level"] == "warn", issues
+    # regions[].economy 产出声明同样抽查（§6.6 W8 转正前可选字段）；
+    # C6 的门槛是经济开档（world 带 goods），声明抽查同门槛生效。
+    world2 = _world_doc("fixture")
+    world2["goods"] = [{"good_id": "good-00", "name": "黑麦干粮", "category": "food",
+                        "tier": 1, "base_price": 3, "stock": 80,
+                        "produced_by": [], "era": "fantasy"}]
+    world2["regions"][0]["economy"] = {"produces": ["激光枪"]}
+    issues = worldgen.validate_atlas(atlas, world=world2)
+    assert any(i["code"] == "C6_GOODS_TRAIT" for i in issues), issues
+    # 未开档 / 产出指向不存在区域 → 不报。
+    assert not any(i["code"].startswith("C6")
+                   for i in worldgen.validate_atlas(atlas, world=_world_doc("fixture")))
+    world3 = _world_doc("fixture")
+    world3["goods"] = [{"good_id": "good-02", "name": "铁锭", "category": "tool",
+                        "tier": 2, "base_price": 12, "stock": 40,
+                        "produced_by": ["不存在的区域"], "era": "fantasy"}]
+    assert not any(i["code"].startswith("C6")
+                   for i in worldgen.validate_atlas(atlas, world=world3))
+
+
+def test_c7_movement_cost():
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    fid = next(f for f in sorted(atlas["frames"])
+               if "/site/" in f and atlas["frames"][f]["space"] == "metric")
+    frame = atlas["frames"][fid]
+    # 档位取值非法 → error。
+    link = next(l for pid in sorted(frame["places"])
+                for l in frame["places"][pid]["links"]
+                if l["to"] in frame["places"])
+    link["band"] = "far"
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C7_BAND" in codes, codes
+    link["band"] = "long"  # 单端改档：双边不一致 → error。
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C7_BAND_MISMATCH" in codes, codes
+    link["band"] = None
+    # metric 地点帧：cardinal via 指向不相邻格 → error（几何不一致）。
+    cells = sorted(pid for pid in frame["places"]
+                   if all(k in frame["places"][pid] for k in ("x", "y", "z")))
+    far_pair = next((a, b) for a in cells for b in cells
+                    if a != b and abs(frame["places"][a]["x"] - frame["places"][b]["x"])
+                    + abs(frame["places"][a]["y"] - frame["places"][b]["y"]) > 1)
+    al.add_link(atlas, fid, far_pair[0], far_pair[1], "北")
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C7_GEOMETRY" in codes, codes
+    # 相邻一格（1 跨区）上带 medium 档 → 与 zone_steps 折算矛盾。
+    delta_via = {(0, 1): "北", (0, -1): "南", (1, 0): "东", (-1, 0): "西"}
+    adj_pair = None
+    for a in cells:
+        for b in cells:
+            if a == b:
+                continue
+            delta = (frame["places"][b]["x"] - frame["places"][a]["x"],
+                     frame["places"][b]["y"] - frame["places"][a]["y"])
+            if delta in delta_via:
+                adj_pair = (a, b, delta_via[delta])
+                break
+        if adj_pair:
+            break
+    assert adj_pair, cells
+    al.add_link(atlas, fid, adj_pair[0], adj_pair[1], adj_pair[2], band="medium")
+    codes = [i["code"] for i in worldgen.validate_atlas(atlas)]
+    assert "C7_GEOMETRY" in codes, codes
+    # 干净 atlas 不误报。
+    atlas2, _w2 = _compiled("fixture")
+    _generate_all_sites(atlas2, _w2)
+    assert not any(i["code"].startswith("C7")
+                   for i in worldgen.validate_atlas(atlas2, world=_w2))
+
+
+# ── 10. W2：repair 三类局部修复 + provenance（§5.2） ─────────────────────
+
+def test_repair_c2_bridge():
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    fid, pid, to = _break_c2(atlas)
+    issues = worldgen.validate_atlas(atlas)
+    assert any(i["code"] == "C2_DISCONNECTED" for i in _error_issues(issues))
+    broken_edges = _edge_records(atlas)
+    result = worldgen.repair(atlas, issues, rng=random.Random(0))
+    assert not _error_issues(worldgen.validate_atlas(atlas, world=world)), \
+        result["provenance"]
+    repaired_edges = _edge_records(atlas)
+    assert broken_edges <= repaired_edges, "修复不应删除已有边"
+    assert len(repaired_edges) > len(broken_edges), "修复应只新增边"
+    assert all(item["code"] == "C2" for item in result["repaired"])
+    assert result["provenance"]["count"] >= 1
+    # provenance：修复过的连接可识别来源。
+    new_links = [l for frame in atlas["frames"].values()
+                 for place in frame["places"].values() for l in place["links"]
+                 if l.get("source") == "worldgen:repair"]
+    assert new_links, "修复边应带 worldgen:repair 来源标注"
+    prov = worldgen.atlas_provenance(atlas)
+    assert prov["repaired_links"] == len(new_links)
+    assert prov["places"]["authored"] > 0 and prov["places"]["generated"] > 0
+
+
+def test_repair_c3_missing_gate():
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    fid = "fiction-test/site/fiction-test/r-core"
+    anchor_id = "fiction-test/r-core"
+    anchor = al.find_place(atlas, anchor_id)
+    gate_to = next(l["to"] for l in anchor["links"]
+                   if l["via"] == "门" and l["to"] in atlas["frames"][fid]["places"])
+    _remove_records(atlas, anchor_id, gate_to)
+    issues = worldgen.validate_atlas(atlas)
+    assert any(i["code"] == "C3_NO_GATE" for i in _error_issues(issues))
+    broken_edges = _edge_records(atlas)
+    result = worldgen.repair(atlas, issues, rng=random.Random(0))
+    assert not _error_issues(worldgen.validate_atlas(atlas, world=world)), \
+        result["provenance"]
+    assert broken_edges <= _edge_records(atlas)
+    assert [item["code"] for item in result["repaired"]] == ["C3"]
+    assert result["repaired"][0]["endpoints"] == [anchor_id, gate_to], \
+        "缺门修复应挂回 (1,1,0) 入口格"
+
+
+def test_repair_c4_unreachable_kp():
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    region_id, kp_id = "fiction-test/r-north", "fiction-test/r-north/k0"
+    _remove_records(atlas, region_id, kp_id)
+    issues = worldgen.validate_atlas(atlas)
+    assert any(i["code"] == "C4_KP_UNREACHABLE" for i in _error_issues(issues))
+    broken_edges = _edge_records(atlas)
+    result = worldgen.repair(atlas, issues, rng=random.Random(0))
+    assert not _error_issues(worldgen.validate_atlas(atlas, world=world)), \
+        result["provenance"]
+    assert broken_edges <= _edge_records(atlas)
+    assert [item["code"] for item in result["repaired"]] == ["C4"]
+    assert result["repaired"][0]["endpoints"] == [kp_id, region_id], \
+        "无坐标关键地点应优先挂回区域锚点"
+
+
+def test_repair_unrepairable_not_touched():
+    """C1 不在三类修复范围：不误修、如实保留在 provenance.unrepaired。"""
+    atlas, world = _compiled("fixture")
+    _generate_all_sites(atlas, world)
+    surface = atlas["frames"]["fiction-test/surface"]
+    region = surface["places"]["fiction-test/r-core"]
+    al.add_place(atlas, {"id": "fiction-test/dup-cell", "name": "叠格",
+                         "kind": "fill", "frame_id": "fiction-test/surface",
+                         "x": region["x"], "y": region["y"], "z": 0})
+    _break_c2(atlas)
+    issues = worldgen.validate_atlas(atlas)
+    assert any(i["code"] == "C1_CELL_DUP" for i in _error_issues(issues))
+    result = worldgen.repair(atlas, issues, rng=random.Random(0))
+    issues_after = worldgen.validate_atlas(atlas, world=world)
+    codes = [i["code"] for i in _error_issues(issues_after)]
+    assert codes == ["C1_CELL_DUP"], codes
+    assert "C1_CELL_DUP" in result["provenance"]["unrepaired"]
+    assert all(item["code"] == "C2" for item in result["repaired"])
+
+
+def test_repair_deterministic():
+    atlas_a, _ = _compiled("fixture")
+    _generate_all_sites(atlas_a, _world_doc("fixture"))
+    atlas_b = copy.deepcopy(atlas_a)
+    fid_a, pid, to = _break_c2(atlas_a)
+    _break_c2(atlas_b)
+    issues_a = worldgen.validate_atlas(atlas_a)
+    issues_b = worldgen.validate_atlas(atlas_b)
+    worldgen.repair(atlas_a, issues_a, rng=random.Random(1))
+    worldgen.repair(atlas_b, issues_b, rng=random.Random(999))
+    assert json.dumps(atlas_a, sort_keys=True, ensure_ascii=False) == \
+        json.dumps(atlas_b, sort_keys=True, ensure_ascii=False), \
+        "repair 应确定性（rng 只留给 W3 的重掷编排）"
+
+
+def test_atlas_provenance_summary():
+    atlas, _world = _compiled("fixture")
+    prov = worldgen.atlas_provenance(atlas)
+    assert prov["repaired_links"] == 0
+    assert prov["places"]["authored"] > 0
+    assert prov["places"]["generated"] >= 0
+    assert set(prov["places"]) == {"authored", "generated", "other"}
+
+
+
 
 def main():
     checks = [value for name, value in sorted(globals().items())
