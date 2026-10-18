@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""neura 内核（M11-N1 骨架 + M11-N2 硬约束）回归测试。
+"""neura 内核（M11-N1 骨架 + M11-N2 硬约束 + N3 评分 + N4 知识边界）回归测试。
 
 逐条覆盖 `Issue #339`（N1）与 `Issue #348`（N2）的验收清单：
 
@@ -36,6 +36,16 @@ N2：
 - 全灭 → `{"ok": False, "options": []}`，`rejected` 每项都有 `code` + `option_id`；
 - `E_LAYER_BUDGET` 只禁 AI 候选，规则候选仍出现；
 - 纯函数：入参深比较前后相等，期间未调用 `open` / 未建 socket。
+
+N4（`Issue #357`）：
+
+- 五类分离：`belief` / `rumor` / `inference` / `secret` **逐类**断言不进 `world_facts`
+  投影，且其命题的任一 8 码位窗口都不出现在上下文里；
+- §6.3 的双 NPC 例子：`npc-01` 可见秘密全文，`npc-05` **不含**该全文的任一 8 码位窗口；
+- `purpose` 三值的字段集用**集合相等**断言（不是子集），且三值互不相同；
+- 修正链：旧 claim `status="disproved"` + `superseded_by`，`resolve_claim(旧 id)` 仍可解析；
+- `select_context` 输出不含其他 NPC 的 `proposition`、不含 `secrets[].proposition`；
+- `neura.py` 里 role 键字面量只出现一次（唯一拼 `messages` 处的源码断言）。
 
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_neura.py` 运行。
 """
@@ -1193,6 +1203,516 @@ def check_decide_and_proposal_are_pure():
     assert npc["needs"]["safety"] == 50
 
 
+# --------------------------------------------------------------------------
+# §6 / §11 N4：知识边界（五类分离 / 唯一收口 / 修正链）
+# --------------------------------------------------------------------------
+
+SCENARIO_FILE = os.path.join(ROOT, "data", "scenarios", "ashen_crown.json")
+SECRET_WINDOW = 8          # §6.3：连续 8 码位算「半个秘密」
+
+
+def _raises_neura(call):
+    """断言调用抛出 `NeuraError`（写入口的严格性都要有断言，不能只看文档）。"""
+    try:
+        call()
+    except neura.NeuraError:
+        return True
+    return False
+
+
+def _text_of(value):
+    """确定性文本（键排序 + 不转义中文），用于「整份上下文里有没有漏」的断言。"""
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _scenario_secret(npc_id="npc-01"):
+    """§6.3 的原文：直接读既有剧本，不在这里复制一遍秘密文本。"""
+    with open(SCENARIO_FILE, encoding="utf-8") as handle:
+        data = json.load(handle)
+    for npc in data["npcs"]:
+        if npc["id"] == npc_id:
+            return npc["secret"]
+    raise AssertionError("data/scenarios/ashen_crown.json 里没有 %s" % npc_id)
+
+
+def _windows(text, size=SECRET_WINDOW):
+    """滚动 8 码位窗口：只查整句会让「半个秘密」漏过去（§6.3 的判据）。"""
+    assert len(text) >= size, "秘密文本短于 %d 码位，窗口断言无意义" % size
+    return [text[index:index + size] for index in range(len(text) - size + 1)]
+
+
+def _leaked_windows(text, haystack):
+    return [window for window in _windows(text) if window in haystack]
+
+
+def _claim(proposition, cls="belief", confidence=62, **overrides):
+    claim = {
+        "cls": cls,
+        "proposition": proposition,
+        "confidence": confidence,
+        "learned_minute": 17120,
+        "source_kind": "rumor",
+        "evidence_refs": [],
+        "status": "active",
+    }
+    claim.update(overrides)
+    return claim
+
+
+def _knowledge_view(**overrides):
+    """N4 只读的那部分 `view`：世界事实投影 + 其他角色塞进来的东西。"""
+    view = {
+        "campaign_id": "cp-01",
+        "now_minute": 17120,
+        "scenario_id": "sc-01",
+        "world_facts": {
+            "wf-gate": {"cls": "fact", "visibility": "public",
+                        "proposition": "城门在子夜关闭"},
+        },
+        "known_places": {"gate": True},
+        "options": [],
+    }
+    view.update(overrides)
+    return view
+
+
+def _knowledge_npc(npc_id="npc-01", **overrides):
+    npc = neura.empty_npc(npc_id, "sc-01")
+    npc["last_tick_minute"] = 17120
+    npc.update(overrides)
+    return npc
+
+
+def check_claim_classes_and_purposes():
+    """五类 / 两态 / 三 purpose / 三张字段集：常量与文档逐字对齐。"""
+    assert neura.CLAIM_CLASSES == ("fact", "belief", "rumor", "inference",
+                                   "secret")
+    assert neura.CLAIM_CLASSES_NEVER_WORLD_FACT == ("belief", "rumor",
+                                                    "inference", "secret")
+    assert neura.CLAIM_STATUSES == ("active", "disproved")
+    assert neura.PURPOSES == ("decide", "narrate", "react")
+    assert set(neura.CONTEXT_FIELDS) == set(neura.PURPOSES)
+    for purpose in neura.PURPOSES:
+        fields = neura.CONTEXT_FIELDS[purpose]
+        assert len(fields) == len(set(fields)), "%s 的字段集有重复" % purpose
+        assert "purpose" in fields and "claims" in fields
+        assert "world_facts" in fields and "secret_flags" in fields
+    # 「固定」要能区分：三值字段集两两不同，否则集合断言等于没断言。
+    for left, right in itertools.combinations(neura.PURPOSES, 2):
+        assert set(neura.CONTEXT_FIELDS[left]) != set(neura.CONTEXT_FIELDS[right])
+
+
+def check_learn_writes_active_claim():
+    """`learn()`：派生 id、补 learned_minute、fact 置信恒 100、入参不改。"""
+    npc = _knowledge_npc()
+    before = copy.deepcopy(npc)
+    result = neura.learn(npc, {
+        "cls": "belief",
+        "proposition": "守门人昨夜被换成了别人",
+        "confidence": 62,
+    })
+
+    claim = result["claim"]
+    assert result["merged"] is False
+    assert claim["claim_id"].startswith("cl-")
+    assert len(claim["claim_id"]) == len("cl-") + 8
+    assert claim["status"] == "active"
+    assert claim["learned_minute"] == 17120        # 缺省取 last_tick_minute
+    assert claim["confidence"] == 62
+    assert result["npc"]["knowledge"] == [claim]
+    assert npc == before, "learn 改写了入参"
+    assert _json_roundtrip(result["npc"]) == result["npc"], "knowledge 不可 JSON 往返"
+
+    # 同内容同 id：id 由 (cls, proposition, about_ref, source_kind) 确定性派生。
+    again = neura.learn(_knowledge_npc(), {
+        "cls": "belief",
+        "proposition": "守门人昨夜被换成了别人",
+        "confidence": 90,
+    })
+    assert again["claim"]["claim_id"] == claim["claim_id"]
+
+    # §6.1 硬规矩 3：fact 的 confidence 恒为 100，不采信调用方给的 40。
+    fact = neura.learn(npc, {
+        "cls": "fact",
+        "proposition": "城门在子夜关闭",
+        "confidence": 40,
+        "learned_minute": 17181,
+    })
+    assert fact["claim"]["confidence"] == neura.FACT_CONFIDENCE == 100
+
+
+def check_learn_merges_same_claim():
+    """同一命题再学一次：置信取高、时间取早、证据取并集，不堆两条。"""
+    first = neura.learn(_knowledge_npc(), _claim(
+        "守门人昨夜被换成了别人", confidence=40, learned_minute=100,
+        evidence_refs=["ev-2", "ev-1"]))
+    second = neura.learn(first["npc"], _claim(
+        "守门人昨夜被换成了别人", confidence=80, learned_minute=200,
+        evidence_refs=["ev-1", "ev-3"]))
+
+    assert second["merged"] is True
+    assert len(second["npc"]["knowledge"]) == 1
+    claim = second["claim"]
+    assert claim["confidence"] == 80
+    assert claim["learned_minute"] == 100
+    assert claim["evidence_refs"] == ["ev-1", "ev-2", "ev-3"]
+    assert first["npc"]["knowledge"][0]["confidence"] == 40, "合并改写了旧结果"
+
+
+def check_learn_rejects_bad_claims():
+    """写入口严格：命题 / 类别 / 置信 / 状态不合法一律 `NeuraError`。"""
+    npc = _knowledge_npc()
+    assert _raises_neura(lambda: neura.learn(npc, "不是对象"))
+    assert _raises_neura(lambda: neura.learn(npc, {"cls": "belief",
+                                                   "confidence": 60}))
+    assert _raises_neura(lambda: neura.learn(npc, {
+        "cls": "belief", "proposition": "   ", "confidence": 60}))
+    assert _raises_neura(lambda: neura.learn(npc, {
+        "cls": "gossip", "proposition": "听来的", "confidence": 60}))
+    assert _raises_neura(lambda: neura.learn(npc, {
+        "cls": "belief", "proposition": "听来的"}))
+    assert _raises_neura(lambda: neura.learn(npc, {
+        "cls": "belief", "proposition": "听来的", "confidence": 140}))
+    assert _raises_neura(lambda: neura.learn(npc, {
+        "cls": "belief", "proposition": "听来的", "confidence": 60,
+        "status": "disproved"}))
+
+    # 同 id 不同命题：id 不复用（§6.4）。
+    learned = neura.learn(npc, _claim("守门人昨夜被换成了别人"))
+    claim_id = learned["claim"]["claim_id"]
+    assert _raises_neura(lambda: neura.learn(learned["npc"], {
+        "claim_id": claim_id, "cls": "belief", "proposition": "另一件事",
+        "confidence": 60}))
+
+
+def check_supersede_chain():
+    """§6.4 修正链：旧 claim disproved + superseded_by，旧 id 仍可解析。"""
+    npc = _knowledge_npc("npc-05")
+    old = neura.learn(npc, _claim(
+        "守门人昨夜被换成了别人", cls="rumor", confidence=62,
+        learned_minute=17120, evidence_refs=["ev-market-03"]))
+    old_id = old["claim"]["claim_id"]
+    before = copy.deepcopy(old["npc"])
+
+    new_claim = {
+        "cls": "fact",
+        "proposition": "守门人今天清晨换了岗",
+        "learned_minute": 17180,
+        "evidence_refs": ["ev-gate-01"],
+    }
+    result = neura.supersede(old["npc"], old_id, new_claim, reason="亲眼看到换岗")
+    new_id = result["new_claim"]["claim_id"]
+
+    assert result["old_claim"]["status"] == "disproved"
+    assert result["old_claim"]["superseded_by"] == new_id
+    assert result["new_claim"]["status"] == "active"
+    assert result["new_claim"]["confidence"] == 100     # fact
+    assert old["npc"] == before, "supersede 改写了入参"
+    assert len(result["npc"]["knowledge"]) == 2        # 旧记录不删
+
+    resolved = neura.resolve_claim(result["npc"], old_id)
+    assert resolved is not None
+    assert resolved["status"] == "disproved"
+    assert resolved["superseded_by"] == new_id
+    assert resolved["proposition"] == "守门人昨夜被换成了别人"
+    assert neura.resolve_claim(result["npc"], new_id)["status"] == "active"
+    assert neura.resolve_claim(result["npc"], "cl-nope") is None
+
+    memory = result["npc"]["memory"][-1]
+    assert memory["kind"] == "correction"
+    assert memory["claim_refs"] == [old_id, new_id]
+    assert memory["summary"] == "亲眼看到换岗"
+    assert memory["salience"] == neura.SALIENCE_CORRECTION
+    assert "truncated" not in memory
+
+    # 旧 id 不能二次修正；不存在的 id / 新旧同 id 都是调用方错误。
+    assert _raises_neura(lambda: neura.supersede(
+        result["npc"], old_id, _claim("又一次修正"), reason="再说一次"))
+    assert _raises_neura(lambda: neura.supersede(
+        result["npc"], "cl-nope", _claim("凭空修正"), reason="没有旧记录"))
+    assert _raises_neura(lambda: neura.supersede(
+        result["npc"], new_id,
+        {"claim_id": new_id, "cls": "fact", "proposition": "占位"},
+        reason="同 id"))
+    assert _raises_neura(lambda: neura.supersede(
+        result["npc"], new_id, {"cls": "fact"}, reason="缺命题"))
+
+
+def check_correction_memory_summary_cap():
+    """§4.3：summary 上限 80 码位，超长截断并显式标 `truncated`。"""
+    npc = _knowledge_npc("npc-05")
+    old = neura.learn(npc, _claim("守门人昨夜被换成了别人", cls="rumor"))
+    reason = "因为他亲眼看到了换岗的整个过程" * 10
+    result = neura.supersede(old["npc"], old["claim"]["claim_id"],
+                             _claim("守门人今天清晨换了岗", cls="fact"),
+                             reason=reason)
+    memory = result["memory"]
+    assert len(memory["summary"]) == neura.MEMORY_SUMMARY_MAX == 80
+    assert memory["truncated"] is True
+    assert memory["summary"] == reason[:80]
+
+
+def check_purpose_field_sets():
+    """三值各自的字段集**集合相等**（不是子集），且非法 purpose 直接拒。"""
+    npc = _knowledge_npc()
+    npc["goals"] = [
+        {"goal_id": "g-1", "kind": "fulfill_duty", "target_ref": "npc-02",
+         "weight": 0.8, "deadline_minute": 17200, "status": "active"},
+        {"goal_id": "g-0", "kind": "survive", "target_ref": None,
+         "weight": 0.3, "deadline_minute": None, "status": "done"},
+    ]
+    npc["knowledge"] = [_claim("我认为守卫换了人")]
+    view = _knowledge_view()
+
+    for purpose in neura.PURPOSES:
+        context = neura.select_context(npc, view, purpose=purpose)
+        assert set(context) == set(neura.CONTEXT_FIELDS[purpose]), (
+            "%s 的字段集不符：多 %s / 少 %s"
+            % (purpose,
+               sorted(set(context) - set(neura.CONTEXT_FIELDS[purpose])),
+               sorted(set(neura.CONTEXT_FIELDS[purpose]) - set(context))))
+        assert context["purpose"] == purpose
+        assert context["npc_id"] == "npc-01"
+        assert context["now_minute"] == 17120
+        # 三值都带「这个人知道什么」，但各自的专属字段各不相同。
+        assert context["claims"] and context["world_facts"]
+        assert context["secret_flags"] == []
+
+    decide = neura.select_context(npc, view, purpose="decide")
+    assert decide["plan"] is None                       # 无计划：键在、值为 None
+    assert [goal["goal_id"] for goal in decide["goals"]] == ["g-1"]
+    narrate = neura.select_context(npc, view, purpose="narrate")
+    assert narrate["location"]["place_id"] == ""
+    assert narrate["memory"] == []
+    react = neura.select_context(npc, view, purpose="react")
+    assert set(react["needs"]) == set(neura.NEED_KEYS)
+
+    assert _raises_neura(lambda: neura.select_context(npc, view,
+                                                      purpose="dialogue"))
+    assert _raises_neura(lambda: neura.select_context(npc, view, purpose=None))
+
+
+def check_only_active_claims_reach_context():
+    """`claims` 只收 `status == "active"` 且 `cls` 合法的记录。"""
+    npc = _knowledge_npc()
+    npc["knowledge"] = [
+        {"claim_id": "cl-active", "cls": "belief", "proposition": "我认为守卫换了人",
+         "confidence": 70, "learned_minute": 17120, "status": "active"},
+        {"claim_id": "cl-old", "cls": "rumor", "proposition": "听说守卫没换人",
+         "confidence": 40, "learned_minute": 17000, "status": "disproved",
+         "superseded_by": "cl-active"},
+        {"claim_id": "cl-odd", "cls": "hearsay", "proposition": "五类之外的记录",
+         "confidence": 70, "learned_minute": 17130, "status": "active"},
+    ]
+    context = neura.select_context(npc, _knowledge_view(), purpose="decide")
+    assert [claim["claim_id"] for claim in context["claims"]] == ["cl-active"]
+    assert set(context["claims"][0]) == {
+        "claim_id", "cls", "proposition", "about_ref", "source_kind",
+        "confidence", "learned_minute", "evidence_refs", "status"}
+    text = _text_of(context)
+    assert "听说守卫没换人" not in text
+    assert "五类之外的记录" not in text
+
+
+def check_five_classes_never_in_world_facts():
+    """§6.1 硬规矩 1：`belief` / `rumor` / `inference` / `secret` 永不进世界事实投影。"""
+    propositions = {
+        "fact": "城门在子夜关闭",
+        "belief": "守门人相信城门永不关闭",
+        "rumor": "集市里传说北门有鬼",
+        "inference": "我从换岗时刻推断守卫不足",
+        "secret": "她把账本藏在第三级台阶下",
+    }
+    world_facts = {}
+    for cls, proposition in sorted(propositions.items()):
+        world_facts["wf-" + cls] = {
+            "cls": cls, "visibility": "public", "proposition": proposition}
+    world_facts["wf-private"] = {"cls": "fact", "visibility": "private",
+                                 "proposition": "密室里还有一份账本"}
+
+    context = neura.select_context(_knowledge_npc(), _knowledge_view(
+        world_facts=world_facts), purpose="decide")
+
+    assert context["world_facts"] == [
+        {"fact_id": "wf-fact", "proposition": propositions["fact"]}]
+    text = _text_of(context)
+    for cls in neura.CLAIM_CLASSES_NEVER_WORLD_FACT:
+        assert propositions[cls] not in text, "%s 的命题漏进了上下文" % cls
+        assert _leaked_windows(propositions[cls], text) == [], \
+            "%s 的命题有 8 码位窗口漏进了上下文" % cls
+    assert propositions["fact"] in text          # 反面校准：公开事实确实在
+    assert "密室里还有一份账本" not in text       # 非 public 的 fact 也不收
+
+
+def check_double_npc_secret_visibility():
+    """§6.3：同一秘密对 A 可见、对 B 不可见（8 码位滚动窗口断言）。"""
+    secret = _scenario_secret("npc-01")
+    if len(secret) < SECRET_WINDOW:
+        raise AssertionError("npc-01 的秘密短于 %d 码位" % SECRET_WINDOW)
+    secret_claim_id = "cl-a1"
+
+    holder = _knowledge_npc("npc-01")
+    holder["knowledge"] = [{
+        "claim_id": secret_claim_id, "cls": "secret", "proposition": secret,
+        "about_ref": "npc-01", "source_kind": "self", "confidence": 100,
+        "learned_minute": 17120, "evidence_refs": [], "status": "active",
+    }]
+    holder["secrets"] = [{
+        "secret_id": "sec-crown-01", "claim_id": secret_claim_id,
+        "holders": ["npc-01"], "status": "held",
+        "reveal_conditions": ["lever 出现在玩家原文"],
+        "proposition": secret,          # 故意塞进来：投影时必须剥掉
+    }]
+
+    guard = _knowledge_npc("npc-05")
+    guard["secrets"] = [{
+        "secret_id": "sec-crown-01", "claim_id": secret_claim_id,
+        "holders": ["npc-01"], "status": "held",
+        "reveal_conditions": ["lever 出现在玩家原文"],
+        "proposition": secret,          # 脏数据：B 这里也有原文，仍不许漏
+    }]
+
+    view = _knowledge_view()
+    for purpose in neura.PURPOSES:
+        holder_context = neura.select_context(holder, view, purpose=purpose)
+        holder_text = _text_of(holder_context)
+        assert secret in holder_text, "持有者在 %s 看不到自己的秘密" % purpose
+        assert all(window in holder_text for window in _windows(secret))
+
+        guard_context = neura.select_context(guard, view, purpose=purpose)
+        guard_text = _text_of(guard_context)
+        assert _leaked_windows(secret, guard_text) == [], \
+            "非持有者在 %s 的上下文里出现了 8 码位窗口：%r" \
+            % (purpose, _leaked_windows(secret, guard_text))
+        assert guard_context["claims"] == []
+        assert guard_context["secret_flags"] == [{
+            "secret_id": "sec-crown-01", "known": False, "may_reveal": False}]
+        assert set(guard_context["secret_flags"][0]) == {
+            "secret_id", "known", "may_reveal"}
+
+        body = neura.build_candidate_body(guard_context)
+        assert _leaked_windows(secret, _text_of(body)) == [], \
+            "候选请求体在 %s 漏了秘密窗口" % purpose
+
+    # 持有者本人：known + may_reveal 都为真（秘密只说「存在 / 可否说」）。
+    holder_flags = neura.select_context(
+        holder, view, purpose="decide")["secret_flags"]
+    assert holder_flags == [{
+        "secret_id": "sec-crown-01", "known": True, "may_reveal": True}]
+
+
+def check_no_foreign_proposition():
+    """不越权：不含其他 NPC 的 `proposition`，也不含 `secrets[].proposition`。"""
+    own = "我认为守卫换了人"
+    foreign = "守卫自以为没人发现他换岗"
+    stuffed = "别的角色被塞进 view 的认知"
+
+    npc = _knowledge_npc("npc-01")
+    npc["knowledge"] = [
+        {"claim_id": "cl-own", "cls": "belief", "proposition": own,
+         "confidence": 70, "learned_minute": 17120, "status": "active"},
+        {"claim_id": "cl-foreign", "cls": "belief", "proposition": foreign,
+         "holder_id": "npc-05", "confidence": 70, "learned_minute": 17120,
+         "status": "active"},
+    ]
+
+    view = _knowledge_view(
+        claims=[{"claim_id": "cl-view", "cls": "belief",
+                 "proposition": stuffed, "status": "active"}],
+        other_npcs={"npc-05": {"knowledge": [
+            {"claim_id": "cl-other", "cls": "belief",
+             "proposition": foreign, "status": "active"}]}},
+    )
+
+    context = neura.select_context(npc, view, purpose="react")
+    text = _text_of(context)
+    assert own in text
+    assert foreign not in text
+    assert stuffed not in text
+    assert [claim["claim_id"] for claim in context["claims"]] == ["cl-own"]
+    assert "holder_id" not in context["claims"][0]
+
+
+def check_context_memory_limit():
+    """记忆摘要只带最近 8 条（按 minute + memory_id 定序），不把全量记忆喂进去。"""
+    npc = _knowledge_npc("npc-05")
+    npc["memory"] = [
+        {"memory_id": "mem-%02d" % index, "minute": index, "kind": "observation",
+         "summary": "第 %d 条摘要" % index, "salience": 10,
+         "claim_refs": []}
+        for index in range(20)
+    ]
+    context = neura.select_context(npc, _knowledge_view(), purpose="react")
+    memory = context["memory"]
+    assert len(memory) == neura.CONTEXT_MEMORY_LIMIT == 8
+    assert [item["memory_id"] for item in memory] == \
+        ["mem-%02d" % index for index in range(12, 20)]
+    assert set(memory[0]) == {"memory_id", "minute", "kind", "summary",
+                              "salience", "claim_refs"}
+
+
+def check_context_is_deterministic_and_pure():
+    """同输入同输出；入参不改；返回的是副本（改上下文漏不进块）。"""
+    npc = _knowledge_npc()
+    npc["knowledge"] = [_claim("我认为守卫换了人")]
+    npc["memory"] = [{"memory_id": "mem-1", "minute": 17100, "kind": "observation",
+                      "summary": "看到换岗", "salience": 20, "claim_refs": []}]
+    view = _knowledge_view()
+    npc_before, view_before = copy.deepcopy(npc), copy.deepcopy(view)
+
+    first = neura.select_context(npc, view, purpose="react")
+    second = neura.select_context(npc, view, purpose="react")
+    assert _text_of(first) == _text_of(second)
+    assert npc == npc_before, "select_context 改写了 npc"
+    assert view == view_before, "select_context 改写了 view"
+
+    first["claims"][0]["proposition"] = "被改写的命题"
+    first["needs"]["safety"] = 99
+    first["memory"][0]["summary"] = "被改写的摘要"
+    assert npc["knowledge"][0]["proposition"] == "我认为守卫换了人"
+    assert npc["needs"]["safety"] == neura.NEED_DEFAULT
+    assert npc["memory"][0]["summary"] == "看到换岗"
+
+
+def check_build_candidate_body_shape():
+    """`build_candidate_body`：两条消息、内容为文本、同一上下文拼出同一串。"""
+    npc = _knowledge_npc()
+    npc["knowledge"] = [_claim("我认为守卫换了人")]
+    context = neura.select_context(npc, _knowledge_view(), purpose="decide")
+    body = neura.build_candidate_body(context)
+
+    assert set(body) == {"purpose", "npc_id", "messages"}
+    assert body["purpose"] == "decide"
+    assert body["npc_id"] == "npc-01"
+    messages = body["messages"]
+    assert [message["role"] for message in messages] == ["system", "user"]
+    for message in messages:
+        assert set(message) == {"role", "content"}
+        assert isinstance(message["content"], str) and message["content"]
+    assert "我认为守卫换了人" in messages[1]["content"]
+    assert "城门在子夜关闭" in messages[1]["content"]
+    assert _text_of(neura.build_candidate_body(context)) == _text_of(body)
+
+    assert _raises_neura(lambda: neura.build_candidate_body(
+        {"purpose": "dialogue", "npc_id": "npc-01"}))
+    assert _raises_neura(lambda: neura.build_candidate_body({}))
+
+
+def check_role_literal_appears_once():
+    """唯一收口：`neura.py` 里 role 键字面量与 `messages` 键各只出现一次。"""
+    with open(NEURA_PY, encoding="utf-8") as handle:
+        source = handle.read()
+    assert source.count('"role":') == 1, \
+        "role 键出现 %d 次（应只在 build_candidate_body 里）" % source.count('"role":')
+    assert source.count('"messages":') == 1, \
+        "messages 键出现 %d 次（应只在 build_candidate_body 里）" \
+        % source.count('"messages":')
+    # 拼装点的函数边界：那一行必须在 build_candidate_body 的函数体内。
+    start = source.index("def build_candidate_body(")
+    end = source.index("\ndef ", start)
+    assert '"role":' in source[start:end]
+
+
 def main():
     checks = (
         check_constants,
@@ -1241,6 +1761,21 @@ def main():
         check_proposal_passes_prism_validate,
         check_idempotency_key_format_and_stability,
         check_decide_and_proposal_are_pure,
+        check_claim_classes_and_purposes,
+        check_learn_writes_active_claim,
+        check_learn_merges_same_claim,
+        check_learn_rejects_bad_claims,
+        check_supersede_chain,
+        check_correction_memory_summary_cap,
+        check_purpose_field_sets,
+        check_only_active_claims_reach_context,
+        check_five_classes_never_in_world_facts,
+        check_double_npc_secret_visibility,
+        check_no_foreign_proposition,
+        check_context_memory_limit,
+        check_context_is_deterministic_and_pure,
+        check_build_candidate_body_shape,
+        check_role_literal_appears_once,
     )
     failures = 0
     for check in checks:
