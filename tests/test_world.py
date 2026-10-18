@@ -622,7 +622,433 @@ def test_goods_shape_aligned_with_worldgen():
             item["base_price"]
 
 
-# ── main ──────────────────────────────────────────────────────────────────
+# ── 9. Project 生命周期（W6，§7.1 / §7.2） ────────────────────────────────
+
+def _site_place(place_id="place-x", kind="site", validated=True):
+    """开工条件四/五的编排层注入形状（§7.2；world.py 不 import atlas）。"""
+    return {"place_id": place_id, "kind": kind, "validated": validated}
+
+
+def _project_block():
+    """W6 夹具：铁锭（非必需，不受日切消费）+ 粮、金库与劳力池、一座据点。"""
+    goods = [
+        {"good_id": "g-iron", "name": "铁锭", "category": "military",
+         "tier": 2, "base_price": 6, "stock": 100, "produced_by": [],
+         "era": "fantasy"},
+        {"good_id": "g-food", "name": "黑麦", "category": "food",
+         "tier": 1, "base_price": 2, "stock": 50, "produced_by": ["place-x"],
+         "era": "fantasy"},
+    ]
+    block = world.new_block(goods=goods, balances={"coin": 1000, "labor": 10})
+    block["settlements"]["s1"] = {"place_id": "place-x", "population": 4}
+    return block
+
+
+def _wall_project(pid="p-wall", place_id="place-x", *, source="player",
+                  wage_per_day=0, directive_id=""):
+    return world.new_project(
+        pid, name="修墙", place_id=place_id, blueprint={"kind": "wall"},
+        requirements={"goods": {"g-iron": 20}, "coin": 100, "labor_days": 2},
+        source=source, wage_per_day=wage_per_day, directive_id=directive_id,
+        created_minute=0)
+
+
+def test_project_lifecycle_full():
+    """draft → queued（五条件齐）→ running → completed 全链（§7.1 / §7.2）：
+    开工三笔扣账、工期折算里程碑、进度对平、完工设施进据点、维护扣账。"""
+    block = _project_block()
+    before = _dumps(block)
+    block = world.project_create(block, _wall_project())
+    assert block["projects"]["p-wall"]["status"] == "draft"
+    block = world.project_queue(block, "p-wall")
+    assert block["projects"]["p-wall"]["status"] == "queued"
+    # 开工：三笔 Entry（材料 / 资金 / 劳力承诺），随调用方提交落块（A0）
+    block, entries = world.project_start(block, "p-wall", now_minute=1440,
+                                         event_seq=11,
+                                         place=_site_place())
+    project = block["projects"]["p-wall"]
+    assert project["status"] == "running"
+    assert [e["kind"] for e in entries] == \
+        ["build_material", "build_pay", "labor_commit"]
+    assert entries[0]["account"] == "g-iron" and entries[0]["delta"] == -20
+    assert entries[1]["account"] == "coin" and entries[1]["delta"] == -100
+    assert entries[2]["account"] == "labor" and entries[2]["delta"] == -2
+    assert all(e["refs"]["event_seq"] == 11 for e in entries)
+    assert block["economy"]["goods"]["g-iron"]["stock"] == 80
+    assert block["economy"]["balances"]["coin"] == 900
+    assert block["economy"]["balances"]["labor"] == 8
+    # 进度对平（§10.2 2.6）：materials_in / spend_coin 与 requirements 一致
+    assert project["progress"]["materials_in"] == {"g-iron": 20}
+    assert project["progress"]["spend_coin"] == 100
+    # 工期折算（新口径 15）：2 人日 / 效率 1 → 2 天，里程碑到期 1440 + 2880
+    assert project["milestones"][0]["at_minute"] == 1440 + 2 * 1440
+    assert project["needs"] == {"g-iron": 20}
+    assert world.verify_ledger(block) == []
+    assert _dumps(_project_block()) == before, "project_start 不改写入参"
+    # 未到期：不完工
+    block, completed = world.project_settle_milestone(
+        block, "p-wall", now_minute=4319, event_seq=12)
+    assert completed is False and project["status"] == "running"
+    # 到期（day 3 日切）：完工 + 设施进据点 + 进度收口
+    block, _, notes = _settle(block, 3)
+    project = block["projects"]["p-wall"]
+    assert project["status"] == "completed"
+    assert project["milestones"][0]["done"] is True
+    assert project["progress"]["labor_done_days"] == 2
+    facilities = block["settlements"]["s1"]["facilities"]
+    assert len(facilities) == 1 and facilities[0]["facility_id"] == "fac-p-wall"
+    assert facilities[0]["maintenance_level"] == world.FACILITY_MAINTENANCE_LEVELS
+    # 次日维护扣账：从中央金库扣 2（§7.2）
+    coin_before = block["economy"]["balances"]["coin"]
+    block, entries, _ = _settle(block, 4)
+    maint = [e for e in entries if e["kind"] == "maintenance"]
+    assert maint and maint[0]["delta"] == -world.FACILITY_MAINTENANCE_PER_DAY
+    assert maint[0]["refs"]["settlement_id"] == "s1"
+    assert block["economy"]["balances"]["coin"] == \
+        coin_before - world.FACILITY_MAINTENANCE_PER_DAY
+    assert world.verify_ledger(block) == []
+
+
+def test_project_start_rejects_each_condition():
+    """五条件缺一不开工（§7.2 逐项）：拒单无账、入参块零改动。"""
+    def fresh(**over):
+        block = _project_block()
+        block = world.project_create(block, _wall_project())
+        block = world.project_queue(block, "p-wall")
+        if "stock" in over:
+            block["economy"]["goods"]["g-iron"]["stock"] = over["stock"]
+        if "coin" in over:
+            block["economy"]["balances"]["coin"] = over["coin"]
+        if "labor" in over:
+            block["economy"]["balances"]["labor"] = over["labor"]
+        return block, _dumps(block)
+
+    cases = [
+        ("materials", {"stock": 10}, _site_place()),
+        ("funds", {"coin": 99}, _site_place()),
+        ("labor", {"labor": 1}, _site_place()),
+        ("place", {}, None),
+        ("place", {}, _site_place(kind="feature")),
+        ("atlas", {}, _site_place(validated=False)),
+    ]
+    for reason, over, place in cases:
+        block, snapshot = fresh(**over)
+        try:
+            world.project_start(block, "p-wall", now_minute=1440,
+                                event_seq=11, place=place)
+            raise AssertionError("条件 %s 缺失应拒开工" % reason)
+        except world.WorldError as error:
+            assert reason in str(error), (reason, str(error))
+        assert _dumps(block) == snapshot, "拒开工必须零改动（%s）" % reason
+    # 状态机闸门：draft 不可直接开工；终态不可撤销
+    block = world.project_create(_project_block(), _wall_project())
+    try:
+        world.project_start(block, "p-wall", now_minute=0, event_seq=1,
+                            place=_site_place())
+        raise AssertionError("draft 不可直接开工")
+    except world.WorldError:
+        pass
+    revoked = world.project_revoke(world.project_queue(block, "p-wall"),
+                                   "p-wall")
+    assert revoked["projects"]["p-wall"]["status"] == "revoked"
+    try:
+        world.project_revoke(revoked, "p-wall")
+        raise AssertionError("终态工程不可撤销")
+    except world.WorldError:
+        pass
+
+
+def test_project_pause_resume_revoke_daycut_skips():
+    """paused 日切跳过（不推进不发工资）；revoked 只停后续（已扣不退）。"""
+    block = _project_block()
+    block = world.project_create(block, _wall_project(wage_per_day=5))
+    block = world.project_queue(block, "p-wall")
+    block, _ = world.project_start(block, "p-wall", now_minute=0,
+                                   event_seq=11, place=_site_place())
+    coin_running = block["economy"]["balances"]["coin"]
+    # 暂停：日切跳过——无工资、里程碑不推进
+    block = world.project_pause(block, "p-wall")
+    block, entries, _ = _settle(block, 3)
+    assert not [e for e in entries
+                if e["kind"] == "wage" and e["refs"].get("project_id")], entries
+    assert block["projects"]["p-wall"]["status"] == "paused"
+    assert block["projects"]["p-wall"]["milestones"][0]["done"] is False
+    # 复工：paused → queued（重新排队；再开工时五条件重判，新口径 17/18）
+    block = world.project_resume(block, "p-wall")
+    assert block["projects"]["p-wall"]["status"] == "queued"
+    # 撤销：只停后续——已扣的材料/资金/劳力不退（§6.5 已提交不可撤）
+    stock_before = block["economy"]["goods"]["g-iron"]["stock"]
+    block = world.project_revoke(block, "p-wall")
+    assert block["projects"]["p-wall"]["status"] == "revoked"
+    block, _, _ = _settle(block, 4)
+    assert block["economy"]["goods"]["g-iron"]["stock"] == stock_before, \
+        "撤销不得退还已扣材料"
+    assert not [e for e in entries
+                if e["kind"] == "wage" and e["refs"].get("project_id")]
+    _ = coin_running
+
+
+def test_background_project_daycut_autostart_and_milestone():
+    """背景工程（§7.3 背景通道）：日切自动开工（五条件齐）→ 逐日推进 →
+    到期完工；地点信息未注入时不开工（新口径 16/18）。"""
+    block = _project_block()
+    block = world.project_create(
+        block, _wall_project("p-npc", source="npc"))
+    block = world.project_queue(block, "p-npc")
+    # 无 places 注入：自动开工未遂（地点条件不满足），停在 queued
+    block, _, notes = _settle(block, 1)
+    assert block["projects"]["p-npc"]["status"] == "queued"
+    assert any("自动开工未遂" in n for n in notes)
+    # 注入合法地点：日切自动开工（材料/资金/劳力同扣）
+    block, entries, notes = world.world_tick(
+        block, day=2, now_minute=2 * 1440, event_seq=21,
+        places={"place-x": _site_place()})
+    project = block["projects"]["p-npc"]
+    assert project["status"] == "running"
+    assert [e["kind"] for e in entries if e["kind"].startswith("build")] \
+        == ["build_material", "build_pay"]
+    assert any("自动开工" in n for n in notes)
+    assert project["milestones"][0]["at_minute"] == 2 * 1440 + 2 * 1440
+    assert block["economy"]["balances"]["coin"] == 900
+    assert world.verify_ledger(block) == []
+    # 逐日推进 + 到期完工（day 4 = 里程碑到期日）
+    block, _, _ = _settle(block, 3)
+    assert block["projects"]["p-npc"]["progress"]["labor_done_days"] == 1
+    block, _, _ = _settle(block, 4)
+    assert block["projects"]["p-npc"]["status"] == "completed"
+    assert block["projects"]["p-npc"]["progress"]["labor_done_days"] == 2
+    assert block["settlements"]["s1"]["facilities"][0]["facility_id"] \
+        == "fac-p-npc"
+
+
+# ── 10. 委托指令（W6，§6.5） ──────────────────────────────────────────────
+
+def _directive_block(*, stock=10, coin=0, cap=400):
+    """指令夹具：一座人口 10 的据点 + 一种 food good（价格 2）。"""
+    goods = [{"good_id": "g-food", "name": "黑麦", "category": "food",
+              "tier": 1, "base_price": 2, "stock": stock,
+              "produced_by": ["place-x"], "era": "fantasy"}]
+    block = world.new_block(goods=goods, balances={"coin": coin})
+    block["settlements"]["s1"] = {"place_id": "place-x", "population": 10}
+    directive = world.new_directive(
+        "d-grain", text="每周确保粮仓有储备", goal={"metric": "grain_days",
+                                                    "op": ">=", "target": 5},
+        budget={"cap_total": cap}, authorized_scope=["procure"])
+    block = world.directive_add(block, "s1", directive)
+    return block
+
+
+def test_directive_budget_clamp_and_hard_ask():
+    """§6.5：cap_total 在提案生成时钳制（比事后审计更硬）；单笔超 50% 命中
+    硬回问清单 → blocked + 事实留痕、无自动花费（§10.2 2.4）。"""
+    # 硬回问：需要 40×2=80 > 50%×100 → blocked + directive_ask 事实，无花费
+    block = _directive_block(cap=100)
+    new_block, entries, notes = _settle(block, 1)
+    directive = new_block["settlements"]["s1"]["directives"]["d-grain"]
+    assert directive["status"] == "blocked"
+    assert directive["blocked_reason"] == "hard_ask_cap_half"
+    assert directive["spent_total"] == 0
+    assert not [e for e in entries
+                if (e["refs"] or {}).get("directive_id")], entries
+    asks = [f for f in new_block["facts"] if f["kind"] == "directive_ask"]
+    assert asks and asks[0]["subject_ref"] == "d-grain"
+    assert any("硬回问" in n for n in notes)
+    # 钳制：cap 400 → 单笔 80 ≤ 200 → 采买 40 只（spent 80 ≤ cap）
+    block = _directive_block(cap=400, coin=1000)
+    new_block, entries, _ = _settle(block, 1)
+    directive = new_block["settlements"]["s1"]["directives"]["d-grain"]
+    assert directive["status"] == "active" and directive["spent_total"] == 80
+    trades = [e for e in entries if (e["refs"] or {}).get("directive_id")]
+    assert [(e["kind"], e["account"], e["delta"]) for e in trades] == \
+        [("trade", "coin", -80), ("trade", "g-food", 40)], trades
+    assert all(e["reason"]["verb"] == "procure" for e in trades)
+    # 未授权 procure 的指令不自动花费
+    block = _directive_block(cap=400, coin=1000)
+    block["settlements"]["s1"]["directives"]["d-grain"]["authorized_scope"] = []
+    new_block, entries, _ = _settle(block, 1)
+    assert not [e for e in entries
+                if (e["refs"] or {}).get("directive_id")]
+    # 预算耗尽：spent_total 单调不越 cap_total（后续日钳到剩余，不足一单位即停）
+    block = _directive_block(cap=400, coin=1000)
+    for day in range(2, 8):
+        block, _, _ = _settle(block, day)
+        spent = block["settlements"]["s1"]["directives"]["d-grain"][
+            "spent_total"]
+        assert spent <= 400, (day, spent)
+    assert world.verify_ledger(block) == []
+
+
+def test_directive_paused_skips_and_revoked_stops_future():
+    """§6.5：paused 日切跳过；revoked 只停后续——已提交的采买不回滚。"""
+    block = _directive_block(cap=400, coin=1000)
+    block, _, _ = _settle(block, 1)                  # 采买 80 已提交
+    stock_committed = block["economy"]["goods"]["g-food"]["stock"]
+    assert stock_committed > 10, "已提交的采买必须落账"
+    # 撤销：只停后续
+    block = world.directive_set_status(block, "s1", "d-grain", "revoked")
+    block, entries, _ = _settle(block, 2)
+    assert not [e for e in entries
+                if (e["refs"] or {}).get("directive_id")], entries
+    assert block["economy"]["goods"]["g-food"]["stock"] >= stock_committed - 10
+    # 暂停：日切跳过（可恢复）
+    block = _directive_block(cap=400, coin=1000)
+    block = world.directive_set_status(block, "s1", "d-grain", "paused")
+    block, entries, _ = _settle(block, 1)
+    assert not [e for e in entries
+                if (e["refs"] or {}).get("directive_id")], entries
+    block = world.directive_set_status(block, "s1", "d-grain", "active")
+    assert block["settlements"]["s1"]["directives"]["d-grain"][
+        "blocked_reason"] == ""
+    block, entries, _ = _settle(block, 2)
+    assert [e for e in entries if (e["refs"] or {}).get("directive_id")], \
+        "恢复后日切应继续执行"
+
+
+def test_directive_explain_six_fields():
+    """§6.5 可解释六项：目标 / 预算 / 在建工程 / 阻塞原因 / 近 3 笔决策 /
+    预期结果（§16.5 逐项可读出）。"""
+    block = _directive_block(cap=400, coin=1000)
+    block["economy"]["balances"]["labor"] = 10
+    block["economy"]["goods"]["g-iron"] = {
+        "good_id": "g-iron", "name": "铁锭", "category": "military", "tier": 2,
+        "base_price": 6, "stock": 100, "produced_by": [], "era": "fantasy"}
+    block["economy"]["prices"]["g-iron"] = {"price": 6, "updated_day": 0}
+    # 指令授权的在建工程（directive_id 关联键）
+    project = _wall_project("p-d", source="directive", directive_id="d-grain")
+    block = world.project_create(block, project)
+    block = world.project_queue(block, "p-d")
+    block, _ = world.project_start(block, "p-d", now_minute=0,
+                                   event_seq=9, place=_site_place())
+    block, _, _ = _settle(block, 1)
+    explain = world.directive_explain(block, "s1", "d-grain")
+    for key in ("goal", "budget", "projects", "blocked_reason",
+                "recent_decisions", "expected"):
+        assert key in explain, "缺可解释字段 %s" % key
+    assert explain["goal"]["metric"] == "grain_days"
+    assert explain["budget"]["cap_total"] == 400
+    assert explain["budget"]["spent_total"] == 80
+    assert explain["budget"]["remaining"] == 320
+    assert explain["projects"] == ["p-d"]
+    assert len(explain["recent_decisions"]) == 2          # 近窗 ≤ 3 条
+    assert explain["expected"]["metric"] == "grain_days"
+    assert explain["expected"]["met"] is False
+    # 目标达成后的 expected.met 翻真
+    block["economy"]["goods"]["g-food"]["stock"] = 1000
+    explain = world.directive_explain(block, "s1", "d-grain")
+    assert explain["expected"]["met"] is True
+    try:
+        world.directive_explain(block, "s1", "nope")
+        raise AssertionError("未知指令应抛错")
+    except world.WorldError:
+        pass
+
+
+def test_directive_labor_pool_injection():
+    """§7.2 劳动力三来源之三：指令劳力池按日注入 labor 账户（coin 支付）。"""
+    block = _directive_block(cap=0, coin=100)
+    block["settlements"]["s1"]["directives"]["d-grain"]["budget"] = {
+        "labor_per_day": 3}
+    block["settlements"]["s1"]["directives"]["d-grain"][
+        "authorized_scope"] = []
+    block, entries, _ = _settle(block, 1)
+    hire = [e for e in entries
+            if (e["refs"] or {}).get("directive_id") == "d-grain"]
+    assert [(e["kind"], e["account"], e["delta"]) for e in hire] == \
+        [("wage", "coin", -3), ("grant", "labor", 3)], hire
+    assert block["economy"]["balances"]["labor"] == 3
+    assert world.verify_ledger(block) == []
+
+
+# ── 11. 扰动联动与维护链（W6，§7.2 验证） ─────────────────────────────────
+
+def test_disruption_linkage_running_project():
+    """§7.2 扰动对 running Project 生效（P7 验证）：block / pause /
+    progress_loss 落地且 Entry(kind="disruption") 可追；非在场工程不吃效果。"""
+    rule_id = "hostile_occupation"
+    seed = _seed_trigger(rule_id, 1)
+    block = _project_block()
+    project = _wall_project("p-run")
+    block = world.project_create(block, project)
+    block = world.project_queue(block, "p-run")
+    block, _ = world.project_start(block, "p-run", now_minute=0, event_seq=5,
+                                   place=_site_place())
+    block = world.project_create(block, _wall_project("p-done"))
+    block["projects"]["p-done"]["status"] = "completed"
+    block["facts"].append(_fact("place_lost", minute=100, fact_id="fact-1"))
+    new_block, entries, _ = _settle(block, 1, seed=seed)
+    assert new_block["projects"]["p-run"]["status"] == "paused"
+    assert new_block["projects"]["p-run"]["blocked_reason"] == "disruption"
+    assert new_block["projects"]["p-done"]["status"] == "completed", \
+        "终态工程不受扰动效果影响"
+    hits = [e for e in entries if e["kind"] == "disruption"]
+    assert [e["refs"]["project_id"] for e in hits] == ["p-run"]
+    assert hits[0]["refs"]["rule_id"] == rule_id
+    # progress_loss 吃 §7.1 的 progress.labor_done_days（labor_dispute）
+    rule_id = "labor_dispute"
+    seed = _seed_trigger(rule_id, 1)
+    block = _project_block()
+    block = world.project_create(block, _wall_project("p-run"))
+    block = world.project_queue(block, "p-run")
+    block, _ = world.project_start(block, "p-run", now_minute=0, event_seq=5,
+                                   place=_site_place())
+    block["projects"]["p-run"]["progress"]["labor_done_days"] = 4
+    block["projects"]["p-run"]["requirements"]["labor_days"] = 4
+    block["facts"].append(_fact("labor_unrest", minute=100, value=2,
+                                fact_id="fact-2"))
+    new_block, entries, _ = _settle(block, 1, seed=seed)
+    assert new_block["projects"]["p-run"]["progress"][
+        "labor_done_days"] == 2, "progress_loss 应把进度砍半"
+    assert [e for e in entries if e["kind"] == "disruption"], "留痕可追"
+
+
+def test_maintenance_funds_chain_project_linkage():
+    """维护扣账链（验收项）：到期义务从中央金库扣；资金断 → 据点 blocked
+    （W4 既有）+ 设施降级 + Project 侧状态联动（工资同断 → blocked）。"""
+    goods = [{"good_id": "g-food", "name": "黑麦", "category": "food",
+              "tier": 1, "base_price": 2, "stock": 50, "produced_by": [],
+              "era": "fantasy"}]
+    # 正常路径：完工设施维护 2/日从金库扣
+    block = world.new_block(goods=goods, balances={"coin": 100})
+    block["settlements"]["s1"] = {"place_id": "place-x", "population": 1,
+                                  "facilities": [
+                                      {"facility_id": "fac-a", "kind": "wall",
+                                       "maintenance_per_day": 2,
+                                       "maintenance_level": 3}]}
+    block, entries, _ = _settle(block, 1)
+    maint = [e for e in entries if e["kind"] == "maintenance"]
+    assert maint and maint[0]["delta"] == -2 and \
+        maint[0]["refs"]["settlement_id"] == "s1"
+    assert block["economy"]["balances"]["coin"] == 98
+    assert block["settlements"]["s1"].get("status") != "blocked"
+    # 资金断：金库空 → 据点 blocked + 设施降级一格 + 工程 blocked(funds)
+    block = world.new_block(goods=goods, balances={"coin": 0})
+    block["settlements"]["s1"] = {"place_id": "place-x", "population": 1,
+                                  "facilities": [
+                                      {"facility_id": "fac-a", "kind": "wall",
+                                       "maintenance_per_day": 2,
+                                       "maintenance_level": 3}]}
+    block["projects"]["p-run"] = {"place_id": "place-x", "status": "running",
+                                  "wage_per_day": 5,
+                                  "needs": {"g-food": 1}}
+    block, entries, notes = _settle(block, 1)
+    assert block["settlements"]["s1"]["status"] == "blocked"
+    assert block["settlements"]["s1"]["blocked_reason"] == "funds"
+    assert block["settlements"]["s1"]["facilities"][0][
+        "maintenance_level"] == 2, "维护欠费应降级一格"
+    assert block["projects"]["p-run"]["status"] == "blocked"
+    assert block["projects"]["p-run"]["blocked_reason"] == "funds"
+    assert not [e for e in entries if e["kind"] in ("wage", "maintenance")], \
+        "发不出不得记 Entry"
+    assert any("降级" in n for n in notes)
+    # 降到底即停：blocked 据点退出结算（W4 既有），不再继续降级
+    block, _, _ = _settle(block, 2)
+    block, _, _ = _settle(block, 3)
+    assert block["settlements"]["s1"]["facilities"][0][
+        "maintenance_level"] == 2
+    assert world.verify_ledger(block) == []
+
+
+
 
 def main():
     checks = [value for name, value in sorted(globals().items())
