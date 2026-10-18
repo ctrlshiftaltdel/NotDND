@@ -310,6 +310,24 @@ def check_law(npc, option, view) -> Reject | None: ...
 def check_knowledge(npc, option, view) -> Reject | None: ...
 ```
 
+**`Option.risk` → `R0..R4` 的映射（N3 落地口径）**
+
+`Option.risk` 只给 `0..1` 浮点，而 M8 的 `proposal.risk` 要五级枚举（`ACTION-DESIGN.md` §6.1）。
+两者之间是**线性五等分**，边界只由 `neura.py:1086` 的一个常量决定：
+
+`RISK_BANDS = (0.2, 0.4, 0.6, 0.8)`
+
+| `risk` 区间 | 枚举 | 说明 |
+|---|---|---|
+| `[0, .2)` | `R0` | 含 `0.0`；`risk` 缺失 / 非数字按 `0.0` 处理（`neura.py:1387`） |
+| `[.2, .4)` | `R1` | 左闭右开 |
+| `[.4, .6)` | `R2` | 左闭右开 |
+| `[.6, .8)` | `R3` | 左闭右开 |
+| `[.8, 1]` | `R4` | **闭区间**——`0.8` 与 `1.0` 同属 `R4` |
+
+`neura.py:1380` `_risk_level` 逐档比对 `risk < upper`，命中即取该档；走完仍不命中 → `R4`（即 `[.8, 1]`）。
+**调档只改这一个常量**，不新增权重、不动 `Option` schema、不在别处复制边界值。
+
 | 约束 | 判据（可执行） | 固定错误码 | 数据来源 |
 |---|---|---|---|
 | **距离** | `view.bands[(npc.place, option.place_id)] ∈ {"same","adjacent","near"}`，**或** `view.travel_minutes(option.place_id) ≤ option.minutes` | `E_DISTANCE` | `atlas.range_band`（`atlas.py:335`）由编排层预计算；`travel_minutes` 用 `data/system/travel.json` 口径（`CHRON-DESIGN.md` §2.4），**NEURA 不自带换算** |
@@ -447,6 +465,24 @@ def decide(npc: dict, view: dict) -> dict:
   这是「行为连续可解释」的**机器可读判据**（§10.1）。
 - **无候选**：`chosen = None`，`switch_reason = "hard_blocked"`，只写 journal。
 
+**六个取值的触发条件**（N3 落地口径，与 `neura.py:1469` `_switch_reason` **逐条一致**）
+
+判据全是**对既有字段的事实判断**，不新增阈值、不引入新字段；按**优先级从上到下**取第一个命中项：
+
+| 序 | `switch_reason` | 触发条件 | 代码 |
+|---|---|---|---|
+| 1 | `hard_blocked` | 本轮 `chosen is None`（无候选，见上条） | `neura.py:1485` |
+| — | `None`（不是切换） | 无旧 `plan.goal_id`、或新候选无 `goal_id`、或**新旧 `goal_id` 相同**（同目标续计划 / 首次决策）；此时**不编造理由** | `neura.py:1491` |
+| 2 | `goal_done` | 旧 `goal.status == "done"` **或** 旧 `plan.status == "done"` | `neura.py:1498` |
+| 3 | `hard_blocked` | 旧 `plan.status == "dropped"`（计划被硬约束或管线丢弃） | `neura.py:1500` |
+| 4 | `goal_failed` | 旧 `goal.status ∈ {"failed", "abandoned"}` | `neura.py:1502` |
+| 5 | `deadline_pressure` | 旧 `goal.deadline_minute` 是整数 **且** `now_minute ≥ deadline_minute` | `neura.py:1505` |
+| 6 | `newly_known` | 选中候选的 `requires_claims` 中至少有一条 **active** claim 满足 `claim.learned_minute ≥ plan.started_minute`（`plan.started_minute` 缺失按 `0`） | `neura.py:1509` / `1514` |
+| 7 | `need_spike` | **以上都不命中时的兜底值**——切换只能由需求推高解释（评分 `raw` 本就是需求的线性组合） | `neura.py:1511` |
+
+- 兜底只有 `need_spike` 一个：**不得**用 `hard_blocked` 之类「看起来更严重」的值顶替，那会把「无候选」与「有候选但需求上升」混为一谈。
+- 两张 `hard_blocked` 来源不同（序 1 是**本轮无候选**，序 3 是**旧计划被丢弃**），journal 里要能区分，故都写同一枚举但 `hard` 段与 `plan.status` 可分别取证。
+
 ### 5.5 AI 只提候选（可选段）
 
 ```python
@@ -495,6 +531,19 @@ np_<sha256(npc_id)[:8]>_<sha256(plan_id)[:10]>_<step_index:02d>     # 例：np_3
 ```
 
 同一计划步骤重投 → 状态层 `idempotency_key` 命中 → 返回首次结果，**不重复副作用**（`STATE-DESIGN.md` §7）。
+
+**`created_at`**（世界分钟 → 毫秒，**不取墙钟**）
+
+```
+created_at = at_minute × 60000        # 例：at_minute = 1024 → 61_440_000
+```
+
+- `at_minute` 由 `neura.py:1422` `_now_of(decision, npc)` 依次取 `decision.now_minute` → `decision.at_minute`
+  → `npc.last_tick_minute`（都非整数则 `0`），与 `decide()` 记录里的 `at_minute` 同源；落值时见 `neura.py:1302`。
+- **不取墙钟**（`time.time()` / `datetime.now()` 一律不用）：决策记录必须**逐字节可复现**——同一 `npc` + `view` + `seed`
+  跑两次要得到同一个 `proposal_id` 与同一个 `created_at`；墙钟会让同输入产生不同记录，纯函数性、回放对账与
+  `idempotency_key` 的「同计划同步骤恒定」同时失效。
+- 世界时间本就以**整数分钟**为单位，乘 `60000` 即毫秒，不做日历 / 时区 / 闰秒 / 夏令时换算（那些都会引入机器差异）。
 
 **时序（即时计划 vs 延迟计划）**
 
