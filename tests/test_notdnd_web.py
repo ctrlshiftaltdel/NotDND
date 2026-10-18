@@ -118,6 +118,17 @@
      结算），`on` 不带令牌照常经规则与状态层。事件模式只保证串行提交，
      `chron_window` 恒为 false，不产生 `window.opened`。
 
+ 19. NEURA 只读观察面与长跑（M11-N8，NEURA-DESIGN §9.4 / §10.3 / §11 N8，
+     Issue #373）：`GET /api/neura/view?npc_id=…` 只读回单个 NPC 的
+     `layer` / `needs` / `plan` / 最近 5 条 journal（journal / plan 白名单
+     投影，不含自由文本、不含 `secret.proposition`、不含 memory / knowledge /
+     secrets）；房间成员走 `_room_auth` 鉴权链，host / player 只看
+     `layer == "near"`、observer 一律 404，「不存在 / 块缺失 / 无权看」同一
+     `404 {"status": "forbidden"}` 不泄露存在性。长跑：100 游戏日 × 20 NPC
+     纯规则（固定种子、无模型）→ 事件数 ≤ 20×100×2、`blocks.neura` 序列化
+     < 1 MiB、`replay` 相等、`blocks.guide.npc_at` 与 live 相等（D4 双写
+     新口径）、耗时 < 30 秒（5 游戏日一步推进，口径见用例 docstring）。
+
 另有一条护栏：`import notdnd_web` 不碰磁盘（存档目录不被创建）。
 
 零依赖：仅 Python 3 标准库。直接 `python3 tests/test_notdnd_web.py` 运行。
@@ -6025,6 +6036,263 @@ def check_neura_npc_at_replay_matches_live():
         notdnd_web._sessions.pop(sid, None)
 
 
+# --------------------------------------------------------------------------
+# 只读观察面与 100 游戏日长跑（N8，NEURA-DESIGN §9.4 / §10.3 / §11 N8）
+#
+# `GET /api/neura/view?npc_id=…`：layer / needs / plan / 最近 5 条 journal，
+# 不含自由文本、不含 secret.proposition；无权看 → 404 forbidden 不泄露存在性。
+# payload 构造直调 `_neura_view_payload`（与路由同一入口）；HTTP 壳（会话
+# 定位 / 成员鉴权链）用 `_LocalServer` 本进程服务覆盖。
+# --------------------------------------------------------------------------
+
+_NEURA_JOURNAL_VIEW_KEYS = {"decision_id", "npc_id", "at_minute", "layer",
+                            "chosen", "switch_reason", "cost", "ai_used",
+                            "hard"}
+
+
+def _neura_leaky_npc(npc_id="npc-guard") -> dict:
+    """带「不该泄露的内容」的近场 NPC：knowledge 命题 / 秘密 / memory 摘要。"""
+    npc = _neura_mover_npc(npc_id)
+    npc["knowledge"] = [{"claim_id": "cl-x", "cls": "secret",
+                         "proposition": "机密命题XYZZY", "status": "active",
+                         "confidence": 100, "learned_minute": 0,
+                         "source_kind": "self"}]
+    npc["secrets"] = [{"secret_id": "sec-1", "claim_id": "cl-x",
+                       "holders": [npc_id], "status": "held"}]
+    npc["memory"] = [{"memory_id": "mem-1", "minute": 0, "kind": "correction",
+                      "summary": "私域记忆摘要QWERTY", "participants": [npc_id],
+                      "salience": 1}]
+    return npc
+
+
+def check_neura_view_payload_gm_and_no_leak():
+    """N8：单人档（GM 视角）返回四件套；journal / plan 白名单投影；
+    knowledge 命题 / secrets / memory 一字不漏；不存在的 npc_id → 404
+    forbidden（与「无权看」同响应，不泄露存在性）。"""
+    sid = "neura-n8-view-gm"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_leaky_npc()
+        _neura_seed_block(session, block, "neura-n8-seed-0001")
+        notdnd_web._chron_advance(session, 10)   # 生成真 journal / plan 输入
+
+        code, payload = notdnd_web._neura_view_payload(session, None,
+                                                       "npc-guard")
+        assert code == 200, (code, payload)
+        assert payload["status"] == "ok" and payload["npc_id"] == "npc-guard"
+        assert payload["layer"] == "near", payload               # §7.1 现算
+        needs = payload["needs"]
+        assert set(needs) == set(neura.NEED_KEYS), needs
+        assert all(isinstance(v, int) for v in needs.values()), needs
+        assert isinstance(payload["journal"], list) and payload["journal"]
+        for entry in payload["journal"]:
+            assert set(entry) <= _NEURA_JOURNAL_VIEW_KEYS, entry
+            assert set(entry["hard"]) == {"ok", "kept", "rejected"}, entry
+            assert all(isinstance(code_s, str) and " " not in code_s
+                       for code_s in entry["hard"]["rejected"]), entry
+        # 不泄露：自由文本（命题 / 摘要）与 secrets 键一个都不在响应里
+        raw = json.dumps(payload, ensure_ascii=False)
+        assert "XYZZY" not in raw and "QWERTY" not in raw, raw
+        assert "proposition" not in raw and "summary" not in raw, raw
+        assert "memory" not in payload and "knowledge" not in payload \
+            and "secrets" not in payload, sorted(payload)
+
+        # plan 投影：只有 `_write_back` 的六个固定键（有则投影、无则缺省）
+        assert set(payload.get("plan") or {}) <= set(
+            notdnd_web._NEURA_PLAN_KEYS), payload.get("plan")
+
+        # 不存在 / 缺 npc_id / 块缺失 → 同一 404 forbidden
+        assert notdnd_web._neura_view_payload(session, None, "npc-ghost") == \
+            (404, {"status": "forbidden"})
+        assert notdnd_web._neura_view_payload(session, None, "") == \
+            (404, {"status": "forbidden"})
+        empty_sid = sid + "-empty"
+        _seed_action_session(notdnd_web.SAVE_DIR, empty_sid)
+        empty_session = notdnd_web.Session.load(empty_sid)
+        try:
+            assert notdnd_web._neura_view_payload(
+                empty_session, None, "npc-guard") == \
+                (404, {"status": "forbidden"})
+        finally:
+            notdnd_web._sessions.pop(empty_sid, None)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_view_payload_room_member_visibility():
+    """N8 鉴权裁定：host / player 只看 `layer == "near"`；observer 一律 404；
+    远场 NPC 对房间成员回**同一个** 404 forbidden（与不存在同响应）。"""
+    sid = "neura-n8-view-room"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-near"] = _neura_mover_npc(npc_id="npc-near")
+        far = neura.empty_npc("npc-far", "sc-1")
+        far["importance"] = 0.9                       # P5：≥ 0.7 → important_far
+        far["location"]["place_id"] = "temple"
+        block["npcs"]["npc-far"] = far
+        _neura_seed_block(session, block, "neura-n8-seed-0002")
+
+        host = {"member_id": "m-1", "role": "host", "character_id": "pc-host"}
+        player = {"member_id": "m-2", "role": "player",
+                  "character_id": "pc-b"}
+        observer = {"member_id": "m-3", "role": "observer", "character_id": ""}
+
+        # host / player：近场可见
+        for member in (host, player):
+            code, payload = notdnd_web._neura_view_payload(
+                session, member, "npc-near")
+            assert code == 200 and payload["layer"] == "near", (member, code)
+        # 远场：host / player 也是 404 forbidden（与不存在同响应）
+        for member in (host, player):
+            assert notdnd_web._neura_view_payload(session, member, "npc-far") \
+                == (404, {"status": "forbidden"})
+        # observer：近场也 404（观察面是玩家 / GM 视角数据）
+        assert notdnd_web._neura_view_payload(session, observer, "npc-near") \
+            == (404, {"status": "forbidden"})
+        assert notdnd_web._neura_view_payload(session, observer, "npc-far") \
+            == (404, {"status": "forbidden"})
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_view_route_http():
+    """N8 HTTP 壳：X-Session 直达（单人语义）；房间块有成员记录的会话必须
+    过成员鉴权链（缺令牌 / 令牌错 401）；无 X-Session → 400。"""
+    sid = "neura-n8-route"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    notdnd_web._sessions[sid] = session   # HTTP 线程 get_session 命中同一实例
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["npcs"]["npc-guard"] = _neura_mover_npc()
+        _neura_seed_block(session, block, "neura-n8-seed-0003")
+
+        with _LocalServer() as server:
+            status, body = server.get(
+                "/api/neura/view?npc_id=npc-guard", sid=sid)
+            assert status == 200, (status, body)
+            assert body["status"] == "ok" and body["npc_id"] == "npc-guard"
+            assert body["layer"] == "near" and body["journal"] == [], body
+
+            # 未知 npc / 缺 npc_id → 404 forbidden（HTTP 壳同口径）
+            status, body = server.get(
+                "/api/neura/view?npc_id=npc-ghost", sid=sid)
+            assert status == 404 and body == {"status": "forbidden"}, \
+                (status, body)
+            status, body = server.get("/api/neura/view", sid=sid)
+            assert status == 404 and body == {"status": "forbidden"}, \
+                (status, body)
+
+            # 无会话 → 400（_sess 既有语义）
+            status, body = server.get("/api/neura/view?npc_id=npc-guard")
+            assert status == 400, (status, body)
+
+            # 房间会话（有成员记录）：无成员头 → 401；令牌错 → 401
+            rid = "room-n8-view"
+            status, created = _post(server, "/api/room/create",
+                                    {"room_id": rid})
+            assert status == 200, (status, created)
+            status, body = server.get("/api/neura/view?npc_id=npc-guard",
+                                      sid=rid)
+            assert status == 401, (status, body)
+            status, body = server.get(
+                "/api/neura/view?npc_id=npc-guard", sid=rid,
+                headers={"X-Room": rid, "X-Member": created["member_id"],
+                         "Authorization": "Bearer wrong-token"})
+            assert status == 401, (status, body)
+
+            # observer 成员（夹具直造）：鉴权过了也不给观察面 → 404 forbidden
+            room_session = notdnd_web._sessions[rid]
+            obs_token = "n8-observer-token"
+            obs_member = notdnd_web._empty_member("m-obs")
+            obs_member.update({"token_hash": notdnd_web._hash_token(obs_token),
+                               "display_name": "观", "role": "observer",
+                               "state": "active", "created_at": time.time(),
+                               "last_seen_at": time.time()})
+            room_session.room["members"]["m-obs"] = obs_member
+            status, body = server.get(
+                "/api/neura/view?npc_id=npc-guard", sid=rid,
+                headers={"X-Room": rid, "X-Member": "m-obs",
+                         "Authorization": "Bearer %s" % obs_token})
+            assert status == 404 and body == {"status": "forbidden"}, \
+                (status, body)
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_soak_100_days():
+    """N8 长跑（确定性、无 AI、固定种子）：100 游戏日 × 20 NPC 纯规则推进 →
+    事件数 ≤ 20×100×2；`blocks.neura` 序列化 < 1 MiB；`replay` 相等；
+    `blocks.guide.npc_at` 与 live 相等（D4 双写新口径）；耗时 < 30 秒。
+
+    推进粒度取 **5 游戏日一步**（20 次 advance = 20 次 tick）：本机逐日
+    100 次 `_chron_advance` ≈ 107s，大头是**每次推进**的既有恢复成本
+    （`chron.restore` / 状态层视图深拷贝，禁改路径），不是 neura 模拟成本
+    ——5 日步长下同跨度 20 次 tick 纯规则 ≈ 7s，远场 / 背景的日差判定
+    （≥ 1 / ≥ 3，N5 裁定 1）照常触发，长跑断言全部成立（PR 登记口径）。
+    """
+    sid = "neura-n8-soak"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    session = notdnd_web.Session.load(sid)
+    try:
+        _neura_stub_world(session)
+        block = neura.empty_block()
+        block["campaign_seed"] = 20261018            # 固定种子：确定性
+        for i in range(10):                          # 近场：market → gate 日程
+            block["npcs"]["npc-near-%02d" % i] = _neura_mover_npc(
+                npc_id="npc-near-%02d" % i)
+        for i in range(10):                          # 远场：temple 常驻在岗
+            far = neura.empty_npc("npc-far-%02d" % i, "sc-1")
+            far["importance"] = 0.9
+            far["location"]["place_id"] = "temple"
+            far["schedule"] = [{"slot_id": "s1", "place_id": "temple",
+                                "from_tod_minute": 0, "to_tod_minute": 1440}]
+            block["npcs"]["npc-far-%02d" % i] = far
+        _neura_seed_block(session, block, "neura-n8-soak-seed-0001")
+
+        started = time.time()
+        for step in range(1, 21):                    # 100 游戏日：5 日一步
+            out = notdnd_web._chron_advance(session, step * 5 * 1440)
+            assert out["status"] == "ok", (step, out)
+            assert out["stopped_at"] is None, (step, out)
+        elapsed = time.time() - started
+
+        handle = session._handle or session._open_handle()
+        events = handle.events_since(0)
+        assert len(events) <= 20 * 100 * 2, len(events)
+        saved = _neura_block_of(session)
+        assert saved["npcs"], saved
+        serialized = json.dumps(saved, ensure_ascii=False).encode("utf-8")
+        assert len(serialized) < 1024 * 1024, len(serialized)
+
+        # 重放相等（§10.1 出口 2.1）+ D4 双写新口径：guide.npc_at 重放 == live
+        replayed = handle.replay()
+        assert replayed["blocks"].get("neura") == saved, "重放 neura 块必须相等"
+        live_at = session.guide.get("npc_at") \
+            if isinstance(session.guide, dict) else {}
+        assert len(live_at) == 10, live_at           # 10 个近场 NPC 各移动过一次
+        replay_guide = replayed["blocks"].get("guide") or {}
+        assert replay_guide.get("npc_at") == live_at, \
+            (replay_guide.get("npc_at"), live_at)
+        saved_guide = (handle.view().get("blocks") or {}).get("guide") or {}
+        assert saved_guide.get("npc_at") == live_at, saved_guide
+
+        assert elapsed < 30.0, elapsed
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
 
 # --------------------------------------------------------------------------
 # 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
@@ -6875,6 +7143,10 @@ CHECKS = (
     check_neura_npc_at_idempotent_recommit,
     check_neura_npc_at_move_failed_not_written,
     check_neura_npc_at_replay_matches_live,
+    check_neura_view_payload_gm_and_no_leak,
+    check_neura_view_payload_room_member_visibility,
+    check_neura_view_route_http,
+    check_neura_soak_100_days,
     check_api_state_view,
     check_api_events_incremental,
     check_api_events_across_archives,
