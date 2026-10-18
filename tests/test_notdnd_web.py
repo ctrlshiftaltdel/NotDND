@@ -5334,6 +5334,240 @@ def check_chron_new_layout_guard_control():
 
 
 # --------------------------------------------------------------------------
+# NEURA M8 内部分支（N6，NEURA-DESIGN §5.6 / §9.4 / §11 N6）
+#
+# `_neura_submit` = `ActingPort.submit` 的实现：复用 `_action_settle_commit`，
+# 事件封套 `source="npc"`；四态返回值、**零异常逃逸**。全部走本进程直调
+# （无 HTTP 路由——接线归 N7）；幂等键与 `created_at` 由 neura 侧填好，
+# 这里用固定假键只测透传与分支。
+# --------------------------------------------------------------------------
+
+
+def _neura_proposal(action_id="a-lock", *, npc_id="npc-guard", **over) -> dict:
+    """§5.6 提案形状（N3 `to_proposal` 的固定样本，字段与 §4.2 对齐）。"""
+    proposal = {
+        "schema_version": 1,
+        "proposal_id": "p_" + "0" * 32,
+        "actor": {"kind": "npc", "id": npc_id},
+        "intent": {"verb": action_id, "target": None,
+                   "desired": action_id, "means": ""},
+        "params": {"dc_override": None, "items_used": []},
+        "source": "action",
+        "risk": "R1",
+        "time_cost": {"value": 0, "unit": "minute"},
+        "schedule_hint": {"can_defer": False, "depends_on": [], "priority": 0},
+        "interruptible": True,
+        "interrupt_conditions": [],
+        "expected_changes": [],
+        "raw_text": "",
+        "created_at": 61440000,          # at_minute=1024 × 60000（不取墙钟）
+    }
+    proposal.update(over)
+    return proposal
+
+
+def _neura_session(sid: str) -> "notdnd_web.Session":
+    """造一局带 `a-lock`（auto_pass）行动的存档并**从盘载入**本进程会话。"""
+    _seed_action_session(notdnd_web.SAVE_DIR, sid)
+    return notdnd_web.Session.load(sid)
+
+
+def _neura_action_events(session) -> list:
+    """状态层事件日志里行动管线写下的那些（`type` = ACTION_EVENT_TYPE）。"""
+    handle = session._handle or session._open_handle()
+    return [e for e in handle.events_since(0)
+            if e["type"] == notdnd_web.ACTION_EVENT_TYPE]
+
+
+def check_neura_submit_commit_and_replay():
+    """N6：NPC 提案同步结算 → `source=="npc"` / `actor==npc_id`；同键重投
+    回首次结果、事件数不变（状态层幂等命中，不重复副作用）。"""
+    sid = "neura-n6-commit"
+    session = _neura_session(sid)
+    try:
+        proposal = _neura_proposal()
+        out = notdnd_web._neura_submit(
+            session, proposal, idempotency_key="np_n6feed0001_0000000001_01")
+        assert out["status"] == "committed", out
+        assert out["reason"] is None, out
+        assert isinstance(out["result"], dict), out
+        event_id = out["event_id"]
+        assert isinstance(event_id, str) and event_id, out
+        assert out["result"]["event_ids"] == [event_id], out
+
+        events = _neura_action_events(session)
+        assert len(events) == 1, events
+        assert events[0]["source"] == "npc", events[0]        # 事件封套（硬约束 3）
+        assert events[0]["actor"] == "npc-guard", events[0]   # actor = npc_id
+        assert events[0]["event_id"] == event_id, events[0]
+
+        # `created_at` 透传链路：提案不被改写（世界分钟换算的毫秒不被污染）
+        assert proposal["created_at"] == 61440000, proposal
+
+        # 同键重投：结算重跑（确定性）→ 状态层命中 → 首次 event_id / 结果
+        replay = notdnd_web._neura_submit(
+            session, _neura_proposal(),
+            idempotency_key="np_n6feed0001_0000000001_01")
+        assert replay["status"] == "committed", replay
+        assert replay["event_id"] == event_id, (replay, event_id)
+        assert replay["result"] == out["result"], (replay, out)
+        assert len(_neura_action_events(session)) == 1, "重投不得写新事件"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_submit_stale_seq_conflict():
+    """N6：`base_seq` 过期 → `conflict`（**不抛**），不落事件；调用方可重试。"""
+    sid = "neura-n6-conflict"
+    session = _neura_session(sid)
+    try:
+        def bump():
+            # 在 `_action_settle_commit` 取到锁**之前**插一条真事件：把 seq 顶掉
+            handle = session._handle or session._open_handle()
+            result = handle.commit(
+                base_seq=handle.view()["seq"], idempotency_key="neura-n6-bump-1",
+                type="core.commit", actor="pc-1",
+                changes=[{"block": "rules", "path": "/n", "op": "set",
+                          "before": None, "after": 1}],
+                rules_version="prism@data-79", source="player")
+            assert result["status"] == "committed", result
+
+        real = session.lock
+        # 第 1 次 `with` 是 `_neura_submit` 读 base_seq；第 2 次在结算提交临界区
+        # 入口——交错就插在那儿，复现「读 seq 之后、核验之前」被别人提交。
+        session.lock = _InterleavingLock(real, at_acquire=2, hook=bump)
+        try:
+            out = notdnd_web._neura_submit(
+                session, _neura_proposal(),
+                idempotency_key="np_n6feed0001_0000000001_02")
+        finally:
+            session.lock = real
+        assert out == {"status": "conflict", "result": None,
+                       "reason": notdnd_web.ACTION_STALE_SEQ,
+                       "event_id": None}, out
+        assert len(_neura_action_events(session)) == 0, "冲突不落事件"
+
+        # 同键重试（seq 已对齐）→ 照常 committed：调用方可重试的口径成立
+        retry = notdnd_web._neura_submit(
+            session, _neura_proposal(),
+            idempotency_key="np_n6feed0001_0000000001_02")
+        assert retry["status"] == "committed", retry
+        assert len(_neura_action_events(session)) == 1, retry
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_neura_submit_unsupported_no_event():
+    """N6：动作表没有 / 需要掷骰 / 长行动 → `unsupported`，**不写事件**（U10）。"""
+    sid = "neura-n6-unsupported"
+    session = _neura_session(sid)
+    dice_sid = sid + "-dice"
+    _seed_action_session(notdnd_web.SAVE_DIR, dice_sid,
+                         entry={"auto_pass": False, "df": 10})
+    dice_session = notdnd_web.Session.load(dice_sid)
+    try:
+        before = len(_neura_action_events(session))
+
+        # ① `kind` 不在动作表 → unsupported（§9.5 同判据：`_action_scene_entry`）
+        out = notdnd_web._neura_submit(
+            session, _neura_proposal("nope"),
+            idempotency_key="np_n6feed0001_0000000001_03")
+        assert out == {"status": "unsupported", "result": None,
+                       "reason": notdnd_web.ACTION_NO_ACTION,
+                       "event_id": None}, out
+
+        # ② 需要掷骰（条目未声明 `auto_pass`）→ unsupported（P2：第一版不掷骰）
+        out = notdnd_web._neura_submit(
+            dice_session, _neura_proposal("a-lock", npc_id="npc-thief"),
+            idempotency_key="np_n6feed0001_0000000001_04")
+        assert out == {"status": "unsupported", "result": None,
+                       "reason": notdnd_web.NEURA_NO_DICE,
+                       "event_id": None}, out
+        assert len(_neura_action_events(dice_session)) == 0, "掷骰提案不落事件"
+
+        # ③ 长行动（can_defer=true）→ unsupported：NPC 提案永远同步（P7），
+        #    长行动分叉（`scheduled` 回执）在进管线之前就被挡死。
+        out = notdnd_web._neura_submit(
+            session, _neura_proposal(schedule_hint={"can_defer": True}),
+            idempotency_key="np_n6feed0001_0000000001_05")
+        assert out == {"status": "unsupported", "result": None,
+                       "reason": notdnd_web.NEURA_NO_DEFER,
+                       "event_id": None}, out
+
+        assert len(_neura_action_events(session)) == before, \
+            "unsupported 一律不写事件"
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+        notdnd_web._sessions.pop(dice_sid, None)
+
+
+def check_neura_submit_rejected_zero_escape():
+    """N6：战斗中提案 → `rejected`；非预期异常也不逃逸——对**返回值形状**
+    断言，而不是断言抛错（零异常逃逸口径）。"""
+    sid = "neura-n6-rejected"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, combat=True)
+    session = notdnd_web.Session.load(sid)
+    try:
+        before = len(_neura_action_events(session))
+        out = notdnd_web._neura_submit(
+            session, _neura_proposal(),
+            idempotency_key="np_n6feed0001_0000000001_06")
+        assert out["status"] == "rejected", out
+        assert out["reason"] == notdnd_web.ACTION_COMBAT, out
+        assert out["result"] is None and out["event_id"] is None, out
+        assert len(_neura_action_events(session)) == before, "rejected 不写事件"
+
+        # 任何意外异常同样只变成返回值（catch-all 分支）
+        real = notdnd_web._action_settle_commit
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("boom")
+
+        notdnd_web._action_settle_commit = boom
+        try:
+            out = notdnd_web._neura_submit(
+                session, _neura_proposal(),
+                idempotency_key="np_n6feed0001_0000000001_07")
+        finally:
+            notdnd_web._action_settle_commit = real
+        assert out["status"] == "rejected", out
+        assert "boom" in (out["reason"] or ""), out
+        assert out["result"] is None and out["event_id"] is None, out
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_action_settle_commit_source_default_player():
+    """N6：`_action_settle_commit` 的 `source` 缺省 `"player"`——参数化只换
+    NPC 路径的封套，玩家路径逐字节不变（硬约束 3 / 验收第 1 条）。"""
+    sid = "neura-n6-player"
+    session = _neura_session(sid)
+    try:
+        proposal = {
+            "proposal_id": "p_" + "1" * 32,
+            "actor": {"kind": "player", "id": "u-1"},
+            "intent": {"verb": "a-lock", "target": None, "desired": "a-lock",
+                       "means": ""},
+            "source": "action", "risk": "R1", "raw_text": "",
+            "time_cost": {"value": 0, "unit": "minute"},
+            "schedule_hint": {"can_defer": False},
+            "interrupt_conditions": [],
+        }
+        handle = session._handle or session._open_handle()
+        out = notdnd_web._action_settle_commit(
+            session, proposal, base_seq=handle.view()["seq"],
+            idempotency_key="np_n6feed0001_0000000001_08")
+        assert out["result"] and out["saved"] is True, out
+        events = _neura_action_events(session)
+        assert len(events) == 1, events
+        assert events[0]["source"] == "player", events[0]
+        assert events[0]["actor"] == "u-1", events[0]
+    finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+
+# --------------------------------------------------------------------------
 # 状态层只读接口（M7-4，STATE-DESIGN §16，Issue #312）
 # --------------------------------------------------------------------------
 
@@ -6166,6 +6400,11 @@ CHECKS = (
     check_chron_dependency_chain,
     check_chron_next_barrier_legacy_readonly,
     check_chron_new_layout_guard_control,
+    check_neura_submit_commit_and_replay,
+    check_neura_submit_stale_seq_conflict,
+    check_neura_submit_unsupported_no_event,
+    check_neura_submit_rejected_zero_escape,
+    check_action_settle_commit_source_default_player,
     check_api_state_view,
     check_api_events_incremental,
     check_api_events_across_archives,
