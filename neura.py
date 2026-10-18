@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""neura —— NEURA 内核（M11-N1 骨架 + M11-N2 硬约束 + M11-N3 评分选计划；全部纯函数）。
+"""neura —— NEURA 内核（M11-N1 骨架 + N2 硬约束 + N3 评分选计划 + N4 知识边界；纯函数）。
 
 本模块实现 `NEURA-DESIGN.md` §4.2（运行时字段表）、§5.2 / §5.2.1（硬约束与
 `view` 形状）、§9.1–§9.2（模块与 `blocks.neura` 不透明块）、§11 N1 与 §11 N2：
@@ -18,7 +18,14 @@
   资源 / 法律 / 知识五道闸，拒单带固定错误码（N2）；
 - `score_options()` / `choose()` / `decide()` / `to_proposal()` /
   `idempotency_key()`：**需求评分 → 计划选择 → 决策记录 → M8 提案**（N3，§5.3 /
-  §5.4 / §5.6），评分逐需求留 `terms` 供手工复算。
+  §5.4 / §5.6），评分逐需求留 `terms` 供手工复算；
+- `select_context()` / `build_candidate_body()` / `learn()` / `supersede()` /
+  `resolve_claim()`：**知识边界**（N4，§6）——五类 claim 分离、**唯一**上下文收口、
+  修正链（不删旧 id），以及全文件**唯一**拼 `messages` 的入口。
+
+> N4 的 `purpose` 取 `decide` / `narrate` / `react`（Issue #357 正文的口径）；
+> §6.2 的示例写的是 `decide` / `dialogue` / `memory_summary`，两处命名不同、
+> 语义同源（都要「这个 NPC 知道什么」）。实现以实现单为准，差异记在 PR 说明里。
 
 块形状（§4.1 / §9.2 / §5.8）::
 
@@ -1590,3 +1597,565 @@ def _digest(*parts):
 def _sha256(text):
     """§5.6 的幂等键就是 `sha256(<原始串>)` 的前缀，单独一个口子便于对照。"""
     return hashlib.sha256(_text(text).encode("utf-8")).hexdigest()
+
+
+# --------------------------------------------------------------------------
+# §6 / §11 N4 知识边界：五类 claim + 唯一收口 + 修正链（M11-N4）
+#
+# 分工（§6.2 / §12.1 P1）：
+#   select_context()      **唯一**上下文收口——AI 只看这里，别处不再挑字段；
+#   build_candidate_body  全文件**唯一**拼 `messages` 的地方（role 键只此一处）；
+#   learn()              写入 / 合并一条认知（同 id 同命题才合并，别的都新建）；
+#   supersede()          修正链：旧 claim 置 disproved + superseded_by，**不删**；
+#   resolve_claim()      旧 id 仍可解析（§6.4，「他曾经这么以为」要答得出来）。
+#
+# NEURA **不产出**玩家可见文本（P1）：这里只把「这个人知道什么」投影成结构。
+# 五类分离的落地只有一句话：`world_facts` 投影只收 `cls == "fact"` 且
+# `visibility == "public"` 的项；`belief` / `rumor` / `inference` / `secret` 一律不收。
+# --------------------------------------------------------------------------
+
+# §6.1 的五类（顺序固定，测试与文档逐字对应）。
+CLAIM_CLASSES = ("fact", "belief", "rumor", "inference", "secret")
+
+# §6.1 硬规矩 1：这四类**永不**进 `world_facts` 投影（只有 fact 是）。
+CLAIM_CLASSES_NEVER_WORLD_FACT = ("belief", "rumor", "inference", "secret")
+
+# §6.1 / §6.4：claim 只有「有效」与「被推翻」两态；disproved 不删除、id 不复用。
+CLAIM_STATUSES = ("active", "disproved")
+
+# Issue #357：purpose 三值（见模块 docstring 的命名差异说明）。
+PURPOSES = ("decide", "narrate", "react")
+
+# 三值各自的**固定**字段集（不多不少；测试用集合相等断言）。
+# `plan` 缺计划时为 `None`——块里「plan 键不存在」是落盘口径，上下文里必须有键。
+CONTEXT_FIELDS = {
+    "decide": ("purpose", "npc_id", "now_minute", "claims", "world_facts",
+               "secret_flags", "goals", "plan"),
+    "narrate": ("purpose", "npc_id", "now_minute", "claims", "world_facts",
+                "secret_flags", "location", "memory"),
+    "react": ("purpose", "npc_id", "now_minute", "claims", "world_facts",
+              "secret_flags", "needs", "relations", "memory"),
+}
+
+# §4.3：记忆摘要在上下文里只带最近若干条（全量在 `npc["memory"]`，上限另由裁剪管）。
+CONTEXT_MEMORY_LIMIT = 8
+
+# `messages` 的两条角色（顺序固定：先指令、后上下文）。
+CONTEXT_MESSAGE_ROLES = ("system", "user")
+
+CONFIDENCE_MIN, CONFIDENCE_MAX = 0, 100
+FACT_CONFIDENCE = 100        # §6.1 硬规矩 3：fact 的 confidence 恒为 100
+MEMORY_SUMMARY_MAX = 80      # §4.3：summary 上限 80 字（按码位）
+SALIENCE_CORRECTION = 60     # §4.3：salience 由规则算；修正是一等事件，给高档
+
+# §12.1 P1：三个 purpose 的系统指令都**禁止**产出玩家可见文本。
+_SYSTEM_PROMPTS = {
+    "decide": (
+        "你是 NPC 计划评估的上下文装配口：只依据给出的上下文判断该角色"
+        "（npc_id）知道什么、想做什么，输出结构化判断。"
+        "上下文之外一律视为不知道：不补写事实，不生成玩家可见叙事。"
+    ),
+    "narrate": (
+        "你是叙事层的资料供给口：只按给出的上下文列出该角色（npc_id）"
+        "确实知道、可以提及的事实与态度。"
+        "secret_flags 只表示「存在 / 可否说」，不含秘密内容。"
+        "不写句子，不生成玩家可见文本。"
+    ),
+    "react": (
+        "你是 NPC 反应评估器：只依据给出的上下文给出该角色（npc_id）的"
+        "情绪与立场判断。不补写事实，不生成玩家可见叙事。"
+    ),
+}
+
+
+def learn(npc, claim):
+    """§6.4 写入 / 合并一条认知，返回 `{"npc", "claim", "merged"}`（**新**对象）。
+
+    - `claim` 走 `_normalize_claim`：`proposition` / `cls` / `confidence` 不合法即
+      `NeuraError`（写入口严格——脏认知不该被静默降级成另一类）；
+    - `claim_id` 缺省时由 `(cls, proposition, about_ref, source_kind)` 确定性派生：
+      **同内容同 id**，因此重复学到同一件事会合并而不是堆两条；
+    - 合并口径：`confidence` 取高、`learned_minute` 取早、`evidence_refs` 取并集；
+      命题或类别不一致却共用 id → `NeuraError`（id 不复用，§6.4）；
+    - 同 id 的旧记录已是 `disproved` → `NeuraError`：修正过的认知不复活，
+      新的认知请用新 id（`supersede` 也是这个口径）。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    normalized = _normalize_claim(claim, npc)
+
+    written = _clone(npc)
+    knowledge = written.get("knowledge")
+    if not isinstance(knowledge, list):
+        knowledge = []
+        written["knowledge"] = knowledge
+
+    index = _claim_index(knowledge, normalized["claim_id"])
+    merged = False
+    if index is None:
+        knowledge.append(normalized)
+        stored = normalized
+    elif _text(knowledge[index].get("status")) != "active":
+        raise NeuraError(
+            "learn：claim_id=%r 已被推翻（status=%r），id 不复用（§6.4）"
+            % (normalized["claim_id"], knowledge[index].get("status")))
+    else:
+        stored = _merge_claim(knowledge[index], normalized)
+        knowledge[index] = stored
+        merged = True
+
+    knowledge.sort(key=lambda item: (_count(item.get("learned_minute")),
+                                     _text(item.get("claim_id"))))
+    return {"npc": written, "claim": _clone(stored), "merged": merged}
+
+
+def supersede(npc, old_claim_id, new_claim, *, reason):
+    """§6.4 修正链：旧 claim → `disproved` + `superseded_by`，并写一条 correction 记忆。
+
+    返回 `{"npc", "old_claim", "new_claim", "memory"}`（**新**对象）：
+
+    - 旧 claim **不删**、`claim_id` 不改——`resolve_claim()` 仍能取到它，
+      历史 `journal` 里的引用重放时不会断；
+    - `reason` 落到 correction 记忆的 `summary`（≤ 80 码位）；claim 上只加
+      `superseded_by` 一个字段，不把理由塞进命题（§6.1：不原地改文本）；
+    - 旧 id 不存在 / 已是被推翻态 / 新旧同 id → `NeuraError`（都是调用方错误）。
+    """
+    if not isinstance(old_claim_id, str) or not old_claim_id.strip():
+        raise NeuraError("supersede：old_claim_id 非法（%r）" % (old_claim_id,))
+    npc = npc if isinstance(npc, dict) else {}
+    normalized = _normalize_claim(new_claim, npc)
+
+    written = _clone(npc)
+    knowledge = written.get("knowledge")
+    if not isinstance(knowledge, list):
+        knowledge = []
+        written["knowledge"] = knowledge
+
+    index = _claim_index(knowledge, old_claim_id)
+    if index is None:
+        raise NeuraError("supersede：找不到 claim_id=%r（旧 id 应可解析，§6.4）"
+                         % (old_claim_id,))
+    if _text(knowledge[index].get("status")) != "active":
+        raise NeuraError("supersede：claim_id=%r 已是 %r，不能再次修正"
+                         % (old_claim_id, knowledge[index].get("status")))
+    if normalized["claim_id"] == old_claim_id:
+        raise NeuraError("supersede：新旧 claim_id 相同（%r），id 不复用" % (old_claim_id,))
+    if _claim_index(knowledge, normalized["claim_id"]) is not None:
+        raise NeuraError("supersede：新 claim_id=%r 已存在，修正应产生新认知"
+                         % (normalized["claim_id"],))
+
+    old_claim = knowledge[index]
+    old_claim["status"] = "disproved"
+    old_claim["superseded_by"] = normalized["claim_id"]
+    knowledge.append(normalized)
+    knowledge.sort(key=lambda item: (_count(item.get("learned_minute")),
+                                     _text(item.get("claim_id"))))
+
+    memory = _correction_memory(written, old_claim_id, normalized, reason)
+    entries = written.get("memory")
+    if not isinstance(entries, list):
+        entries = []
+        written["memory"] = entries
+    entries.append(memory)
+
+    return {
+        "npc": written,
+        "old_claim": _clone(old_claim),
+        "new_claim": _clone(normalized),
+        "memory": _clone(memory),
+    }
+
+
+def resolve_claim(npc, claim_id):
+    """§6.4：按 id 解析一条认知（**含已推翻的**）；查不到返回 `None`。
+
+    这是「旧 id 仍可解析」的公开口子——修正链只改 `status` / `superseded_by`，
+    从不删记录，所以历史决策记录里的 `claim_id` 永远重放得出来。
+    """
+    npc = npc if isinstance(npc, dict) else {}
+    knowledge = npc.get("knowledge")
+    if not isinstance(knowledge, list):
+        return None
+    index = _claim_index(knowledge, claim_id)
+    return None if index is None else _clone(knowledge[index])
+
+
+def select_context(npc, view, *, purpose):
+    """§6.2 **唯一**上下文收口：AI 看到的最后一份结构，由这里决定。
+
+    `purpose ∈ PURPOSES`，三值的字段集由 `CONTEXT_FIELDS` **固定**（不多不少）。
+    保证（逐条对应 Issue #357 的硬约束）：
+
+    1. `claims` 只含该 NPC 自己 `status == "active"` 的认知；带 `holder_id` 且不等于
+       本人 id 的记录视为脏数据，**不投影**（不把别人的认知当成自己的）；
+    2. `world_facts` 只收 `cls == "fact"` 且 `visibility == "public"` 的项——
+       `belief` / `rumor` / `inference` / `secret` **永不**进入（§6.1 硬规矩 1）；
+    3. `secret_flags` 只有 `secret_id` / `known` / `may_reveal` 三个键：
+       秘密只以「存在 / 可否说」的形状出现，**不带** `proposition`、`reveal_conditions`；
+    4. `view` 里没有的东西就是不知道——不读盘、不联网、不推断。
+    """
+    if purpose not in PURPOSES:
+        raise NeuraError("select_context：purpose 非法（%r），须为 %s"
+                         % (purpose, " / ".join(PURPOSES)))
+
+    npc = npc if isinstance(npc, dict) else {}
+    view = view if isinstance(view, dict) else {}
+    npc_id = _npc_id(npc)
+
+    parts = {
+        "purpose": purpose,
+        "npc_id": npc_id,
+        "now_minute": _now_of(view, npc),
+        "claims": _context_claims(npc, npc_id),
+        "world_facts": _context_world_facts(view),
+        "secret_flags": _context_secret_flags(npc, npc_id),
+        "goals": _context_goals(npc),
+        "plan": _context_plan(npc),
+        "location": _context_location(npc),
+        "needs": _context_needs(npc),
+        "relations": _context_relations(npc),
+        "memory": _context_memory(npc),
+    }
+    # 按 `CONTEXT_FIELDS` 取键：字段集与顺序都由那张表决定，调用方无法多加。
+    return {key: parts[key] for key in CONTEXT_FIELDS[purpose]}
+
+
+def build_candidate_body(context):
+    """§6.2 全文件**唯一**拼 `messages` 的地方（role 键只在此处出现一次）。
+
+    返回 `{"purpose", "npc_id", "messages"}`；`messages` 固定两条：
+    `system`（该 purpose 的边界指令，P1：不许产出玩家可见文本）与
+    `user`（`select_context()` 的产物，确定性序列化成文本）。
+
+    `purpose` 不合法 → `NeuraError`：这是收口前的一道硬门，不认识的口径不许拼词。
+    序列化自己走 `_stable_text`（键序固定）——不 import `json`，保持 §9.1 的依赖面，
+    同样的上下文永远拼出同样的字节。
+    """
+    context = context if isinstance(context, dict) else {}
+    purpose = context.get("purpose")
+    if purpose not in PURPOSES:
+        raise NeuraError("build_candidate_body：purpose 非法（%r），须为 %s"
+                         % (purpose, " / ".join(PURPOSES)))
+
+    system = _SYSTEM_PROMPTS[purpose]
+    user = "上下文（只读；不在其中的即视为不知道）：\n" + _stable_text(context)
+    return {
+        "purpose": purpose,
+        "npc_id": _text(context.get("npc_id")),
+        "messages": [{"role": role, "content": text}
+                     for role, text in zip(CONTEXT_MESSAGE_ROLES, (system, user))],
+    }
+
+
+# --------------------------------------------------------------------------
+# N4 的内部工具（纯函数：只读入参、返回新对象、不猜缺失）
+# --------------------------------------------------------------------------
+
+def _claim_index(knowledge, claim_id):
+    """在 `knowledge` 里定位 `claim_id`；返回下标或 `None`（不删、不去重）。"""
+    target = _text(claim_id)
+    if not target:
+        return None
+    for index, item in enumerate(knowledge):
+        if isinstance(item, dict) and _text(item.get("claim_id")) == target:
+            return index
+    return None
+
+
+def _normalize_claim(claim, npc):
+    """写入口的 claim 规范化（**严格**：非法即 `NeuraError`）。
+
+    与读路径（`_context_claims`）的容错不同：写错一条认知会被决策与叙事长期引用，
+    静默降级比报错更难查。
+    """
+    if not isinstance(claim, dict):
+        raise NeuraError("claim 必须是对象（%s）" % type(claim).__name__)
+
+    proposition = claim.get("proposition")
+    if not isinstance(proposition, str) or not proposition.strip():
+        raise NeuraError("claim.proposition 缺失或为空")
+
+    cls = claim.get("cls")
+    if cls not in CLAIM_CLASSES:
+        raise NeuraError("claim.cls 非法（%r），须为 %s"
+                         % (cls, " / ".join(CLAIM_CLASSES)))
+
+    status = claim.get("status", "active")
+    if status != "active":
+        raise NeuraError(
+            "learn 只写入 status=\"active\" 的认知（%r）；修正旧认知走 supersede"
+            % (status,))
+
+    if cls == "fact":
+        confidence = FACT_CONFIDENCE      # §6.1 硬规矩 3：不采信调用方给的 99
+    else:
+        confidence = claim.get("confidence")
+        if not _is_int(confidence) or not CONFIDENCE_MIN <= confidence <= CONFIDENCE_MAX:
+            raise NeuraError("claim.confidence 非法（%r），须为 %d..%d 的整数"
+                             % (confidence, CONFIDENCE_MIN, CONFIDENCE_MAX))
+
+    learned = claim.get("learned_minute")
+    if not _is_int(learned) or learned < 0:
+        learned = _count(npc.get("last_tick_minute"))
+
+    claim_id = _text(claim.get("claim_id"))
+    if not claim_id:
+        claim_id = "cl-" + _digest("neura.claim", cls, proposition,
+                                   _text(claim.get("about_ref")),
+                                   _text(claim.get("source_kind")))[:8]
+
+    return {
+        "claim_id": claim_id,
+        "cls": cls,
+        "proposition": proposition,
+        "about_ref": _text(claim.get("about_ref")) or None,
+        "source_kind": _text(claim.get("source_kind")),
+        "source_ref": _text(claim.get("source_ref")) or None,
+        "confidence": confidence,
+        "learned_minute": learned,
+        "evidence_refs": sorted(set(_string_list(claim.get("evidence_refs")))),
+        "status": "active",
+    }
+
+
+def _merge_claim(old, new):
+    """同一 claim 再学一次：置信取高、时间取早、证据取并集（命题必须一致）。"""
+    if _text(old.get("proposition")) != new["proposition"] \
+            or old.get("cls") != new["cls"]:
+        raise NeuraError(
+            "同 claim_id=%r 却是不同命题 / 类别：id 不复用（§6.4）"
+            % (new["claim_id"],))
+    merged = _clone(old)
+    merged["confidence"] = max(_claim_confidence(old), new["confidence"])
+    merged["learned_minute"] = min(_count(old.get("learned_minute")),
+                                   new["learned_minute"])
+    merged["evidence_refs"] = sorted(
+        set(_string_list(old.get("evidence_refs")))
+        | set(new["evidence_refs"]))
+    for key in ("about_ref", "source_kind", "source_ref"):
+        if not merged.get(key):
+            merged[key] = new[key]
+    merged["status"] = "active"
+    return merged
+
+
+def _claim_confidence(claim):
+    """读路径的置信：缺失 / 非法按 0（宁低不高，不替数据壮胆）。"""
+    cls = claim.get("cls")
+    if cls == "fact":
+        return FACT_CONFIDENCE
+    value = claim.get("confidence")
+    if _is_int(value) and CONFIDENCE_MIN <= value <= CONFIDENCE_MAX:
+        return value
+    return 0
+
+
+def _correction_memory(npc, old_claim_id, new_claim, reason):
+    """§6.4 的 correction 记忆：只存摘要与两侧 claim 引用，不存命题原文。"""
+    minute = new_claim["learned_minute"]
+    npc_id = _npc_id(npc)
+    summary = _text(reason)
+    memory = {
+        "memory_id": "mem-" + _digest("neura.memory", npc_id, minute,
+                                      old_claim_id, new_claim["claim_id"])[:8],
+        "minute": minute,
+        "kind": "correction",
+        "summary": summary[:MEMORY_SUMMARY_MAX],
+        "participants": [npc_id] if npc_id else [],
+        "salience": SALIENCE_CORRECTION,
+        "claim_refs": [old_claim_id, new_claim["claim_id"]],
+    }
+    if len(summary) > MEMORY_SUMMARY_MAX:      # §4.3：截断要显式标出来
+        memory["truncated"] = True
+    return memory
+
+
+def _context_claims(npc, npc_id):
+    """只投影本人 `active` 的 claim（读路径容错：形状不对就跳过，不猜）。"""
+    claims = []
+    knowledge = npc.get("knowledge")
+    if not isinstance(knowledge, list):
+        return claims
+    for raw in knowledge:
+        if not isinstance(raw, dict) or raw.get("status") != "active":
+            continue
+        cls = raw.get("cls")
+        if cls not in CLAIM_CLASSES:
+            continue                      # 五类之外不投影（宁漏不猜）
+        holder = raw.get("holder_id")
+        if isinstance(holder, str) and holder and holder != npc_id:
+            continue                      # 别人的认知不是我的认知
+        proposition = _text(raw.get("proposition"))
+        if not proposition:
+            continue
+        claims.append({
+            "claim_id": _text(raw.get("claim_id")),
+            "cls": cls,
+            "proposition": proposition,
+            "about_ref": _text(raw.get("about_ref")) or None,
+            "source_kind": _text(raw.get("source_kind")),
+            "confidence": _claim_confidence(raw),
+            "learned_minute": _count(raw.get("learned_minute")),
+            "evidence_refs": sorted(set(_string_list(raw.get("evidence_refs")))),
+            "status": "active",
+        })
+    claims.sort(key=lambda item: (item["claim_id"], item["cls"]))
+    return claims
+
+
+def _context_world_facts(view):
+    """§6.1 硬规矩 1 的落地：只收 `fact` + `public`，其余四类一律不投影。
+
+    `view.world_facts` 的形状按 §5.2.1（`{id: {"proposition", "visibility"}}`，
+    容器本身「仅公开事实」），所以**缺 `cls` 按 `fact`**；但一旦显式标了
+    `belief` / `rumor` / `inference` / `secret`，哪怕 `visibility == "public"`
+    也不收——宁可少给一条，不把「某人以为」当成「世界是」。输出键 `fact_id`
+    就是 §5.2.1 的那个 id（`claim_id`），不复制文本之外的东西。
+    """
+    raw = view.get("world_facts")
+    items = []
+    if isinstance(raw, dict):
+        pairs = sorted(raw.items(), key=lambda pair: str(pair[0]))
+    elif isinstance(raw, list):
+        pairs = [(entry.get("fact_id", ""), entry)
+                 for entry in raw if isinstance(entry, dict)]
+    else:
+        return items
+
+    for fact_id, entry in pairs:
+        if not isinstance(entry, dict):
+            continue
+        if _text(entry.get("visibility")) != "public":
+            continue
+        if _text(entry.get("cls"), "fact") != "fact":
+            continue
+        proposition = _text(entry.get("proposition")) or _text(entry.get("text"))
+        if not proposition:
+            continue
+        items.append({"fact_id": _text(fact_id), "proposition": proposition})
+    items.sort(key=lambda item: item["fact_id"])
+    return items
+
+
+def _context_secret_flags(npc, npc_id):
+    """秘密只以「存在 / 可否说」出现：三个键，绝无命题、绝无披露条件。"""
+    flags = []
+    secrets = npc.get("secrets")
+    if not isinstance(secrets, list):
+        return flags
+    active = _active_claim_ids(npc)
+    for raw in secrets:
+        if not isinstance(raw, dict):
+            continue
+        secret_id = _text(raw.get("secret_id"))
+        if not secret_id:
+            continue
+        claim_id = _text(raw.get("claim_id"))
+        holders = set(_string_list(raw.get("holders")))
+        flags.append({
+            "secret_id": secret_id,
+            "known": bool(claim_id) and claim_id in active,
+            "may_reveal": npc_id in holders
+                          and _text(raw.get("status"), "held") == "held",
+        })
+    flags.sort(key=lambda item: item["secret_id"])
+    return flags
+
+
+def _context_goals(npc):
+    """活跃目标（已完成的旧目标不进上下文：AI 只回答「现在想做什么」）。"""
+    goals = []
+    raw = npc.get("goals")
+    if not isinstance(raw, list):
+        return goals
+    for goal in raw:
+        if not isinstance(goal, dict) or goal.get("status") != "active":
+            continue
+        weight = goal.get("weight")
+        deadline = goal.get("deadline_minute")
+        goals.append({
+            "goal_id": _text(goal.get("goal_id")),
+            "kind": _text(goal.get("kind")),
+            "target_ref": _text(goal.get("target_ref")) or None,
+            "weight": float(weight) if _is_number(weight) else 0.0,
+            "deadline_minute": deadline if _is_int(deadline) else None,
+            "status": "active",
+        })
+    goals.sort(key=lambda item: item["goal_id"])
+    return goals
+
+
+def _context_plan(npc):
+    """当前计划：没有时给 `None`（键必须存在——字段集固定）。"""
+    plan = npc.get("plan")
+    return _clone(plan) if isinstance(plan, dict) and plan else None
+
+
+def _context_location(npc):
+    location = npc.get("location")
+    if not isinstance(location, dict):
+        return {"place_id": "", "since_minute": 0, "band_to_party": "same"}
+    return {
+        "place_id": _text(location.get("place_id")),
+        "since_minute": _count(location.get("since_minute")),
+        "band_to_party": _text(location.get("band_to_party"), "same"),
+    }
+
+
+def _context_needs(npc):
+    needs = npc.get("needs")
+    return {
+        key: (needs.get(key) if isinstance(needs, dict)
+              and _is_int(needs.get(key)) else NEED_DEFAULT)
+        for key in NEED_KEYS
+    }
+
+
+def _context_relations(npc):
+    """关系是数值表（§4.2），不含任何命题文本；原样深拷贝即可。"""
+    relations = npc.get("relations")
+    if not isinstance(relations, dict):
+        return {}
+    return _clone({key: value for key, value in relations.items()
+                   if isinstance(key, str) and isinstance(value, dict)})
+
+
+def _context_memory(npc):
+    """§4.3 记忆摘要：最近 `CONTEXT_MEMORY_LIMIT` 条（按 minute + memory_id 定序）。"""
+    raw = npc.get("memory")
+    if not isinstance(raw, list):
+        return []
+    entries = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        entries.append({
+            "memory_id": _text(item.get("memory_id")) or _text(item.get("id")),
+            "minute": _count(item.get("minute")),
+            "kind": _text(item.get("kind")),
+            "summary": _text(item.get("summary")),
+            "salience": _count(item.get("salience")),
+            "claim_refs": sorted(set(_string_list(item.get("claim_refs")))),
+        })
+    entries.sort(key=lambda item: (item["minute"], item["memory_id"]))
+    return entries[-CONTEXT_MEMORY_LIMIT:]
+
+
+def _stable_text(value):
+    """确定性文本序列化（键序固定、无 `json` import，保持 §9.1 的依赖面）。
+
+    只用于拼 `build_candidate_body` 的 `user` 内容：同一份上下文永远拼出同一串，
+    「同输入同输出」在提示词层也成立；`repr` 的浮点表示稳定，故数值直接用 `repr`。
+    """
+    if isinstance(value, dict):
+        return "{" + ", ".join(
+            "%s=%s" % (key, _stable_text(value[key]))
+            for key in sorted(value, key=str)) + "}"
+    if isinstance(value, (list, tuple)):
+        return "[" + ", ".join(_stable_text(item) for item in value) + "]"
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    return _text(value)
