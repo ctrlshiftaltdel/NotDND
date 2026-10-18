@@ -321,6 +321,32 @@ def check_knowledge(npc, option, view) -> Reject | None: ...
 
 > **为什么用错误码而不是布尔**：`journal` 要能回答「他为什么没去」；布尔值回答不了（§10.3 可观测）。
 
+**形状码 `E_OPTION`（不属于业务约束）**
+
+`hard_filter` 在进五道闸**之前**先做一次 **Option 形状校验**（`neura.py:997` `_option_error`）：
+不合法的候选**不进闸**，直接记 `code = "E_OPTION"`（`neura.py:85`）后跳过，保证「每个候选都留码、不吞」。
+会被判形状非法的情形：不是对象；`option_id` / `verb` 缺失或空串；`place_id` 不是字符串；
+`minutes` 不是 `0..1440` 的整数；`tags` / `requires_claims` / `requires_place` 不是字符串表；
+`source` 不是 `"rule"` / `"ai"`；`cost` 不是对象或 `cost.coin` 非法。
+
+`E_OPTION` 是**形状码**——只表示「这个候选本身不合法」，**不是**业务约束拒绝：上表的五个固定错误码
+才是业务约束，`neura.HARD_CODES`（`neura.py:87`）**仍严格只含** `E_DISTANCE` / `E_TIME` / `E_RESOURCE` /
+`E_LAW` / `E_KNOWLEDGE` 五个。`E_LAYER_BUDGET` 同样不在 `HARD_CODES` 里——它不拒选项，只禁 AI 候选（见上表末行）。
+
+**五条语义判读**（N2 已按此写死在 `neura.py` 的 docstring / 实现里；N3 起按此实现，**不再重解**）
+
+1. **计划剩余** = `plan.until_minute − now_minute`，下界截到 `0`；**无 `plan`**（或 `until_minute` 缺失 / 非整数）**不设限**
+   （`neura.py:853` `_plan_remaining`）。
+2. **日程冲突** = 动作时间窗与该 slot **重叠**、**且**动作的 `place_id` **不在**该 slot 的地点；只对
+   `interruptible == false` 的 slot 生效——就在岗位上做的事不算冲突（`neura.py:577`–`596`）。
+3. **法律范围**：`scope_place_ids` **缺键或空表视为全域适用**（`neura.py:917` `_law_covers`）——
+   一条不留范围的禁令不该变成空文。
+4. **`threshold`**：只认 `"allow"` / `"tolerate"` 为**容忍**（比较前 `strip().lower()`，大小写与首尾空白不敏感，
+   `neura.py:923` `_law_tolerated`），容忍时降级为「高风险但可行」并标 `law_risk`；
+   **其余任何值（含缺失）一律硬禁**。
+5. **到期义务**的时间基准取 **`view["now_minute"]`**（`check_resource` 的签名里没有 `now_minute`，
+   `neura.py:649`）；`check_time` ③ 的期限判断用同一语义的时间基准（`neura.py:598`）。
+
 #### 5.2.1 `view` 的形状（由编排层注入，`neura` 不查询）
 
 ```python
@@ -337,8 +363,26 @@ view = {
   "law_source": "world"|"rules"|"none",
   "world_facts": {claim_id: {"proposition": str, "visibility": str}},  # 仅公开事实
   "action_verbs": {verb: {"tags": [str], "risk": float, "check": bool}},  # 来自规则包动作表
+  "options": [Option],                   # 候选池（Option 形状见 §5.2）；缺键 = 空池
+  "budget": {                            # 成本账本（§8.2）；缺键 = 本层不限流
+    "day": int,                          # 账本所属游戏日 = now_minute // 1440
+    "strong_calls": int,                 # 当日已用 H 层调用
+    "light_calls": int,                  # 当日已用 M 层调用
+    "tokens": int,                       # 当日已用 token（N5 接真账本；N2 不判）
+  },
 }
 ```
+
+**`options` 与 `budget` 的口径**（N2 约定，两键都由**编排层构造**、NEURA **只读**）：
+
+- **`options`（候选池）**：当轮待过滤的候选（规则候选 + 可选 AI 候选，§5.5）。NEURA 只从中挑、只标注，
+  **不回写候选池**。`view` 不是对象或**缺该键** → 一律按**空池**处理（`hard_filter` 返回
+  `{"ok": False, "options": []}`），不猜、不抛错（`neura.py:740`）。
+- **`budget`（成本账本）**：键为 `day` / `strong_calls` / `light_calls` / `tokens`（`neura.py:66`）。
+  **缺该键**（或不是对象）→ **本层不限流**，是否限流交编排层判断（`neura.py:971`）。
+  `budget.day != now_minute // 1440` 视为跨日，计数器已归零，**不判**额度用尽（§8.2）；
+  `strong_calls ≥ 6` 或 `light_calls ≥ 30` → `ai_allowed = False`，只在 `notes` 里留 `E_LAYER_BUDGET`，
+  **只禁 AI 候选、不拒规则候选**（`neura.py:980`）。
 
 **`view` 里没有的东西，NEURA 就永远不知道**——这是比「提示词里写一句不要越权」更强的保证。
 
