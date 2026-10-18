@@ -27,6 +27,12 @@
      未来 → 未绑定老档）时主题随之变化，**不重放叙事、不丢滚动位置、不动焦点**；
      显式 `modern` 与「不设属性」的计算样式逐项相同（零回归对照）。
      这条链路用真实大厅点击驱动（菜单 → 返回列表 → 点存档），不直接改 SID。
+  6. **W4 占位母题（Issue #341）**：`figure.ph` 接 `--wt-motif` / `--wt-edge`
+     （`static/css/placeholder.css`）。三主题 × 明暗的 `background-image`
+     计算值（`modern` 仍是 `none`）；`--wt-edge` 与 `::before` 叠加层同时
+     出现 / 同时缺席；现代与缺省下 `.ph` 的底色 / 边框 / 圆角 / 阴影 / 伪元素
+     等于**改动前实测基线**（零回归）；四态可见性与缺资产高度塌缩不变；
+     母题墨色 alpha ≤ .12 且叠底后位名仍 ≥ 4.5:1；≤640px 母题退化而信息不退化。
 
 明暗轴用 CDP 的 ``Emulation.setEmulatedMedia`` 模拟系统偏好，并取四种组合：
 「系统暗 · 跟随」「系统暗 · 强制明」「系统明 · 跟随」「系统明 · 强制暗」——
@@ -910,6 +916,404 @@ def _check_wiring(page):
     print("  html 计算样式（显式 modern）：%r" % (explicit.get("html"),))
 
 
+# ── W4 占位母题（Issue #341）───────────────────────────────────────────
+#
+# `--wt-motif` / `--wt-edge` 的唯一取用点是 `figure.ph`（`static/css/placeholder.css`）。
+# 这里把 W4 的验收标准变成断言：
+#
+#   · 三主题 × 明暗的 `background-image` 计算值（`modern` 必须仍是 `none`）；
+#   · `--wt-edge` 与 `::before` 叠加层**同时**出现 / 同时缺席（令牌是唯一开关，
+#     只改令牌不改映射 → 这里就红，不会静默漂移）；
+#   · 零回归：底色 / 边框 / 圆角 / 阴影 / 伪元素等于**改动前**实测基线；
+#   · 四态可见性、缺资产高度塌缩、场景卡 `empty` 仍 `display: none`；
+#   · 母题墨色 alpha ≤ .12，且叠到底色后位名仍 ≥ 4.5:1（§4.6 口径）；
+#   · 窄屏（≤640px）母题退化，位名 / 位 id 仍可读。
+#
+# 每读一格都**重建探针 DOM** 并等两帧：Windows 无头 Edge 对同一元素连续
+# 「改属性 → getComputedStyle」会拿到上一档的值（见 `_READ_JS` 上方注释），
+# 复用元素会让整张矩阵退化成同一个读数——那样的断言只会假通过。
+_MOTIF_JS = """
+window.__w4build = function () {
+  const old = document.getElementById('w4probe');
+  if (old) old.remove();
+  const host = document.createElement('div');
+  host.id = 'w4probe';
+  /* 固定定位 + 定宽：宿主不受页面 flex 布局挤压，16:9 / 1:1 的高度可对基线逐像素比。 */
+  host.style.cssText = 'position:fixed;top:0;left:0;width:320px;padding:0;margin:0;';
+  const mk = function (id, ratio, state, withImg) {
+    const f = document.createElement('figure');
+    f.className = 'ph';
+    f.id = id;
+    if (ratio) f.setAttribute('data-ratio', ratio);
+    f.setAttribute('data-state', state);
+    f.setAttribute('data-slot', 'w4probe/' + id);
+    if (withImg) {
+      const img = document.createElement('img');
+      img.alt = '';
+      img.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+      f.appendChild(img);
+    }
+    const mark = document.createElement('span');
+    mark.className = 'ph-mark';
+    mark.textContent = '场景位';
+    f.appendChild(mark);
+    const pid = document.createElement('span');
+    pid.className = 'ph-id';
+    pid.textContent = 'scene/w4probe-' + id;
+    f.appendChild(pid);
+    return f;
+  };
+  host.appendChild(mk('w4Wide', 'wide', 'empty', false));
+  host.appendChild(mk('w4Square', '', 'empty', false));
+  host.appendChild(mk('w4Ready', 'wide', 'ready', true));
+  host.appendChild(mk('w4Failed', 'wide', 'failed', true));
+  host.appendChild(mk('w4EmptyImg', 'wide', 'empty', true));
+  const card = document.createElement('div');
+  card.className = 'scene-card';
+  card.appendChild(mk('w4CardEmpty', 'wide', 'empty', false));
+  host.appendChild(card);
+  document.body.appendChild(host);
+  return 1;
+};
+window.__w4 = {};
+window.__w4.frames = async function () {
+  await new Promise(function (r) {
+    requestAnimationFrame(function () { requestAnimationFrame(r); });
+  });
+  return 1;
+};
+/* 自定义属性一律借**新建**探针元素解析成 rgb()（新建元素没有旧的计算样式缓存）。 */
+window.__w4.resolve = function (value) {
+  if (!value) return '';
+  const probe = document.createElement('span');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText = 'position:absolute;visibility:hidden;';
+  probe.style.color = value;
+  document.body.appendChild(probe);
+  const out = getComputedStyle(probe).color || '';
+  probe.remove();
+  return out;
+};
+window.__w4.read = function () {
+  const box = function (id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const cs = getComputedStyle(el);
+    const be = getComputedStyle(el, '::before');
+    const af = getComputedStyle(el, '::after');
+    const r = el.getBoundingClientRect();
+    const q = function (sel) {
+      const node = el.querySelector(sel);
+      if (!node) return null;
+      const ncs = getComputedStyle(node);
+      return { display: ncs.display, color: ncs.color, fontSize: ncs.fontSize };
+    };
+    return {
+      width: Math.round(r.width * 100) / 100,
+      height: Math.round(r.height * 100) / 100,
+      display: cs.display,
+      bgColor: cs.backgroundColor,
+      bgImage: cs.backgroundImage,
+      bgSize: cs.backgroundSize,
+      borderTop: cs.borderTopWidth + ' ' + cs.borderTopStyle + ' '
+        + cs.borderTopColor,
+      radius: cs.borderTopLeftRadius,
+      boxShadow: cs.boxShadow,
+      beforeContent: be.content,
+      beforeBgImage: be.backgroundImage,
+      beforeInset: [be.top, be.right, be.bottom, be.left].join(' '),
+      beforePointer: be.pointerEvents,
+      afterContent: af.content,
+      afterBg: af.backgroundColor,
+      mark: q('.ph-mark'),
+      id: q('.ph-id'),
+      img: q('img')
+    };
+  };
+  const root = document.documentElement;
+  const host = document.getElementById('w4probe');
+  return {
+    world: root.getAttribute('data-world'),
+    theme: root.getAttribute('data-theme'),
+    hostWidth: host ? Math.round(host.getBoundingClientRect().width * 100) / 100
+      : null,
+    tokens: {
+      edge: getComputedStyle(root).getPropertyValue('--wt-edge').trim(),
+      motif: getComputedStyle(root).getPropertyValue('--wt-motif').trim(),
+      bg2: window.__w4.resolve(
+        getComputedStyle(root).getPropertyValue('--bg-2').trim()),
+      line: window.__w4.resolve(
+        getComputedStyle(root).getPropertyValue('--line').trim()),
+      radius: getComputedStyle(root).getPropertyValue('--r').trim(),
+      text2: window.__w4.resolve(
+        getComputedStyle(root).getPropertyValue('--text-2').trim()),
+      danger: window.__w4.resolve(
+        getComputedStyle(root).getPropertyValue('--danger').trim())
+    },
+    wide: box('w4Wide'),
+    square: box('w4Square'),
+    ready: box('w4Ready'),
+    failed: box('w4Failed'),
+    emptyImg: box('w4EmptyImg'),
+    cardEmpty: box('w4CardEmpty')
+  };
+};
+return 1;
+"""
+
+# 母题期望：`modern`（及缺省）没有母题，奇幻是等高线横纹，未来是网格。
+W4_MOTIF = {
+    "modern": None,
+    "fantasy": "repeating-linear-gradient",
+    "future": "linear-gradient",
+}
+# 改动前（`master`，同一台机器 / 同一浏览器 / 同一探针）实测的 `.ph` 基线：
+# 320px 宽宿主、现代 / 系统暗。W4 之后这些值必须逐项不变。
+W4_BASELINE_DARK = {
+    "bgColor": "rgb(27, 31, 43)",               # --bg-2
+    "borderTop": "1px solid rgb(43, 49, 66)",   # 1px solid var(--line)
+    "radius": "10px",                           # var(--r)
+    "boxShadow": "none",
+    "bgImage": "none",
+    "bgSize": "auto",
+    "beforeContent": "none",
+    "beforeBgImage": "none",
+}
+W4_HEIGHTS = {"wide": 180.0, "square": 320.0, "host": 320.0}   # 16:9 / 1:1
+W4_MOTIF_ALPHA_MAX = 0.12      # §4.4：`--wt-motif-ink` 的不透明度上限
+W4_MOTIF_MIN_CONTRAST = 4.5    # §4.6：文本类组合下限
+W4_NARROW_WIDTH = 390          # ≤ 640px：母题退化的实测档
+W4_WIDE_WIDTH = 700            # > 640px：母题仍生效（证明退化由断点触发）
+
+
+def _w4_cell(page, world, theme):
+    """设 (world, theme) → 重建探针 DOM → 等两帧 → 读一格计算样式。"""
+    page.js("const r = document.documentElement;"
+            "%s %s return 1;"
+            % ("r.setAttribute('data-world', %s);" % json.dumps(world)
+               if world else "r.removeAttribute('data-world');",
+               "r.setAttribute('data-theme', %s);" % json.dumps(theme)
+               if theme else "r.removeAttribute('data-theme');"))
+    page.js("return window.__w4.frames();")
+    page.js("window.__w4build(); return 1;")
+    page.js("return window.__w4.frames();")
+    return page.js("return window.__w4.read();")
+
+
+def _motif_ink(bg_image):
+    """从母题的计算 `background-image` 里取出**有颜色**的那层墨色。
+
+    母题一律写成 `... rgba(...) 0 1px, transparent 1px 5px` 这类渐变，
+    浏览器计算值里透明层是 `rgba(0, 0, 0, 0)`，所以取第一个 alpha > 0 的颜色。
+    取不到返回 None（调用处据此判失败，不静默跳过）。
+    """
+    for chunk in re.findall(r"rgba?\([^)]*\)", bg_image or ""):
+        color = _parse_color(chunk)
+        if color and color[3] > 0:
+            return color
+    return None
+
+
+def _composite(fg, alpha, bg):
+    """把半透明墨色 fg 以 alpha 叠到不透明底色 bg 上（sRGB 直混，§4.6 同口径）。"""
+    return tuple(int(round(fg[i] * alpha + bg[i] * (1.0 - alpha)))
+                 for i in range(3))
+
+
+def _check_motif(page):
+    """验收：母题 / 边线接上令牌、零回归、四态与高度不变、窄屏退化。"""
+    print()
+    print("W4 占位母题（Issue #341）：figure.ph 接 --wt-motif / --wt-edge")
+    # 桌面视口：默认 390 会命中「窄屏母题退化」的媒体查询，读不到母题。
+    page.set_viewport(1024, 900, scale=1, mobile=False)
+    time.sleep(0.2)
+    page.js(_MOTIF_JS)
+
+    rows = {}
+    for key, _label, media, theme in APPEARANCES:
+        page.send("Emulation.setEmulatedMedia",
+                  features=[{"name": "prefers-color-scheme", "value": media}])
+        time.sleep(0.15)
+        for world_label, world_value in WORLDS:
+            rows[(key, world_label)] = _w4_cell(page, world_value, theme)
+
+    appearances = dict((key, label) for key, label, _m, _t in APPEARANCES)
+    # ── 母题 + 边线 + 零回归（逐格） ──
+    for (key, world_label), cell in rows.items():
+        label = appearances[key]
+        wide = cell["wide"]
+        expect = W4_MOTIF[world_label if world_label in W4_MOTIF else "modern"]
+        if expect is None:
+            ok = wide["bgImage"] == "none" and wide["bgSize"] == "auto"
+            detail = "background-image=%r size=%r" % (wide["bgImage"], wide["bgSize"])
+        else:
+            ok = (expect in wide["bgImage"]
+                  and wide["bgSize"]
+                  == ("12px 12px, 12px 12px" if world_label == "future" else "auto"))
+            detail = "background-image=%r size=%r" % (
+                wide["bgImage"][:80], wide["bgSize"])
+        check("W4 母题 · %s · %s：background-image %s"
+              % (label, world_label, "为 none" if expect is None else "含 " + expect),
+              ok, detail)
+
+        edge = cell["tokens"]["edge"]
+        if edge == "none":
+            ok = wide["beforeContent"] == "none" and wide["beforeBgImage"] == "none"
+            detail = "content=%r background-image=%r" % (
+                wide["beforeContent"], wide["beforeBgImage"])
+        elif edge == "orbit":
+            ok = (wide["beforeContent"] != "none"
+                  and "linear-gradient" in wide["beforeBgImage"])
+            detail = "content=%r background-image=%r" % (
+                wide["beforeContent"], wide["beforeBgImage"][:60])
+        else:
+            ok, detail = False, "未知 --wt-edge=%r（映射缺失）" % (edge,)
+        check("W4 边线 · %s · %s：--wt-edge=%s 的叠加层%s"
+              % (label, world_label, edge, "不生成" if edge == "none" else "生成"),
+              ok, detail)
+
+        tokens = cell["tokens"]
+        same = (wide["bgColor"] == tokens["bg2"]
+                and wide["borderTop"] == "1px solid " + tokens["line"]
+                and wide["radius"] == tokens["radius"]
+                and wide["boxShadow"] == "none")
+        check("W4 零回归 · %s · %s：底色 / 边框 / 圆角 / 阴影未被母题覆盖"
+              % (label, world_label), same,
+              "bg=%r/%r border=%r/%r r=%r/%r shadow=%r"
+              % (wide["bgColor"], tokens["bg2"], wide["borderTop"],
+                 "1px solid " + tokens["line"], wide["radius"],
+                 tokens["radius"], wide["boxShadow"]))
+
+    # ── 改动前基线（现代 / 系统暗，逐项 literal） ──
+    base_cell = rows[(APPEARANCES[0][0], "缺省")]
+    base_wide = base_cell["wide"]
+    diff = dict((name, (base_wide.get(name), want))
+                for name, want in W4_BASELINE_DARK.items()
+                if base_wide.get(name) != want)
+    check("W4 零回归：缺省（无 data-world）下 .ph 的 7 项计算样式 = 改动前实测基线",
+          not diff, "不一致=%r" % (diff,))
+    print("  改动前基线（缺省 / 系统暗，实测）：%r" % (W4_BASELINE_DARK,))
+    print("  改动后实测（缺省 / 系统暗）：%r"
+          % (dict((k, base_wide.get(k)) for k in W4_BASELINE_DARK),))
+
+    # ── 高度塌缩：320px 宿主里 16:9 = 180、方形 = 320（与改动前同值） ──
+    heights = dict((key, cell["wide"]["height"]) for (key, world), cell in rows.items()
+                   if world == "缺省")
+    squares = dict((key, cell["square"]["height"]) for (key, world), cell in rows.items()
+                   if world == "缺省")
+    hosts = set(cell["hostWidth"] for cell in rows.values())
+    check("W4 高度：缺资产时 wide=180 / 方形=320 / 宿主=320（与改动前逐像素相同）",
+          hosts == {W4_HEIGHTS["host"]}
+          and set(heights.values()) == {W4_HEIGHTS["wide"]}
+          and set(squares.values()) == {W4_HEIGHTS["square"]},
+          "宿主=%r wide=%r square=%r" % (sorted(hosts), heights, squares))
+
+    # ── 四态可见性 + 场景卡塌缩（全部 16 格一致） ──
+    ready_bad = [k for k, c in rows.items()
+                 if (c["ready"]["mark"] or {}).get("display") != "none"
+                 or (c["ready"]["id"] or {}).get("display") != "none"]
+    check("W4 四态：ready 藏起位名与位 id（16 格全绿）", not ready_bad,
+          "未藏起=%r" % (ready_bad,))
+    empty_bad = [k for k, c in rows.items()
+                 if (c["emptyImg"]["img"] or {}).get("display") != "none"]
+    check("W4 四态：empty 藏掉 <img>（不留破图）", not empty_bad,
+          "未藏掉=%r" % (empty_bad,))
+    failed_bad = [k for k, c in rows.items()
+                  if (c["failed"]["img"] or {}).get("display") != "none"]
+    check("W4 四态：failed 藏掉 <img>", not failed_bad, "未藏掉=%r" % (failed_bad,))
+    dot_bad = [k for k, c in rows.items()
+               if c["failed"]["afterContent"] in ("none", "normal")
+               or c["failed"]["afterBg"] != c["tokens"]["danger"]]
+    check("W4 四态：failed 仍有 --danger 失败点（::after 在且同色）", not dot_bad,
+          "缺失败点=%r" % (dot_bad[:3],))
+    card_bad = [k for k, c in rows.items() if c["cardEmpty"]["display"] != "none"]
+    check("W4 高度塌缩：场景卡内 empty 占位仍 display: none（高度收成 0）",
+          not card_bad, "未收成 0=%r" % (card_bad[:3],))
+
+    # ── 对比度：母题墨色 alpha ≤ .12，叠底后位名仍 ≥ 4.5:1 ──
+    print()
+    print("  母题墨色与位名对比度（墨色按「整层铺满」的保守口径叠到 --bg-2 上）：")
+    print("  %-20s %-8s %-42s %-8s %s"
+          % ("外观", "世界", "母题墨色", "alpha", "位名对比度"))
+    worst = None
+    alpha_bad = []
+    for (key, world_label), cell in rows.items():
+        if world_label not in ("fantasy", "future"):
+            continue
+        wide = cell["wide"]
+        ink = _motif_ink(wide["bgImage"])
+        text = _parse_color(cell["tokens"]["text2"])
+        bg = _parse_color(cell["tokens"]["bg2"])
+        if not (ink and text and bg):
+            alpha_bad.append((key, world_label, "墨色解析失败"))
+            print("  %-20s %-8s %s" % (appearances[key], world_label, "（解析失败）"))
+            continue
+        alpha = ink[3]
+        composited = _composite(ink[:3], alpha, bg[:3])
+        ratio = _contrast(text[:3], composited)
+        worst = ratio if worst is None else min(worst, ratio)
+        if alpha > W4_MOTIF_ALPHA_MAX + 1e-9:
+            alpha_bad.append((key, world_label, alpha))
+        print("  %-20s %-8s %-42s %-8.2f %.2f:1"
+              % (appearances[key], world_label,
+                 "rgb(%d, %d, %d)" % ink[:3], alpha, ratio))
+    check("W4 对比度：母题墨色 alpha ≤ %.2f（§4.4 上限，未靠提高不透明度取巧）"
+          % W4_MOTIF_ALPHA_MAX, not alpha_bad, "越界=%r" % (alpha_bad[:3],))
+    check("W4 对比度：母题叠底后位名仍 ≥ %.1f:1（明暗各验一次）"
+          % W4_MOTIF_MIN_CONTRAST,
+          worst is not None and worst >= W4_MOTIF_MIN_CONTRAST,
+          "最差=%.2f:1" % (worst if worst is not None else -1))
+
+    # ── 窄屏退化：≤640px 关掉图案，信息与几何不退化 ──
+    page.set_viewport(W4_WIDE_WIDTH, 900, scale=1, mobile=False)
+    time.sleep(0.2)
+    wide_cell = _w4_cell(page, "fantasy", "dark")
+    check("W4 窄屏：700px（> 640）时奇幻母题仍生效（退化确由断点触发）",
+          "repeating-linear-gradient" in wide_cell["wide"]["bgImage"],
+          "background-image=%r" % (wide_cell["wide"]["bgImage"][:60],))
+
+    page.set_viewport(W4_NARROW_WIDTH, 844, scale=1, mobile=True)
+    time.sleep(0.2)
+    narrow = _w4_cell(page, "fantasy", "dark")
+    check("W4 窄屏：390px（≤ 640）时母题退化（background-image: none）",
+          narrow["wide"]["bgImage"] == "none",
+          "background-image=%r" % (narrow["wide"]["bgImage"][:60],))
+    check("W4 窄屏：退化只关图案，--wt-motif 令牌本身仍在（未改令牌层）",
+          narrow["tokens"]["motif"] not in ("", "none"),
+          "--wt-motif=%r" % (narrow["tokens"]["motif"][:60],))
+    check("W4 窄屏：位名与位 id 仍可读（display 非 none、颜色与字号不变）",
+          (narrow["wide"]["mark"] or {}).get("display") != "none"
+          and (narrow["wide"]["id"] or {}).get("display") != "none"
+          and narrow["wide"]["mark"] == wide_cell["wide"]["mark"]
+          and narrow["wide"]["id"] == wide_cell["wide"]["id"],
+          "窄=%r 宽=%r" % (narrow["wide"]["mark"], wide_cell["wide"]["mark"]))
+    check("W4 窄屏：边框 / 圆角 / 高度不随退化改变",
+          narrow["wide"]["borderTop"] == wide_cell["wide"]["borderTop"]
+          and narrow["wide"]["radius"] == wide_cell["wide"]["radius"]
+          and narrow["wide"]["height"] == wide_cell["wide"]["height"] == 180.0,
+          "窄=%r/%r/%r" % (narrow["wide"]["borderTop"],
+                           narrow["wide"]["radius"], narrow["wide"]["height"]))
+
+    # 叠加层真的生成时（未来主题）也不吃鼠标、不改几何：绝对定位在内缘。
+    edge_cell = rows[(APPEARANCES[0][0], "future")]["wide"]
+    check("W4 边线：叠加层不吃鼠标（pointer-events: none）且不进布局（inset: 0）",
+          edge_cell["beforePointer"] == "none"
+          and edge_cell["beforeInset"] == "0px 0px 0px 0px",
+          "pointer-events=%r inset=%r"
+          % (edge_cell["beforePointer"], edge_cell["beforeInset"]))
+
+    # 收尾：撤掉探针 DOM、属性与设备模拟，不把页面留给后续用例。
+    page.js("const h = document.getElementById('w4probe'); if (h) h.remove();"
+            "const r = document.documentElement;"
+            "r.removeAttribute('data-world'); r.removeAttribute('data-theme');"
+            "return 1;")
+    page.set_viewport(390, 844)
+    try:
+        page.send("Emulation.setEmulatedMedia", features=[])
+    except RuntimeError:
+        pass
+
+
 def _run_checks():
     """真实跑一遍（前置已确认齐备）；返回进程退出码。"""
     if _mandatory():
@@ -952,6 +1356,7 @@ def _run_checks():
             print()
             _print_tables(matrix, accent_table)
             _check_wiring(page)
+            _check_motif(page)
         finally:
             _close_page(page)
 
