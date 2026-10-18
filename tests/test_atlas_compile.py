@@ -506,6 +506,26 @@ def test_compiler_source_has_no_world_keys():
         assert key not in source, "编译器源码不得包含世界 key: %s" % key
 
 
+def test_synthesized_world_bridge_keyerror_regression():
+    """Issue #386 回归：合成世界（fantasy / region / seed=7）地面触碰图
+    断连需补桥时，_bridge_components 用 cells_by_rid 的 full id 键去查以
+    short rid 为键的 placed / analysis，曾 KeyError 崩溃。修复后编译通过、
+    补桥结构合法，且 validate_atlas C1–C4 零 error（只读调用）。"""
+    import worldgen
+    templates = {key: WORLDS[key] for key in (W_TH, W_EF, W_EN)}
+    spec = worldgen.normalize_spec({
+        "world_type": "fantasy", "engine": "tactics", "scale": "region",
+    })
+    base = worldgen.choose_base(spec, templates=templates)
+    world = worldgen.synthesize(spec, base, seed=7)
+    atlas = ac.compile_world(world, LEXICON, seed=7)  # 原崩溃路径
+    assert atlas["world_key"] == world["world"]["key"]
+    issues = worldgen.validate_atlas(
+        atlas, world=world, checks=worldgen.ATLAS_CHECKS_POST_COMPILE)
+    errors = [i for i in issues if i.get("level") == "error"]
+    assert not errors, errors
+
+
 CHECKS = [
     test_lexicon_shape_and_no_source,
     test_threshold_settlement_and_bands,
@@ -531,6 +551,7 @@ CHECKS = [
     test_scan_range_excludes_forbidden_fields,
     test_setting_rev_stable,
     test_compiler_source_has_no_world_keys,
+    test_synthesized_world_bridge_keyerror_regression,
 ]
 
 

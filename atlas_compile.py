@@ -773,6 +773,15 @@ def _bridge_components(atlas, key, surface_id, analysis, placed,
         return groups
 
     groups = components()
+
+    def _lookup(table, rid):
+        # components() 产出 cells_by_rid 的键形态（full id），而 placed /
+        # analysis 原生以 short rid 为键；补桥 fill 则以 full id 在三个
+        # 表里一致登记。查表前按键形态归一（Issue #386）。
+        if rid in table:
+            return table[rid]
+        return table[rid.rsplit("/", 1)[1]]
+
     while len(groups) > 1:
         # 找锚点距离最近的两块（确定性）
         best = None
@@ -780,7 +789,7 @@ def _bridge_components(atlas, key, surface_id, analysis, placed,
             for group_b in groups[i + 1:]:
                 for ra in group_a:
                     for rb in group_b:
-                        pa, pb = placed[ra], placed[rb]
+                        pa, pb = _lookup(placed, ra), _lookup(placed, rb)
                         dist = max(abs(pa[0] - pb[0]), abs(pa[1] - pb[1]))
                         cand = (dist, ra, rb)
                         if best is None or cand < best:
@@ -789,7 +798,8 @@ def _bridge_components(atlas, key, surface_id, analysis, placed,
         fill_anchor = _find_bridge_cell(occupied, cells_by_rid[ra],
                                         cells_by_rid[rb])
         if fill_anchor is not None:
-            shared = analysis[ra]["traits"] & analysis[rb]["traits"]
+            shared = (_lookup(analysis, ra)["traits"]
+                      & _lookup(analysis, rb)["traits"])
             fill_traits = sorted(shared & {"barrier", "wilderness",
                                            "settlement", "water"})
             fill_id = "%s/g%d_%d_0" % (key, fill_anchor[0], fill_anchor[1])
