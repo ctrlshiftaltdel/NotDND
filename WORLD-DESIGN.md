@@ -561,3 +561,154 @@ Project: {
 - **PRISM 检定**：工程是否需要掷骰（质量检定 / 事故风险）——首版**不掷**（确定性推进），
   事故类风险留给事件钩子（§12 P7）；需要掷时走既有 PRISM 入口，不为工程开新骰点通道
   （§1.2 与 `NEURA-DESIGN.md` §12.1 P2 同款克制）。
+
+---
+
+## 8. 与 NEURA · CHRON · STATE 的挂接（M11 移交项逐项接住）
+
+> 本章是 Issue #376「M11 移交项 4 类逐项有落点」的验收章；另收两项随迁（PR #371
+> 「没做什么」里的种群初始化与 `travel_minutes`——同为「M12 世界事实投影」承诺的一部分）。
+
+### 8.1 `laws` schema（移交 ①，`NEURA-DESIGN.md` §12.1 P8）
+
+- **数据落点**：`world.module` 顶层新增 `laws` 数组（V9）。条目形状**逐字段对齐
+  `neura._laws` 的消费契约**（`neura.py:111` 的两个容忍值 + `_law_hit_tags` / `_law_covers`
+  / `_law_tolerated` 读取的字段）：
+
+  ```
+  laws: [{
+    id,                      # entity_id（common.schema.json $defs）
+    name,                    # 展示名
+    forbid_tags: [str],      # 命中标签（neura._law_hit_tags）
+    scope_place_ids: [str],  # 空/缺 = 全域（neura._law_covers 的口径，不得改语义）
+    threshold,               # "forbid"（硬禁，默认）| "tolerate" | "allow"
+                             #   —— neura.py:111 只认 allow/tolerate 两个「容忍」值，其余一律硬禁
+    penalty,                 # 展示/叙事用字符串；neura 不消费
+    source                   # docs 引用（validate_data 既有纪律）
+  }]
+  ```
+
+- **`law_source` 的取值链**：世界模组带 `laws` → `view.laws = [...], law_source = "world"`；
+  规则包将来自带法律 → `"rules"`（`LAW_DECLARED_SOURCES` 已预留，本期不实现）；
+  都没有 → `[]` + `"none"`（P8 的「空表不拒」不变）。**neura.py 对 laws 的判定逻辑零改动**
+  ——schema 定义在数据侧，消费侧 M11 已定型。
+- **规则包联动**：`system.economy` / `system.stronghold` 是 PRISM 数值口径，不含法律；
+  法律只属世界（世界包作者的建模责任）。生成世界的 `laws_req`（§4.2）由 `synthesize`
+  确定性展开成上述条目。
+- **schema 落点**：`data/schema/world.schema.json` 加 `laws` 属性 + `$defs.law`；
+  现有三世界 JSON **不加 laws 字段**（可选属性，缺失 = 无法律 = 现行为）——W8 数据片。
+
+### 8.2 view 注入键数据源（移交 ②，PR #364 裁定 4/5）
+
+`notdnd_web.py:2997` `_neura_view` 里写死的五个空键，由**世界事实投影**（V10）供数。
+投影是纯函数：`world.projection(readonly_session_state) -> dict`，输入只有只读状态
+（规则块 / 剧本数据 / atlas / neura 块 / `blocks.world`），**不 import 业务模块、不触发
+懒编译**（`_neura_view` 既有纪律）：
+
+| view 键 | 数据源 | 投影规则 |
+|---|---|---|
+| `known_refs` | 线索 / 知识事件（state 事件日志的 `clue.*` / 剧本 `clues[].id`） | 玩家已获知的线索 id 集 = 事件日志中 `visibility` 对玩家开放且 `kind="clue"` 的目标集；缺事件日志（过渡档）→ 剧本 `clues` 全集降级 |
+| `main_thread_refs` | 剧本 `threads`（`scenario.schema.json`） | 主线 thread 涉及的 npc_id 集（thread 的参与人字段展开）；无 threads → 空 |
+| `faction_refs` | `world.module.factions` + NPC 静态档案 `faction` 字段 | 有 faction 归属的 npc_id 集（P10 公式第三项的输入） |
+| `importance_overrides` | `blocks.world.facts` 里 `kind="importance_override"` 的条目（世界作者 / 生成器显式给 0 或非默认值——PR #364 裁定 5 的「显式 0 须由覆盖表表达」） | `{npc_id: float}`，生成世界由 `roster` 写入，预制世界由手写 facts 表给 |
+| `travel_minutes` | `atlas.range_band` × 行程档 | band → 分钟映射**复用 `notdnd_web.py` 既有 `BAND_HOURS` 口径换算**（不定义新时间常数，`CHRON-DESIGN.md` §2.3）；只对「块内地点 × 队伍地点」求值（同 `_neura_view` 现有 bands 的范围纪律）；`dangerous` 档给均值并标注风险由 PRISM 结算 |
+| `world_facts` | `blocks.world.facts`（§6.1） | 投影成 `{subject_ref: [fact]}`；**法律事实**也走这里（laws 的运行时可见面） |
+
+- **注入方式**：`_neura_view` 在构造 view 后调用投影并**覆盖**那五个缺省空键；投影抛错 /
+  `blocks.world` 缺失 → 捕获、保持空键（M11 行为逐字节不变）——与 `neura_skipped` 同款
+  失败隔离。
+- **`world.facts` 的写入**：只有三条路——生成期（roster 的 importance_overrides）、
+  M8 结算过的世界事件（如「粮仓失火」）、玩家可见的重大转折（经提案）；**AI 文本不得
+  直接进 facts**（`GDD.md` §5.2「AI 文本 ≠ 事实」）。
+
+### 8.3 unexplored 个体生成与人口摘要（移交 ③，`neura.py:2310` / PR #371 裁定 5）
+
+- **触发**：编排层在 `ensure_atlas` 首次进入某 site 帧时（既有懒编译点，`notdnd_web.py:1805`），
+  对该地点调用 `worldgen.individuals(place_id, *, seed, count_hint) -> [npc]`——**按需、
+  每地点一次**（生成结果记入 `blocks.world.population`，重复进入不重生成）。
+- **形状**：产物必须过 `scenario.schema.json` `$defs.npc`（不发明字段）；结构字段
+  （role / faction / schedule 骨架 / needs 初值）由种子确定性合成；**模型只润色 name /
+  drive 文本**（可选端口，同 §4.3 三级来源）；生成后走 §8.5 的导入路径进 `blocks.neura.npcs`，
+  层判定（`neura.py:2310`）自然把它们从 `unexplored` 升入 background/near。
+- **人口摘要信号**（接收方从此存在）：日切（§6.3）对「玩家当前地点 + 相邻」的未具名
+  人群聚合出 `population.summaries` 条目（`{place_id, headcount_band, minute, note_ref}`，
+  `headcount_band` 是档位不是精确数——减少假精度）；**个体生成与摘要互不触发**（摘要
+  是「有多少人」，个体是「这个人是谁」）。
+- **预算**：单地点个体数 ≤ `count_hint`（由 scale 默认表给，`sketch` 2–3 人 / `region` 3–6
+  / `domain` 4–8）；累计具名 NPC 不得突破 §4.5 的规模上限——超限只出摘要、不再生成个体
+  （可解释：预览卡与摘要里都写明「该地点人群未具名化」）。
+
+### 8.4 事件触发的远场重判（移交 ④，PR #371 裁定 4）
+
+- **匹配语义**（该裁定点名的缺口）：投影函数 `world.match_event(event, readonly) -> [npc_id]`——
+  事件命中某 NPC 当且仅当满足其一：
+  1. 事件的 `place_id` == 该 NPC `location.place_id` 或其 schedule 的 slot 地点；
+  2. 事件 `target/subject` 引用该 NPC、其所属 faction、或其 active goal 的 `target_ref`；
+  3. 事件被 `world.facts` 标记为该 NPC 所在势力级事件。
+  只匹配 `important_far` 层候选（near 层本来每 tick 判；background 不值得为它付重判）。
+- **预算载体**：`blocks.world.rejudge = {day, counts: {npc_id: n}}`（§6.1）；同日同一 NPC
+  计数 ≥ 4（`REJUDGE_DAILY_CAP` 常量）即不再注入——**「同日 ≤ 4 次」由结构保证**，
+  计数跨日随 `day` 归零。预算变更随触发它的动作事件落盘（不开独立事件，A0）。
+- **注入通道**：编排层在相关动作事件提交后、下一个 `_chron_advance` 停点上，把
+  `match_event` 的结果经 `view.force_due_ids` 传给 `neura.tick`；**neura.py 侧的改动 =
+  读取一个缺省为空的 view 键**（`force_due_ids` 中的 id 无视层频率直接到期）——M11 行为
+  在缺键时逐字节不变（V12）。这是本里程碑对 `neura.py` 的**唯一**改动（W7 内）。
+- **与补算的关系**：重判**不与** `neura.catch_up` 合并——补算是「离线赶进度」（把
+  `last_tick_minute` 收敛），重判是「在线提优先级」（把本日已判过的远场提前再判一次）；
+  两者可在同一停点先后发生，但语义、幂等键、预算互不相干。
+
+### 8.5 随迁：NPC 种群初始化与 `travel_minutes`（PR #371「没做什么」两条）
+
+- **种群初始化**：`world.populate(neura_block_absent, roster_or_scenario, *, seed) -> neura_block`
+  纯函数——把静态档案（预制世界：`data/scenarios` 的 `npcs[]`；生成世界：§8.3 的 roster）
+  翻译成 `NEURA-DESIGN.md` §4.2 字段表要求的运行时块：`needs`（role 模板 + 确定性抖动）、
+  `need_weights`、`goals`、`schedule`（tod 口径 0..1439）、`importance`（P10：显式覆盖
+  优先，否则公式）、`location` 初值。**不变式照抄 §4.5**（键集 ⊆ 档案 id 集、schedule
+  slot 有序、不发明 NPC）。编排层在战役 genesis 批里写入（§4.1 P7），此后 neura 自治。
+- **`travel_minutes`**：§8.2 表内一行已给口径（`BAND_HOURS` 换算）；此处登记**边界**——
+  `travel_minutes` 只喂 NEURA 的日程移动判定（消除 PR #371 的 `E_DISTANCE` 假拦截），
+  **不改** `docs/` 行程四档的任何口径（`ATLAS-DESIGN.md` §1「不改 docs/ 规则」）。
+
+---
+
+## 9. 接口面与落点
+
+### 9.1 模块与依赖方向
+
+```
+notdnd_web.py（编排：生成会话 / _world_tick / 投影注入 / 生成预览路由）
+      │ 只调用
+      ▼
+worldgen.py ──调用──► atlas*.py（只读公开函数，零改动）
+    │  ▲
+    │  └─ port（模型端口，编排层注入；缺省 = 离线）
+world.py ──只读──► state.py（commit/view/replay 接口面，§12.1）
+    │
+    └─ 不 import：prism_core / chron / neura / atlas（一切业务输入经 view 注入）
+```
+
+- `worldgen.py` 与 `world.py` **互不 import**（生成期与运行期是两个生命周期；
+  共享的 `WorldSpec` / `Entry` 形状定义在 `worldgen.py`，`world.py` 只做 `isinstance`
+  级校验——若 Master 更愿共享常量模块，见 §12 P1 的备选）。
+- 新事件 `type`（在实现 PR 说明里登记，`STATE-DESIGN.md` §5.1 枚举另开文档 PR 同步）：
+  `world.genesis`（创建战役的世界块初始化）、`econ.day`、`econ.trade`、`econ.build`、
+  `world.fact`。
+- `visibility` 口径（`STATE-DESIGN.md` §5.1 / `MULTIPLAYER-DESIGN.md` §6.4）：`econ.day`
+  与 `world.genesis` = `{"scope":"gm"}`（账本是 GM/据点主人视角）；`econ.trade` /
+  `econ.build` 随玩家动作事件的既有可见性；`population.summaries` 交付时过
+  `_room_event_visible`（复用，不新建门）。
+- 新增 HTTP 面（薄路由，风格同 `ACTION-DESIGN.md` §9.1）：`POST /api/world/generate`
+  （描述 → spec + 预览卡）、`POST /api/world/commit`（确认创建战役）、
+  `GET /api/world/ledger`（账目只读观察面，§10.3）。UI 不在本里程碑（§1.2），路由先服务
+  测试与后续 UI 轨。
+
+### 9.2 数据文件与 schema 落点
+
+| 文件 | 动作 | 切片 |
+|---|---|---|
+| `data/schema/world.schema.json` | 扩展：顶层 `laws` 可选属性 + `$defs.law` + `regions[].economy`（产出声明，§5.1 C6 用） | W8 |
+| `data/FORMAT.md` | laws 字段说明一小节（照 `atlas.lexicon` 先例） | W8 |
+| `data/atlas/lexicon.json` | **零改动**（战役级覆盖项在运行时拼接，不改词表文件） | — |
+| 生成世界入库 | `data/worlds/<key>.json`（玩家「保存我的世界」= 把合成结果写成文件，过 `validate_data`）；命名禁碰三个既有 key | W3 之后（可选项） |
+
+- 生成世界**是否入库存文件**是产品决策（临时战役可以只存 `overrides + seed`），见 §12 P6。
