@@ -188,7 +188,6 @@
 | `plan` | `{plan_id, goal_id, step_index, steps[], started_minute, until_minute, status, proposal_id}` | 否 | 是 | 权威 | `status ∈ {pending, running, done, dropped}`；一次只有一个当前计划 |
 | `resources` | `{coin, stock: {item_id: int}, obligations: [{to, kind, due_minute}]}` | 是 | 是 | 权威 | **粗账**；规则包权威库存不在此（§9.2） |
 | `last_tick_minute` | `int` | 是 | 是 | 权威 | 幂等 / 补算的锚点；`== world_minute` 表示本分钟已 tick |
-| `journal` | `[DecisionRecord]`（见 §5.4），环形、上限 `JOURNAL_MAX = 256`（整战役） | 是 | 是 | 派生 | 可完整重算；裁剪规则确定（见 §9.2） |
 | `layer` | `str`，∈ `near/important_far/background/unexplored` | — | 否 | 内存 | 每次 tick 由 §7.1 现算，不落盘（避免层缓存与位置漂移） |
 | `derived_view` | `dict` | — | 否 | 内存 | `select_context()` 的产物，只活在一次调用里 |
 
@@ -197,6 +196,10 @@
 - `budget`：`{day, strong_calls, light_calls, tokens}`，必填、落盘、权威。每战役**一个**成本账本，
   落 `blocks.neura.budget`（**块级，见 §8.2**）；跨日自动重置（重置本身也由提交落盘）。
   `npcs[<npc_id>]` 里**没有** `budget`。
+- `journal`：`[DecisionRecord]`（见 §5.4），必填、落盘、**派生**（可完整重算）。决策留痕是**整战役**
+  一条环（跨 NPC 共用），落 `blocks.neura.journal`；上限 `JOURNAL_MAX = 256` / 战役（与 §12.1 P3、
+  `neura.py` 的常量一致）；超限按确定规则**先裁最旧**（按 `at_minute`，同分钟按 `decision_id` 字典序），
+  裁剪实现见 §9.2。`npcs[<npc_id>]` 里**没有** `journal`。
 
 **字段级不变量**
 
@@ -204,7 +207,8 @@
 - `need_weights` 生成后**不再变**：若允许逐日漂移，「同种子同结果」立刻失效。
 - `schedule` 的 `from_tod_minute < to_tod_minute`；跨夜班用两个 slot 表达（**不开**跨 0 点的区间）。
 - `plan.until_minute ≥ plan.started_minute`；`plan` 为空时 `plan` 键**不存在**（不用 `null`）。
-- `memory` / `journal` 超上限时**先裁最旧**（按 `minute`，同分钟按 `memory_id` 字典序），保证裁剪是确定性的。
+- `memory`（每 NPC）/ `journal`（块级）超上限时**先裁最旧**（记忆按 `minute` + `memory_id`、留痕按
+  `at_minute` + `decision_id` 字典序），保证裁剪是确定性的。
 
 ### 4.3 两个子结构
 
