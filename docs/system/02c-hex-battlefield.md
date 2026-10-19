@@ -120,7 +120,16 @@ abstract 模式使用六角格距离；只有声明为 hex / step 口径的能�
 
 视线使用**唯一、确定性的 axial hex-line 遍历**。射线从攻击者眼高射向目标可见部位高度，检查中途格、地形 / 对象的 `blocks_los` 与阻挡物高度。
 
-> **待 #415 裁定（不得默认）**：#415 要求「并列边界的格子选取规则必须确定且有测试」，但未冻结具体的并列选格算法。本文不替它编规则；后续实现遇到并列边界时，须先回到 #415 取得裁定，不得自行选定一种默认。
+- **锚点 · hex-line 并列选格**：按下方 6 条执行，实现与测试均以此为准。设计冻结值（#433）。
+
+1. 起点 A、终点 B 先转 cube：`x = q`、`z = r`、`y = -x - z`。
+2. 步数 `N = max(|dx|, |dy|, |dz|)`，即六角距离；`i = 0…N` 各取一次采样点。
+3. 采样用**有理数**计算（整数分子 / 分母），不得用浮点插值——避免 `0.4999999` 一类漂移让同一输入产生不同结果。
+4. 每个采样点对三个分量取整；若取整后 `x + y + z ≠ 0`，把**取整误差最大**的分量重算为 `-x - z`（并列时按 `x → y → z` 顺序取先者）。
+5. **并列裁决**：当采样点恰好落在两格共边 / 共角上（两个候选格到射线距离相等），取 cube 坐标 `(x, z)` **字典序更小**的格。
+6. 该规则只决定「穿边 / 穿角时把哪一格纳入 `blocked_cells` 检查」，**不改变**六角距离语义，也与 UI 渲染朝向无关。
+
+**并列构造例子**：A 为 axial `(0, 0)` → cube `(0, 0, 0)`，B 为 axial `(2, -1)` → cube `(2, -1, -1)`，`N = max(|2|, |-1|, |-1|) = 2`。`i = 1` 的采样点为 `(1, -1/2, -1/2)`，恰好落在两格共边上，候选为 axial `(1, 0)`（cube `(1, -1, 0)`）与 axial `(1, -1)`（cube `(1, 0, -1)`），两者到采样点距离同为 `1/2`。按第 5 条比较 `(x, z)`：`x` 同为 `1`，`-1 < 0`，故选 axial `(1, -1)`。该例可直接改写为几何内核的测试用例。
 
 ### 掩体
 
@@ -196,6 +205,7 @@ ATLAS / 六角格层是**空间事实来源**；PRISM 战术引擎与构建引�
 | 高地阈值 100 cm / 1 level | 78 | `high_ground.threshold_cm` / `high_ground.threshold_level` |
 | 连续可走坡面高差上限 50 cm | 94 | `movement.slope_max_cm` |
 | 坠落无伤害下限 150 cm | 104 | `fall.no_damage_below_cm` |
-| 坠落伤害档（150 cm 起，每 300 cm 1d6 并倒地） | 105 | `fall.damage_per_cm` / `fall.dice` / `fall.prone` |
-| 高地优势 +1（指针） | 84 | `high_ground.edge_layers`（`docs/system/02a-tactics-engine.md:93`） |
-| 掩体四档（指针） | 129 | `cover_grade`（`docs/system/02a-tactics-engine.md:257`） |
+| 坠落伤害档（150 cm 起，每 300 cm 1d6 并倒地） | 105 | `fall.step_cm` / `fall.dice` / `fall.prone` |
+| 高地优势 +1（指针） | 84 | `high_ground.bonus_layers`（`docs/system/02a-tactics-engine.md:93`） |
+| hex-line 并列选格 | 123 | `line_of_sight.tie_break` |
+| 掩体四档（指针） | 138 | `cover_grade`（`docs/system/02a-tactics-engine.md:257`） |
