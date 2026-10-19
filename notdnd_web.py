@@ -314,6 +314,14 @@ CHRON_CANCEL_LIMIT = 12
 CHRON_BAD_TARGET = "推进入参不合法"              # 400
 CHRON_TIME_BACKWARD = "世界时间只增不减"          # 400
 CHRON_NO_TASK = "没有这个任务"                    # 400
+# 单次推进入口的世界日切量上限（Issue #405）：`_world_tick` 是**逐日**结算
+# 循环（每天一条 `econ.day` 事件 + 一次块级提交 + fsync，全程持会话锁），
+# 不限量时一次 `POST /api/chron/advance` 能让会话锁被占住任意久。
+# 取值与 `world.MAX_CATCHUP_DAYS`（90）**同值不同名**：90 天是离线补算已经
+# 接受过的逐日结算量，在线单次推进没有理由比它更宽；名字分开是为了**不耦合**
+# ——离线补算的折叠口径将来怎么改，都不该悄悄放宽这个公开写入接口的上限。
+WORLD_TICK_MAX_DAYS = 90
+WORLD_ADVANCE_TOO_LARGE = "一次推进超出天数上限"   # 409，reason=advance_too_large
 
 # ── 多人房间（M10-S1）常量 ───────────────────────────────────────────────
 #
@@ -4266,6 +4274,29 @@ def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
                        "result": result}}
 
 
+def _world_day_cut_span(handle, minute) -> int:
+    """`minute` 这一刻要跑多少天日切（`current_day - economy.day`，不小于 0）。
+
+    **只读**：`world` 块缺失（老档 / 未接世界）、形状坏、版本更高（拒载）都
+    返回 0——这些情况下 `_world_tick` 本来也不会日切（块缺失直接返回、异常
+    被 `world_skipped` 隔离），没有日切就没有上限可言；判定本身不制造新失败。
+
+    `current_day` 取**本次推进实际的停点**（`advance_to` 的返回值，屏障会让
+    它早于 `target_minute`）：上限管的是这次请求真会跑多少天账，不是目标
+    写得多远——停在屏障上的请求一天都不切，不该因为目标写得远被拒。
+    """
+    blocks = handle.view().get("blocks") or {}
+    block = blocks.get("world")
+    if not isinstance(block, dict):
+        return 0
+    try:
+        block = world.migrate_block(block)     # 老块也读得到 `economy.day`
+        day = int(block["economy"]["day"])
+    except Exception:      # noqa: BLE001 — 见上：坏块 = 本次不日切 = 不设限
+        return 0
+    return max(0, int(minute) // world.MINUTES_PER_DAY - day)
+
+
 # ── 世界经济日切接线（W5，WORLD-DESIGN §6.3 / §11 W5）──────────────────────
 #
 # `_world_tick` 在 `_chron_advance` 的锁内、`_neura_tick` 之后、叙事段之前
@@ -4273,6 +4304,8 @@ def _chron_settle_due(session, handle, state, block, event, *, seq) -> dict:
 # 日切结算是 world.py 的纯函数（`world_tick` / `catch_up`，W4 产物，本层
 # 只调用零改动）；跨屏障漏掉的日切在下一个非屏障停点**逐日补结算**
 # （每天一条独立幂等键 `wtick_<day>`、一次独立提交——保证逐日可查）。
+# 单次推进的日切量由 `_chron_advance` 在**任何提交之前**用
+# `WORLD_TICK_MAX_DAYS` 卡住（Issue #405）：超限整单拒绝，不落事件。
 
 def _world_tick(session, *, stopped_at=None) -> None:
     """世界经济日切接线（§6.3）：逐日补结算 → 块级提交。
@@ -4362,6 +4395,11 @@ def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
       据此恒成立：块时钟不得超前于最后一条已提交事件的世界时间）；
     - 叙事只读**提交点冻结快照**并写进会话日志（§7.5 / §9.3 的 `action_id`
       与 `seq_to` 同样带着走）；离线时是 `fallback` + 既有兜底句（§7.3 / P4）。
+
+    **日切量上限（Issue #405）**：本次推进实际要跑的世界日切天数
+    （`current_day - economy.day`）超过 `WORLD_TICK_MAX_DAYS` 时，在**任何
+    提交之前**整单拒绝（409 `advance_too_large`）——不落事件、不改世界时间、
+    不动 `economy.day`；`offline_advance` 同样受约束。
     """
     target = target_minute
     if isinstance(target, bool) or not isinstance(target, int) or target < 0:
@@ -4380,6 +4418,15 @@ def _chron_advance(session, target_minute, *, offline_advance=False) -> dict:
             # §3.2：世界时间只增不减——回拨一律是调用方的错，**不**静默夹住。
             raise _ActionError(CHRON_TIME_BACKWARD, 400)
         state = out["state"]
+        # 单次推进的世界日切量上限（Issue #405）：`_world_tick` 逐日一条事件、
+        # 一天一次提交，不限量时一次请求能把会话锁占住任意久。判定必须落在
+        # **任何提交之前**（下面第一条 `_chron_settle_due` 就开始写盘）——
+        # 拒绝时块零变更、`economy.day` 与 `events.ndjson` 都不动。
+        # `offline_advance` 不开口子：离线补算同样受这条上限约束。
+        span = _world_day_cut_span(handle, state["world_minute"])
+        if span > WORLD_TICK_MAX_DAYS:
+            raise _ActionError(WORLD_ADVANCE_TOO_LARGE, 409,
+                               "advance_too_large")
         settled = []
         events = []
         for event in out["events"]:
