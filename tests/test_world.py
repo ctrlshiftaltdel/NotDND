@@ -15,7 +15,8 @@
   不开自由骰（未传检定结果不触发）；
 - `REJUDGE_DAILY_CAP = 4` 上限生效、跨日归零；
 - 硬上限裁剪（LEDGER_MAX / FACTS_MAX / POPULATION_SUMMARIES_MAX）确定性、
-  裁两次幂等；
+  裁两次幂等；账本裁剪把被裁 delta 折叠进 genesis（Issue #402：跨 512 条后
+  三等式①仍成立、折叠不重复、entry_seq 单调不撞号）；
 - `catch_up`：逐日补齐与 > MAX_CATCHUP_DAYS 折叠（catchup_summary）；
 - world.py 零 IO 纯函数：只 import 标准库（copy/hashlib/re）；
 - 纯函数纪律：同输入重跑逐字节相等、不改写入参。
@@ -159,6 +160,90 @@ def test_prune_block_deterministic():
     assert _dumps(pruned1) == _dumps(pruned2), "裁剪必须幂等"
     # 保留的是最新（id 最大的）N 条
     assert pruned1["economy"]["ledger"][0]["entry_id"] == "e%05d" % 10
+    # 裁剪重定基（Issue #402）：被裁 10 条 delta 折叠进 genesis 且只折一次
+    # （该块无 goods → 账户归类走余额本，与 _apply_entry 一致）
+    genesis = pruned1["economy"]["genesis"]
+    assert genesis["balances"]["good-01"] == 10
+    assert genesis["goods"] == {}
+    assert pruned2["economy"]["genesis"] == genesis
+
+
+def test_prune_rebases_both_books():
+    """裁剪折叠同时进 `balances` 与 `goods` 两本（Issue #402）。"""
+    goods = [{"good_id": "grain", "name": "谷物", "category": "food",
+              "tier": 1, "base_price": 5, "stock": 400, "produced_by": [],
+              "era": "fantasy"}]
+    block = world.new_block(goods=goods, balances={"coin": 10000})
+    for index in range(300):
+        block, _entries = world.settle_trade(
+            block, good_id="grain", quantity=1, unit_price=5,
+            at_minute=index, event_seq=index + 1, day=0)
+    assert len(block["economy"]["ledger"]) == world.LEDGER_MAX
+    assert world.verify_ledger(block) == []
+    genesis = block["economy"]["genesis"]
+    assert genesis["goods"]["grain"] < 400, "库存本未折叠"
+    assert genesis["balances"]["coin"] < 10000, "余额本未折叠"
+    # 幂等：再裁一次不重复折叠、结果逐字节相等
+    again = world.prune_block(block)
+    assert _dumps(again) == _dumps(block)
+    assert again["economy"]["genesis"] == genesis
+
+
+def test_prune_keeps_three_equations_over_long_run():
+    """≥300 游戏日跨过 LEDGER_MAX：裁剪重定基后三等式①恒成立（Issue #402）。
+
+    单据点（population 10）× 主食（grain，stock 400，produced_by=["market"]）
+    外加每日税收（balances 本）；grain 耗尽后每日只剩 produce/consume/tax
+    三条，账本在第 171 天饱和。工具（tool）只用于饱和后的同日多笔交易。
+    """
+    goods = [
+        {"good_id": "grain", "name": "谷物", "category": "food", "tier": 1,
+         "base_price": 5, "stock": 400, "produced_by": ["market"],
+         "era": "fantasy"},
+        {"good_id": "tool", "name": "工具", "category": "military", "tier": 1,
+         "base_price": 2, "stock": 10, "produced_by": [], "era": "fantasy"},
+    ]
+    block = world.new_block({"world_type": "fantasy"}, seed=7, goods=goods,
+                            balances={"coin": 1000})
+    block["settlements"]["s1"] = {"place_id": "market", "population": 10,
+                                  "tax_per_day": 5}
+    days = 320
+    first_full = None
+    fold_notes = []
+    for day in range(1, days + 1):
+        block, _entries, notes = world.world_tick(
+            block, day=day, now_minute=day * world.MINUTES_PER_DAY,
+            event_seq=1000 + day)
+        assert len(block["economy"]["ledger"]) <= world.LEDGER_MAX
+        issues = world.verify_ledger(block)
+        assert issues == [], "day=%d 三等式破缺：%s" % (day, issues)
+        if first_full is None and \
+                len(block["economy"]["ledger"]) == world.LEDGER_MAX:
+            first_full = day
+        fold_notes.extend(note for note in notes if "折叠" in note)
+    assert first_full is not None, "未跨过 LEDGER_MAX，用例没测到裁剪路径"
+    assert first_full > 90, "过早饱和：用例应覆盖长跑后的稳定裁剪"
+    assert fold_notes, "折叠时应追加可解释说明"
+    assert "折叠进 economy.genesis" in fold_notes[0]
+    assert "个账户" in fold_notes[0]
+    # 两本都被折叠：库存本（grain 从 400 降）与余额本（coin 从 1000 升）
+    genesis = block["economy"]["genesis"]
+    assert genesis["goods"]["grain"] < 400, "库存本未折叠"
+    assert genesis["balances"]["coin"] > 1000, "余额本未折叠"
+    # 幂等：账本已在上限，再裁不重复折叠
+    again = world.prune_block(block)
+    assert _dumps(again) == _dumps(block)
+    # 编号单调：饱和后同日多笔提交不撞号（旧 len(ledger) 方案会回绕）
+    assert block["economy"]["entry_seq"] > world.LEDGER_MAX
+    for _ in range(2):
+        block, entries = world.settle_trade(
+            block, good_id="tool", quantity=1, unit_price=2,
+            at_minute=days * world.MINUTES_PER_DAY + 1, event_seq=9999,
+            day=days)
+        assert len({e["entry_id"] for e in entries}) == len(entries)
+    ids = [entry["entry_id"] for entry in block["economy"]["ledger"]]
+    assert len(ids) == len(set(ids)), "饱和后同日提交撞号（等式②）"
+    assert world.verify_ledger(block) == []
 
 
 # ── 2. 三等式（§6.2 / §10.2 2.1）与拒单无账（出口 2.2） ──────────────────
