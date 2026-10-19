@@ -2724,7 +2724,9 @@ def tick(block, view, *, port, now_minute):
     ② 降级阶梯 L0–L3：L3 只写 `journal(kind="idle")`、不提交（§8.3）；
     ③ 硬约束过滤；`hard["ok"]` 且预算 / 突发上限允许时，经
        `port.generate_candidates` 取 AI 候选并**逐条复验**（§5.8 ④），
-       按档位 `charge` 记账（L0 → strong、L1 → light）；
+       **按调用尝试**记账（L0 → strong、L1 → light）：空表、候选全被拒、
+       调用抛异常都照计；抛异常不重试，记 `journal(kind="ai_failed")` 后
+       退回规则候选（Issue #366）；
     ④ 需求评分 → 选择 → journal → `port.submit(proposal, idempotency_key)`。
 
     `port` 是注入的回调对象（依赖注入）：`submit` 必须实现；
@@ -2780,17 +2782,36 @@ def tick(block, view, *, port, now_minute):
         kind = TIER_CALL_KIND.get(tier)
         if hard["ok"] and kind and hasattr(port, "generate_candidates") \
                 and can_call_ai(npc, npc_view, budget):
-            raw = port.generate_candidates(npc, npc_view, budget=budget)
+            # Issue #366：成本按**调用尝试**计——模型已被调用，即使返回空表、
+            # 候选全被复验拒绝或抛异常，token 与调用次数都已实际消耗。
+            # 记账点放在返回 / 抛出之后、候选过滤之前，避免「反复返回空」
+            # 绕过当日上限与单 tick 突发上限；失败就地隔离、不重试。
+            failure = None
+            try:
+                raw = port.generate_candidates(npc, npc_view, budget=budget)
+            except Exception as error:     # noqa: BLE001 — 单 NPC 故障不拖垮 tick
+                raw = []
+                failure = "%s: %s" % (type(error).__name__, error)
+            block["budget"] = budget = charge(budget, kind)
+            burst[kind] += 1
+            npc_view["tick_burst"] = dict(burst)
+            npc_view["budget"] = dict(budget)
+            if failure is not None:
+                block["journal"].append({
+                    "kind": "ai_failed",
+                    "npc_id": npc_id,
+                    "at_minute": now_minute,
+                    "tier": tier,
+                    "error": failure,
+                    "decision_id": "fail_" + _digest("neura.ai_failed",
+                                                     npc_id, now_minute)[:16],
+                })
             cands = [item for item in (raw if isinstance(raw, list) else [])
                      if _revalidate(npc, item, npc_view, now_minute)]
             if cands:
                 npc_view["cost_tier"] = "H" if kind == "strong" else "M"
                 npc_view["ai_tokens"] = CALL_KIND_TOKENS[kind]
                 options.extend(_clone(cands))
-                block["budget"] = budget = charge(budget, kind)
-                burst[kind] += 1
-                npc_view["tick_burst"] = dict(burst)
-                npc_view["budget"] = dict(budget)
         npc_view["options"] = options
 
         # ④ 评分 → 选择 → journal → 窄口提交（§5.8 ③④）。
