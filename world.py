@@ -152,6 +152,10 @@ SEVERITIES = ("light", "heavy")
 
 IDEMPOTENCY_KEY_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
+# Entry 编号形态（`we-<day>-<seq>`）；`seq` 来自块内单调计数器
+# `economy.entry_seq`（Issue #402：不再用 `len(ledger)`，裁剪不回绕）。
+ENTRY_ID_RE = re.compile(r"^we-\d+-(\d+)$")
+
 # 终态/停摆状态（这些状态不参与生产、不发工资；§7.3 中断语义自表达）。
 # W6：Project 七态正式化（§7.1），completed / failed 并入不活跃集。
 INACTIVE_STATUSES = ("paused", "blocked", "done", "revoked",
@@ -297,7 +301,10 @@ def new_block(spec=None, *, seed=0, provenance=None, goods=None, day=0,
     - `balances`：期初账户（如 `{"coin": 10000}`）；
     - `prices` 是派生快照：初值 = 各 good 的 `base_price`（落盘只为审计）；
     - `genesis`：三等式①的重放基线（初始库存/余额快照，创建时一次写入；
-      新口径 15——「replay(genesis, events)」的 genesis 落点）。
+      新口径 15——「replay(genesis, events)」的 genesis 落点）。`prune_block`
+      会把它重定基为「创建快照 + 已裁累计」（Issue #402）；
+    - `entry_seq`：Entry 编号的块内**单调**计数器（`we-<day>-<seq>`），
+      裁剪不回绕；旧块由 `migrate_block` 按既有编号回填。
     """
     goods_map = {}
     if isinstance(goods, list):
@@ -332,6 +339,7 @@ def new_block(spec=None, *, seed=0, provenance=None, goods=None, day=0,
             "goods": goods_map,
             "prices": prices,
             "ledger": [],
+            "entry_seq": 0,
             "balances": _clone(balances_map),
             "genesis": {
                 "balances": _clone(balances_map),
@@ -496,6 +504,17 @@ def migrate_block(block, notes=None):
         notes.append("world.economy.genesis 缺失：用当前快照回填重放基线"
                      "（新口径 15）")
 
+    # Entry 编号计数器（Issue #402）：合法值逐字保留；旧块缺字段时按既有
+    # ledger 的最大编号回填（此后单调递增，裁剪不回绕）。
+    raw_entry_seq = raw_economy.get("entry_seq")
+    if _is_int(raw_entry_seq) and raw_entry_seq >= 0:
+        economy["entry_seq"] = raw_entry_seq
+    else:
+        economy["entry_seq"] = _derived_entry_seq(economy["ledger"])
+        if "entry_seq" in raw_economy:
+            notes.append("world.economy.entry_seq 脏值（%r）：按既有 ledger "
+                         "编号回填为 %d" % (raw_entry_seq, economy["entry_seq"]))
+
     for key, label in (("projects", "projects"),
                        ("settlements", "settlements")):
         raw = block.get(key, {})
@@ -557,7 +576,11 @@ def prune_block(block, notes=None):
 
     - 超上限**先裁最旧**（ledger 按 (at_minute, entry_id) 字典序，facts 按
       (minute, fact_id)，summaries 按 (minute, summary_id)），保留最新 N 条；
-    - 裁剪是确定性的：同一块连续调用两次结果全等（幂等）；
+    - ledger 裁剪**重定基** `economy.genesis`：被裁条目的 delta 折叠进重放
+      基线（Issue #402），三等式①「genesis + 剩余 ledger 重放 == 快照」不被
+      裁剪打破；`genesis` 语义 = 创建快照 + 已裁累计；
+    - 裁剪是确定性的：同一块连续调用两次结果全等（幂等；只有真的裁掉条目
+      才折叠，第二次不再折叠）；
     - 入参不改写；`notes` 给了就追加说明。
     """
     notes = [] if notes is None else notes
@@ -565,10 +588,18 @@ def prune_block(block, notes=None):
 
     ledger = pruned["economy"]["ledger"]
     if len(ledger) > LEDGER_MAX:
-        kept = sorted(ledger, key=lambda e: (_entry_minute(e), _entry_id(e)))[
-            -LEDGER_MAX:]
+        ordered = sorted(ledger,
+                         key=lambda e: (_entry_minute(e), _entry_id(e)))
+        dropped = ordered[:-LEDGER_MAX]
+        kept = ordered[-LEDGER_MAX:]
+        folded = _fold_pruned_entries(pruned["economy"], dropped)
         notes.append("world.economy.ledger 裁剪：%d → %d 条（§12.1 P3）"
                      % (len(ledger), len(kept)))
+        if folded:
+            notes.append("world.economy.ledger 裁剪重定基：%d 条被裁 Entry 的 "
+                         "delta 折叠进 economy.genesis（%d 个账户；"
+                         "genesis = 创建快照 + 已裁累计，§6.2 等式①）"
+                         % (len(dropped), len(folded)))
         pruned["economy"]["ledger"] = kept
 
     facts = pruned["facts"]
@@ -598,6 +629,40 @@ def _entry_minute(entry):
 
 def _entry_id(entry):
     return _text(entry.get("entry_id"))
+
+
+def _derived_entry_seq(ledger):
+    """旧块（无 `entry_seq`）的编号基线：既有 Entry 的最大序号 + 1。"""
+    seq = 0
+    for entry in ledger:
+        match = ENTRY_ID_RE.match(_entry_id(entry))
+        if match:
+            seq = max(seq, int(match.group(1)) + 1)
+    return seq
+
+
+def _fold_pruned_entries(economy, dropped):
+    """把被裁 Entry 的 delta 折叠进 `economy.genesis`（重定基，Issue #402）。
+
+    账户归类与 `_apply_entry` / `replay_balances` **完全一致**：`account` 在
+    `economy.goods` 里走库存本（`genesis.goods`），否则走余额本
+    （`genesis.balances`）。返回被折叠的账户集合（空 = 没有可折叠的 delta）。
+    """
+    genesis = economy.setdefault("genesis", {})
+    balances = genesis.setdefault("balances", {})
+    goods = genesis.setdefault("goods", {})
+    folded = set()
+    for entry in dropped:
+        if not isinstance(entry, dict):
+            continue
+        account = str(entry.get("account"))
+        delta = entry.get("delta")
+        if not _is_int(delta) or delta == 0:
+            continue
+        book = goods if account in economy["goods"] else balances
+        book[account] = book.get(account, 0) + delta
+        folded.add(account)
+    return folded
 
 
 def _fact_minute(fact):
@@ -668,6 +733,31 @@ def _apply_entry(block, entry):
     if current + delta < 0:
         raise WorldError("余额不足：%s（%d %+d）" % (account, current, delta))
     balances[account] = current + delta
+
+
+def _commit_entries(block, entries, *, day):
+    """Entry 编号 + 落地的**唯一入口**（`settle_trade` / `project_start` /
+    `world_tick` 三处共用；一次提交一条事件，A0）。
+
+    - 编号：`we-<day>-<seq>`，`seq` 取块内**单调**计数器
+      `economy.entry_seq`——不用 `len(ledger)`，避免账本 512 条饱和后同日
+      多次提交撞号（Issue #402 边界；字段迁移口径见 `migrate_block`）；
+    - 落地：按入参顺序逐条 `_apply_entry`（不为负守卫）后 append；
+    - 返回同一批 `entries`（dict 原地编号）。
+    """
+    economy = block["economy"]
+    seq = economy.get("entry_seq")
+    if not _is_int(seq) or seq < 0:
+        seq = 0
+    if not _is_int(day) or day < 0:
+        day = 0
+    for offset, entry in enumerate(entries):
+        entry["entry_id"] = "we-%d-%04d" % (day, seq + offset)
+    for entry in entries:
+        _apply_entry(block, entry)
+        economy["ledger"].append(entry)
+    economy["entry_seq"] = seq + len(entries)
+    return entries
 
 
 def replay_balances(block):
@@ -769,23 +859,19 @@ def settle_trade(block, *, good_id, quantity, unit_price, at_minute,
         raise WorldError("拒单：余额不足（%s 有 %d，需 %d）"
                          % (buyer_account, coin, total))
 
-    seq = len(block["economy"]["ledger"])
-    pay = make_entry("we-%s-%04d" % (day, seq), at_minute=at_minute,
+    pay = make_entry("", at_minute=at_minute,
                      kind="trade", account=str(buyer_account), delta=-total,
                      reason={"verb": "buy", "actor": "player",
                              "target_ref": str(good_id)},
                      event_seq=event_seq,
                      extra_refs={"quantity": quantity, "unit_price": unit_price})
-    take = make_entry("we-%s-%04d" % (day, seq + 1), at_minute=at_minute,
+    take = make_entry("", at_minute=at_minute,
                       kind="trade", account=str(good_id), delta=-quantity,
                       reason={"verb": "buy", "actor": "player",
                               "target_ref": str(good_id)},
                       event_seq=event_seq)
-    _apply_entry(block, pay)
-    _apply_entry(block, take)
-    block["economy"]["ledger"].append(pay)
-    block["economy"]["ledger"].append(take)
-    return prune_block(block), [pay, take]
+    entries = _commit_entries(block, [pay, take], day=day)
+    return prune_block(block), entries
 
 
 # ── Project：建造工程对象（§7.1 / §7.2 / §7.3；W6） ───────────────────────
@@ -965,7 +1051,6 @@ def _project_start_changes(block, project, *, now_minute, event_seq, place,
                          % (project_id, "、".join(unmet)))
     req = project.get("requirements") or {}
     day = now_minute // MINUTES_PER_DAY
-    base = len(block["economy"]["ledger"])
     entries = []
     index = 0
 
@@ -1021,12 +1106,7 @@ def project_start(block, project_id, *, now_minute, event_seq, place=None):
     entries = _project_start_changes(block, project, now_minute=now_minute,
                                      event_seq=event_seq, place=place)
     day = now_minute // MINUTES_PER_DAY
-    base = len(block["economy"]["ledger"])
-    for index, entry in enumerate(entries):
-        entry["entry_id"] = "we-%d-%04d" % (day, base + index)
-    for entry in entries:
-        _apply_entry(block, entry)
-        block["economy"]["ledger"].append(entry)
+    _commit_entries(block, entries, day=day)
     return prune_block(block), entries
 
 
@@ -1434,16 +1514,9 @@ def world_tick(block, *, day, now_minute, event_seq, seed=None,
     # 5. 人口摘要（§8.3：档位不是精确数）。
     _write_population_summaries(block, day, now_minute, notes)
 
-    # 6. entry_id 终编（确定性：落账序号；一次提交一条事件，全日共享
-    #    event_seq——A0）。
-    base = len(economy["ledger"])
-    for index, entry in enumerate(entries):
-        entry["entry_id"] = "we-%d-%04d" % (day, base + index)
-
-    # 7. Entry 落地（顺序应用，不为负守卫在 _apply_entry）。
-    for entry in entries:
-        _apply_entry(block, entry)
-        economy["ledger"].append(entry)
+    # 6/7. entry_id 终编 + 落地（确定性：块内单调编号；一次提交一条事件，
+    #      全日共享 event_seq——A0；不为负守卫在 _apply_entry）。
+    _commit_entries(block, entries, day=day)
 
     # 8. 收尾：day 推进、幂等键登记、rejudge 跨日归零（§8.4）。
     economy["day"] = day
@@ -1451,7 +1524,9 @@ def world_tick(block, *, day, now_minute, event_seq, seed=None,
     if block["rejudge"].get("day") != day:
         block["rejudge"] = {"day": day, "counts": {}}
 
-    return prune_block(block), entries, notes
+    # 收尾裁剪的说明（含裁剪重定基折叠的条数/账户数）并入本次日切的 notes，
+    # 便于编排层与人工核对（§6.1 / Issue #402）。
+    return prune_block(block, notes), entries, notes
 
 
 def _settle_production_consumption(block, day, now_minute, event_seq,
