@@ -6397,6 +6397,12 @@ def _world_block_of(session) -> dict:
     return (handle.view().get("blocks") or {}).get("world") or {}
 
 
+def _world_minute_of(session) -> int:
+    """本局状态层里的世界分钟（CHRON 块时钟，缺省 = 纪元 0）。"""
+    handle = session._handle or session._open_handle()
+    return chron.world_time_minute(handle.view().get("world_time")) or 0
+
+
 def _world_goods_block(*, stock: int = 10, coin: int = 10000) -> dict:
     """带一种 food good 的 world 块（贸易 / 日切测试夹具）。"""
     return world.new_block(
@@ -6577,6 +6583,123 @@ def check_world_absent_block_writes_nothing():
         assert "world" not in ((session._handle or session._open_handle())
                                .view().get("blocks") or {}), "块缺失不得被创建"
     finally:
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_advance_day_cap_rejects_over_limit():
+    """#405 验收：单次推进的世界日切量 > `WORLD_TICK_MAX_DAYS` → **409** +
+    `reason="advance_too_large"`，且**零提交**：`events.ndjson` 行数、世界
+    时间、`economy.day` 全不动（拒绝发生在任何块提交之前）。"""
+    sid = "world-cap-reject"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    events_path = _campaign_file(sid, "events.ndjson")
+
+    def event_lines() -> int:
+        with open(events_path, encoding="utf-8") as handle:
+            return len([line for line in handle if line.strip()])
+
+    real_cap = notdnd_web.WORLD_TICK_MAX_DAYS
+    notdnd_web.WORLD_TICK_MAX_DAYS = 5
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            _world_seed_block(session, _world_goods_block(),
+                              "world-cap-reject-seed-0001")
+            before_lines = event_lines()
+            before_minute = _world_minute_of(session)
+            # 6 天 > 上限 5：整单拒绝
+            status, body = _post(server, "/api/chron/advance",
+                                 {"target_minute": 6 * 1440}, sid)
+            assert status == 409, (status, body)
+            assert body.get("error") == notdnd_web.WORLD_ADVANCE_TOO_LARGE, body
+            assert body.get("reason") == "advance_too_large", body
+            assert event_lines() == before_lines, "超限拒绝不得落任何事件"
+            assert _world_minute_of(session) == before_minute, "世界时间不得前进"
+            assert _world_block_of(session)["economy"]["day"] == 0, \
+                _world_block_of(session)["economy"]
+            # 拒绝之后同一局仍可正常推进（没有留下半截状态）
+            status, body = _post(server, "/api/chron/advance",
+                                 {"target_minute": 2 * 1440}, sid)
+            assert status == 200 and body.get("status") == "ok", (status, body)
+            assert _world_block_of(session)["economy"]["day"] == 2, \
+                _world_block_of(session)["economy"]
+    finally:
+        notdnd_web.WORLD_TICK_MAX_DAYS = real_cap
+        notdnd_web._sessions.pop(sid, None)
+
+
+def check_world_advance_day_cap_exact_limit_and_equivalence():
+    """#405 边界：日切量**恰等于**上限 → 成功；且与**不设限**时逐项一致
+    （`econ.day` 事件数 / 幂等键 / 每日 `wticks.at_minute` / `economy.day`）——
+    上限只是**拒绝**，不改变成功路径的任何落盘内容。"""
+    target = 5 * 1440 + 600          # 5 天零 600 分：末日用实际停点结算
+
+    def run(sid: str, cap: int) -> dict:
+        _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                             label="移动")
+        real_cap = notdnd_web.WORLD_TICK_MAX_DAYS
+        notdnd_web.WORLD_TICK_MAX_DAYS = cap
+        try:
+            session = notdnd_web.Session.load(sid)
+            _world_seed_block(session, _world_goods_block(),
+                              "world-cap-%s-seed-0001" % sid)
+            out = notdnd_web._chron_advance(session, target)
+            saved = _world_block_of(session)
+            handle = session._handle or session._open_handle()
+            events = [event for event in handle.events_since(0)
+                      if event["type"] == "econ.day"]
+            wticks = saved["economy"]["wticks"]
+            return {
+                "world_minute": out["world_minute"],
+                "day": saved["economy"]["day"],
+                "events": len(events),
+                "keys": [event["idempotency_key"] for event in events],
+                "wticks": {key: wticks[key] for key in sorted(wticks)},
+                "ledger_at": [entry["at_minute"]
+                              for entry in saved["economy"]["ledger"]],
+            }
+        finally:
+            notdnd_web.WORLD_TICK_MAX_DAYS = real_cap
+            notdnd_web._sessions.pop(sid, None)
+
+    capped = run("world-cap-exact", 5)
+    uncapped = run("world-cap-free", 10 ** 9)
+    assert capped["world_minute"] == target, capped
+    assert capped["day"] == 5 and capped["events"] == 5, capped
+    assert capped["keys"] == ["wtick_%04d" % day for day in range(1, 6)], capped
+    assert capped == uncapped, (capped, uncapped)
+    # 末日按实际停点结算（不是日初）：`at_minute` 如实落在推进停点上
+    assert capped["wticks"]["wtick_0005"]["at_minute"] == target, capped["wticks"]
+
+
+def check_world_advance_day_cap_offline_advance():
+    """#405 边界：`offline_advance=true` **同样**受上限约束（不开口子）。"""
+    sid = "world-cap-offline"
+    _seed_action_session(notdnd_web.SAVE_DIR, sid, action_id="move",
+                         label="移动")
+    events_path = _campaign_file(sid, "events.ndjson")
+    real_cap = notdnd_web.WORLD_TICK_MAX_DAYS
+    notdnd_web.WORLD_TICK_MAX_DAYS = 5
+    try:
+        with _LocalServer() as server:
+            session = notdnd_web.get_session(sid)
+            _world_seed_block(session, _world_goods_block(),
+                              "world-cap-offline-seed-0001")
+            with open(events_path, encoding="utf-8") as handle:
+                before_lines = len([line for line in handle if line.strip()])
+            status, body = _post(server, "/api/chron/advance",
+                                 {"target_minute": 6 * 1440,
+                                  "offline_advance": True}, sid)
+            assert status == 409, (status, body)
+            assert body.get("reason") == "advance_too_large", body
+            with open(events_path, encoding="utf-8") as handle:
+                assert len([line for line in handle if line.strip()]) == \
+                    before_lines, "离线补算超限同样不得落事件"
+            assert _world_block_of(session)["economy"]["day"] == 0, \
+                _world_block_of(session)["economy"]
+    finally:
+        notdnd_web.WORLD_TICK_MAX_DAYS = real_cap
         notdnd_web._sessions.pop(sid, None)
 
 
@@ -8541,6 +8664,9 @@ CHECKS = (
     check_world_barrier_skips_day_cut,
     check_world_concurrent_advance_no_duplicate_events,
     check_world_absent_block_writes_nothing,
+    check_world_advance_day_cap_rejects_over_limit,
+    check_world_advance_day_cap_exact_limit_and_equivalence,
+    check_world_advance_day_cap_offline_advance,
     check_econ_trade_commit_dual_ledger_http,
     check_econ_trade_insufficient_rejected_http,
     check_econ_build_start_commit_http,
