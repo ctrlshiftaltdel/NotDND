@@ -995,6 +995,13 @@ W1 ──────────────────► W8（数据 + 观�
 3. **写操作维持 §6.5 的管理性裁定**：create / queue / start / pause / resume / revoke 在多人房必须房主成员令牌。（来源：Master 审查 + 人拍板 2026-10-19）
 4. **三个只读端点的鉴权差异是有意的**，不是遗漏：工程 / 指令摘要属城镇公共信息，房间内人人在座即可见；账本含**中央金库**与 **`genesis`** 视角，属 GM 账目与重放基线，不对 player / observer 外露。（来源：Master 审查 + 人拍板 2026-10-19）
 
+**W4 / W5 账本口径回填：`entry_seq` 与 `genesis` 重定基（PR #408，Issue #402）**
+
+1. **新增块字段 `economy.entry_seq`**：Entry 编号 `we-<day>-<seq>` 的块内**单调**计数器；`_commit_entries` 每批提交后 `+= len(entries)`，**不再用 `len(ledger)`**——账本到 `LEDGER_MAX` 饱和后同日再次提交会被裁剪拉低长度，`len(ledger)` 会回绕并**撞号**（同一 `entry_id` 出现两次，直接违反等式②）。旧块缺该字段时由 `migrate_block` 按既有 ledger 的最大编号 + 1 回填（`_derived_entry_seq`：正则 `^we-\d+-(\d+)$` 取最大 seq 再 +1）；字段为脏值只降级该字段并记 note，不牵连整块。（来源：PR #408（Issue #402），`world.py:738` / `world.py:634`）
+2. **`genesis` 语义扩展为「重放基线」**：由「**创建时的**余额 / 库存快照」扩为「**创建快照 + 已裁累计**」。`prune_block` 裁剪 ledger 时把被裁 Entry 的 `delta` 折叠进 `economy.genesis`——余额与库存两本，账户归类与 `_apply_entry` / `replay_balances` **完全一致**（`account` 在 `economy.goods` 里进 `genesis.goods`，否则进 `genesis.balances`）——使三等式①在**任意长跑后**（账本被裁过任意多次）仍成立；不折叠则被裁条目的 delta 从重放里消失，①必然失衡。折叠是确定性的：只有真裁掉条目才折叠，同一块连续裁剪两次结果全等。（来源：PR #408（Issue #402），`world.py:644`）
+3. **可解释性增量**：折叠时 `notes` 追加「**条数 + 账户数**」（「…%d 条被裁 Entry 的 delta 折叠进 economy.genesis（%d 个账户；genesis = 创建快照 + 已裁累计，§6.2 等式①）」）；`world_tick` 返回的 `notes` 现**包含收尾裁剪说明**（`return prune_block(block, notes), entries, notes`——此前裁剪 note 落在临时对象里被丢弃），编排层与人工可据此核对「这一 tick 到底裁了多少、折了哪些账户」。（来源：PR #408（Issue #402），`world.py:1529`）
+4. **校验口径未放宽**：`LEDGER_MAX=512` **不变**（仍是最多保留 512 条明细，超限先裁最旧）；`verify_ledger` 的三条判据**一字未改**（①重放 == 快照、②`entry_id` 不重不漏、③`refs.event_seq` 为非负整数）——重定基只是让①在裁剪后**继续**成立，不是替代或弱化①；`replay_balances` 的算法也没变，只是 genesis 换成了更早的起点。（来源：PR #408（Issue #402））
+
 ---
 
 ## 附录 A · 与其它设计单的接口一览（便于交叉审查）
