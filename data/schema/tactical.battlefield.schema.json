@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tactical 族（tactical.battlefield）",
+  "description": "静态六角格战场（schema_version 1）。契约见 Issue #415 第 2 节，规则文本见 docs/system/02c-hex-battlefield.md。metric 与 abstract 两套高度 / 距离口径互斥；每格的高度字段用 elevation_cm 或 elevation_level 其一。cell_id 唯一与「高度口径一致」属跨字段不变式，由 tests/test_tactical_schema.py 校验。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "battlefield_id", "world_id", "geometry", "scale", "cells"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "tactical.battlefield"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "battlefield_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "world_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "所属世界模组的 key（如 threshold / emberfall / entropic-net）。"
+    },
+    "site_id": {"type": "string", "minLength": 1},
+    "atlas_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ATLAS 地点 / 区域引用（place id，如 threshold/region-01）；只存引用，不复制 ATLAS 帧内容。"
+    },
+    "seed": {
+      "anyOf": [{"type": "integer"}, {"type": "string", "minLength": 1}],
+      "description": "生成器种子；同一 seed 与同一 generator_version 必须重现同一战场。"
+    },
+    "generator_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "生成器 / 模板版本；版本变化不得静默改变进行中的战斗。"
+    },
+    "geometry": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "hex_axial",
+          "description": "axial 六邻偏移与六角距离公式由 system.tactical_space.geometry 提供，战场文件不复制。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "scale": {
+      "type": "object",
+      "required": ["mode"],
+      "properties": {
+        "mode": {"enum": ["metric", "abstract"]},
+        "hex_size_cm": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "metric 模式相邻格中心距离（cm）；默认 150 见 system.tactical_space.scale.hex_size_cm。"
+        },
+        "unit": {
+          "enum": ["cell", "step"],
+          "description": "abstract 模式的距离 / 移动单位口径；metric 模式不写，两套口径不得互换。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "cells": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["cell_id", "q", "r", "surface_id", "movement_cost", "blocks_movement", "blocks_los"],
+        "properties": {
+          "cell_id": {
+            "$ref": "common.schema.json#/$defs/entity_id"
+          },
+          "q": {"type": "integer"},
+          "r": {"type": "integer"},
+          "surface_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "表面 / 楼层标识；坐标可重复，靠它区分，位置权威引用一律用 cell_id。"
+          },
+          "elevation_cm": {
+            "type": "integer",
+            "description": "metric 口径：整数厘米（相对战场基准面，可为负值表示洼地 / 地下层）。与 elevation_level 互斥。"
+          },
+          "elevation_level": {
+            "type": "integer",
+            "description": "abstract 口径：整数层级。与 elevation_cm 互斥。"
+          },
+          "terrain_id": {"type": "string", "minLength": 1},
+          "terrain_tags": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": true
+          },
+          "movement_cost": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "进入该格的成本：metric 为 cm，abstract 为格 / 步；普通可通行格等于一格距离。"
+          },
+          "blocks_movement": {"type": "boolean"},
+          "blocks_los": {"type": "boolean"},
+          "obstacle_height": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "阻挡物高度；与 elevation 同口径（metric 厘米 / abstract 层级）。与 blocks_los、cover_grade 分开计算。"
+          },
+          "cover_grade": {
+            "enum": ["light", "medium", "heavy", "full"],
+            "description": "掩体四档（02C 第五节掩体锚点；档名与 system.tactics_combat.cover[].id 一致）；缺省 = 无掩体。"
+          },
+          "hazard_refs": {
+            "type": "array",
+            "items": {"$ref": "common.schema.json#/$defs/entity_id"},
+            "uniqueItems": true
+          },
+          "feature_refs": {
+            "type": "array",
+            "items": {"$ref": "common.schema.json#/$defs/entity_id"},
+            "uniqueItems": true
+          },
+          "spawnable": {
+            "type": "boolean",
+            "description": "是否允许作为出生点；生成器仍须校验可达、不重叠。"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "vertical_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["link_id", "from_cell_id", "to_cell_id", "kind", "movement_cost", "bidirectional", "requirements"],
+        "properties": {
+          "link_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "from_cell_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "to_cell_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "kind": {
+            "enum": ["stairs", "ramp", "ladder", "lift", "climb", "jump", "fall", "teleport"],
+            "description": "受控枚举（02C:45）；梯子 / 攀爬 / 跳跃 / 飞行不得被普通寻路当作免费通路。"
+          },
+          "movement_cost": {"type": "integer", "minimum": 0},
+          "bidirectional": {"type": "boolean"},
+          "requirements": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": true,
+            "description": "单位能力 / 物件 / 规则数据授权说明；空数组 = 无需额外授权。"
+          },
+          "effect_refs": {
+            "type": "array",
+            "items": {"$ref": "common.schema.json#/$defs/entity_id"},
+            "uniqueItems": true,
+            "description": "可触发的检定 / 效果引用。"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

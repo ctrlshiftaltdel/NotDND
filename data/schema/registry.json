@@ -59,9 +59,13 @@
     "system.tone_packs": "system.tone_packs.schema.json",
     "system.guardrails": "system.guardrails.schema.json",
     "system.antipatterns": "system.antipatterns.schema.json",
+    "system.tactical_space": "system.tactical_space.schema.json",
     "world.module": "world.schema.json",
     "atlas.lexicon": "atlas.lexicon.schema.json",
     "random_tables.catalog": "random_tables.schema.json",
-    "scenario.campaign": "scenario.schema.json"
+    "scenario.campaign": "scenario.schema.json",
+    "tactical.battlefield": "tactical.battlefield.schema.json",
+    "tactical.battle_state": "tactical.battle_state.schema.json",
+    "tactical.battle_event": "tactical.battle_event.schema.json"
   }
 }

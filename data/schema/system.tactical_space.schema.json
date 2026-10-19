@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "system 族（system.tactical_space）",
+  "description": "六角格战场的可调空间阈值（data/system/tactical_space.json）。每个值都必须能从 docs/system/02c-hex-battlefield.md 的行号锚点读出；实现不得把这些默认值复制进 Python / JS。同一对象内若各值来自不同行，用 <字段>_source 逐条覆盖对象级 source。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "source", "geometry", "scale", "high_ground", "movement", "fall", "vertical_links", "cover"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "system.tactical_space"},
+    "source": {"$ref": "common.schema.json#/$defs/source"},
+    "note": {"type": "string", "minLength": 1},
+    "geometry": {
+      "type": "object",
+      "required": ["type", "neighbor_offsets", "distance_formula", "source"],
+      "properties": {
+        "type": {"const": "hex_axial"},
+        "neighbor_offsets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["q", "r"],
+            "properties": {
+              "q": {"type": "integer"},
+              "r": {"type": "integer"}
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true,
+          "description": "六个水平邻格偏移，顺序即 02C:18 的顺序。"
+        },
+        "distance_formula": {
+          "type": "string",
+          "minLength": 1,
+          "description": "六角距离公式文本；实现按此计算，不得各自复制一份算法。"
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "neighbor_offsets_source": {"$ref": "common.schema.json#/$defs/source"},
+        "distance_formula_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "scale": {
+      "type": "object",
+      "required": ["modes", "hex_size_cm", "abstract_units", "source"],
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": {"enum": ["metric", "abstract"]},
+          "uniqueItems": true
+        },
+        "hex_size_cm": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "metric 模式相邻格中心距离（cm）；abstract 模式不使用本值。"
+        },
+        "abstract_units": {
+          "type": "array",
+          "items": {"enum": ["cell", "step"]},
+          "uniqueItems": true,
+          "description": "abstract 模式的距离 / 移动单位口径。"
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "modes_source": {"$ref": "common.schema.json#/$defs/source"},
+        "abstract_units_source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "high_ground": {
+      "type": "object",
+      "required": ["threshold_cm", "threshold_level", "bonus_layers", "applies_to", "once_per_attack", "source"],
+      "properties": {
+        "threshold_cm": {"type": "integer", "minimum": 1},
+        "threshold_level": {"type": "integer", "minimum": 1},
+        "bonus_layers": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "高地优势层数；沿用 02A 优势来源表的「使用高地的射手 +1」，见 bonus_rule_source。"
+        },
+        "applies_to": {
+          "type": "array",
+          "items": {"enum": ["ranged", "melee"]},
+          "uniqueItems": true,
+          "description": "可获该优势的攻击口径；近战不因高度本身自动获得加值。"
+        },
+        "once_per_attack": {"type": "boolean"},
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "bonus_source": {
+          "$ref": "common.schema.json#/$defs/source",
+          "description": "bonus_layers / applies_to / once_per_attack 的来源行。"
+        },
+        "bonus_rule_source": {
+          "$ref": "common.schema.json#/$defs/source",
+          "description": "高地优势规则本身的出处（02A 优势来源表「使用高地的射手 +1」）。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "movement": {
+      "type": "object",
+      "required": ["slope_max_cm", "source"],
+      "properties": {
+        "slope_max_cm": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "相邻格高差不超过该值时可视为连续可走坡面（地形可标记禁止）。"
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "fall": {
+      "type": "object",
+      "required": ["no_damage_below_cm", "step_cm", "dice", "prone", "rounding", "source", "damage_rule_source"],
+      "properties": {
+        "no_damage_below_cm": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "坠落高度小于该值不造成坠落伤害。"
+        },
+        "step_cm": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "伤害档距：达到下限后每多少 cm 一档（不足一档向上取整）。"
+        },
+        "dice": {
+          "type": "string",
+          "pattern": "^[0-9]*d[0-9]+$",
+          "description": "坠落伤害骰（如 1d6）；骰果仍由服务端可追溯 RNG 产出。"
+        },
+        "prone": {"type": "boolean", "description": "坠落伤害是否使单位倒地。"},
+        "rounding": {"enum": ["ceil", "floor"]},
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "damage_rule_source": {
+          "$ref": "common.schema.json#/$defs/source",
+          "description": "step_cm / dice / prone / rounding 的来源行。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "vertical_links": {
+      "type": "object",
+      "required": ["kinds", "source"],
+      "properties": {
+        "kinds": {
+          "type": "array",
+          "items": {
+            "enum": ["stairs", "ramp", "ladder", "lift", "climb", "jump", "fall", "teleport"]
+          },
+          "uniqueItems": true
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"}
+      },
+      "additionalProperties": false
+    },
+    "cover": {
+      "type": "object",
+      "required": ["grades", "source"],
+      "properties": {
+        "grades": {
+          "type": "array",
+          "items": {"enum": ["light", "medium", "heavy", "full"]},
+          "uniqueItems": true,
+          "description": "掩体四档档名；必须与 data/system/tactics_combat.json 的 cover[].id 完全一致。"
+        },
+        "source": {"$ref": "common.schema.json#/$defs/source"},
+        "note": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

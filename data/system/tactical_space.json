@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "kind": "system.tactical_space",
+  "source": "docs/system/02c-hex-battlefield.md:5",
+  "note": "02C 六角格战场的可调阈值与受控枚举。实现（Python / JS）不得复制这些默认值；metric 与 abstract 两套口径不互换。每个对象的主值来源写在 source，来自其它行的字段用 <字段>_source 逐条覆盖。",
+  "geometry": {
+    "type": "hex_axial",
+    "neighbor_offsets": [
+      {"q": 1, "r": 0},
+      {"q": 1, "r": -1},
+      {"q": 0, "r": -1},
+      {"q": -1, "r": 0},
+      {"q": -1, "r": 1},
+      {"q": 0, "r": 1}
+    ],
+    "distance_formula": "max(|dq|, |dr|, |dq+dr|)",
+    "source": "docs/system/02c-hex-battlefield.md:33",
+    "neighbor_offsets_source": "docs/system/02c-hex-battlefield.md:18",
+    "distance_formula_source": "docs/system/02c-hex-battlefield.md:19"
+  },
+  "scale": {
+    "modes": ["metric", "abstract"],
+    "hex_size_cm": 150,
+    "abstract_units": ["cell", "step"],
+    "source": "docs/system/02c-hex-battlefield.md:37",
+    "modes_source": "docs/system/02c-hex-battlefield.md:35",
+    "abstract_units_source": "docs/system/02c-hex-battlefield.md:39"
+  },
+  "high_ground": {
+    "threshold_cm": 100,
+    "threshold_level": 1,
+    "bonus_layers": 1,
+    "applies_to": ["ranged"],
+    "once_per_attack": true,
+    "source": "docs/system/02c-hex-battlefield.md:78",
+    "bonus_source": "docs/system/02c-hex-battlefield.md:84",
+    "bonus_rule_source": "docs/system/02a-tactics-engine.md:93"
+  },
+  "movement": {
+    "slope_max_cm": 50,
+    "source": "docs/system/02c-hex-battlefield.md:94"
+  },
+  "fall": {
+    "no_damage_below_cm": 150,
+    "step_cm": 300,
+    "dice": "1d6",
+    "prone": true,
+    "rounding": "ceil",
+    "source": "docs/system/02c-hex-battlefield.md:104",
+    "damage_rule_source": "docs/system/02c-hex-battlefield.md:105"
+  },
+  "vertical_links": {
+    "kinds": ["stairs", "ramp", "ladder", "lift", "climb", "jump", "fall", "teleport"],
+    "source": "docs/system/02c-hex-battlefield.md:45"
+  },
+  "cover": {
+    "grades": ["light", "medium", "heavy", "full"],
+    "source": "docs/system/02c-hex-battlefield.md:138",
+    "note": "档名与 data/system/tactics_combat.json 的 cover[].id 完全一致；防护数值表留在该文件，本处只做指针。"
+  }
+}
