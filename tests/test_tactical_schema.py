@@ -10,8 +10,9 @@
 - 交叉校验：04 空间规则数据的每个 source 行号仍指向 02C 的真实锚点。
 
 schema 子集（data/FORMAT.md 第 7 节）表达不了跨字段不变式（同一个 cell_id 唯一、
-高度字段与 scale.mode 一致），因此本文件额外做这些检查——不是第二套格式，只是补
-JSON Schema 子集缺的 `uniqueKeys` / 条件必填。
+高度字段与 scale.mode 一致），因此由 `tactical_battlefield.battlefield_invariants`
+额外做这些检查——不是第二套格式，只是补 JSON Schema 子集缺的 `uniqueKeys` / 条件必填。
+该不变式只有一份实现，位于 `tactical_battlefield.py`（Issue #417 搬入）。
 
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_tactical_schema.py` 运行。
 """
@@ -23,8 +24,10 @@ import tempfile
 TESTS = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(TESTS)
 sys.path.insert(0, TESTS)
+sys.path.insert(0, ROOT)
 
 import validate_data  # noqa: E402  (tests/ 已加入 sys.path)
+from tactical_battlefield import battlefield_invariants  # noqa: E402  (仓库根已加入 sys.path)
 
 SCHEMA_DIR = os.path.join(ROOT, "data", "schema")
 BATTLEFIELD_SCHEMA = "tactical.battlefield.schema.json"
@@ -46,55 +49,7 @@ def load_json(path):
         return json.load(handle)
 
 
-# ── 跨字段不变式 ────────────────────────────────────────────────────────
-
-def battlefield_invariants(instance):
-    """JSON Schema 子集无法表达的战场不变式。
-
-    - 每格的高度字段恰好一个，且与 scale.mode 同口径（02C:47）；
-    - 同一地图内 cell_id 唯一（cell_id 是稳定身份，02C:21）；
-    - metric 必须给 hex_size_cm；abstract 必须给 unit 且不得给 hex_size_cm。
-    """
-    errors = []
-    scale = instance.get("scale")
-    scale = scale if isinstance(scale, dict) else {}
-    mode = scale.get("mode")
-    if mode == "metric" and "hex_size_cm" not in scale:
-        errors.append("$.scale.hex_size_cm: metric 模式必须给出相邻格中心距离（02C:37）")
-    if mode == "abstract":
-        if "unit" not in scale:
-            errors.append("$.scale.unit: abstract 模式必须声明格 / 步口径（02C:39）")
-        if "hex_size_cm" in scale:
-            errors.append("$.scale.hex_size_cm: abstract 模式不得使用厘米口径（02C:39）")
-
-    cells = instance.get("cells")
-    if not isinstance(cells, list):
-        return errors
-    seen = set()
-    for index, cell in enumerate(cells):
-        if not isinstance(cell, dict):
-            continue
-        path = "$.cells[%d]" % index
-        has_cm = "elevation_cm" in cell
-        has_level = "elevation_level" in cell
-        if has_cm and has_level:
-            errors.append("%s.elevation_level: metric / abstract 高度字段混用（已有 elevation_cm）" % path)
-        elif not has_cm and not has_level:
-            errors.append("%s: 缺少高度字段（elevation_cm 与 elevation_level 必须恰好一个）" % path)
-        elif mode == "metric" and has_level:
-            errors.append("%s.elevation_level: scale.mode=metric 时不得使用 elevation_level（02C:47）" % path)
-        elif mode == "abstract" and has_cm:
-            errors.append("%s.elevation_cm: scale.mode=abstract 时不得使用 elevation_cm（02C:47）" % path)
-
-        cell_id = cell.get("cell_id")
-        if isinstance(cell_id, str):
-            if cell_id in seen:
-                errors.append("%s.cell_id: 重复 cell_id '%s'（cell_id 是稳定身份，02C:21）"
-                              % (path, cell_id))
-            else:
-                seen.add(cell_id)
-    return errors
-
+# ── 跨字段不变式（实现见 tactical_battlefield.py，不在本文件留副本） ──────────
 
 def document_errors(instance, schema_name):
     """schema 错误 + 跨字段不变式（只对 battlefield 生效）。"""
@@ -365,9 +320,13 @@ def check_space_rules_data():
 
 # 每个 source 行号必须真的落在 02C 的对应锚点上（防止文档行号漂移后数据静默错位）。
 SPACE_ANCHORS = (
+    ("docs/system/02c-hex-battlefield.md:5", "M13 六角格战场"),
     ("docs/system/02c-hex-battlefield.md:18", "(1,0)"),
     ("docs/system/02c-hex-battlefield.md:19", "max(|dq|, |dr|, |dq+dr|)"),
+    ("docs/system/02c-hex-battlefield.md:33", "hex_axial"),
+    ("docs/system/02c-hex-battlefield.md:35", "两种口径"),
     ("docs/system/02c-hex-battlefield.md:37", "150"),
+    ("docs/system/02c-hex-battlefield.md:39", "格 / 步单位"),
     ("docs/system/02c-hex-battlefield.md:45", "stairs"),
     ("docs/system/02c-hex-battlefield.md:78", "100"),
     ("docs/system/02c-hex-battlefield.md:84", "使用高地的射手"),
