@@ -2397,6 +2397,190 @@ def check_tick_plan_not_committed_keeps_retryable_state():
         assert _json_roundtrip(ticked) == ticked, status
 
 
+# --------------------------------------------------------------------------
+# §8.2 / Issue #366：AI 调用尝试即记账，失败不拖垮 tick
+# --------------------------------------------------------------------------
+
+class _RaisingPort(_FakePort):
+    """`generate_candidates` 抛异常的假 port（失败隔离用例）。"""
+
+    def __init__(self, message="模型超时"):
+        _FakePort.__init__(self, ai_options=[])
+        self.message = message
+
+    def generate_candidates(self, npc, view, budget=None):
+        self.ai_calls.append(
+            {"npc_id": npc.get("display_ref", {}).get("npc_id")})
+        raise RuntimeError(self.message)
+
+
+class _BudgetPort(_FakePort):
+    """记录每次调用看到的预算快照（同 tick 预算可见性用例）。"""
+
+    def __init__(self, ai_options=None):
+        _FakePort.__init__(self, ai_options=ai_options)
+        self.budgets = []
+
+    def generate_candidates(self, npc, view, budget=None):
+        self.budgets.append(dict(budget or {}))
+        return _FakePort.generate_candidates(self, npc, view, budget=budget)
+
+
+def _ai_failed_entries(block):
+    return [entry for entry in block["journal"]
+            if entry.get("kind") == "ai_failed"]
+
+
+def check_tick_charges_empty_candidates():
+    """#366：模型返回空表也计一次调用 / token；突发上限照常生效。"""
+    block = _n5_block([_n5_npc("npc-%d" % index, place="market")
+                       for index in range(5)])
+    port = _FakePort(ai_options=[])
+
+    ticked = neura.tick(block, _view(options=[_option("op-rule")]),
+                        port=port, now_minute=600)
+
+    assert len(port.ai_calls) == 1, "空表也算一次尝试：突发上限应拦住其余 4 个"
+    assert ticked["budget"] == {"day": 0, "strong_calls": 1, "light_calls": 0,
+                                "tokens": 4000}
+    assert _ai_failed_entries(ticked) == [], "空表不是失败，不写 ai_failed"
+    for entry in ticked["journal"]:
+        assert entry["ai_used"] is False
+        assert entry["cost"] == {"tier": "rule", "tokens": 0}
+    assert _json_roundtrip(ticked) == ticked
+
+
+def check_tick_charges_rejected_candidates():
+    """#366：AI 候选全被复验拒绝仍记账；决策不标成 AI。"""
+    block = _n5_block([_n5_npc(place="market")])
+    port = _FakePort(ai_options=[{"option_id": "op-bad"}])
+
+    ticked = neura.tick(block, _view(options=[_option("op-rule")]),
+                        port=port, now_minute=600)
+
+    assert len(port.ai_calls) == 1
+    assert ticked["budget"] == {"day": 0, "strong_calls": 1, "light_calls": 0,
+                                "tokens": 4000}
+    decision = [entry for entry in ticked["journal"]
+                if "decision_id" in entry and entry.get("ai_used") is not None]
+    assert len(decision) == 1
+    assert decision[0]["ai_used"] is False
+    assert decision[0]["cost"] == {"tier": "rule", "tokens": 0}
+    assert _ai_failed_entries(ticked) == []
+    assert _json_roundtrip(ticked) == ticked
+
+
+def check_tick_ai_failure_charged_and_isolated():
+    """#366：调用抛异常 → 记账 + ai_failed 记录 + 后续 NPC 照常处理。"""
+    block = _n5_block([_n5_npc("npc-%d" % index, place="market")
+                       for index in range(2)])
+    port = _RaisingPort("模型超时")
+
+    ticked = neura.tick(block, _view(options=[_option("op-rule")]),
+                        port=port, now_minute=600)
+
+    assert len(port.ai_calls) == 1, "失败不重试；突发上限内只尝试一次"
+    assert ticked["budget"] == {"day": 0, "strong_calls": 1, "light_calls": 0,
+                                "tokens": 4000}
+    failed = _ai_failed_entries(ticked)
+    assert len(failed) == 1
+    assert failed[0]["npc_id"] == "npc-0"
+    assert failed[0]["at_minute"] == 600
+    assert failed[0]["tier"] == "L0"
+    assert "RuntimeError" in failed[0]["error"]
+    assert "模型超时" in failed[0]["error"]
+    # 同 tick 的后一个 NPC 不受影响：仍写决策并提交规则提案。
+    assert ticked["npcs"]["npc-0"]["last_tick_minute"] == 600
+    assert ticked["npcs"]["npc-1"]["last_tick_minute"] == 600
+    assert len(port.submits) == 2
+    assert _json_roundtrip(ticked) == ticked
+
+
+def check_tick_ai_budget_exhausted_skips_call():
+    """#366：`can_call_ai` 为 false → 不调用、不记账、不涨 burst。"""
+    used_calls = {"day": 0, "strong_calls": neura.STRONG_CALLS_PER_DAY,
+                  "light_calls": 0, "tokens": 24000}
+    block = _n5_block([_n5_npc(place="market")])
+    block["budget"] = dict(used_calls)
+    port = _FakePort(ai_options=[_option("op-ai", source="ai")])
+
+    ticked = neura.tick(block, _view(options=[_option("op-rule")]),
+                        port=port, now_minute=600)
+
+    assert port.ai_calls == [], "当日 strong 次数已满不得调用"
+    assert ticked["budget"] == used_calls
+    assert _ai_failed_entries(ticked) == []
+
+    # token 余量不足（59000 + 4000 > 60000）：同样不调用。
+    block2 = _n5_block([_n5_npc(place="market")])
+    block2["budget"] = {"day": 0, "strong_calls": 0, "light_calls": 0,
+                        "tokens": 59000}
+    port2 = _FakePort(ai_options=[_option("op-ai", source="ai")])
+    ticked2 = neura.tick(block2, _view(options=[_option("op-rule")]),
+                         port=port2, now_minute=600)
+    assert port2.ai_calls == []
+    assert ticked2["budget"]["tokens"] == 59000
+    assert ticked2["budget"]["strong_calls"] == 0
+
+
+def check_tick_burst_counts_failed_attempts():
+    """#366：失败尝试也占突发名额（≤ 3 次 M / tick）。"""
+    block = _n5_block([_n5_npc("npc-%d" % index, place="temple",
+                               importance=0.9) for index in range(4)])
+    view = _view(options=[_option("op-rule")])
+    view["bands"] = {}
+    port = _FakePort(ai_options=[])
+
+    ticked = neura.tick(block, view, port=port, now_minute=1441)
+
+    assert len(port.ai_calls) == 3, "light 突发上限 ≤ 3，空表也计数"
+    assert ticked["budget"] == {"day": 1, "strong_calls": 0, "light_calls": 3,
+                                "tokens": 3600}
+    assert _ai_failed_entries(ticked) == []
+
+
+def check_tick_budget_visible_to_later_npcs():
+    """#366：同 tick 内后一个 NPC 看到前一个已消耗的预算（L0 → L1 降档）。"""
+    block = _n5_block([_n5_npc("npc-%d" % index, place="market")
+                       for index in range(2)])
+    block["budget"] = {"day": 0, "strong_calls": 0, "light_calls": 0,
+                       "tokens": 44000}
+    port = _BudgetPort(ai_options=[])
+
+    ticked = neura.tick(block, _view(options=[_option("op-rule")]),
+                        port=port, now_minute=600)
+
+    # 第一个 NPC 走 L0/strong（44000 → 48000）；第二个已到 80% → L1/light。
+    assert [snapshot["tokens"] for snapshot in port.budgets] == [44000, 48000]
+    assert ticked["budget"] == {"day": 0, "strong_calls": 1, "light_calls": 1,
+                                "tokens": 49200}
+
+
+def check_tick_budget_invariant_and_replay():
+    """#366：预算恒等式成立；同输入重跑确定；同分钟重 tick 不重复记账。"""
+    for ai_options in ([], [_option("op-ai", source="ai")]):
+        block = _n5_block([_n5_npc(place="market")])
+        view = _view(options=[_option("op-rule")])
+        first = neura.tick(block, view, port=_FakePort(ai_options=ai_options),
+                           now_minute=600)
+        second = neura.tick(block, view, port=_FakePort(ai_options=ai_options),
+                            now_minute=600)
+        assert json.dumps(first, ensure_ascii=False, sort_keys=True) == \
+            json.dumps(second, ensure_ascii=False, sort_keys=True), "重跑应确定"
+
+        budget = first["budget"]
+        assert 4000 * budget["strong_calls"] + \
+            1200 * budget["light_calls"] <= neura.NPC_DAILY_TOKEN_BUDGET
+        assert budget["tokens"] == 4000 * budget["strong_calls"] + \
+            1200 * budget["light_calls"]
+
+        # 同一分钟重 tick：NPC 不到期 → 不调用、不重复记账、不重复 journal。
+        replay = neura.tick(first, view, port=_FakePort(ai_options=ai_options),
+                            now_minute=600)
+        assert replay["budget"] == budget
+        assert len(replay["journal"]) == len(first["journal"])
+
+
 def main():
     checks = (
         check_constants,
@@ -2483,6 +2667,13 @@ def main():
         check_tick_schedule_move_conflict_retries_next_tick,
         check_tick_plan_writeback_follows_submit,
         check_tick_plan_not_committed_keeps_retryable_state,
+        check_tick_charges_empty_candidates,
+        check_tick_charges_rejected_candidates,
+        check_tick_ai_failure_charged_and_isolated,
+        check_tick_ai_budget_exhausted_skips_call,
+        check_tick_burst_counts_failed_attempts,
+        check_tick_budget_visible_to_later_npcs,
+        check_tick_budget_invariant_and_replay,
     )
     failures = 0
     for check in checks:
