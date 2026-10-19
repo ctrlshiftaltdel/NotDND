@@ -38,27 +38,43 @@ AUX_TITLE.world = WORLD_TITLE;
 PANEL_TITLE.world = WORLD_TITLE;
 
 /* ── 本片状态 ──────────────────────────────────────────── */
+/* form.* 是「用户填的值」的账本：面板每次全量重建前先把屏上的值收回
+   状态，重建时再回填（Issue #404——生成失败 / 刷新列表 / 切分区都不丢
+   输入）。成功后要清空的字段同时清 DOM 与状态，语义与从前一致。 */
 var W = {
   view: 'gen',          // gen | build | dir | ledger
   gen: {
     busy: false,        // 生成 / 提交在途
     error: '',          // 就地错误（服务端固定短语）
+    opError: '',        // 提交 / 导出 / 导入失败原文
     issues: null,       // error 阻断的校验问题列表（422）
     preview: null,      // 生成预览卡
-    committed: null     // commit / import 成功回执 {instance_id, world_name}
+    committed: null,    // commit / import 成功回执 {instance_id, world_name}
+    form: {
+      type: 'fantasy', scale: 'region', engine: 'tactics',
+      seed: '', desc: '', ovr: ''
+    }
   },
   build: {
     reqId: 0, loading: false,
     list: null,         // GET /api/world/project 的 projects 摘要
     error: '',          // 列表读取失败（404 no_world 等）
     detail: null,       // {project, readiness, entries}（ledger?project_id=）
-    opError: ''         // 操作失败的原文
+    opError: '',        // 操作失败的原文
+    form: {
+      name: '', place: '', kind: '',
+      coin: '0', labor: '0', wage: '0', goods: ''
+    }
   },
   dir: {
     reqId: 0, loading: false,
     list: null, error: '',
     explain: null,      // 六项可解释（directive_explain）
-    opError: ''
+    opError: '',
+    form: {
+      settle: '', text: '', metric: 'grain_days', op: 'gte',
+      target: '90', good: '', cap: '', coin: ''
+    }
   },
   ledger: {
     reqId: 0, loading: false,
@@ -122,11 +138,68 @@ function wInt(v) {
   return isNaN(n) ? 0 : n;
 }
 
+/* ══════════════ 表单值的回收与回填（Issue #404）══════════════ */
+
+/* 分区 → 状态键 → 控件选择器。选择器只认本片的 data-*，并且限定在
+   该分区的表单卡里（`[data-wd-op]` 在指令列表的按钮上也出现，不能裸查）。 */
+var W_FORM_FIELDS = {
+  gen: { scope: '[data-wgen]', fields: {
+         type: '[data-wgen-type]', scale: '[data-wgen-scale]',
+         engine: '[data-wgen-engine]', seed: '[data-wgen-seed]',
+         desc: '[data-wgen-desc]', ovr: '[data-wgen-ovr]' } },
+  build: { scope: '[data-wbuild]', fields: {
+           name: '[data-wp-name]', place: '[data-wp-place]',
+           kind: '[data-wp-kind]', coin: '[data-wp-coin]',
+           labor: '[data-wp-labor]', wage: '[data-wp-wage]',
+           goods: '[data-wp-goods]' } },
+  dir: { scope: '[data-wdir]', fields: {
+         settle: '[data-wd-settle]', text: '[data-wd-text]',
+         metric: '[data-wd-metric]', op: '[data-wd-op]',
+         target: '[data-wd-target]', good: '[data-wd-good]',
+         cap: '[data-wd-cap]', coin: '[data-wd-coin]' } }
+};
+
+/* 上一次真正画到 #auxBody 的分区：回收按它取，不受 W.view 先改影响。 */
+var wMountedView = '';
+
+/* 把屏上的表单值收回状态；控件不在屏上（换了分区）就保持原值。 */
+function wCaptureForms(view) {
+  var spec = W_FORM_FIELDS[view];
+  var box = W[view];
+  if (!spec || !box || !box.form) return;
+  Object.keys(spec.fields).forEach(function (k) {
+    var el = document.querySelector('#auxBody ' + spec.scope + ' ' +
+                                   spec.fields[k]);
+    if (el) box.form[k] = String(el.value == null ? '' : el.value);
+  });
+}
+
+/* 回填出口：属性值 / textarea 内容都经 esc()，不引入裸 HTML。 */
+function wVal(v) {
+  return ' value="' + esc(v == null ? '' : v) + '"';
+}
+/* 成功后要清空的字段：状态与屏上一起清（重渲染后旧节点已脱离文档，
+   只清状态会被下一次回收又捡回屏上的旧值）。 */
+function wClearField(view, key) {
+  var spec = W_FORM_FIELDS[view];
+  if (!spec) return;
+  W[view].form[key] = '';
+  var el = document.querySelector('#auxBody ' + spec.scope + ' ' +
+                                 spec.fields[key]);
+  if (el) el.value = '';
+}
+function wOption(k, label, selected) {
+  return '<option value="' + esc(k) + '"' +
+    (String(k) === String(selected == null ? '' : selected) ? ' selected' : '') +
+    '>' + label + '</option>';
+}
+
 /* ══════════════ 面板渲染入口 ══════════════ */
 
 function renderWorldPanel() {
   var box = $('#auxBody');
   if (!box) return;
+  wCaptureForms(wMountedView);   // 先收回屏上的输入，再全量重建（Issue #404）
   var title = $('#auxTitle');
   if (title) title.textContent = WORLD_TITLE;
   var html = '<div class="wband" data-wwork>' +
@@ -144,41 +217,44 @@ function renderWorldPanel() {
   else if (W.view === 'dir') html += wDirHtml();
   else html += wLedgerHtml();
   box.innerHTML = html;
+  wMountedView = W.view;
 }
 
 /* ══════════════ 一、生成世界 ══════════════ */
 
 function wGenHtml() {
   var g = W.gen;
+  var f = g.form;
   var html = '<div class="wcard" data-wgen><div class="wcard-title">生成一个世界</div>' +
     '<div class="wcard-body">' +
     '<div class="wgrid">' +
     '<div class="wfield"><label for="wgenType">世界类型</label>' +
     '<select id="wgenType" data-wgen-type>' +
     ['fantasy', 'modern', 'future'].map(function (k) {
-      return '<option value="' + k + '"' + (k === 'fantasy' ? ' selected' : '') + '>' +
-        W_WORLD_TYPE[k] + '</option>';
+      return wOption(k, W_WORLD_TYPE[k], f.type);
     }).join('') + '</select></div>' +
     '<div class="wfield"><label for="wgenScale">规模档</label>' +
     '<select id="wgenScale" data-wgen-scale>' +
     ['sketch', 'region', 'domain'].map(function (k) {
-      return '<option value="' + k + '"' + (k === 'region' ? ' selected' : '') + '>' +
-        W_SCALE[k] + '</option>';
+      return wOption(k, W_SCALE[k], f.scale);
     }).join('') + '</select></div>' +
     '<div class="wfield"><label for="wgenEngine">剧本引擎</label>' +
     '<select id="wgenEngine" data-wgen-engine>' +
     ['tactics', 'build'].map(function (k) {
-      return '<option value="' + k + '">' + W_ENGINE[k] + '</option>';
+      return wOption(k, W_ENGINE[k], f.engine);
     }).join('') + '</select></div>' +
     '<div class="wfield"><label for="wgenSeed">种子提示（可空）</label>' +
-    '<input type="text" id="wgenSeed" data-wgen-seed placeholder="留空则新掷"></div>' +
+    '<input type="text" id="wgenSeed" data-wgen-seed placeholder="留空则新掷"' +
+    wVal(f.seed) + '></div>' +
     '</div>' +
     '<div class="wfield"><label for="wgenDesc">描述（一句话想要怎样的世界）</label>' +
     '<textarea id="wgenDesc" data-wgen-desc rows="2" ' +
-    'placeholder="例：一座被灰烬覆盖的港口城，商人与打捞者共存"></textarea></div>' +
+    'placeholder="例：一座被灰烬覆盖的港口城，商人与打捞者共存">' +
+    esc(f.desc) + '</textarea></div>' +
     '<div class="wfield"><label for="wgenOvr">overrides（JSON，可空）</label>' +
     '<textarea id="wgenOvr" data-wgen-ovr rows="2" ' +
-    'placeholder=\'{"region_upserts":[{"name":"黑锚区","summary":"…"}]}\'></textarea></div>' +
+    'placeholder=\'{"region_upserts":[{"name":"黑锚区","summary":"…"}]}\'>' +
+    esc(f.ovr) + '</textarea></div>' +
     '<div class="wacts">' +
     '<button type="button" class="btn btn-primary" data-wgen-run' +
     (g.busy ? ' aria-busy="true" disabled' : '') + '>生成预览</button>' +
@@ -463,24 +539,32 @@ async function wGenImport(file) {
 
 function wBuildHtml() {
   var b = W.build;
+  var f = b.form;
   var html = '<div class="wcard" data-wbuild><div class="wcard-title">发起工程</div>' +
     '<div class="wcard-body">' +
     '<div class="wgrid">' +
     '<div class="wfield"><label for="wpName">工程名</label>' +
-    '<input type="text" id="wpName" data-wp-name placeholder="例：东墙粮仓"></div>' +
+    '<input type="text" id="wpName" data-wp-name placeholder="例：东墙粮仓"' +
+    wVal(f.name) + '></div>' +
     '<div class="wfield"><label for="wpPlace">地点（place_id）</label>' +
-    '<input type="text" id="wpPlace" data-wp-place placeholder="例：p1"></div>' +
+    '<input type="text" id="wpPlace" data-wp-place placeholder="例：p1"' +
+    wVal(f.place) + '></div>' +
     '<div class="wfield"><label for="wpKind">设施类型（blueprint.kind）</label>' +
-    '<input type="text" id="wpKind" data-wp-kind placeholder="例：granary"></div>' +
+    '<input type="text" id="wpKind" data-wp-kind placeholder="例：granary"' +
+    wVal(f.kind) + '></div>' +
     '<div class="wfield"><label for="wpCoin">资金需求（coin）</label>' +
-    '<input type="number" id="wpCoin" data-wp-coin min="0" step="1" value="0"></div>' +
+    '<input type="number" id="wpCoin" data-wp-coin min="0" step="1"' +
+    wVal(f.coin) + '></div>' +
     '<div class="wfield"><label for="wpLabor">工期（labor_days，人日）</label>' +
-    '<input type="number" id="wpLabor" data-wp-labor min="0" step="1" value="0"></div>' +
+    '<input type="number" id="wpLabor" data-wp-labor min="0" step="1"' +
+    wVal(f.labor) + '></div>' +
     '<div class="wfield"><label for="wpWage">日工资（wage_per_day，可空）</label>' +
-    '<input type="number" id="wpWage" data-wp-wage min="0" step="1" value="0"></div>' +
+    '<input type="number" id="wpWage" data-wp-wage min="0" step="1"' +
+    wVal(f.wage) + '></div>' +
     '</div>' +
     '<div class="wfield"><label for="wpGoods">材料需求（JSON：{"good_id": 数量}，可空）</label>' +
-    '<input type="text" id="wpGoods" data-wp-goods placeholder=\'{"grain": 10}\'></div>' +
+    '<input type="text" id="wpGoods" data-wp-goods placeholder=\'{"grain": 10}\'' +
+    wVal(f.goods) + '></div>' +
     '<div class="wacts">' +
     '<button type="button" class="btn btn-primary" data-wp-create>创建工程</button>' +
     '<button type="button" class="btn" data-wp-reload>刷新列表</button>' +
@@ -657,7 +741,7 @@ async function wProjectCreate() {
   try {
     var d = await api('/api/world/project', { method: 'POST', body: body });
     toast('已创建工程：' + (d.project && d.project.name ? d.project.name : d.project_id));
-    if (nameEl) nameEl.value = '';
+    wClearField('build', 'name');   // 成功后清空工程名（其余字段保留，语义不变）
   } catch (e) {
     b.opError = String((e && e.message) || e);
   }
@@ -704,32 +788,39 @@ async function wProjectDetail(pid) {
 
 function wDirHtml() {
   var d = W.dir;
+  var f = d.form;
   var html = '<div class="wcard" data-wdir><div class="wcard-title">下达委托指令</div>' +
     '<div class="wcard-body">' +
     '<div class="wgrid">' +
     '<div class="wfield"><label for="wdSettle">据点（settlement_id）</label>' +
-    '<input type="text" id="wdSettle" data-wd-settle placeholder="例：s1"></div>' +
+    '<input type="text" id="wdSettle" data-wd-settle placeholder="例：s1"' +
+    wVal(f.settle) + '></div>' +
     '<div class="wfield"><label for="wdText">指令内容（一句话）</label>' +
-    '<input type="text" id="wdText" data-wd-text placeholder="例：把粮仓存粮维持到 90 天"></div>' +
+    '<input type="text" id="wdText" data-wd-text placeholder="例：把粮仓存粮维持到 90 天"' +
+    wVal(f.text) + '></div>' +
     '<div class="wfield"><label for="wdMetric">目标指标</label>' +
     '<select id="wdMetric" data-wd-metric>' +
-    '<option value="grain_days">存粮天数（grain_days）</option>' +
-    '<option value="good_stock">货物库存（good_stock）</option>' +
+    wOption('grain_days', '存粮天数（grain_days）', f.metric) +
+    wOption('good_stock', '货物库存（good_stock）', f.metric) +
     '</select></div>' +
     '<div class="wfield"><label for="wdOp">目标条件</label>' +
     '<select id="wdOp" data-wd-op>' +
-    '<option value="gte">不低于（≥）</option>' +
-    '<option value="lte">不超过（≤）</option>' +
-    '<option value="eq">恰好等于（=）</option>' +
+    wOption('gte', '不低于（≥）', f.op) +
+    wOption('lte', '不超过（≤）', f.op) +
+    wOption('eq', '恰好等于（=）', f.op) +
     '</select></div>' +
     '<div class="wfield"><label for="wdTarget">目标值</label>' +
-    '<input type="number" id="wdTarget" data-wd-target step="1" value="90"></div>' +
+    '<input type="number" id="wdTarget" data-wd-target step="1"' +
+    wVal(f.target) + '></div>' +
     '<div class="wfield"><label for="wdGood">货物（good_stock 指标必填）</label>' +
-    '<input type="text" id="wdGood" data-wd-good placeholder="例：grain"></div>' +
+    '<input type="text" id="wdGood" data-wd-good placeholder="例：grain"' +
+    wVal(f.good) + '></div>' +
     '<div class="wfield"><label for="wdCap">预算硬上界（cap_total，可空）</label>' +
-    '<input type="number" id="wdCap" data-wd-cap min="0" step="1" placeholder="自动花费不越此线"></div>' +
+    '<input type="number" id="wdCap" data-wd-cap min="0" step="1" ' +
+    'placeholder="自动花费不越此线"' + wVal(f.cap) + '></div>' +
     '<div class="wfield"><label for="wdCoin">每日coin预算（coin_per_day，可空）</label>' +
-    '<input type="number" id="wdCoin" data-wd-coin min="0" step="1"></div>' +
+    '<input type="number" id="wdCoin" data-wd-coin min="0" step="1"' +
+    wVal(f.coin) + '></div>' +
     '</div>' +
     '<div class="wacts">' +
     '<button type="button" class="btn btn-primary" data-wd-create>创建指令</button>' +
@@ -886,7 +977,7 @@ async function wDirCreate() {
               authorized_scope: ['procure'] }
     });
     toast('已下达指令：' + r.directive_id);
-    if (textEl) textEl.value = '';
+    wClearField('dir', 'text');     // 成功后清空指令内容（其余字段保留，语义不变）
   } catch (e) {
     d.opError = String((e && e.message) || e);
   }

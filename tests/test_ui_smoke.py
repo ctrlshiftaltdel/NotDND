@@ -737,6 +737,16 @@ def _wtext(page, selector):
         "return e ? e.textContent : '';" % json.dumps(selector))
 
 
+def _wvals(page, mapping):
+    """读一组工坊表单控件的当前 value（{键: 选择器}；控件不在屏上回 None）。"""
+    return page.js(
+        "const q = (s) => { const e = document.querySelector('#auxBody ' + s);"
+        " return e ? String(e.value) : null; };"
+        "return {%s};" % ",".join(
+            "%s: q(%s)" % (json.dumps(k), json.dumps(v))
+            for k, v in mapping.items()))
+
+
 def _check_world_ui(page, server):
     """M12-UI：账本 / 建造与委托 / 生成世界三块的浏览器断言。"""
     sid = "m12-world-ui"
@@ -922,6 +932,132 @@ def _check_world_ui(page, server):
           and not page.js(
               "return !!document.querySelector('#auxBody [data-wgen-preview]');"),
           "issues=%r" % (_wtext(page, "#auxBody .wissues"),))
+
+    # ── Issue #404：重渲染（失败 / 刷新列表 / 切分区）不再清空用户输入 ──
+    # ① 生成失败（422，桩仍生效）：六个字段与提交前逐字一致。
+    gen_form = {
+        "type": "[data-wgen] [data-wgen-type]",
+        "scale": "[data-wgen] [data-wgen-scale]",
+        "engine": "[data-wgen] [data-wgen-engine]",
+        "seed": "[data-wgen] [data-wgen-seed]",
+        "desc": "[data-wgen] [data-wgen-desc]",
+        "ovr": "[data-wgen] [data-wgen-ovr]",
+    }
+    gen_want = {
+        "type": "future", "scale": "domain", "engine": "build",
+        "seed": "灰港-0419",
+        "desc": "灰烬覆盖的港口城，商人与打捞者共存",
+        "ovr": '{"region_upserts":[{"name":"黑锚区"}]}',
+    }
+    for key, sel in gen_form.items():
+        _wfill(page, "#auxBody " + sel, gen_want[key])
+    _wclick(page, "#auxBody [data-wgen-run]")          # 桩 → 422
+    failed_again = page.wait_for(
+        "const li = document.querySelector('#auxBody .wissues li.is-error');"
+        "return !!(li && li.textContent.indexOf('E_UI_PROBE') >= 0);",
+        timeout=15)
+    gen_got = _wvals(page, gen_form)
+    check("W5：生成失败（422）后六个字段逐字保留",
+          failed_again and gen_got == gen_want, "form=%r" % (gen_got,))
+
+    # ② 点「刷新列表」：工程表单七个字段保留。
+    _wclick(page, '#auxBody [data-wview="build"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wp-name]');",
+        timeout=10)
+    build_form = {
+        "name": "[data-wbuild] [data-wp-name]",
+        "place": "[data-wbuild] [data-wp-place]",
+        "kind": "[data-wbuild] [data-wp-kind]",
+        "coin": "[data-wbuild] [data-wp-coin]",
+        "labor": "[data-wbuild] [data-wp-labor]",
+        "wage": "[data-wbuild] [data-wp-wage]",
+        "goods": "[data-wbuild] [data-wp-goods]",
+    }
+    build_want = {"name": "西墙粮仓", "place": "p1", "kind": "granary",
+                  "coin": "77", "labor": "3", "wage": "5",
+                  "goods": '{"grain": 7}'}
+    for key, sel in build_form.items():
+        _wfill(page, "#auxBody " + sel, build_want[key])
+    _wclick(page, "#auxBody [data-wp-reload]")
+    reloaded = page.wait_for(
+        "return !!window.__WORLD && window.__WORLD().build.loading === false"
+        " && !!document.querySelector('#auxBody [data-wp-name]');", timeout=15)
+    build_got = _wvals(page, build_form)
+    check("W5：点「刷新列表」后工程表单七个字段保留",
+          reloaded and build_got == build_want, "form=%r" % (build_got,))
+
+    # ③ 切分区：委托表单 → 账本 → 委托 / 生成 / 工程，值都还在。
+    _wclick(page, '#auxBody [data-wview="dir"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wd-settle]');",
+        timeout=10)
+    dir_form = {
+        "settle": "[data-wdir] [data-wd-settle]",
+        "text": "[data-wdir] [data-wd-text]",
+        "metric": "[data-wdir] [data-wd-metric]",
+        "op": "[data-wdir] [data-wd-op]",
+        "target": "[data-wdir] [data-wd-target]",
+        "good": "[data-wdir] [data-wd-good]",
+        "cap": "[data-wdir] [data-wd-cap]",
+        "coin": "[data-wdir] [data-wd-coin]",
+    }
+    dir_want = {"settle": "s1", "text": "把存粮维持到 120 天",
+                "metric": "good_stock", "op": "lte", "target": "120",
+                "good": "grain", "cap": "300", "coin": "9"}
+    for key, sel in dir_form.items():
+        _wfill(page, "#auxBody " + sel, dir_want[key])
+    _wclick(page, '#auxBody [data-wview="ledger"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wledger]');",
+        timeout=10)
+    _wclick(page, '#auxBody [data-wview="dir"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wd-settle]');",
+        timeout=10)
+    dir_got = _wvals(page, dir_form)
+    check("W5：切到「账本」再切回「委托」表单值保留",
+          dir_got == dir_want, "form=%r" % (dir_got,))
+
+    _wclick(page, '#auxBody [data-wview="gen"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wgen-desc]');",
+        timeout=10)
+    gen_back = _wvals(page, gen_form)
+    _wclick(page, '#auxBody [data-wview="build"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wp-name]');",
+        timeout=10)
+    build_back = _wvals(page, build_form)
+    check("W5：切分区来回后生成 / 工程表单值同样保留",
+          gen_back == gen_want and build_back == build_want,
+          "gen=%r build=%r" % (gen_back, build_back))
+
+    # ④ 成功后清空语义不变：工程名清掉，其余字段留在原处。
+    _wclick(page, "#auxBody [data-wp-create]")
+    cleared = page.wait_for(
+        "const n = document.querySelector('#auxBody [data-wp-name]');"
+        "const p = document.querySelector('#auxBody [data-wp-place]');"
+        "return !!(n && n.value === '' && p && p.value === %s);"
+        % json.dumps(build_want["place"]), timeout=15)
+    check("W5：创建成功后只清工程名（地点等其余字段保留）", cleared,
+          "form=%r" % (_wvals(page, build_form),))
+
+    # ⑤ 委托同理：创建成功后只清指令内容。
+    _wclick(page, '#auxBody [data-wview="dir"]')
+    page.wait_for(
+        "return !!document.querySelector('#auxBody [data-wdir] [data-wd-text]');",
+        timeout=10)
+    _wfill(page, "#auxBody [data-wdir] [data-wd-text]", "把存粮维持到 150 天")
+    _wclick(page, "#auxBody [data-wd-create]")
+    d_cleared = page.wait_for(
+        "const t = document.querySelector('#auxBody [data-wdir] [data-wd-text]');"
+        "const s = document.querySelector('#auxBody [data-wdir] [data-wd-settle]');"
+        "return !!(t && t.value === '' && s && s.value === %s);"
+        % json.dumps(dir_want["settle"]), timeout=15)
+    check("W5：指令创建成功后只清指令内容（据点保留）", d_cleared,
+          "form=%r" % (_wvals(page, dir_form),))
+
     page.js("window.fetch = window.__FETCH_ORIG; return 'stub-off';")
     check("W1–W4：世界工坊全程没有未捕获错误", not page.js(
         "return window.__ERRS || [];"),
