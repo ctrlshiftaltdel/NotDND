@@ -7976,6 +7976,37 @@ def check_world_export_import_round():
         assert any(i["code"] == "E_GOODS_ERA" for i in bad["issues"]), bad
 
 
+def check_world_import_malformed_shapes_4xx():
+    """Issue #403：畸形导入形状回 4xx，且响应体不回显 Python 异常文本。
+
+    三类输入在修复前都会让 `validate_world` 抛异常、冒到 `do_POST` 兜底
+    （500 + `服务器内部错误：...`）；修复后校验器产出 error，`_world_import`
+    自然走既有的 422 分支。
+    """
+    valid_world = {"key": "x", "engine": "tactics", "world_type": "fantasy"}
+    cases = [
+        {"instance": {"kind": "world.module", "factions": 3}},
+        {"instance": {"kind": "world.module", "world": valid_world,
+                      "regions": [], "goods": [{"good_id": []}]}},
+        {"instance": {"kind": "world.module", "world": "x"}},
+    ]
+    with _Server(offline=True) as server:
+        status, created = server.post("/api/session/create", {})
+        assert status == 200, (status, created)
+        sid = created["sid"]
+        for body in cases:
+            status, resp = server.post("/api/world/import", body, sid=sid)
+            assert status in (400, 422), (status, resp)
+            assert resp.get("status") == "error", resp
+            assert any(item.get("level") == "error"
+                       for item in resp.get("issues") or []), resp
+            text = json.dumps(resp, ensure_ascii=False)
+            for leaked in ("Traceback", "TypeError", "AttributeError", "KeyError",
+                           "unhashable", "not iterable",
+                           "object has no attribute", "服务器内部错误"):
+                assert leaked not in text, (leaked, resp)
+
+
 def _export_instance(server, sid: str, instance_id: str):
     """POST /api/world/export 的裸响应：返回 (状态码, JSON, 响应头字典)。"""
     conn = http.client.HTTPConnection("127.0.0.1", server.port, timeout=10)
@@ -8503,6 +8534,7 @@ CHECKS = (
     check_world_generate_budget_and_port,
     check_world_generate_room_auth,
     check_world_export_import_round,
+    check_world_import_malformed_shapes_4xx,
     check_world_export_disposition,
     check_world_wired_import_and_tick_updates_block,
     check_world_tick_failure_isolated,

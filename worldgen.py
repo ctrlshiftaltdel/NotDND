@@ -730,6 +730,22 @@ def _issue(code, level, hint, place_id=None, frame_id=None):
     return item
 
 
+# ── 导入形状护栏（Issue #403） ───────────────────────────────────────────
+# 导入端点把「任意 JSON object」交给 validate_world：文件可能是手改的，
+# 字段形状不受生成路径约束。validator 必须先自证总函数性（只产出 issue、
+# 不抛异常），再由调用方按 error 阻断。以下三个判定只回答「能不能安全读」，
+# 不做语义校验——形状不对就整段跳过，避免为同一个坏字段刷一屏 issue。
+
+def _is_sequence(value):
+    """world 文档里的数组字段（JSON 只有 list；容忍 tuple 以兼容调用方）。"""
+    return isinstance(value, (list, tuple))
+
+
+def _is_id(value):
+    """id 类字段：非空标量。list/dict 不可哈希，会打爆 set 成员判断。"""
+    return isinstance(value, (str, int, float)) and bool(value)
+
+
 def validate_world(world, *, spec=None):
     """世界校验器：产出 {code, level, place_id?, hint} 分级 issue。
 
@@ -743,39 +759,70 @@ def validate_world(world, *, spec=None):
         issues.append(_issue("E_KIND", "error",
                              "kind 应为 world.module，实际 %r" % (world.get("kind"),)))
 
-    winfo = world.get("world") or {}
-    if not winfo.get("key"):
-        issues.append(_issue("E_WORLD_KEY", "error", "world.world.key 缺失"))
-    if winfo.get("engine") not in ENGINES:
-        issues.append(_issue("E_ENGINE", "error",
-                             "world.engine=%r 不在 %s" % (winfo.get("engine"), ENGINES)))
-    if winfo.get("world_type") not in WORLD_TYPES:
-        issues.append(_issue("W_WORLD_TYPE", "warn",
-                             "world.world_type 缺失或不认识，读取层落 modern（§2.3 口径 1）"))
+    winfo_raw = world.get("world")
+    winfo_ok = winfo_raw is None or isinstance(winfo_raw, dict)
+    winfo = winfo_raw if winfo_ok and winfo_raw is not None else {}
+    if not winfo_ok:
+        issues.append(_issue("E_WORLD_SHAPE", "error",
+                             "world.world 不是 dict（实际 %s）"
+                             % type(winfo_raw).__name__))
+    if winfo_ok:
+        if not winfo.get("key"):
+            issues.append(_issue("E_WORLD_KEY", "error", "world.world.key 缺失"))
+        if winfo.get("engine") not in ENGINES:
+            issues.append(_issue("E_ENGINE", "error",
+                                 "world.engine=%r 不在 %s" % (winfo.get("engine"), ENGINES)))
+        if winfo.get("world_type") not in WORLD_TYPES:
+            issues.append(_issue("W_WORLD_TYPE", "warn",
+                                 "world.world_type 缺失或不认识，读取层落 modern（§2.3 口径 1）"))
 
-    regions = world.get("regions") or []
+    regions_raw = world.get("regions")
+    regions_bad = regions_raw is not None and not _is_sequence(regions_raw)
+    regions = [] if regions_bad or regions_raw is None else regions_raw
+    if regions_bad:
+        issues.append(_issue("E_REGION_SHAPE", "error",
+                             "regions 不是数组（实际 %s）" % type(regions_raw).__name__))
     seen = set()
     for r in regions:
         rid = r.get("id") if isinstance(r, dict) else None
         if not rid:
             issues.append(_issue("E_REGION_ID", "error", "region 缺 id"))
+        elif not _is_id(rid):
+            issues.append(_issue("E_REGION_ID", "error",
+                                 "region 的 id 必须是标量（实际 %s）" % type(rid).__name__))
         elif rid in seen:
             issues.append(_issue("E_REGION_DUP", "error",
                                  "region id 重复：%s" % rid, rid))
-        seen.add(rid)
+        if _is_id(rid):
+            seen.add(rid)
 
-    factions = world.get("factions") or []
+    factions_raw = world.get("factions")
+    factions_bad = factions_raw is not None and not _is_sequence(factions_raw)
+    factions = [] if factions_bad or factions_raw is None else factions_raw
+    if factions_bad:
+        issues.append(_issue("E_FACTION_SHAPE", "error",
+                             "factions 不是数组（实际 %s）" % type(factions_raw).__name__))
     fseen = set()
     for f in factions:
         fid = f.get("id") if isinstance(f, dict) else None
         if not fid:
             issues.append(_issue("E_FACTION_ID", "error", "faction 缺 id"))
+        elif not _is_id(fid):
+            issues.append(_issue("E_FACTION_ID", "error",
+                                 "faction 的 id 必须是标量（实际 %s）" % type(fid).__name__))
         elif fid in fseen:
             issues.append(_issue("E_FACTION_DUP", "error",
                                  "faction id 重复：%s" % fid, fid))
-        fseen.add(fid)
+        if _is_id(fid):
+            fseen.add(fid)
 
-    for law in world.get("laws") or []:
+    laws_raw = world.get("laws")
+    laws_bad = laws_raw is not None and not _is_sequence(laws_raw)
+    laws = [] if laws_bad or laws_raw is None else laws_raw
+    if laws_bad:
+        issues.append(_issue("E_LAW_SHAPE", "error",
+                             "laws 不是数组（实际 %s）" % type(laws_raw).__name__))
+    for law in laws:
         if not isinstance(law, dict):
             issues.append(_issue("E_LAW_SHAPE", "error", "laws 条目不是 dict"))
             continue
@@ -790,8 +837,13 @@ def validate_world(world, *, spec=None):
 
     # ── goods 校验（新口径 3/4） ─────────────────────────────────────────
     goods = world.get("goods")
-    world_rank = ERA_ORDER.get(winfo.get("world_type"))
-    if goods is not None:
+    goods_bad = goods is not None and not _is_sequence(goods)
+    if goods_bad:
+        issues.append(_issue("E_GOODS_SHAPE", "error",
+                             "goods 不是数组（实际 %s）" % type(goods).__name__))
+    world_type = winfo.get("world_type")
+    world_rank = ERA_ORDER.get(world_type) if isinstance(world_type, str) else None
+    if goods is not None and not goods_bad:
         covered = set()
         gids = set()
         for g in goods:
@@ -801,46 +853,55 @@ def validate_world(world, *, spec=None):
             gid = g.get("good_id")
             if not gid:
                 issues.append(_issue("E_GOODS_SHAPE", "error", "goods 缺 good_id"))
+            elif not _is_id(gid):
+                issues.append(_issue("E_GOODS_SHAPE", "error",
+                                     "good_id 必须是标量（实际 %s）" % type(gid).__name__))
             elif gid in gids:
                 issues.append(_issue("E_GOODS_DUP", "error",
                                      "good_id 重复：%s" % gid, gid))
-            gids.add(gid)
+            if _is_id(gid):
+                gids.add(gid)
             for key in ("name", "tier", "base_price", "stock", "produced_by", "era"):
                 if key not in g:
                     issues.append(_issue("E_GOODS_SHAPE", "error",
                                          "good %r 缺字段 %s" % (gid, key), gid))
             category = g.get("category")
-            if category in GOODS_REQUIRED_CATEGORIES:
+            if isinstance(category, str) and category in GOODS_REQUIRED_CATEGORIES:
                 covered.add(category)
             if not isinstance(g.get("produced_by") or [], list):
                 issues.append(_issue("E_GOODS_SHAPE", "error",
                                      "good %r 的 produced_by 不是数组" % gid, gid))
             else:
                 for pid in g.get("produced_by") or []:
-                    if pid and pid not in seen:
+                    if not _is_id(pid):
+                        issues.append(_issue(
+                            "E_GOODS_SHAPE", "error",
+                            "good %r 的 produced_by 条目必须是标量（实际 %s）"
+                            % (gid, type(pid).__name__), gid))
+                    elif pid not in seen:
                         issues.append(_issue("W_GOODS_PLACE", "warn",
                                              "good %r 的 produced_by 引用不存在的 region %s"
                                              % (gid, pid), pid))
             era = g.get("era")
-            if era not in ERA_ORDER:
+            if not isinstance(era, str) or era not in ERA_ORDER:
                 issues.append(_issue("E_GOODS_ERA", "error",
                                      "good %r 的 era=%r 不认识" % (gid, era), gid))
             elif world_rank is not None:
                 if ERA_ORDER[era] > world_rank:
                     issues.append(_issue("E_GOODS_ERA", "error",
                                          "时代违和：good %r（era=%s）超出世界类型 %s"
-                                         % (gid, era, winfo.get("world_type")), gid))
+                                         % (gid, era, world_type), gid))
                 elif ERA_ORDER[era] < world_rank:
                     issues.append(_issue("W_GOODS_ERA_LOW", "warn",
                                          "good %r 的 era=%s 低于世界类型 %s（老物件，可接受）"
-                                         % (gid, era, winfo.get("world_type")), gid))
+                                         % (gid, era, world_type), gid))
         for category in GOODS_REQUIRED_CATEGORIES:
             if category not in covered:
                 issues.append(_issue(
                     "E_GOODS_COVER", "error",
                     "goods 缺少保底类目「%s」（衣食住行军保底，人拍板 P2）"
                     % CATEGORY_LABELS[category]))
-    elif spec is not None and spec.get("economy_on"):
+    elif goods is None and spec is not None and spec.get("economy_on"):
         issues.append(_issue("E_SPEC_ECONOMY", "error",
                              "spec.economy_on=True 但世界没有 goods"))
 
@@ -854,14 +915,26 @@ def validate_world(world, *, spec=None):
             issues.append(_issue("W_SPEC_FACTIONS", "warn",
                                  "势力数 %d 与 spec %d 不一致"
                                  % (len(factions), spec["factions_req"]["count"])))
-        if (world.get("laws") is not None
-                and len(world.get("laws") or []) != len(spec.get("laws_req") or [])):
+        if (laws_raw is not None and not laws_bad
+                and len(laws) != len(spec.get("laws_req") or [])):
             issues.append(_issue("W_SPEC_LAWS", "warn",
                                  "法律条数与 spec.laws_req 不一致"))
 
     # tone_terms 未命中词表 → warn（§4.2：词表没覆盖的词进 issues，不 error）
-    provenance = world.get("worldgen_provenance") or {}
-    for term in provenance.get("uncovered_terms") or []:
+    provenance = world.get("worldgen_provenance")
+    if provenance is None:
+        provenance = {}
+    elif not isinstance(provenance, dict):
+        issues.append(_issue("E_PROVENANCE_SHAPE", "error",
+                             "worldgen_provenance 不是 dict（实际 %s）"
+                             % type(provenance).__name__))
+        provenance = {}
+    uncovered = provenance.get("uncovered_terms")
+    if uncovered is not None and not _is_sequence(uncovered):
+        issues.append(_issue("E_PROVENANCE_SHAPE", "error",
+                             "worldgen_provenance.uncovered_terms 不是数组"))
+        uncovered = []
+    for term in uncovered or []:
         issues.append(_issue("W_TONE_UNCOVERED", "warn",
                              "tone_term %r 未命中 atlas.lexicon，落兜底 trait" % term))
 

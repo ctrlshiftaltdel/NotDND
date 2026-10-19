@@ -311,6 +311,132 @@ def test_no_false_positives_on_existing_worlds():
     assert not errors, ("fixture", errors)
 
 
+# ── 6b. Issue #403：导入形状护栏（validate_world 必须是总函数） ───────────
+
+def _shape_base():
+    """#403 基准世界：region 档 + 经济开档 + 一条法律，覆盖全部读取点。"""
+    templates = _templates()
+    spec = worldgen.normalize_spec({
+        "world_type": "fantasy", "scale": "region",
+        "laws_req": [{"name": "禁火令", "forbid_tags": ["火焰"]}],
+    })
+    world = worldgen.synthesize(spec, worldgen.choose_base(spec, templates=templates),
+                                seed=403)
+    return spec, world
+
+
+def test_validate_world_issue_403_repro_inputs():
+    """#403 三个实测崩点：改成返回 level=error 的 issue，不再抛异常。"""
+    cases = [
+        ({"kind": "world.module", "factions": 3}, "E_FACTION_SHAPE"),
+        ({"kind": "world.module", "goods": [{"good_id": []}]}, "E_GOODS_SHAPE"),
+        ({"kind": "world.module", "world": "x"}, "E_WORLD_SHAPE"),
+    ]
+    for world, code in cases:
+        issues = worldgen.validate_world(world)
+        assert code in _error_codes(issues), (world, issues)
+
+
+def test_validate_world_malformed_top_level_shapes():
+    """顶层字段替换为 int/list/str → error；None 是「缺省」语义，只要求不抛。
+
+    非读取点（如 settlements）任意形状也只要求不抛异常——validator 按需读取，
+    不对未知字段做语义判断。
+    """
+    spec, base = _shape_base()
+    assert not worldgen.has_errors(worldgen.validate_world(base, spec=spec)), "基准世界应零 error"
+
+    cases = [
+        ("world", 3, "E_WORLD_SHAPE"),
+        ("world", [1], "E_WORLD_SHAPE"),
+        ("world", "x", "E_WORLD_SHAPE"),
+        ("kind", 3, "E_KIND"),
+        ("kind", [1], "E_KIND"),
+        ("kind", "x", "E_KIND"),
+        ("regions", 3, "E_REGION_SHAPE"),
+        ("regions", "x", "E_REGION_SHAPE"),
+        ("regions", [1], "E_REGION_ID"),
+        ("factions", 3, "E_FACTION_SHAPE"),
+        ("factions", "x", "E_FACTION_SHAPE"),
+        ("factions", [1], "E_FACTION_ID"),
+        ("laws", 3, "E_LAW_SHAPE"),
+        ("laws", "x", "E_LAW_SHAPE"),
+        ("laws", [1], "E_LAW_SHAPE"),
+        ("goods", 3, "E_GOODS_SHAPE"),
+        ("goods", "x", "E_GOODS_SHAPE"),
+        ("goods", [1], "E_GOODS_SHAPE"),
+        ("worldgen_provenance", 3, "E_PROVENANCE_SHAPE"),
+        ("worldgen_provenance", [1], "E_PROVENANCE_SHAPE"),
+        ("worldgen_provenance", "x", "E_PROVENANCE_SHAPE"),
+    ]
+    for field, value, code in cases:
+        world = copy.deepcopy(base)
+        world[field] = copy.deepcopy(value)
+        issues = worldgen.validate_world(world, spec=spec)
+        assert code in _error_codes(issues), (field, value, issues)
+
+    # None = 字段缺省（regions/factions/laws/goods/provenance 本来就允许缺省）。
+    for field in ("regions", "factions", "laws", "goods", "worldgen_provenance"):
+        world = copy.deepcopy(base)
+        world[field] = None
+        worldgen.validate_world(world, spec=spec)  # 只要求不抛
+
+    # 未知顶层字段不是读取点：任意形状都不该让 validator 崩。
+    for value in (3, [1], "x", None, {"a": 1}):
+        world = copy.deepcopy(base)
+        world["settlements"] = copy.deepcopy(value)
+        worldgen.validate_world(world, spec=spec)
+
+
+def test_validate_world_malformed_nested_entries():
+    """条目内层的 id / era / category / produced_by 等读取点逐个替换为畸形值。"""
+    spec, base = _shape_base()
+
+    def _put(path, value):
+        def mutate(world):
+            target = world
+            for key in path[:-1]:
+                target = target[key]
+            target[path[-1]] = copy.deepcopy(value)
+        return mutate
+
+    cases = [
+        (_put(("regions", 0), 3), "E_REGION_ID"),
+        (_put(("regions", 0, "id"), []), "E_REGION_ID"),
+        (_put(("regions", 0, "id"), {"a": 1}), "E_REGION_ID"),
+        (_put(("factions", 0), 3), "E_FACTION_ID"),
+        (_put(("factions", 0, "id"), []), "E_FACTION_ID"),
+        (_put(("factions", 0, "id"), {}), "E_FACTION_ID"),
+        (_put(("laws", 0), 3), "E_LAW_SHAPE"),
+        (_put(("laws", 0, "threshold"), []), "E_LAW_THRESHOLD"),
+        (_put(("laws", 0, "forbid_tags"), {"a": 1}), "E_LAW_TAGS"),
+        (_put(("goods", 0), 3), "E_GOODS_SHAPE"),
+        (_put(("goods", 0, "good_id"), []), "E_GOODS_SHAPE"),
+        (_put(("goods", 0, "good_id"), [1]), "E_GOODS_SHAPE"),
+        (_put(("goods", 0, "good_id"), {"a": 1}), "E_GOODS_SHAPE"),
+        (_put(("goods", 0, "era"), []), "E_GOODS_ERA"),
+        (_put(("goods", 0, "era"), {}), "E_GOODS_ERA"),
+        (_put(("goods", 0, "produced_by"), 3), "E_GOODS_SHAPE"),
+        (_put(("goods", 0, "produced_by"), [[1]]), "E_GOODS_SHAPE"),
+        (_put(("goods", 0, "produced_by"), [{}]), "E_GOODS_SHAPE"),
+        (_put(("world", "world_type"), []), None),  # world_type 不可哈希，只要求不抛
+        (_put(("worldgen_provenance", "uncovered_terms"), 3), "E_PROVENANCE_SHAPE"),
+    ]
+    for mutate, code in cases:
+        world = copy.deepcopy(base)
+        mutate(world)
+        issues = worldgen.validate_world(world, spec=spec)
+        if code is not None:
+            assert code in _error_codes(issues), (code, issues)
+
+    # category 换成数组：不崩（不可哈希的类目不计入保底覆盖，缺类目另行报错）。
+    world = copy.deepcopy(base)
+    world["goods"][0]["category"] = []
+    issues = worldgen.validate_world(world, spec=spec)
+    assert isinstance(issues, list), issues
+
+
+
 # ── 7. normalize_spec 钳制与默认表 ────────────────────────────────────────
 
 def test_normalize_spec_clamps_and_defaults():
