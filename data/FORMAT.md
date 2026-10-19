@@ -617,6 +617,21 @@ data/
 - `declared`：`{patterns:15}`。
 - `patterns[]`：`{no(1–15), name, manifestation, fix, source}`。
 
+**`system.tactical_space`**（六角格战场空间阈值；`docs/system/02c-hex-battlefield.md`）
+
+- `note?`：字符串，说明数值纪律。
+- `geometry`：`{type: hex_axial, neighbor_offsets[]{q, r}, distance_formula, source,
+  neighbor_offsets_source?, distance_formula_source?}`；六邻偏移与距离公式只此一份。
+- `scale`：`{modes[], hex_size_cm, abstract_units[], source, modes_source?, abstract_units_source?}`。
+- `high_ground`：`{threshold_cm, threshold_level, bonus_layers, applies_to[], once_per_attack,
+  source, bonus_source?, bonus_rule_source?}`；`bonus_rule_source` 指回 02A 的「使用高地的射手 +1」。
+- `movement`：`{slope_max_cm, source}`。
+- `fall`：`{no_damage_below_cm, step_cm, dice, prone, rounding, source, damage_rule_source}`。
+- `vertical_links`：`{kinds[], source}`（受控枚举 8 种）；`cover`：`{grades[], source, note?}`
+  （档名必须与 `system.tactics_combat.cover[].id` 完全一致，数值表留在后者）。
+- **数值纪律**：可调阈值一律放这里，不得在 Python / JS 里复制默认值；每个值都要有 02C / 02A
+  的真实行号锚点，缺锚点的值不得写入。
+
 **世界账本（复用，不重复定义）**：第四节的世界账本字段骨架由
 `common.schema.json#/$defs/ledger` 承载；`system.ledger_spec` 只登记更新规则与最小可行版本，
 并以 `ledger_schema_ref` 指向该 `$defs`。
@@ -855,6 +870,59 @@ world_rules.tracks: [ { key, name, range?, effects[], recovery[] } ]
     跳过符合 `docs/...md:行号` 形式的值。
   - **不读**：`history`、`factions`、`tracks`、`careers`、`abilities`、
     `equipment`、`enemies`、`random_tables`、`powers`。
+
+### 4.6 tactical 族
+
+> 本族是六角格战场的**机器可校验契约**（Issue #415 冻结，Issue #416 落数据层）。
+> 规则文本在 `docs/system/02c-hex-battlefield.md`；本族只定义字段与阈值，不复制规则表。
+
+**`tactical.battlefield`**（静态战场；`data/schema/tactical.battlefield.schema.json`）
+
+- **运行时生成**：战场由生成器按 `atlas_ref` + `seed` 产出（ATLAS 提供地点、上下文与种子），
+  **不落 `data/` 常量树**——`data/` 只放 schema 与空间规则数据（见 4.1 `system.tactical_space`）。
+  手工模板同样按本 schema 校验、同样可复现。
+- 顶层：`schema_version: 1`、`kind`、`source`（形态出处）、`battlefield_id`、`world_id`、
+  `site_id?`、`atlas_ref?`、`seed?`、`generator_version?`、`geometry`、`scale`、`cells[]`、
+  `vertical_links?[]`。
+- `geometry`：`{type}`，`type` 固定 `hex_axial`；六邻偏移与六角距离公式只由
+  `system.tactical_space.geometry` 提供，战场文件不复制。
+- `scale`：`{mode, hex_size_cm?, unit?}`；`mode` 枚举 `metric | abstract`。
+  metric 用 `hex_size_cm`（cm），abstract 用 `unit`（`cell | step`）；两套口径不互换、不伪装成米。
+- `cells[]`：`{cell_id, q, r, surface_id, elevation_cm | elevation_level, terrain_id?, terrain_tags?,
+  movement_cost, blocks_movement, blocks_los, obstacle_height?, cover_grade?, hazard_refs?,
+  feature_refs?, spawnable?}`。
+  - `elevation_cm` / `elevation_level` **恰好一个**，且必须与 `scale.mode` 同口径
+    （JSON Schema 子集表达不了该条件，由 `tests/test_tactical_schema.py` 校验）。
+    两者都是**有符号整数**：负值表示洼地 / 地下层（#415 §3.1「高度差为有符号差」，02C:47 只要求整数）。
+  - `cover_grade` 取 `light | medium | heavy | full`（档名同 `system.tactics_combat.cover[].id`）；
+    缺省 = 无掩体。移动阻挡、视线阻挡、阻挡高度与掩体档是**分离属性**。
+  - 同一张地图内 `cell_id` 唯一（稳定身份）；`q/r` 可重复，靠 `surface_id` 区分。
+- `vertical_links[]`：`{link_id, from_cell_id, to_cell_id, kind, movement_cost, bidirectional,
+  requirements[], effect_refs?[]}`；`kind` 取 `system.tactical_space.vertical_links.kinds`。
+  梯子 / 攀爬 / 跳跃 / 飞行必须由 `requirements` 授权，不得被普通寻路当成免费通路。
+- **旧档兼容**：未进入新式战斗的会话不要求出现本块；缺字段的旧存档继续走既有 ATLAS
+  抽象投影路径，不进新战斗就不生成棋盘。
+
+**`tactical.battle_state`** / **`tactical.battle_event`**（运行时封套，**校验契约**）
+
+- 两者是**运行时结构**（会话快照块 / 事件流），**不落 `data/` 数据文件**；
+  `data/schema/` 只登记它们的 schema，`validate_data.py` 不会在 `data/` 下找到这类文件。
+- `battle_state`：`{schema_version, kind, battle_id, battlefield_id, round, turn, active_unit_id?,
+  state_revision, last_event_sequence?, rng_ref?, participants[], objects?[]}`。
+  - `participants[]` 只存 `unit_id` / `cell_id` / `facing?` / `footprint?` / `temp_refs?`——
+    HP、资源、状态、韧性、装备与库存继续以 PRISM / 会话状态为权威，**不得**复制第二份；
+    schema 用 `additionalProperties: false` 拒绝 `vitality` 一类键。
+  - `objects[]`：`{object_id, definition_id, cell_id, footprint?, state, durability?, movable?,
+    destructible?, blocks_movement?, blocks_los?, triggered?}`；门 / 警报 / 炸药 / 可破坏掩体
+    走显式状态机 + 事件，不只改描述文本。
+- `battle_event`：`{schema_version, kind, sequence, type, actor_id?, target_id?, from_cell_id?,
+  to_cell_id?, rule_engine, expected_revision, result, source_rule_ref?}`。
+  - `type` 覆盖 `move_started` / `move_committed` / `attack_resolved` / `object_state_changed` /
+    `hazard_triggered` / `fall_resolved` / `turn_started` / `turn_ended` / `combat_started` /
+    `combat_ended`。
+  - `rule_engine` 枚举 `tactics | build`（与 `world.module.world.engine` 同口径）。
+  - `sequence` 单调递增，与 `battle_state.last_event_sequence` 对齐；`expected_revision`
+    不匹配即拒绝，重复请求不得重复扣 AP / 伤害 / 触发机关。
 
 ## 5. 散文策略
 

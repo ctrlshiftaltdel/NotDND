@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tactical 族（tactical.battle_state）",
+  "description": "运行时战斗状态封套（校验契约，不落 data/ 数据文件）。动态状态与静态地图分离：参与者只存位置与引用，HP / 资源 / 状态 / 装备 / 库存仍以现有 PRISM 会话状态为权威，不得复制第二份。契约见 Issue #415 第 2.3 节，规则文本见 docs/system/02c-hex-battlefield.md 第三节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "$defs": {
+    "footprint": {
+      "title": "占格 footprint（相对 current cell 的 axial 偏移）",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["q", "r"],
+        "properties": {
+          "q": {"type": "integer"},
+          "r": {"type": "integer"}
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    }
+  },
+  "type": "object",
+  "required": ["schema_version", "kind", "battle_id", "battlefield_id", "round", "turn", "state_revision", "participants"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "tactical.battle_state"},
+    "battle_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "battlefield_id": {
+      "$ref": "common.schema.json#/$defs/entity_id",
+      "description": "指向 tactical.battlefield.battlefield_id；地图本身不进本块。"
+    },
+    "round": {"type": "integer", "minimum": 0},
+    "turn": {"type": "integer", "minimum": 0},
+    "active_unit_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "state_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "状态修订号；每次原子提交递增，行动以 expected_revision 校验。"
+    },
+    "last_event_sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "最近一条 tactical.battle_event 的 sequence；事件序号随 revision 一并前进。"
+    },
+    "rng_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "服务端可追溯随机记录的引用；不得存客户端或 LLM 提供的骰果。"
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["unit_id", "cell_id"],
+        "properties": {
+          "unit_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "cell_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "facing": {
+            "anyOf": [{"type": "integer"}, {"type": "string", "minLength": 1}],
+            "description": "朝向；仅在规则需要时写入，具体口径由对应规则数据定义，本 schema 不冻结枚举。"
+          },
+          "footprint": {"$ref": "#/$defs/footprint"},
+          "temp_refs": {
+            "type": "array",
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": true,
+            "description": "战斗临时字段的引用（如本次战斗的 AP 消耗）；不得写入 HP / 资源 / 库存副本。"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["object_id", "definition_id", "cell_id", "state"],
+        "properties": {
+          "object_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "definition_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "有版本的数据定义 id（门 / 警报 / 炸药 / 可破坏掩体等），不在代码里按名称写分支。"
+          },
+          "cell_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+          "footprint": {"$ref": "#/$defs/footprint"},
+          "state": {
+            "type": "string",
+            "minLength": 1,
+            "description": "显式状态机当前状态；状态变化必须产出 object_state_changed 事件，不得只改描述文本。"
+          },
+          "durability": {"type": "integer", "minimum": 0},
+          "movable": {"type": "boolean"},
+          "destructible": {"type": "boolean"},
+          "blocks_movement": {"type": "boolean"},
+          "blocks_los": {"type": "boolean"},
+          "triggered": {
+            "type": "boolean",
+            "description": "一次性效果是否已触发；重复请求不得重复触发。"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

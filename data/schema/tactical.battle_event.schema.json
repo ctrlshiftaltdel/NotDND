@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "tactical 族（tactical.battle_event）",
+  "description": "结构化战斗事件封套（校验契约，不落 data/ 数据文件）。每次状态变化一条事件：sequence 单调递增，携带 rule_engine、输入修订号与来源规则引用；叙事层只解释已提交的事实。契约见 Issue #415 第 5 节，规则文本见 docs/system/02c-hex-battlefield.md 第七节。只使用 data/FORMAT.md 第 7 节的关键字子集。",
+  "type": "object",
+  "required": ["schema_version", "kind", "sequence", "type", "rule_engine", "expected_revision", "result"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "kind": {"const": "tactical.battle_event"},
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "事件序号；同一战斗内单调递增，对应 battle_state.last_event_sequence。"
+    },
+    "type": {
+      "enum": [
+        "move_started",
+        "move_committed",
+        "attack_resolved",
+        "object_state_changed",
+        "hazard_triggered",
+        "fall_resolved",
+        "turn_started",
+        "turn_ended",
+        "combat_started",
+        "combat_ended"
+      ]
+    },
+    "actor_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "target_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "from_cell_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "to_cell_id": {"$ref": "common.schema.json#/$defs/entity_id"},
+    "rule_engine": {
+      "enum": ["tactics", "build"],
+      "description": "结算所用适配器；口径同 world.module.world.engine，两套引擎各自按原生规则结算。"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "行动提交时校验的输入修订号；不匹配即拒绝，避免重复结算。"
+    },
+    "result": {
+      "type": "object",
+      "required": ["summary"],
+      "properties": {
+        "summary": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true,
+      "description": "结果摘要。各引擎专属字段（命中等级 / 骰池结果 / delta）由对应规则数据定义，本 schema 不复制公式。"
+    },
+    "source_rule_ref": {
+      "type": "string",
+      "minLength": 1,
+      "description": "规则数据引用（如 data/system/tactics_combat.json#/attack_grades）；不是 docs/ 溯源指针。"
+    }
+  },
+  "additionalProperties": false
+}
