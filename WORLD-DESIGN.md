@@ -988,6 +988,13 @@ W1 ──────────────────► W8（数据 + 观�
 
 - W7 遗留：`docs/scenario/worldgen-individuals.md:1` 是**指针性 source**（$defs.npc 纪律要求 docs 指针，但该文档尚不存在/未含个体生成节）——按派发单禁改 `docs/**`，由 Master 后续**独自成 PR** 的文档单处理（`docs/` 新文档不得夹带在实现 PR 内）。（来源：PR #395 populate 节；PR #396 登记）
 
+**W6 / W8 只读面鉴权（Master 审查 + 人拍板 2026-10-19）**
+
+1. **`GET /api/world/project` / `GET /api/world/directive` = 城镇公共信息**：房间内在座成员（host / player / observer）持有效成员令牌均可读，**不加 host 门**——工程 / 指令摘要是城镇公开状态，当前行为即正确，不需要改代码。（来源：Master 审查 + 人拍板 2026-10-19）
+2. **`GET /api/world/ledger` = GM 视角数据**：多人房必须房主成员令牌，player / observer 一律 403 `not_authorized`（维持现状，不改代码）。（来源：Master 审查 + 人拍板 2026-10-19）
+3. **写操作维持 §6.5 的管理性裁定**：create / queue / start / pause / resume / revoke 在多人房必须房主成员令牌。（来源：Master 审查 + 人拍板 2026-10-19）
+4. **三个只读端点的鉴权差异是有意的**，不是遗漏：工程 / 指令摘要属城镇公共信息，房间内人人在座即可见；账本含**中央金库**与 **`genesis`** 视角，属 GM 账目与重放基线，不对 player / observer 外露。（来源：Master 审查 + 人拍板 2026-10-19）
+
 ---
 
 ## 附录 A · 与其它设计单的接口一览（便于交叉审查）
