@@ -1,0 +1,173 @@
+/* ═══════════════════════════════════════════════════════════
+   棱镜 · 战棋视图样式（M13-B12，Issue #427）
+   片专属样式：只引用 css/tokens.css 的令牌，不定义任何 --* 变量、
+   不写死颜色（color-mix 组合令牌是既有先例，见 base.css）。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── 主画面布局：画板可横向滚动（平移），工具条浮在画板右上 ── */
+.battle-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--sp-2) var(--sp-3) calc(var(--sp-5) + var(--safe-b));
+}
+.battle-board-wrap { position: relative; }
+.battle-board {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;   /* 平移交给原生滚动，不阻塞页面滚动 */
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--bg-1) 88%, var(--bg-3));
+  max-height: 62vh;
+}
+.battle-board svg { display: block; }
+.battle-board-tools {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  display: flex;
+  gap: var(--sp-1);
+}
+.battle-board-tools .ic {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--bg-2);
+  color: var(--text-2);
+  font-size: var(--fs-ui);
+}
+.battle-board-tools .ic:hover { color: var(--text-1); border-color: var(--accent); }
+
+.battle-ap {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  white-space: nowrap;
+  padding-right: var(--sp-2);
+}
+
+.battle-outcome {
+  margin: var(--sp-2) 0;
+  padding: var(--sp-3);
+  border: 1px solid var(--accent-2);
+  border-radius: var(--r);
+  background: color-mix(in srgb, var(--accent-2) 12%, var(--bg-1));
+  font-weight: 600;
+}
+.battle-empty { color: var(--text-3); font-size: var(--fs-sm); padding: var(--sp-2) 0; }
+.battle-feedback {
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+  padding: 0 var(--sp-3);
+  min-height: 1.2em;
+}
+.battle-actions { flex-wrap: wrap; gap: var(--sp-2); }
+.battle-actions .btn { min-height: 44px; }
+
+.b-danger-text { color: var(--danger); }
+
+/* ── SVG：格子 / 高度 / 记号 ───────────────────────────────
+   高度可辨的三重几何提示：台阶侧壁（b-wall）、底座虚线（b-base）、
+   高度数值（b-elev-label）；颜色只做辅助，不承担唯一区分职责。 */
+.b-band-label {
+  font-size: 11px;
+  fill: var(--text-3);
+  letter-spacing: .08em;
+}
+.b-base { fill: none; stroke: var(--line); stroke-dasharray: 3 3; }
+.b-wall { fill: color-mix(in srgb, var(--bg-0) 72%, var(--line-strong)); stroke: var(--line-strong); }
+.b-top { stroke: var(--line-strong); stroke-width: 1; }
+.b-elev-0 { fill: var(--bg-2); }
+.b-elev-1 { fill: color-mix(in srgb, var(--bg-2) 82%, var(--accent) 18%); }
+.b-elev-2 { fill: color-mix(in srgb, var(--bg-2) 66%, var(--accent) 34%); }
+.b-elev-3 { fill: color-mix(in srgb, var(--bg-2) 50%, var(--accent) 50%); }
+.b-terrain { stroke-width: 1.5; }
+.b-hazard { stroke: var(--danger); stroke-width: 1.5; }
+.b-blocked { }
+.b-elev-label { font-size: 10px; fill: var(--text-2); text-anchor: start; }
+.b-spawn { fill: var(--accent-2); opacity: .8; }
+
+.b-glyph-cross { stroke: var(--danger); stroke-width: 2; fill: none; }
+.b-glyph-los { stroke: var(--text-3); stroke-width: 1.5; fill: none; }
+.b-glyph-hazard { fill: none; stroke: var(--danger); stroke-width: 1.5; }
+
+.b-object-badge { fill: var(--bg-3); stroke: var(--text-3); }
+.b-obj-solid .b-object-badge { stroke: var(--danger); }
+.b-object-text { font-size: 10px; fill: var(--text-1); text-anchor: middle; }
+
+/* 单位令牌 */
+.b-unit-body { stroke: var(--text-1); stroke-width: 1.5; }
+.b-unit-party .b-unit-body { fill: var(--accent); }
+.b-unit-enemy .b-unit-body { fill: var(--danger); }
+.b-unit-down { opacity: .45; }
+.b-vit-ring { fill: none; stroke: var(--success); stroke-width: 2.5; }
+.b-unit-name { font-size: 11px; fill: var(--on-accent); text-anchor: middle; pointer-events: none; }
+.b-unit-enemy .b-unit-name { fill: var(--on-accent); }
+.b-unit-vit { font-size: 9px; fill: var(--text-2); text-anchor: middle; }
+.b-unit-state { font-size: 10px; fill: var(--danger); text-anchor: middle; }
+.b-active-ring { fill: none; stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 4 3; }
+.b-sel-ring { fill: none; stroke: var(--text-1); stroke-width: 2; }
+
+/* 覆盖层：可达 / 选中 / LOS 预览 / 垂直连接 */
+.b-reach {
+  fill: color-mix(in srgb, var(--accent) 26%, transparent);
+  stroke: var(--accent);
+  stroke-dasharray: 4 3;
+  cursor: pointer;
+}
+.b-cell-sel { fill: none; stroke: var(--text-1); stroke-width: 2.5; }
+.b-los-line { stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 6 4; }
+.b-los-blocked { stroke: var(--danger); }
+.b-vlink { stroke: var(--accent-2); stroke-width: 1.5; stroke-dasharray: 2 4; }
+
+/* 可点击目标的基本可达性（键盘焦点环跟随 base.css 的 :focus-visible） */
+.b-cell, .b-unit { cursor: pointer; }
+
+/* ── 信息面板 / 目标列表 ─────────────────────────────────── */
+.battle-info { margin-top: var(--sp-2); display: grid; gap: var(--sp-2); }
+.b-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-1);
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-2);
+  align-items: baseline;
+  font-size: var(--fs-sm);
+}
+.b-card small { color: var(--text-2); width: 100%; }
+.b-tag {
+  font-size: var(--fs-xs);
+  border-radius: var(--r-pill);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+}
+.b-tag-party { border-color: var(--accent); color: var(--accent); }
+.b-tag-enemy { border-color: var(--danger); color: var(--danger); }
+.b-tag-down { border-color: var(--text-3); color: var(--text-3); }
+.b-vitbar {
+  flex: 1 1 120px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--bg-3);
+  overflow: hidden;
+}
+.b-vitbar i { display: block; height: 100%; background: var(--success); }
+
+.b-unit-list { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.b-unit-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 44px;
+  padding: var(--sp-1) var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r);
+  background: var(--bg-2);
+  font-size: var(--fs-sm);
+}
+.b-unit-btn small { color: var(--text-3); }
+.b-unit-btn.is-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--bg-2)); }

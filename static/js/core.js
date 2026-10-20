@@ -79,6 +79,8 @@ function showView(id) {
   $$('.view').forEach(function (v) {
     v.classList.toggle('is-on', v.id === id);
   });
+  // 片 M13-B12（js/battle.js）：战棋入口的显隐跟着当前视图走。
+  if (typeof renderBattleEntry === 'function') renderBattleEntry();
   syncDockHeight();
 }
 
@@ -272,6 +274,8 @@ function applyState(s) {
   // 片 U-CAMP（js/campaign.js）：未绑定的新局在行动区画战役入口。可选切片
   // （ph.js 同款钩子）：文件不在时什么都不发生，其余渲染不变。
   if (typeof renderCampaignEntry === 'function') renderCampaignEntry();
+  // 片 M13-B12（js/battle.js）：按最近已知战斗状态刷新战棋入口按钮。
+  if (typeof renderBattleEntry === 'function') renderBattleEntry();
   scrollToLatest();
 }
 
