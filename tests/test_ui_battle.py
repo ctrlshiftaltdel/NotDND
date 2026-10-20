@@ -109,9 +109,12 @@ class _Server:
                    PYTHONIOENCODING="utf-8")
         env.update(self.extra_env)
         self._log = open(self.log_path, "w", encoding="utf-8")
+        # start_new_session：子进程自成进程组，收摊时 killpg 只杀它自己，
+        # 不会把调用方（run_all.sh / 测试进程）一起带走（smoke._Server 同款）。
         self.proc = subprocess.Popen(
             [sys.executable, os.path.join(ROOT, "notdnd_web.py")],
-            cwd=ROOT, env=env, stdout=self._log, stderr=subprocess.STDOUT)
+            cwd=ROOT, env=env, stdout=self._log, stderr=subprocess.STDOUT,
+            start_new_session=True)
         try:
             self._wait_ready()
         except BaseException:
