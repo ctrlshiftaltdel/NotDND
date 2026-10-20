@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="/css/panels.css">
 <link rel="stylesheet" href="/css/placeholder.css">
 <link rel="stylesheet" href="/css/world.css">
+<link rel="stylesheet" href="/css/battle.css">
 </head>
 <body>
 
@@ -103,6 +104,13 @@
         <div id="exitList" class="btn-grid"></div>
         <div id="exitError" class="exit-error" hidden aria-live="polite"></div>
       </section>
+      <!-- 片 M13-B12（js/battle.js）：战棋入口。有没有进行中的战斗由该片
+           按 GET /api/tactical/battle 的结果决定按钮文案（进入 / 回到），
+           本文件只给结构挂点；没有战斗时点击会先起一场（POST start）。 -->
+      <section id="battleEntry" aria-label="战棋" hidden>
+        <div class="sec-title">战棋</div>
+        <button id="btnBattleEnter" class="btn">进入战棋</button>
+      </section>
     </section>
   </main>
 
@@ -132,7 +140,49 @@
   </footer>
 </section>
 
-<!-- ══════════ 视图三：设置 ══════════ -->
+<!-- ══════════ 视图三：战棋（M13-B12，js/battle.js）══════════ -->
+<!-- 六角格战棋：SVG 画板 + 信息面板 + 参战单位列表 + 动作条。
+     UI 只发行动意图；位置 / 命中 / 伤害 / AP 一律以服务器 snapshot 为准
+     （#426 契约）。返回按钮只切回叙事视图，不打断进行中的战斗。 -->
+<section id="v-battle" class="view" aria-label="战棋">
+  <header class="top">
+    <button id="btnBattleBack" class="ic" aria-label="返回叙事"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
+    <div class="top-mid">
+      <div id="battleRound" class="top-line1">—</div>
+      <div id="battleTurn" class="top-line2">—</div>
+    </div>
+    <span id="battleAp" class="battle-ap">AP —</span>
+  </header>
+
+  <main class="battle-scroll">
+    <div id="battleOutcome" class="battle-outcome" hidden></div>
+    <div id="battleError" class="play-error alert" role="alert" hidden></div>
+    <div id="battleBoardWrap" class="battle-board-wrap">
+      <div id="battleBoard" class="battle-board" role="group" aria-label="六角格战场画板"></div>
+      <div class="battle-board-tools">
+        <button id="btnBattleZoomIn" class="ic" aria-label="放大画板">＋</button>
+        <button id="btnBattleZoomOut" class="ic" aria-label="缩小画板">－</button>
+        <button id="btnBattleZoomReset" class="ic" aria-label="重置画板缩放">1:1</button>
+      </div>
+    </div>
+    <section id="battleInfo" class="battle-info" aria-label="选中详情"></section>
+    <section id="battleTargets" aria-label="参战单位"></section>
+  </main>
+
+  <footer class="dock">
+    <p id="battleFeedback" class="battle-feedback" role="status" aria-live="polite" hidden></p>
+    <div class="bar battle-actions">
+      <button id="btnBattleMove" class="btn" hidden>移动</button>
+      <button id="btnBattleAttack" class="btn" hidden>攻击</button>
+      <button id="btnBattleInteract" class="btn" hidden>互动</button>
+      <button id="btnBattleEndTurn" class="btn btn-primary">结束回合</button>
+      <button id="btnBattleFlee" class="btn">撤退</button>
+      <button id="btnBattleRefresh" class="btn btn-ghost">刷新</button>
+    </div>
+  </footer>
+</section>
+
+<!-- ══════════ 视图四：设置 ══════════ -->
 <section id="v-settings" class="view" aria-label="设置">
   <header class="top">
     <button id="btnSettingsBack" class="ic" aria-label="返回"><svg class="i" aria-hidden="true"><use href="#i-back"/></svg></button>
@@ -239,5 +289,6 @@
 <script src="/js/ph.js"></script>
 <script src="/js/campaign.js"></script>
 <script src="/js/world.js"></script>
+<script src="/js/battle.js"></script>
 </body>
 </html>
