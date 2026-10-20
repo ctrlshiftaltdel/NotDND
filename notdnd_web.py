@@ -133,6 +133,7 @@ import chron
 import neura
 import prism_core
 import state
+import tactical_battle_service as battle_service
 import world
 import worldgen
 
@@ -242,6 +243,9 @@ ACTION_CONFIRM_TOKEN_RE = re.compile(r"^cf_[0-9a-f]{32}$")
 # 60 秒窗口，与 turn / speak 同一把锁）。
 ACTION_COMMIT_LIMIT = 12
 ACTION_PROPOSE_LIMIT = 30
+# 新式战斗（Issue #426）：战斗动作是短粒度按键（移动一格 / 一次攻击），
+# 60 秒 60 次；复用 `_rate_ok` 的同一窗口与锁，键空间按 `kind` 隔离。
+TACTICAL_COMMIT_LIMIT = 60
 # 澄清与确认令牌都是**进程内短期记忆**（提案本身无状态透明，§9.2 / §10.3 不落盘）；
 # 过期即 404 `没有这个提案` / 409 `需要确认`。
 ACTION_CLARIFY_TTL_S = 300.0
@@ -1659,6 +1663,10 @@ class Session:
         # 多人房间块（§3.2，与 rules / atlas / guide 平级）：新存档起最小房间
         # （无房主、无成员）；成员由 /api/room/* 写入。老档迁移路径见 load()。
         self.room: dict = _empty_room(sid)
+        # 新式战斗块（Issue #426，与 rules / atlas / guide / room 平级）：
+        # 只有进入新式战斗才创建（#415 §5：旧存档惰性迁移，旧心象剧场
+        # 战斗与旧档不落此块）。块语义归 tactical_battle_service，本类只透传。
+        self.tactical: dict | None = None
         # 状态层句柄（惰性打开：import / 建对象不碰磁盘，第一次 save 才开）。
         self._handle = None
         # 老档路径 + §10.1 映射结果：加载老档时记下，第一次 save 时落成新档
@@ -1697,13 +1705,20 @@ class Session:
         return copy.deepcopy(self.atlas_block)
 
     def _blocks_view(self) -> dict:
-        """当前内存态的不透明块（逐块交给 `state`，语义不改）。"""
-        return {
+        """当前内存态的不透明块（逐块交给 `state`，语义不改）。
+
+        `tactical` 块只在**有战斗记录**时出现——没进过新式战斗的存档
+        保持既有四块形状（/api/state 的块存在性摘要不变）。
+        """
+        blocks = {
             "rules": copy.deepcopy(self.rules),
             "atlas": self._export_atlas_block(),
             "guide": copy.deepcopy(self.guide),
             "room": copy.deepcopy(self.room),
         }
+        if isinstance(self.tactical, dict):
+            blocks["tactical"] = copy.deepcopy(self.tactical)
+        return blocks
 
     def _stream_view(self) -> dict:
         """展示流（§11）：`cursor` 承接门面的 `seq`（老字段名），日志逐条带着走。
@@ -1793,6 +1808,10 @@ class Session:
         # 多人房间块（§3.2 / M-16）：缺块 / 脏值按最小「单人房」处理
         # （host 空、members 空），只补不覆盖。
         self.room = _room_from(blocks.get("room"), self.sid)
+        # 新式战斗块（Issue #426）：缺块 / 脏值按 None 处理（旧存档没有
+        # 这一块 = 没有进行中的新式战斗，原路径照常）。
+        block = blocks.get("tactical")
+        self.tactical = copy.deepcopy(block) if isinstance(block, dict) else None
 
     @classmethod
     def load(cls, sid: str) -> "Session | None":
@@ -5253,6 +5272,10 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/world/ledger":
                 # 账本只读观察面（W8，§10.3）：?project_id= 单工程为何停。
                 return self._world_ledger_view()
+            if path == "/api/tactical/battle":
+                # 新式战斗只读快照（Issue #426）：可渲染战场 + 修订号 +
+                # 事件增量（?since_event=）；鉴权与可见性裁定在路由方法里。
+                return self._tactical_view_route()
             # TODO(M3)：PRISM 世界 / 剧本等其余只读接口在此追加（路径 if 链）。
             # 其余路径一律按静态资源找；找不到就 404。
             rel = path.lstrip("/")
@@ -5326,6 +5349,24 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/world/directive":
                 return self._world_directive_route(b)
+
+            if path == "/api/tactical/start":
+                return self._tactical_start(b)
+
+            if path == "/api/tactical/move":
+                return self._tactical_move(b)
+
+            if path == "/api/tactical/attack":
+                return self._tactical_attack(b)
+
+            if path == "/api/tactical/interact":
+                return self._tactical_interact(b)
+
+            if path == "/api/tactical/end_turn":
+                return self._tactical_end_turn(b)
+
+            if path == "/api/tactical/flee":
+                return self._tactical_flee(b)
 
             if path == "/api/room/create":
                 return self._room_create(b)
@@ -6595,6 +6636,325 @@ class Handler(BaseHTTPRequestHandler):
                 })
         except world.WorldError as exc:
             return self._err(str(exc), 409, "world_rejected")
+
+    # ── 新式战斗（M13-B11，Issue #426）────────────────────────
+    #
+    # 服务端闭环：客户端只提交行动意图与目标（cell_id / target_id /
+    # object_id+action），骰点 / 命中 / 伤害 / 坐标 / AP 全部服务端重算。
+    # 所有写操作走同一条链：鉴权 → 幂等键 → 暂停门 →（battle_id /
+    # state_revision / 行动者校验）→ 战斗服务（TacticalContext → 规则
+    # 适配器 → 结构化拒绝）→ 状态层原子提交（A0：rules 块 + tactical 块
+    # 同一条事件）→ 叙事反馈。不另造平行会话认证或写入通道。
+
+    _TACTICAL_EVENT_TYPES = {
+        "start": "tactical.start",
+        "move": "tactical.move",
+        "attack": "tactical.attack",
+        "interact": "tactical.interact",
+        "end_turn": "tactical.turn",
+        "flee": "tactical.flee",
+    }
+
+    def _tactical_gate(self, session, *, host_only: bool = False):
+        """战斗路由的公共门：单人会话放行；房间多名在座走既有房间鉴权链。
+
+        与 `_world_host_gate` 同一口径：房间只有一个人（或没有在座成员）
+        时 `X-Session` 即可；多名在座必须以成员令牌调用（`X-Member` +
+        Bearer），observer 只读 → 403，`host_only` 时非房主 → 403。
+        返回 `(member|None, err|None)`；`err` 是 `(msg, code, reason)`。
+        """
+        room = session.room if isinstance(session.room, dict) else {}
+        members = room.get("members") if isinstance(room.get("members"), dict) else {}
+        active = [m for m in members.values()
+                  if isinstance(m, dict) and m.get("state") == "active"]
+        if len(active) <= 1:
+            return None, None
+        try:
+            _, member = self._room_auth(str(session.sid))
+        except _RoomAuthError as exc:
+            return None, (exc.msg, exc.code, exc.reason)
+        if member.get("role") == "observer":
+            return None, ("观察者只读", 403, "not_authorized")
+        if host_only and not _room_caller_is_host(session.room, member):
+            return None, ("只有房主可以开始新式战斗", 403, "not_authorized")
+        return member, None
+
+    def _tactical_actor(self, session, member, body, record) -> tuple:
+        """行动者裁定：房间成员绑定角色优先；单人可显式 `unit_id`。
+
+        玩家只能指挥**队伍单位**——冒用敌体 id 或他人角色一律 403；
+        缺省用当前行动的单位（`battle_state.active_unit_id`）。
+        返回 `(actor_id, err|None)`。
+        """
+        actor_id = ""
+        if member is not None:
+            actor_id = str(member.get("character_id") or "")
+        if not actor_id:
+            actor_id = str(body.get("unit_id") or "")
+        if actor_id and battle_service.party_actor(record, actor_id):
+            return actor_id, None
+        state = (record.get("battle_state") or {}) if isinstance(record, dict) else {}
+        default_actor = str(state.get("active_unit_id") or "")
+        if actor_id and actor_id != default_actor and member is not None:
+            return "", ("角色不在新式战斗中", 403, "not_in_battle")
+        if not battle_service.party_actor(record, default_actor):
+            return "", ("没有可指挥的队伍单位", 403, "not_in_battle")
+        return default_actor, None
+
+    def _tactical_view_route(self):
+        """`GET /api/tactical/battle?since_event=`：可渲染战斗快照（只读）。"""
+        session = self._sess()
+        _member, gate = self._tactical_gate(session)
+        if gate is not None:
+            return self._err(*gate)
+        q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+        try:
+            since_event = int((q.get("since_event") or ["0"])[0])
+        except (TypeError, ValueError):
+            return self._err("since_event 必须是整数", 400, "bad_since_event")
+        if since_event < 0:
+            return self._err("since_event 必须是整数", 400, "bad_since_event")
+        with session.lock:
+            record = session.tactical
+            if not isinstance(record, dict) or not record:
+                return self._err("没有进行中的战斗", 404, "no_battle")
+            live = prism_core.RuleSession.from_snapshot(session.rules)
+            party_units = {}
+            for unit_id, entry in sorted((record.get("units") or {}).items()):
+                if isinstance(entry, dict) and entry.get("party"):
+                    for unit in live.party:
+                        if str(unit.get("id") or "") == unit_id:
+                            party_units[unit_id] = unit
+                            break
+            view = battle_service.battle_view(record, since_event=since_event,
+                                              party_units=party_units)
+        return self._json({"status": "ok", "battle": view})
+
+    def _tactical_start(self, body: dict):
+        """`POST /api/tactical/start`：从普通场景开始一场新式战斗。
+
+        内容全部由服务端决定（敌体按遭遇预算生成、战场由模板+seed 生成、
+        先攻掷骰）——玩家只能选择「打不打」。旧心象剧场战斗进行中
+        （`rules.combat` 未结束）→ 409；已有新式战斗进行中 → 409。
+        房间多名在座时**房主**发起（与世界生成同一管理口径）。
+        """
+        session = self._sess()
+        _member, gate = self._tactical_gate(session, host_only=True)
+        if gate is not None:
+            return self._err(*gate)
+        key = str(self.headers.get("Idempotency-Key") or "").strip()
+        if not ACTION_IDEM_KEY_RE.fullmatch(key):
+            return self._err("幂等键不合法", 400, "bad_idem_key")
+        with session.lock:
+            if _room_is_paused(session):
+                return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
+            replay = _action_idem_get(session.sid, key)
+            if replay is not None:
+                replay = dict(replay) if isinstance(replay, dict) else {"replayed": True}
+                replay["replayed"] = True
+                return self._json(replay)
+            if not _rate_ok(session.sid, "tactical", TACTICAL_COMMIT_LIMIT):
+                return self._err("太频繁", 429, "rate_limited")
+            combat = session.rules.get("combat") if isinstance(session.rules, dict) else None
+            if isinstance(combat, dict) and not combat.get("over"):
+                return self._err(ACTION_COMBAT, 409)
+            if battle_service.is_active(session.tactical):
+                return self._err("战斗已经开始", 409, "battle_active")
+            handle = session._handle or session._open_handle()
+            base_seq = _int_or(handle.view().get("seq"), 0)
+            scene_id = ""
+            if isinstance(session.rules, dict):
+                scene = session.rules.get("scene")
+                if isinstance(scene, dict):
+                    scene_id = str(scene.get("id") or "")
+            world_key = str(session.room.get("world_key") or "") \
+                if isinstance(session.room, dict) else ""
+            scene = battle_service.scene_for(world_key, scene_id or "scene")
+            try:
+                record = battle_service.start_battle(
+                    rules_snapshot=session.rules, scene=scene,
+                    battle_id="battle-%s-%d" % (session.sid, base_seq + 1),
+                    seed=_new_seed(), rng_seed=_new_seed(),
+                    strength=_text_or(body.get("strength"), 24).strip())
+            except battle_service.TacticalError as exc:
+                return self._json(
+                    {"error": exc.phrase, "reason": exc.reason, **exc.details},
+                    exc.code)
+            live = prism_core.RuleSession.from_snapshot(session.rules)
+            narrative = ""
+            for event in record.get("events") or []:
+                if event.get("type") == "combat_started":
+                    narrative = str((event.get("result") or {}).get("summary") or "")
+                    break
+            out = self._tactical_commit(
+                session, handle, base_seq=base_seq, key=key,
+                event_type=self._TACTICAL_EVENT_TYPES["start"],
+                actor="player", record_after=record, live=live,
+                narrative=narrative)
+            if isinstance(out, tuple):
+                return self._json(out[0], out[1])
+            payload = out
+            payload["narrative"] = narrative
+        _action_idem_put(session.sid, key, payload)
+        return self._json(payload)
+
+    def _tactical_commit(self, session, handle, *, base_seq, key, event_type,
+                         actor, record_after, live, narrative=""):
+        """把「tactical 块 +（若有变更的）rules 块」作为**一条事件**原子提交。
+
+        返回响应 payload；提交失败返回 `(body, code)` 由调用方透传。
+        提交成功后同步内存门面（rules / tactical）、写叙事流、扇出房间
+        事件并落盘（叙事反馈随同一次检查点落盘）。
+        """
+        changes = [{"block": "tactical", "op": "replace_block", "path": "",
+                    "before": copy.deepcopy(session.tactical),
+                    "after": copy.deepcopy(record_after)}]
+        rules_after = live.snapshot()
+        rules_changed = json.dumps(rules_after, ensure_ascii=False, sort_keys=True,
+                                   separators=(",", ":")) != json.dumps(
+            session.rules, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"))
+        if rules_changed:
+            changes.append({"block": "rules", "op": "replace_block", "path": "",
+                            "before": copy.deepcopy(session.rules),
+                            "after": copy.deepcopy(rules_after)})
+        commit = handle.commit(
+            base_seq=base_seq, idempotency_key=key, type=event_type,
+            actor=str(actor or "player"), changes=changes,
+            rules_version=ACTION_RULES_VERSION, source="player")
+        status = str(commit.get("status") or "")
+        if status == "conflict":
+            return ({"error": "状态已变，请重试", "reason": "conflict",
+                     "seq": _int_or(handle.view().get("seq"), 0)}, 409)
+        if status != "committed":
+            return ({"error": "服务器内部错误：状态层拒绝提交（%s）"
+                              % (commit.get("message") or commit.get("code") or ""),
+                     "reason": "commit_rejected"}, 500)
+        # §7.7：已提交的结果不回滚——事件已进状态层日志（重启可重放恢复）。
+        # 检查点落盘失败只把 `saved` 置假，如实回报，不谎报成功。
+        session.tactical = copy.deepcopy(record_after)
+        if rules_changed:
+            session.rules = copy.deepcopy(rules_after)
+        _room_publish_after_commit(handle, commit, session.sid)
+        narrative = str(narrative or "")
+        if narrative:
+            session.add_log("system", narrative, speaker="战斗")
+        saved = True
+        try:
+            session.save()
+        except SaveError:
+            saved = False
+        view = battle_service.battle_view(
+            record_after, party_units=self._tactical_party_units(session, record_after))
+        return {"status": "ok", "replayed": False, "saved": saved,
+                "narrative": "", "result": None,
+                "seq": _int_or(commit.get("seq_to"), 0),
+                "battle": view}
+
+    @staticmethod
+    def _tactical_party_units(session, record):
+        """从会话规则快照解析队伍单位视图（权威在 rules 块，不复制属性）。"""
+        live = prism_core.RuleSession.from_snapshot(session.rules)
+        party_units = {}
+        for unit_id, entry in sorted((record.get("units") or {}).items()):
+            if isinstance(entry, dict) and entry.get("party"):
+                for unit in live.party:
+                    if str(unit.get("id") or "") == unit_id:
+                        party_units[unit_id] = unit
+                        break
+        return party_units
+
+    def _tactical_action(self, body: dict, op: str):
+        """战斗行动写接口的公共路径（move / attack / interact / end_turn / flee）。"""
+        session = self._sess()
+        member, gate = self._tactical_gate(session)
+        if gate is not None:
+            return self._err(*gate)
+        key = str(self.headers.get("Idempotency-Key") or "").strip()
+        if not ACTION_IDEM_KEY_RE.fullmatch(key):
+            return self._err("幂等键不合法", 400, "bad_idem_key")
+        with session.lock:
+            if _room_is_paused(session):
+                return self._err(ROOM_PAUSED_ERROR, 409, "room_paused")
+            replay = _action_idem_get(session.sid, key)
+            if replay is not None:
+                replay = dict(replay) if isinstance(replay, dict) else {"replayed": True}
+                replay["replayed"] = True
+                return self._json(replay)
+            if not _rate_ok(session.sid, "tactical", TACTICAL_COMMIT_LIMIT):
+                return self._err("太频繁", 429, "rate_limited")
+            record = copy.deepcopy(session.tactical) \
+                if isinstance(session.tactical, dict) else None
+            if record is None or not battle_service.is_active(record):
+                return self._err("没有进行中的战斗", 404, "no_battle")
+            actor_id, actor_err = self._tactical_actor(session, member, body, record)
+            if actor_err is not None:
+                return self._err(*actor_err)
+            expected = body.get("expected_revision")
+            if not isinstance(expected, int) or isinstance(expected, bool) \
+                    or expected < 0:
+                return self._err("缺少 state_revision", 400, "bad_revision")
+            handle = session._handle or session._open_handle()
+            base_seq = _int_or(handle.view().get("seq"), 0)
+            live = prism_core.RuleSession.from_snapshot(session.rules)
+            ops = {
+                "move": battle_service.do_move,
+                "attack": battle_service.do_attack,
+                "interact": battle_service.do_interact,
+                "end_turn": battle_service.do_end_turn,
+                "flee": battle_service.do_flee,
+            }
+            try:
+                out = ops[op](record, live, actor_id=actor_id,
+                              expected_revision=expected, **self._tactical_op_body(op, body))
+            except battle_service.TacticalError as exc:
+                return self._json(
+                    {"error": exc.phrase, "reason": exc.reason, **exc.details},
+                    exc.code)
+            out["narrative"] = str(out.get("narrative") or "")
+            committed = self._tactical_commit(
+                session, handle, base_seq=base_seq, key=key,
+                event_type=self._TACTICAL_EVENT_TYPES[op], actor=actor_id,
+                record_after=record, live=live, narrative=out["narrative"])
+            if isinstance(committed, tuple):
+                return self._json(committed[0], committed[1])
+            payload = committed
+            payload["narrative"] = out["narrative"]
+            payload["result"] = out.get("result")
+        _action_idem_put(session.sid, key, payload)
+        return self._json(payload)
+
+    @staticmethod
+    def _tactical_op_body(op: str, body: dict) -> dict:
+        """各行动的意图参数（客户端只传目标，不传任何结果字段）。"""
+        if op == "move":
+            return {"to_cell_id": body.get("to_cell_id")}
+        if op == "attack":
+            return {"target_id": body.get("target_id")}
+        if op == "interact":
+            return {"object_id": body.get("object_id"),
+                    "action": body.get("action")}
+        return {}
+
+    def _tactical_move(self, body: dict):
+        """`POST /api/tactical/move`：移动到 `to_cell_id`（服务端重算路径）。"""
+        return self._tactical_action(body, "move")
+
+    def _tactical_attack(self, body: dict):
+        """`POST /api/tactical/attack`：攻击 `target_id`（服务端重算射程/LOS）。"""
+        return self._tactical_action(body, "attack")
+
+    def _tactical_interact(self, body: dict):
+        """`POST /api/tactical/interact`：对物件执行 `action`（状态机结算）。"""
+        return self._tactical_action(body, "interact")
+
+    def _tactical_end_turn(self, body: dict):
+        """`POST /api/tactical/end_turn`：结束当前回合（敌方回合就地结算）。"""
+        return self._tactical_action(body, "end_turn")
+
+    def _tactical_flee(self, body: dict):
+        """`POST /api/tactical/flee`：脱离战斗（推进压力，不结算经验）。"""
+        return self._tactical_action(body, "flee")
 
     # ── 多人房间（M10-S1，§4）────────────────────────────────
     def _bearer_token(self) -> str:
