@@ -1,0 +1,68 @@
+{
+  "template_id": "e2e-outdoor-hazard",
+  "template_version": "1",
+  "shape": {"kind": "outdoor"},
+  "radius": 4,
+  "entry_cells": [
+    {"q": 0, "r": 0}, {"q": 1, "r": 0}, {"q": 0, "r": 1}
+  ],
+  "spawn_points": [
+    {"q": -2, "r": 1}, {"q": -1, "r": 2}, {"q": 2, "r": -1}, {"q": 1, "r": -2}
+  ],
+  "features": [
+    {
+      "feature_id": "scree-field",
+      "kind": "terrain",
+      "disk": {"center": {"q": 0, "r": 0}, "radius": 1},
+      "terrain": {
+        "terrain_id": "loose-scree",
+        "terrain_tags": ["difficult"],
+        "cover_grade": "light"
+      }
+    },
+    {
+      "feature_id": "spike-growth",
+      "kind": "terrain",
+      "disk": {"center": {"q": 2, "r": 1}, "radius": 1},
+      "terrain": {
+        "terrain_id": "spike-growth",
+        "terrain_tags": ["difficult"],
+        "hazard_refs": ["spike-01"]
+      }
+    },
+    {
+      "feature_id": "spike-cluster",
+      "kind": "object",
+      "at": {"q": 2, "r": 1},
+      "object": {
+        "definition_id": "hazard.spike-cluster",
+        "category": "hazard",
+        "state": "armed"
+      }
+    },
+    {
+      "feature_id": "boulder",
+      "kind": "terrain",
+      "at": {"q": -1, "r": -1},
+      "terrain": {
+        "terrain_id": "boulder",
+        "terrain_tags": ["open"],
+        "blocks_movement": true,
+        "blocks_los": true,
+        "cover_grade": "heavy"
+      }
+    },
+    {
+      "feature_id": "watch-ruin",
+      "kind": "terrain",
+      "at": {"q": 3, "r": 0},
+      "terrain": {
+        "terrain_id": "ruin-wall",
+        "terrain_tags": ["open"],
+        "obstacle_height": 150,
+        "blocks_los": true
+      }
+    }
+  ],
+  "encounter_meta": {"enemy_min": 1, "enemy_max": 3, "waves": 1}
+}

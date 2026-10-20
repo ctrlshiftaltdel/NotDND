@@ -1,0 +1,73 @@
+{
+  "template_id": "e2e-indoor-multilevel",
+  "template_version": "1",
+  "shape": {"kind": "room"},
+  "size": {"width": 7, "height": 5},
+  "surfaces": [
+    {"surface_id": "floor", "elevation": 0, "elevation_step": 0},
+    {"surface_id": "balcony", "elevation": 1, "elevation_step": 1,
+     "link": {"kind": "stairs", "at": {"q": 3, "r": 2}, "bidirectional": true}}
+  ],
+  "entry_cells": [
+    {"q": 0, "r": 1}, {"q": 0, "r": 2}, {"q": 0, "r": 3}, {"q": 1, "r": 2}
+  ],
+  "spawn_points": [
+    {"q": 6, "r": 1}, {"q": 6, "r": 3}, {"q": 5, "r": 2}, {"q": 6, "r": 2}
+  ],
+  "features": [
+    {
+      "feature_id": "cover-crate-line",
+      "kind": "terrain",
+      "at": {"q": 2, "r": 2},
+      "terrain": {
+        "terrain_id": "crate-stack",
+        "terrain_tags": ["open"],
+        "cover_grade": "medium",
+        "obstacle_height": 1
+      }
+    },
+    {
+      "feature_id": "heavy-cover-pillar",
+      "kind": "terrain",
+      "at": {"q": 2, "r": 0},
+      "terrain": {
+        "terrain_id": "stone-pillar",
+        "terrain_tags": ["open"],
+        "cover_grade": "heavy",
+        "blocks_los": true
+      }
+    },
+    {
+      "feature_id": "vent-hazard-zone",
+      "kind": "terrain",
+      "at": {"q": 0, "r": 0},
+      "terrain": {
+        "terrain_id": "steam-vent-zone",
+        "terrain_tags": ["open"],
+        "hazard_refs": ["steam-vent-01"]
+      }
+    },
+    {
+      "feature_id": "steam-vent",
+      "kind": "object",
+      "at": {"q": 0, "r": 0},
+      "object": {
+        "definition_id": "hazard.steam-vent",
+        "category": "hazard",
+        "state": "armed"
+      }
+    },
+    {
+      "feature_id": "iron-gate",
+      "kind": "object",
+      "at": {"q": 4, "r": 2},
+      "object": {
+        "definition_id": "mech.blast-gate",
+        "category": "mechanism",
+        "state": "closed",
+        "blocks_movement": true
+      }
+    }
+  ],
+  "encounter_meta": {"enemy_min": 1, "enemy_max": 3, "waves": 1}
+}

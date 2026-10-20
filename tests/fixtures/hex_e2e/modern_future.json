@@ -1,0 +1,81 @@
+{
+  "template_id": "e2e-modern-future",
+  "template_version": "1",
+  "shape": {"kind": "room"},
+  "size": {"width": 7, "height": 5},
+  "surfaces": [
+    {"surface_id": "deck", "elevation": 0, "elevation_step": 0}
+  ],
+  "entry_cells": [
+    {"q": 0, "r": 2}, {"q": 1, "r": 1}, {"q": 1, "r": 3}
+  ],
+  "spawn_points": [
+    {"q": 6, "r": 1}, {"q": 6, "r": 3}, {"q": 5, "r": 2}
+  ],
+  "features": [
+    {
+      "feature_id": "cargo-crate",
+      "kind": "object",
+      "at": {"q": 3, "r": 2},
+      "object": {
+        "definition_id": "prop.cargo-crate",
+        "category": "movable",
+        "state": "intact",
+        "blocks_movement": true
+      }
+    },
+    {
+      "feature_id": "fuel-barrel",
+      "kind": "object",
+      "at": {"q": 4, "r": 1},
+      "object": {
+        "definition_id": "prop.fuel-barrel",
+        "category": "destructible",
+        "state": "intact",
+        "blocks_movement": true
+      }
+    },
+    {
+      "feature_id": "data-chip",
+      "kind": "object",
+      "at": {"q": 5, "r": 3},
+      "object": {
+        "definition_id": "prop.data-chip",
+        "category": "pickup",
+        "state": "intact"
+      }
+    },
+    {
+      "feature_id": "energy-barrier",
+      "kind": "object",
+      "at": {"q": 2, "r": 2},
+      "object": {
+        "definition_id": "prop.energy-barrier",
+        "category": "mechanism",
+        "state": "closed",
+        "blocks_movement": true
+      }
+    },
+    {
+      "feature_id": "arc-turret-zone",
+      "kind": "terrain",
+      "at": {"q": 0, "r": 0},
+      "terrain": {
+        "terrain_id": "arc-turret-zone",
+        "terrain_tags": ["open"],
+        "hazard_refs": ["arc-turret-01"]
+      }
+    },
+    {
+      "feature_id": "arc-turret",
+      "kind": "object",
+      "at": {"q": 0, "r": 0},
+      "object": {
+        "definition_id": "prop.arc-turret",
+        "category": "hazard",
+        "state": "armed"
+      }
+    }
+  ],
+  "encounter_meta": {"enemy_min": 1, "enemy_max": 3, "waves": 1}
+}
