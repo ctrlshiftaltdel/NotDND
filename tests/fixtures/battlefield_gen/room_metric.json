@@ -1,0 +1,42 @@
+{
+  "template_id": "test-room-basic",
+  "template_version": "1",
+  "shape": {"kind": "room"},
+  "size": {"width": 6, "height": 5},
+  "entry_cells": [{"q": 0, "r": 2}],
+  "spawn_points": [{"q": 5, "r": 2}, {"q": 4, "r": 1}],
+  "features": [
+    {
+      "feature_id": "cover-line",
+      "kind": "terrain",
+      "at": {"q": 3, "r": 2},
+      "terrain": {
+        "terrain_id": "barricade-line",
+        "terrain_tags": ["open"],
+        "cover_grade": "medium",
+        "obstacle_height": 90
+      }
+    },
+    {
+      "feature_id": "danger-vent",
+      "kind": "terrain",
+      "disk": {"center": {"q": 4, "r": 3}, "radius": 1},
+      "terrain": {
+        "terrain_id": "hazard-vent",
+        "terrain_tags": ["open"],
+        "hazard_refs": ["hazard-vent-01"]
+      }
+    },
+    {
+      "feature_id": "mobility-crates",
+      "kind": "object",
+      "count": 2,
+      "object": {
+        "definition_id": "test.crate",
+        "category": "movable",
+        "blocks_movement": true
+      }
+    }
+  ],
+  "encounter_meta": {"enemy_min": 1, "enemy_max": 3, "waves": 1}
+}
