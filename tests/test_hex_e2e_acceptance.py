@@ -635,7 +635,12 @@ def check_e2e_full_battle_http():
             assert field in battle, field
         # AP 经济来自数据（验收：AP / 回合 / 遭遇预算）。
         assert battle["legal_actions"] == svc.legal_actions()
-        assert set(battle["turn_ap"].values()) == {svc.ap_per_turn()}
+        # 敌体先攻时其回合就地结算、AP 已消耗——队伍单位必须满 AP，
+        # 所有单位的 AP 都在 [0, 上限] 内。
+        assert all(ap == svc.ap_per_turn() for uid, ap
+                   in battle["turn_ap"].items() if uid in party)
+        assert all(0 <= ap <= svc.ap_per_turn()
+                   for ap in battle["turn_ap"].values())
 
         # ── 非法移动：未知格 / 预算外 / 敌体占格 / 陈旧修订号 ──
         actor = battle["active_unit_id"]
@@ -670,6 +675,10 @@ def check_e2e_full_battle_http():
             and body.get("state_revision") == battle["state_revision"], body
 
         # ── 合法移动：服务端重算路径，AP 按数据价目扣 ──
+        # （敌体先攻会就地跑完其回合——用最新快照计算落点，不用开战快照。）
+        revision, battle = _rev(http, sid)
+        actor = battle["active_unit_id"]
+        enemy = _enemy_ids_view(battle)[0]
         step = _http_step_from_view(battle, actor, _cell_of(battle, enemy))
         assert step, "应当存在合法的相邻步"
         before_ap = battle["turn_ap"][actor]
@@ -715,6 +724,22 @@ def check_e2e_full_battle_http():
 
         # ── 走位接敌 → 真实结算一次攻击 ──
         assert _http_drive_adjacent(http, sid), "应当能在数回合内接敌"
+        # 等一个「当前玩家单位相邻敌体、且攻击 AP 充足」的回合：
+        # 接敌路径可能已花掉本回合的部分 AP（敌方回合就地结算）。
+        for _ in range(30):
+            revision, battle = _rev(http, sid)
+            if battle["status"] != "active":
+                break
+            actor = battle["active_unit_id"]
+            if actor in party \
+                    and battle["turn_ap"].get(actor, 0) \
+                    >= svc.ap_cost(svc.ATTACK_AP_ACTION) \
+                    and any(svc.tactical_hex_distance(
+                        battle["battlefield"], _cell_of(battle, actor),
+                        _cell_of(battle, enemy)) <= 1
+                        for enemy in _enemy_ids_view(battle)):
+                break
+            _http_end_turn(http, sid)
         revision, battle = _rev(http, sid)
         actor = battle["active_unit_id"]
         enemies = _enemy_ids_view(battle)
@@ -1529,7 +1554,10 @@ def check_security_boundaries_http():
         enemy_cell = _cell_of(battle, enemy)
 
         # 伪造敌体身份：单人会话回落到当前队伍行动者，敌体绝不因伪造而行动。
+        # （敌体先攻时其合法回合事件已在流里——只检查伪造请求之后的新事件。）
         revision, battle = _rev(http, sid)
+        enemy_cell = _cell_of(battle, enemy)
+        before_seq = battle["last_event_sequence"]
         status, out = http.post(
             "/api/tactical/attack",
             {"unit_id": enemy, "target_id": enemy,
@@ -1538,9 +1566,12 @@ def check_security_boundaries_http():
         assert status in (200, 422), (status, out)
         revision, battle = _rev(http, sid)
         assert _cell_of(battle, enemy) == enemy_cell, "敌体不得被伪造操作移动"
-        events = [event for event in battle["recent_events"]
-                  if event.get("actor_id") == enemy]
-        assert not events, "敌体不得成为伪造行动的 actor"
+        status, fresh = http.get(
+            "/api/tactical/battle?since_event=%d" % before_seq, sid=sid)
+        assert status == 200, (status, fresh)
+        new_events = [event for event in fresh["battle"]["events_since"]
+                      if event.get("actor_id") == enemy]
+        assert not new_events, "敌体不得成为伪造行动的 actor"
 
         # 伪造未轮到的队友身份：409 not_your_turn（回合权服务端裁定）。
         others = [uid for uid in party if uid != actor]
