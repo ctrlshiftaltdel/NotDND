@@ -209,3 +209,96 @@ ATLAS / 六角格层是**空间事实来源**；PRISM 战术引擎与构建引�
 | 高地优势 +1（指针） | 84 | `high_ground.bonus_layers`（`docs/system/02a-tactics-engine.md:93`） |
 | hex-line 并列选格 | 123 | `line_of_sight.tie_break` |
 | 掩体四档（指针） | 138 | `cover_grade`（`docs/system/02a-tactics-engine.md:257`） |
+| 地形朝向换算公式 | 225 | `scale.orientation`（pointy / flat 中心坐标换算） |
+| 视线高度判定机制 | 251 | `sight`（体型五档派生 / 缺省失败 / 有理数插值判定） |
+| 战场模板字段表 | 263 | 战场模板字段（后续落 `data/atlas/tactical_templates/**`） |
+| 对象定义目录 | 290 | 对象定义字段（后续落 `data/system/tactical_objects.json`） |
+
+---
+
+## 九、地形朝向
+
+第二节 `scale` 除 `hex_size_cm`（相邻格中心距离）外，增加**朝向**字段 `tactical.battlefield.scale.orientation`，受控枚举 `pointy`（尖顶）/ `flat`（平顶）。缺省值为 `pointy`（**缺省值为建议值，待确认**）。
+
+**中心坐标换算**：以 `S = hex_size_cm`（相邻格中心距离）为基准，axial 坐标 `(q, r)` 的格中心在战场平面内为：
+
+- `pointy`（尖顶）：`x = S × (q + r/2)`，`y = S × (√3 / 2) × r`
+- `flat`（平顶）：`x = S × (√3 / 2) × q`，`y = S × (r + q/2)`
+
+**验证锚点**：两种朝向下，相邻格中心距均等于 `S`。
+
+- `pointy`：`(0,0)` 中心为 `(0, 0)`；`(1,0)` 中心为 `(S, 0)`，与原点距离 `S`；`(0,1)` 中心为 `(S/2, S × √3 / 2)`，与原点距离 `√(S²/4 + 3S²/4) = S`。
+- `flat`：`(0,0)` 中心为 `(0, 0)`；`(1,0)` 中心为 `(S × √3 / 2, S/2)`，与原点距离 `S`；`(0,1)` 中心为 `(0, S)`，与原点距离 `S`。
+
+**作用范围**：朝向**只**影响 metric 模式的水平距离换算与 UI 渲染；**不影响**六邻偏移（行号 18）、六角距离公式（行号 19）与 `hex_line` 并列选格（行号 123）——三者的规则不因朝向改变，实现不得为不同朝向复制第二套几何内核。
+
+**覆盖层级**：缺省值放 `system.tactical_space.scale.orientation`；世界规则、战场模板可覆盖。字段的 schema / registry / FORMAT 落地由后续 data 单完成，本节只写契约。
+
+---
+
+## 十、视线高度
+
+第五节「视线」中「从攻击者眼高射向目标可见部位高度」的两个高度，**必须**来自 `system.tactical_space.sight` 配置（metric 口径）。本节是契约：只定结构与机制，**不写任何具体数值**——数值进数据。
+
+**体型五档派生**：`sight` 按体型五档各派生两个字段，档位与 `data/system/combat.json` 的 `poise.body_sizes` 一一对应，不得增删档位：
+
+| 体型档 | 派生字段 |
+|---|---|
+| `small` / `medium` / `large` / `huge` / `boss` | `eye_height_cm`（攻击者眼高）、`visible_height_cm`（目标可见部位高度） |
+
+**缺省行为**：没有 `sight` 配置时，metric 视线查询**必须失败**并在原因中说明缺少 `sight` 配置；**不得**静默取 0 或任何隐式默认值。
+
+**判定机制**：射线在某格处的高度按**「两端高度 × 水平距离」的有理数线性插值**得出（与第五节 hex-line 采样同用有理数口径，不得用浮点），再与该格 `obstacle_height`（与 `elevation` 同口径）比较：射线高度**高于**障碍顶 = 可越过；**低于** = 被挡。遮挡判定只做这一次高度比较，不引入第二套阻挡语义。
+
+**abstract 模式**：不适用眼高——abstract 的 LOS 只检查 `blocks_los`，不做高度插值，也不读取 `sight` 配置。
+
+---
+
+## 十一、战场模板
+
+战场模板是**布局意图**的可复用声明，供生成器与手工地图共用；模板不是规则数据，不承载任何阈值。
+
+**模板字段表**：
+
+| 字段 | 含义 |
+|---|---|
+| `template_id` | 模板身份 |
+| `template_version` | 模板版本；与 `template_id`、`seed` 共同决定复现（见下） |
+| `shape` | 受控枚举：`room` / `outdoor` / `custom` |
+| `size` / `radius` | 战场范围描述，按 `shape` 选用 |
+| `surfaces[]` | 表面集合；格的 `surface_id` 指向此处 |
+| `entry_cells[]` | 入口格集合 |
+| `spawn_points[]` | 出生点集合；受第三节不变式约束（不得不可达 / 重叠 / 必然无路） |
+| `features[]` | 布局特征；落地时映射为 cell 的 `terrain_id` / `terrain_tags` / `cover_grade` / `hazard_refs` / `feature_refs`，以及 `objects[]` **实例**（定义见第十二节） |
+| `encounter_meta` | 遭遇元数据，供遭遇 / 叙事层读取，不参与几何判定 |
+
+**约束**：
+
+- 同 `template_id` + `template_version` + `seed` 必须复现同一战场（与第二节「种子重现」同口径）。
+- 模板只描述**布局意图**，**不得内嵌规则数值**；阈值、成本、档位一律引用 `system.tactical_space` 及相应 system 数据，不得在模板中复制第二份。
+
+**数据化路径**：本单合并后另开 data 单落 `data/atlas/tactical_templates/**`（kind 与 schema 由该单定义）；本节为其提供行号锚点。
+
+---
+
+## 十二、对象定义目录
+
+**定义与实例分离**：本节规定的是**对象定义**（definition）——与具体战场无关的通用机制；战场上出现的是**实例**（见第三节 object instance，持 `definition_id` 与战场上下文）。定义描述「这类对象如何运作」，实例描述「这一个对象现在的状态」。
+
+**definition 结构**：每个定义以 `definition_id` 标识，并声明 `category`。`category` 受控枚举九类：
+
+`blocker` / `cover` / `hazard` / `mechanism` / `boost` / `mobility` / `pickup` / `movable` / `destructible`
+
+**每个定义必须声明**：
+
+| 声明项 | 含义 |
+|---|---|
+| 允许状态集 | 对象可处于的状态集合；显式状态机，不靠描述文本 |
+| 允许转换 | 状态间合法迁移；典型转换链含 `intact→damaged→destroyed`、`closed→open→locked`、`inactive→armed→triggered→disabled` |
+| `spatial_effects` | 破坏 / 状态变化对 `blocks_los`、`blocks_movement`、`cover_grade` 的影响 |
+| `durability` | 耐久口径（数值进数据，本节不写数值） |
+| 交互成本与检定 / 效果引用 | 交互的代价，以及可触发的检定 / 效果对既有规则数据的引用 |
+
+**铁律**：**不得按世界名或物件名写分支**。定义是通用机制，对所有世界一致；世界的风味、命名与上下文由实例与 ATLAS 层携带，不进入定义。
+
+**数据化路径**：后续 data 单落 `data/system/tactical_objects.json`（kind `system.tactical_objects`）+ schema / registry / FORMAT；本节为其提供行号锚点。
