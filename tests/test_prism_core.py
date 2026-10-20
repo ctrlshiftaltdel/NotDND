@@ -27,6 +27,19 @@ ATLAS I5（Issue #67）覆盖：战术投影接线——attach_tactical_map 的
 （z 更高且相邻，并折成 +1 枚助势骰）、abstract 帧不把米换成跨区、
 没接地图时行为与 M2b 默认完全一致、投影块不进会话快照。
 
+M13-B8（Issue #423）覆盖：TacticalContext 输入契约——结构化校验
+（来源 / 字段 / 状态；stale / invalid / 缺 sight 一律拒绝，来源
+reasons 透传）、d20 有界映射（高地→助势骰层、掩体三档→既有
+COVER_GUARD 数值、视线→attack_blocked、full→unsupported、距离
+事实→not_mapped 显式声明）与结算接线（context 高地与手动 advantage=1
+等价；context 掩体与声明档二选一不叠加；full / stale 结算入口
+ValueError）、构建引擎有界映射（掩体 / 高地→闪避需求修正每项 +1、
+封顶仍归 build_dodge_need_adjusted、骰池无 context 入口）与算法
+不混用（d20 加值不进骰池、骰池修正不进 d20）、无 context 时输入
+输出与行为 100% 兼容（显式 None == 不传；out 无 context_mapping）。
+context 一律经 #447 tactical_context.build_context 真实产物构造
+（契约来源只有一个），映射结果断言可 JSON 序列化。
+
 零依赖：仅 Python 3 标准库；直接 `python3 tests/test_prism_core.py` 运行。
 """
 
@@ -41,6 +54,8 @@ if ROOT not in sys.path:
 import prism_core as pc
 import atlas as al          # I5：测试需要手工造帧并投出真实战术帧
 import atlas_gen as ag
+import tactical_battlefield as tb   # M13-B8（Issue #423）：context 来源契约
+import tactical_context as tctx     # M13-B8（Issue #423）：#447 冻结契约
 
 
 class SeqRandom:
@@ -1912,6 +1927,356 @@ def check_action_contract_migration_roundtrip():
     assert "schema_version" not in old_proposal, old_proposal
 
 
+# ── M13-B8（Issue #423）：TacticalContext 输入契约 ──────────────────────
+
+_CTX_HEX = tb.space_rules()["scale"]["hex_size_cm"]
+CTX_RAW_RULES = tb.space_rules()
+
+
+def _inject_sight():
+    """数据尚未落 `sight`（#422 已知口径）→ 测试注入五档配置，结构同 02C。"""
+    rules = json.loads(json.dumps(tb.space_rules()))
+    rules["sight"] = {
+        "small":  {"eye_height_cm": 90,  "visible_height_cm": 70},
+        "medium": {"eye_height_cm": 160, "visible_height_cm": 120},
+        "large":  {"eye_height_cm": 220, "visible_height_cm": 180},
+        "huge":   {"eye_height_cm": 320, "visible_height_cm": 280},
+        "boss":   {"eye_height_cm": 450, "visible_height_cm": 400},
+    }
+    return rules
+
+
+_CTX_SIGHT_RULES = _inject_sight()
+
+
+def _ctx_disk(radius):
+    coords = []
+    for q in range(-radius, radius + 1):
+        low = max(-radius, -q - radius)
+        high = min(radius, -q + radius)
+        for r in range(low, high + 1):
+            coords.append((q, r))
+    return sorted(coords)
+
+
+def _ctx_cell(cell_id, q, r, **overrides):
+    cell = {
+        "cell_id": cell_id,
+        "q": q,
+        "r": r,
+        "surface_id": "ground",
+        "terrain_id": "floor",
+        "terrain_tags": ["open"],
+        "movement_cost": _CTX_HEX,
+        "blocks_movement": False,
+        "blocks_los": False,
+        "hazard_refs": [],
+        "feature_refs": [],
+        "spawnable": True,
+        "elevation_cm": 0,
+    }
+    cell.update(overrides)
+    return cell
+
+
+def _ctx_battlefield(overrides=None):
+    """半径 2 的 metric 六角盘；返回 (战场 doc, {(q, r): cell_id})。"""
+    cells = []
+    ids = {}
+    for order, (q, r) in enumerate(_ctx_disk(2)):
+        cell_id = "g%02d" % order
+        ids[(q, r)] = cell_id
+        cell = _ctx_cell(cell_id, q, r)
+        if overrides and (q, r) in overrides:
+            cell.update(overrides[(q, r)])
+        cells.append(cell)
+    return {
+        "schema_version": 1,
+        "kind": "tactical.battlefield",
+        "source": "docs/system/02c-hex-battlefield.md:29",
+        "battlefield_id": "bf-b8-01",
+        "world_id": "threshold",
+        "site_id": "site-b8-01",
+        "atlas_ref": "threshold/region-01",
+        "seed": 423,
+        "generator_version": "1.0.0",
+        "geometry": {"type": "hex_axial"},
+        "scale": {"mode": "metric", "hex_size_cm": _CTX_HEX},
+        "cells": cells,
+        "vertical_links": [],
+    }, ids
+
+
+def _ctx_state(ids, revision=7):
+    return {
+        "schema_version": 1,
+        "kind": "tactical.battle_state",
+        "battle_id": "battle-b8-01",
+        "battlefield_id": "bf-b8-01",
+        "round": 1,
+        "turn": 1,
+        "state_revision": revision,
+        "participants": [
+            {"unit_id": "hero", "cell_id": ids[(0, 0)]},
+            {"unit_id": "orc", "cell_id": ids[(2, 0)]},
+        ],
+        "objects": [],
+    }
+
+
+def _ctx_build(bf, ids, state, **kwargs):
+    """经 #447 build_context 产出 context——契约来源只有一个。"""
+    kwargs.setdefault("actor_id", "hero")
+    kwargs.setdefault("target_id", "orc")
+    kwargs.setdefault("actor_body_size", "medium")
+    kwargs.setdefault("target_body_size", "medium")
+    kwargs.setdefault("rules", _CTX_SIGHT_RULES)
+    return tctx.build_context(bf, state, **kwargs)
+
+
+def check_tactical_context_validation_and_reject():
+    # ① 来源合法的 context：ok。
+    bf, ids = _ctx_battlefield()
+    state = _ctx_state(ids)
+    context = _ctx_build(bf, ids, state)
+    check = pc.validate_tactical_context(context)
+    assert check["ok"] is True and check["reasons"] == [], check
+    assert list(context.keys()) == list(tctx.CONTEXT_FIELDS), \
+        "输入契约以 #447 冻结字段为准"
+
+    # ② revision 过期：整体拒绝，来源 reasons 原样透传。
+    stale = _ctx_build(bf, ids, state, expected_revision=state["state_revision"] - 1)
+    assert stale["status"] == "stale_context", stale["status"]
+    check = pc.validate_tactical_context(stale)
+    assert check["ok"] is False and check["facts"] is None, check
+    assert check["reasons"][0]["code"] == "stale_context", check["reasons"]
+    assert check["reasons"][0]["source_reasons"] == stale["reasons"]
+
+    # ③ status 非 ok（invalid）同样拒绝。
+    invalid = tctx.build_context(None, state, actor_id="hero")
+    check = pc.validate_tactical_context(invalid)
+    assert check["ok"] is False and check["reasons"][0]["code"] == "invalid_context"
+
+    # ④ 缺 sight 配置：#444 的失败原样透传成 invalid_context，核心层拒绝，
+    #    不静默兜底（Metric 视线查询必须有体型档）。
+    bf2, ids2 = _ctx_battlefield()
+    no_sight = _ctx_build(bf2, ids2, _ctx_state(ids2), rules=CTX_RAW_RULES)
+    assert no_sight["status"] == "invalid_context", no_sight
+    check = pc.validate_tactical_context(no_sight)
+    assert check["ok"] is False, check
+    assert any("query_failed" == r.get("code")
+               or "query_failed" in str(r.get("source_reasons", ""))
+               for r in check["reasons"]), check["reasons"]
+
+    # ⑤ 非 dict / 坏 kind / 坏 schema_version / 缺字段：结构化拒绝。
+    for bad in (None, "context", 42, {}, {"kind": "tactical.context"},
+                dict(context, schema_version=99),
+                dict(context, kind="tactical.unknown")):
+        check = pc.validate_tactical_context(bad)
+        assert check["ok"] is False, (bad, check)
+
+    # ⑥ stale / invalid 传进结算入口：ValueError 拒绝，不降级猜测。
+    session = pc.RuleSession()
+    attacker, target = _ctx_combat_pair()
+    try:
+        pc.resolve_attack(session, attacker, target,
+                          tactical_context=stale, rng=SeqRandom(15))
+        raise AssertionError("stale context 应被拒绝")
+    except ValueError:
+        pass
+    try:
+        pc.compute_guard(target, session, tactical_context=stale)
+        raise AssertionError("stale context 应被拒绝")
+    except ValueError:
+        pass
+    try:
+        pc.resolve_attack(session, attacker, target,
+                          tactical_context=no_sight, rng=SeqRandom(15))
+        raise AssertionError("invalid context 应被拒绝")
+    except ValueError:
+        pass
+
+
+def check_tactical_context_d20_mapping():
+    bf, ids = _ctx_battlefield()
+    state = _ctx_state(ids)
+
+    # ① 平地：无修正、无阻断、无未映射丢失。
+    mapping = pc.map_context_for_d20(_ctx_build(bf, ids, state))
+    assert mapping["ok"] is True
+    assert mapping["inputs"] == {"advantage_layers": 0, "guard_bonus": 0,
+                                 "attack_blocked": False}, mapping["inputs"]
+    assert mapping["mapped"] == [] and mapping["unsupported"] == []
+    # metric 距离事实存在但 d20 引擎无对应输入 → 显式 not_mapped，不静默。
+    assert any(item["fact"] == "metric_distance"
+               for item in mapping["not_mapped"]), mapping["not_mapped"]
+
+    # ② 高地（数据阈值 100 cm，attacker 高 150）：+1 助势骰层，带规则 id。
+    bf_high, ids_high = _ctx_battlefield({(2, 0): {"elevation_cm": -150}})
+    mapping = pc.map_context_for_d20(_ctx_build(bf_high, ids_high, _ctx_state(ids_high)))
+    assert mapping["inputs"]["advantage_layers"] == 1, mapping
+    assert mapping["mapped"][0]["rule_ref"] == "docs/system/02a-tactics-engine.md:93"
+    assert mapping["inputs"]["guard_bonus"] == 0
+
+    # ③ 掩体三档 → 既有 COVER_GUARD 数值（+2/+4/+6），full 进 unsupported。
+    for grade, bonus in (("light", 2), ("medium", 4), ("heavy", 6)):
+        bf_c, ids_c = _ctx_battlefield({(2, 0): {"cover_grade": grade}})
+        mapping = pc.map_context_for_d20(
+            _ctx_build(bf_c, ids_c, _ctx_state(ids_c)))
+        assert mapping["inputs"]["guard_bonus"] == bonus, (grade, mapping)
+        assert mapping["mapped"][-1]["rule_ref"] == "docs/system/02a-tactics-engine.md:257"
+    bf_full, ids_full = _ctx_battlefield({(2, 0): {"cover_grade": "full"}})
+    mapping = pc.map_context_for_d20(_ctx_build(bf_full, ids_full, _ctx_state(ids_full)))
+    assert mapping["inputs"]["guard_bonus"] == 0
+    assert len(mapping["unsupported"]) == 1, mapping
+    assert mapping["unsupported"][0]["fact"] == "cover_grade"
+    assert mapping["unsupported"][0]["rule_ref"] == "docs/system/02a-tactics-engine.md:264"
+
+    # ④ 视线被遮：attack_blocked 事实显式返回（目标合法性归调用方）。
+    bf_wall, ids_wall = _ctx_battlefield({(1, 0): {"blocks_los": True}})
+    mapping = pc.map_context_for_d20(_ctx_build(bf_wall, ids_wall, _ctx_state(ids_wall)))
+    assert mapping["inputs"]["attack_blocked"] is True, mapping
+    assert mapping["mapped"][-1]["rule_ref"] == "docs/system/02c-hex-battlefield.md:121"
+
+    # ⑤ 无效 / 过期 context：ok=False，绝不降级成「当没有 context」。
+    stale = _ctx_build(bf, ids, state, expected_revision=state["state_revision"] - 1)
+    mapping = pc.map_context_for_d20(stale)
+    assert mapping["ok"] is False and mapping["inputs"] is None
+    assert mapping["mapped"] == [] and mapping["unsupported"] == []
+
+    # ⑥ 映射结果可 JSON 序列化（可随事件 / 存档落盘）。
+    json.dumps(mapping)
+    json.dumps(pc.map_context_for_d20(_ctx_build(bf_high, ids_high, _ctx_state(ids_high))))
+
+
+def check_tactical_context_d20_attack_wiring():
+    bf, ids = _ctx_battlefield({(2, 0): {"elevation_cm": -150}})
+    context = _ctx_build(bf, ids, _ctx_state(ids))
+    assert context["high_ground"] is True, context
+
+    # ① context 高地与手动 advantage=1 等价（同一确定性 RNG 下逐项一致）。
+    session_a = pc.RuleSession()
+    a1, t1 = _ctx_combat_pair()
+    out_ctx = pc.resolve_attack(session_a, a1, t1, notation="1d6",
+                                rng=SeqRandom(15, 7), tactical_context=context)
+    session_b = pc.RuleSession()
+    a2, t2 = _ctx_combat_pair()
+    out_man = pc.resolve_attack(session_b, a2, t2, notation="1d6",
+                                advantage=1, rng=SeqRandom(15, 7))
+    for key in ("grade", "attack_total", "guard", "margin", "damage"):
+        assert out_ctx[key] == out_man[key], (key, out_ctx[key], out_man[key])
+    assert out_ctx["high_ground"] is True
+    assert out_ctx["context_mapping"]["inputs"]["advantage_layers"] == 1
+
+    # ② context 掩体：防护取空间事实（+2），不与声明档叠加。
+    bf_c, ids_c = _ctx_battlefield({(2, 0): {"cover_grade": "light"}})
+    cover_ctx = _ctx_build(bf_c, ids_c, _ctx_state(ids_c))
+    unit_cover = pc.new_unit("t", "掩体目标")
+    session_c = pc.RuleSession()
+    assert pc.compute_guard(unit_cover, session_c) == 10          # 声明档：无
+    assert pc.compute_guard(unit_cover, session_c,
+                            tactical_context=cover_ctx) == 12     # 空间事实
+    breakdown = pc.guard_breakdown(unit_cover, session_c,
+                                   tactical_context=cover_ctx)
+    assert {"label": "掩体修正（TacticalContext）", "value": 2} in breakdown["parts"]
+    assert pc.compute_guard(dict(unit_cover, cover="中度"), session_c,
+                            tactical_context=cover_ctx) == 12, \
+        "空间事实与声明档二选一，不叠加"
+
+    # ③ full 掩体：无数值档 → 结算入口 ValueError，不静默当 0。
+    bf_full, ids_full = _ctx_battlefield({(2, 0): {"cover_grade": "full"}})
+    full_ctx = _ctx_build(bf_full, ids_full, _ctx_state(ids_full))
+    try:
+        pc.compute_guard(unit_cover, session_c, tactical_context=full_ctx)
+        raise AssertionError("full 掩体应结构化拒绝")
+    except ValueError:
+        pass
+
+    # ④ 带 context 的 out 仍可 JSON 序列化（可随事件 / 存档落盘）。
+    json.dumps(out_ctx)
+
+
+def check_tactical_context_build_mapping():
+    bf, ids = _ctx_battlefield({(2, 0): {"elevation_cm": -150,
+                                         "cover_grade": "light"}})
+    context = _ctx_build(bf, ids, _ctx_state(ids))
+
+    # ① 掩体 +1、高地 +1（02B:261 每项 +1）；封顶仍归既有函数。
+    mapping = pc.map_context_for_build(context)
+    assert mapping["ok"] is True
+    assert mapping["inputs"]["dodge_need_modifiers"] == 2, mapping["inputs"]
+    assert mapping["inputs"]["attack_blocked"] is False
+    assert all(item["rule_ref"] == "docs/system/02b-forge-engine.md:261"
+               for item in mapping["mapped"]), mapping["mapped"]
+    assert pc.build_dodge_need_adjusted("standard",
+                                        modifiers=mapping["inputs"]["dodge_need_modifiers"]) == 5
+
+    # ② full 掩体 → unsupported，不静默丢失。
+    bf_full, ids_full = _ctx_battlefield({(2, 0): {"cover_grade": "full"}})
+    mapping = pc.map_context_for_build(_ctx_build(bf_full, ids_full, _ctx_state(ids_full)))
+    assert mapping["unsupported"][0]["fact"] == "cover_grade", mapping
+
+    # ③ 距离事实显式 not_mapped：骰池引擎无距离修正输入。
+    bf_plain, ids_plain = _ctx_battlefield()
+    mapping = pc.map_context_for_build(_ctx_build(bf_plain, ids_plain, _ctx_state(ids_plain)))
+    assert mapping["inputs"] == {"dodge_need_modifiers": 0,
+                                 "attack_blocked": False}
+    assert any(item["fact"] == "metric_distance"
+               for item in mapping["not_mapped"]), mapping["not_mapped"]
+
+    # ④ 算法不混用：构建映射里没有 d20 的助势骰 / 防护加值输入；
+    #    d20 映射里没有构建的闪避需求修正输入。
+    build_inputs = pc.map_context_for_build(context)["inputs"]
+    d20_inputs = pc.map_context_for_d20(context)["inputs"]
+    assert "advantage_layers" not in build_inputs and "guard_bonus" not in build_inputs
+    assert "dodge_need_modifiers" not in d20_inputs
+    assert all("助势骰" not in item["effect"] and "guard_bonus" not in item["effect"]
+               for item in pc.map_context_for_build(context)["mapped"])
+    # 骰池侧：成功数只由骰池构成决定——映射不影响骰池组成与结算，
+    # 骰池函数签名也没有任何 context / 空间修正入口。
+    pool_a = pc.build_pool(3, 2)
+    pool_b = pc.build_pool(3, 2)
+    assert pool_a == pool_b, "骰池构成不受 context 影响"
+    json.dumps(mapping)
+
+    # ⑤ stale context：拒绝，不降级。
+    stale = _ctx_build(bf, ids, _ctx_state(ids), expected_revision=6)
+    assert pc.map_context_for_build(stale)["ok"] is False
+
+
+def check_tactical_context_no_context_compat():
+    # 无 context：resolve_attack / compute_guard / guard_breakdown 的
+    # 输入、输出、行为与既有路径 100% 一致（golden 兼容）。
+    session_a = pc.RuleSession()
+    a1, t1 = _ctx_combat_pair()
+    out_default = pc.resolve_attack(session_a, a1, t1, rng=SeqRandom(15, 7))
+    session_b = pc.RuleSession()
+    a2, t2 = _ctx_combat_pair()
+    out_none = pc.resolve_attack(session_b, a2, t2,
+                                 tactical_context=None, rng=SeqRandom(15, 7))
+    assert out_default == out_none, "显式 None 必须与不传完全一致"
+    assert "context_mapping" not in out_default, out_default.keys()
+    json.dumps(out_default)
+
+    unit = pc.new_unit("t", "目标")
+    assert pc.compute_guard(unit, session_b) == 10
+    labels = [part["label"] for part in pc.guard_breakdown(unit, session_b)["parts"]]
+    assert not any("TacticalContext" in label for label in labels), labels
+
+    # 没接战术地图的会话：高地投影路径照旧（I5 golden 不受影响）。
+    session_c = pc.RuleSession()
+    a3, t3 = _ctx_combat_pair()
+    out = pc.resolve_attack(session_c, a3, t3, rng=SeqRandom(10, 5))
+    assert "high_ground" not in out, out
+
+
+def _ctx_combat_pair():
+    """一对最小战斗单位（命中路径需要韧性 / 活力 / 条件等字段）。"""
+    attacker = pc.new_unit("a", "攻击者")
+    target = pc.new_unit("t", "目标")
+    return attacker, target
+
+
 def main():
     checks = (
         check_roll_whitelist,
@@ -1966,6 +2331,12 @@ def main():
         check_tactical_projection_bands,
         check_tactical_high_ground_and_attack,
         check_tactical_move_zones_abstract,
+        # M13-B8（Issue #423）TacticalContext 输入契约
+        check_tactical_context_validation_and_reject,
+        check_tactical_context_d20_mapping,
+        check_tactical_context_d20_attack_wiring,
+        check_tactical_context_build_mapping,
+        check_tactical_context_no_context_compat,
         # 十一、行动提案 / 结果契约（M8-A1，Issue #202）
         check_action_contract_construct_and_validate,
         check_action_status_mapping,

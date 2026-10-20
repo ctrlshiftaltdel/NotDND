@@ -54,6 +54,7 @@ ATLAS I5（Issue #67）已接线：战术投影——规则核心在需要距离
   三、会话状态契约          四、结算的单一进出口
   五、场景行动单入口        六、战斗状态机
   六·附、战术投影（ATLAS I5）
+  六·附二、TacticalContext 输入契约（M13-B8，02C 双引擎适配）
   七、派生值与明细          八、成长
   九、构建引擎（M2c，02B 第一至五节）
   十、构建引擎收尾（M2d，02B 第六至十一节）
@@ -63,6 +64,15 @@ M8-A1（Issue #202）已落地：行动**提案**与**结果**两种结构的构
 校验 / 惰性迁移（纯函数，无第三方依赖），以及 `perform_action` 返回
 到 ACTION-DESIGN §8.4 `status` 的映射；战斗锁改用 `CombatLocked`
 （`ValueError` 子类）以便写接口层区分 409 / 404。
+
+M13-B8（Issue #423）已落地：TacticalContext **输入契约**（六·附二）——
+结构化校验（来源 / 字段 / 状态；stale / invalid 一律拒绝，不降级猜测）
+与两个引擎各自的有界映射（d20：高地→助势骰层数、掩体档→防护加值、
+视线→可攻击事实；构建：掩体 / 高地→闪避需求修正）。只转事实不重写
+公式；无法无歧义映射的事实进结构化 `unsupported` / `not_mapped`，
+不静默丢弃（02C 第六节「双引擎适配契约」）。`resolve_attack` 与
+`compute_guard` 新增**可选** `tactical_context` 入参——不传时输入、
+输出与行为同既有路径 100% 一致（两个引擎 adapter 的接线归后续 Issue）。
 """
 
 from __future__ import annotations
@@ -1423,7 +1433,7 @@ def resolve_attack(session: "RuleSession", attacker: dict | None,
                    target: dict | None, *, notation: str = "1d6",
                    damage_bonus: int = 0, attack_bonus: int = 0,
                    advantage: int = 0, disadvantage: int = 0, tag: str = "",
-                   rng=None) -> dict:
+                   rng=None, tactical_context=None) -> dict:
     """一次攻击的完整解算：掷骰 → 比防护 → 伤害 → 韧性削减。
 
     按 docs/system/02A 第五节与附录速查表：
@@ -1436,8 +1446,16 @@ def resolve_attack(session: "RuleSession", attacker: dict | None,
       · 严重失手（自然 1）：无伤害，攻击者获得 1 层【失衡】，并掷失手表。
     韧性削减按 docs/system/01 第八节：普通命中减伤害值的一半（向下取整），
     暴击减全额。伤害结算统一走 deal_damage（唯一伤害出口）。
-    高地（I5 战术投影）：会话接了战术地图且攻击者对目标占高地时，
-    自动 +1 枚助势骰（02A 附录「常用情境修正」）；没接地图无此修正。
+    高地情境修正（docs/system/02A 附录「常用情境修正」）：传了
+    `tactical_context`（TacticalContext，#447 冻结契约）时，高地助势
+    骰来自 context 的 `high_ground` 事实（六·附二的有界映射，以空间
+    权威事实为准，不再向 ATLAS 投影重复询问，避免双算）；没传时走
+    I5 投影既有路径（会话接了战术地图且攻击者对目标占高地时自动
+    +1 枚助势骰）；两者都没接则无此修正。公式本身不变——情境修正
+    是公式的一列。context 无效 / 过期一律 ValueError 拒绝（不降级
+    猜测）；`attack_blocked` 事实不在此消费——目标合法性归调用方
+    （同掩体表「完全 = 无法被攻击，由调用方处理」的原则），映射
+    结果随 `out["context_mapping"]` 返回，不静默丢弃。
     """
     out = {"grade": "miss", "grade_zh": _ATTACK_GRADE_ZH["miss"],
            "attack_total": 0, "guard": 0, "margin": 0, "roll": None,
@@ -1445,18 +1463,33 @@ def resolve_attack(session: "RuleSession", attacker: dict | None,
     if attacker is None or target is None:
         return out
     # 高地情境修正（docs/system/02A 附录「常用情境修正」：高地 = +1 枚
-    # 助势骰）。有地图时向地图询问投影（I5）；没接地图返回 False，
-    # 行为与 M2b 默认完全一致。公式本身不变——情境修正是公式的一列。
-    high = tactical_high_ground(session, attacker, target)
-    if high:
-        advantage = int(advantage or 0) + 1
-        out["high_ground"] = True
-        out["events"].append({"type": "high_ground",
-                              "attacker": attacker.get("name")})
+    # 助势骰）。有 TacticalContext 时向它要事实（六·附二）；否则走 I5
+    # 投影——没接地图返回 False，行为与 M2b 默认完全一致。公式本身
+    # 不变——情境修正是公式的一列。
+    if tactical_context is not None:
+        mapping = map_context_for_d20(tactical_context)
+        if not mapping["ok"]:
+            raise ValueError(
+                "TacticalContext 拒绝使用（stale / invalid 不降级猜测）：%r"
+                % (mapping["reasons"],))
+        layers = int(mapping["inputs"]["advantage_layers"])
+        if layers:
+            advantage = int(advantage or 0) + layers
+            out["high_ground"] = True
+            out["events"].append({"type": "high_ground",
+                                  "attacker": attacker.get("name")})
+        out["context_mapping"] = mapping
+    else:
+        high = tactical_high_ground(session, attacker, target)
+        if high:
+            advantage = int(advantage or 0) + 1
+            out["high_ground"] = True
+            out["events"].append({"type": "high_ground",
+                                  "attacker": attacker.get("name")})
     attack = roll("1d20", advantage=advantage, disadvantage=disadvantage,
                   rng=rng)
     total = int(attack["total"]) + int(attack_bonus or 0)
-    guard = compute_guard(target, session)
+    guard = compute_guard(target, session, tactical_context=tactical_context)
     grade = attack_grade(total - guard, natural=attack.get("natural"))
     out.update(grade=grade, grade_zh=_ATTACK_GRADE_ZH[grade],
                attack_total=total, guard=guard, margin=total - guard,
@@ -2413,6 +2446,312 @@ def tactical_move_zones(session: RuleSession, meters: float) -> int | None:
 
 
 # ════════════════════════════════════════════════════════════════════════
+# 六·附二 TacticalContext 输入契约（M13-B8，Issue #423）
+# ════════════════════════════════════════════════════════════════════════
+#
+# docs/system/02c-hex-battlefield.md 第六节「双引擎适配契约」：六角格层
+# 是空间事实来源，PRISM 的 d20 战术引擎与构建引擎是两种规则解释器，
+# 各自消费同一份 TacticalContext（#447 `tactical_context.py` 的冻结
+# 契约），按**原生**规则与数据结算。本节把适配器的「输入边界」开在
+# 规则核心上（02C:172 管线第 4 步由本层承接）：
+#
+#   · validate_tactical_context —— 结构化校验：来源 / 字段 / 状态。
+#     stale_context / invalid_context 一律拒绝使用（结构化原因透传），
+#     不降级猜测；
+#   · map_context_for_d20 —— 只把有规则出处的空间事实映射到 d20 引擎
+#     **已有**的情境修正输入（高地 → 助势骰层数、掩体档 → 防护加值、
+#     视线 → 可攻击事实）。命中等级、自然 1、AP、抗性 / 弱点 / 免疫 /
+#     吸收、状态、韧性 / 破韧、连携、首领阶段公式一律不碰；
+#   · map_context_for_build —— 只把事实映射到构建引擎**已有**的闪避
+#     需求修正（02B 第六节「每项 +1，最多 +2」，封顶仍由
+#     build_dodge_need_adjusted 执行）。不把 d20 助势骰或加值移植进
+#     骰池——成功数只由骰池构成决定；
+#   · resolve_attack / compute_guard 的可选 `tactical_context` 入参：
+#     传了 context 就以 context 事实为准（不再向 ATLAS 投影重复询问，
+#     避免双算）；不传则输入、输出与行为同既有路径 100% 一致。
+#
+# 数值边界（02C「适配器只能转换事实，不能再判几何」）：本文件**不新增**
+# 高度阈值 / 坠落表 / 视线几何——空间事实全部来自 context（几何在
+# #444 `tactical_queries`）；掩体数值直接查既有 COVER_GUARD（02A 掩体
+# 表），掩体档枚举来自数据规则 data/system/tactical_space.json 的
+# `cover.grades`。每条映射都引用 docs 规则 id；无法无歧义映射的事实
+# 进结构化 `unsupported` / `not_mapped`，不静默丢弃、不自动猜测、
+# 不交叙事 AI 裁定（02C「引擎边界」）。
+
+# 文档锚点（规则 id，不是数值）；02C 各锚点与 #447 tactical_context
+# 的 `_RULE_REFS` 同源。
+CONTEXT_RULE_REFS = {
+    "adapter_contract": "docs/system/02c-hex-battlefield.md:172",
+    "high_ground_bonus": "docs/system/02a-tactics-engine.md:93",
+    "cover_guard": "docs/system/02a-tactics-engine.md:257",
+    "cover_full": "docs/system/02a-tactics-engine.md:264",
+    "line_of_sight": "docs/system/02c-hex-battlefield.md:121",
+    "build_dodge_modifiers": "docs/system/02b-forge-engine.md:261",
+}
+
+# 数据规则 cover.grades（tactical_space.json 受控枚举）→ 02A 掩体表
+# 已有中文档（COVER_GUARD 的键）。数值不在此新写，映射后查 COVER_GUARD；
+# "full"（完全掩体）无数值档——「无法被攻击」是目标合法性事实，归调用方。
+CONTEXT_D20_COVER_GRADES = {"light": "轻度", "medium": "中度", "heavy": "重度"}
+
+
+def _context_reason(code: str, message: str, **extra) -> dict:
+    item = {"code": code, "message": message}
+    item.update(extra)
+    return item
+
+
+def validate_tactical_context(context) -> dict:
+    """结构化校验一份 TacticalContext / SpatialQueryResult（只读）。
+
+    context 的来源只能是 #447 `tactical_context.build_context` /
+    `spatial_query` 的产物（02C:156 冻结契约）：
+
+      · kind 必须与其公开常量 `CONTEXT_KIND` / `SPATIAL_QUERY_KIND`
+        一致，schema_version 必须等于 `CONTEXT_SCHEMA_VERSION`；
+      · 字段必须齐备（TacticalContext 按 `CONTEXT_FIELDS`、
+        SpatialQueryResult 按 `SPATIAL_FIELDS`）；
+      · status 必须 == "ok"——`stale_context` / `invalid_context`
+        一律拒绝使用，来源 reasons 原样透传，不降级猜测。
+
+    返回 `{"ok": bool, "reasons": [{code, message, ...}], "facts": ...}`：
+    ok=True 时 `facts` 是映射相关的空间事实浅拷贝；否则 `facts` 为 None。
+    纯函数，不改状态，输出可 JSON 序列化。
+    """
+    if not isinstance(context, dict):
+        return {"ok": False, "reasons": [_context_reason(
+            "invalid_context",
+            "TacticalContext 必须是 dict（实为 %r）" % (type(context).__name__,),
+        )], "facts": None}
+    import tactical_context as context_module  # 局部导入：保持 import prism_core 无副作用
+    kind = context.get("kind")
+    if kind == context_module.CONTEXT_KIND:
+        fields = context_module.CONTEXT_FIELDS
+    elif kind == context_module.SPATIAL_QUERY_KIND:
+        fields = context_module.SPATIAL_FIELDS
+    else:
+        return {"ok": False, "reasons": [_context_reason(
+            "invalid_context",
+            "kind 必须是 %r / %r（实为 %r）；context 只能来自 "
+            "tactical_context.build_context / spatial_query"
+            % (context_module.CONTEXT_KIND,
+               context_module.SPATIAL_QUERY_KIND, kind),
+        )], "facts": None}
+    reasons = []
+    if context.get("schema_version") != context_module.CONTEXT_SCHEMA_VERSION:
+        reasons.append(_context_reason(
+            "invalid_context",
+            "schema_version 必须 == %r（实为 %r）"
+            % (context_module.CONTEXT_SCHEMA_VERSION,
+               context.get("schema_version")),
+        ))
+    missing = [name for name in fields if name not in context]
+    if missing:
+        reasons.append(_context_reason(
+            "invalid_context", "缺少冻结契约字段：%s" % (missing,),
+            missing=missing,
+        ))
+    status = context.get("status")
+    if status not in context_module.CONTEXT_STATUSES:
+        reasons.append(_context_reason(
+            "invalid_context",
+            "status 必须是 %s 之一（实为 %r）"
+            % ("/".join(context_module.CONTEXT_STATUSES), status),
+        ))
+    elif status != "ok":
+        # stale / invalid：整体拒绝使用，结构化原因原样透传（不降级猜测）。
+        reasons.append(_context_reason(
+            str(status), "context 状态为 %r，拒绝使用" % (status,),
+            source_reasons=list(context.get("reasons") or []),
+        ))
+    if reasons:
+        return {"ok": False, "reasons": reasons, "facts": None}
+    facts = {
+        "high_ground": context.get("high_ground"),
+        "cover_grade": context.get("cover_grade"),
+        "line_of_sight": context.get("line_of_sight"),
+        "blocked_cells": list(context.get("blocked_cells") or []),
+    }
+    return {"ok": True, "reasons": [], "facts": facts}
+
+
+def _unmapped_spatial_facts(context: dict, why: str) -> list:
+    """d20 / 构建引擎都没有已定义输入的空间事实 → 逐项声明 not_mapped。
+
+    距离、高度差、可达性在两套引擎的公式里都没有情境修正档——显式
+    声明「不映射」，不静默丢弃（02C「引擎边界」）。
+    """
+    items = []
+    for fact in ("hex_distance", "metric_distance", "abstract_distance",
+                 "signed_height_delta"):
+        value = context.get(fact)
+        if value is not None:
+            items.append({"fact": fact, "value": value, "reason": why})
+    return items
+
+
+def map_context_for_d20(context) -> dict:
+    """把一份 ok 的 TacticalContext 映射到 d20 战术引擎**已有**的输入。
+
+    只转事实，不重写公式（02C:172 管线第 4 步）：
+
+      · `high_ground` is True → `advantage_layers` +1（02A:93「使用了
+        高地的射手 +1」——与 resolve_attack 的 I5 情境修正是同一列）；
+      · `cover_grade` = light / medium / heavy → `guard_bonus`
+        +2 / +4 / +6（数值查既有 COVER_GUARD，02A:257 掩体表）；
+      · `cover_grade` == "full" → 结构化 unsupported：掩体表无数值档
+        （02A:264「无法被攻击」），目标合法性归调用方；
+      · `line_of_sight` is False → `attack_blocked` True（02C:121
+        视线被遮；同 full——目标合法性事实，调用方处理，核心层不在
+        命中六档之外另立档位）；
+      · 距离 / 高度差：d20 引擎没有对应的已定义修正输入 → 逐项
+        not_mapped 声明。
+
+    context 无效 / 过期时返回 ok=False（reasons 结构化），**绝不**降级
+    为「当没有 context」——那等于猜测。输出可 JSON 序列化。
+    """
+    check = validate_tactical_context(context)
+    if not check["ok"]:
+        return {"ok": False, "reasons": check["reasons"], "inputs": None,
+                "mapped": [], "unsupported": [], "not_mapped": []}
+    facts = check["facts"]
+    mapped = []
+    unsupported = []
+    advantage_layers = 0
+    guard_bonus = 0
+    attack_blocked = False
+    if facts["high_ground"] is True:
+        advantage_layers = 1
+        mapped.append({
+            "fact": "high_ground", "value": True,
+            "effect": "advantage_layers +1（高地射手助势骰）",
+            "rule_ref": CONTEXT_RULE_REFS["high_ground_bonus"],
+        })
+    grade = facts["cover_grade"]
+    if grade in CONTEXT_D20_COVER_GRADES:
+        guard_bonus = int(COVER_GUARD[CONTEXT_D20_COVER_GRADES[grade]])
+        mapped.append({
+            "fact": "cover_grade", "value": grade,
+            "effect": "guard_bonus +%d（02A 掩体表）" % guard_bonus,
+            "rule_ref": CONTEXT_RULE_REFS["cover_guard"],
+        })
+    elif grade == "full":
+        unsupported.append({
+            "fact": "cover_grade", "value": "full",
+            "reason": "「完全」掩体没有防护数值档（02A 掩体表：无法被攻击）；"
+                      "目标合法性由调用方处理，核心层不猜数值",
+            "rule_ref": CONTEXT_RULE_REFS["cover_full"],
+        })
+    if facts["line_of_sight"] is False:
+        attack_blocked = True
+        mapped.append({
+            "fact": "line_of_sight", "value": False,
+            "effect": "attack_blocked=True（视线被遮，目标合法性事实）",
+            "rule_ref": CONTEXT_RULE_REFS["line_of_sight"],
+        })
+    not_mapped = _unmapped_spatial_facts(
+        context, "d20 引擎未定义距离 / 高度差情境修正输入，不映射"
+                 "（显式声明，不静默丢弃）")
+    return {"ok": True, "reasons": [],
+            "inputs": {"advantage_layers": advantage_layers,
+                       "guard_bonus": guard_bonus,
+                       "attack_blocked": attack_blocked},
+            "mapped": mapped, "unsupported": unsupported,
+            "not_mapped": not_mapped}
+
+
+def map_context_for_build(context) -> dict:
+    """把一份 ok 的 TacticalContext 映射到构建引擎**已有**的输入。
+
+    只转事实，不重写公式（02C:172 管线第 4 步）：
+
+      · `cover_grade` = light / medium / heavy → `dodge_need_modifiers`
+        +1（02B:261「目标的掩体、态势与其他位置优势会增加需求成功数，
+        每项 +1，最多 +2」；封顶仍由 build_dodge_need_adjusted 的
+        BUILD_DODGE_MODIFIER_MAX 执行，本层不重复封顶、不重复计数）；
+      · `high_ground` is True → `dodge_need_modifiers` +1（同条规则的
+        「其他位置优势」）；
+      · `cover_grade` == "full" → 结构化 unsupported（同 d20：无数值
+        档，「无法被攻击」归调用方处理目标合法性）；
+      · `line_of_sight` is False → `attack_blocked` True；
+      · 距离 / 高度差：骰池引擎没有距离修正输入 → 逐项 not_mapped。
+
+    **算法隔离**：inputs 里没有 advantage / guard_bonus——d20 助势骰
+    与加值不进骰池，成功数只由骰池构成决定（02B 混用限制）；空间
+    事实只影响防御侧的闪避需求。context 无效 / 过期一律 ok=False
+    拒绝。输出可 JSON 序列化。
+    """
+    check = validate_tactical_context(context)
+    if not check["ok"]:
+        return {"ok": False, "reasons": check["reasons"], "inputs": None,
+                "mapped": [], "unsupported": [], "not_mapped": []}
+    facts = check["facts"]
+    mapped = []
+    unsupported = []
+    modifiers = 0
+    attack_blocked = False
+    grade = facts["cover_grade"]
+    if grade in CONTEXT_D20_COVER_GRADES:
+        modifiers += 1
+        mapped.append({
+            "fact": "cover_grade", "value": grade,
+            "effect": "dodge_need_modifiers +1（掩体位置优势）",
+            "rule_ref": CONTEXT_RULE_REFS["build_dodge_modifiers"],
+        })
+    elif grade == "full":
+        unsupported.append({
+            "fact": "cover_grade", "value": "full",
+            "reason": "「完全」掩体没有需求成功数档（02A 掩体表：无法被攻击）；"
+                      "目标合法性由调用方处理",
+            "rule_ref": CONTEXT_RULE_REFS["cover_full"],
+        })
+    if facts["high_ground"] is True:
+        modifiers += 1
+        mapped.append({
+            "fact": "high_ground", "value": True,
+            "effect": "dodge_need_modifiers +1（位置优势）",
+            "rule_ref": CONTEXT_RULE_REFS["build_dodge_modifiers"],
+        })
+    if facts["line_of_sight"] is False:
+        attack_blocked = True
+        mapped.append({
+            "fact": "line_of_sight", "value": False,
+            "effect": "attack_blocked=True（视线被遮，目标合法性事实）",
+            "rule_ref": CONTEXT_RULE_REFS["line_of_sight"],
+        })
+    not_mapped = _unmapped_spatial_facts(
+        context, "骰池引擎未定义距离 / 高度差修正输入；d20 助势骰与加值"
+                 "不得移植进骰池（02B 混用限制）")
+    return {"ok": True, "reasons": [],
+            "inputs": {"dodge_need_modifiers": modifiers,
+                       "attack_blocked": attack_blocked},
+            "mapped": mapped, "unsupported": unsupported,
+            "not_mapped": not_mapped}
+
+
+def _tactical_cover_bonus(tactical_context):
+    """TacticalContext → (掩体防护加值, 展示标签)；没传返回 (None, None)。
+
+    传了 context：无效 / 过期 / 含无法映射的掩体档（「完全」）一律
+    ValueError——掩体表没有「完全」的数值档，静默当 0 或回落到声明档
+    都是猜测（02C「引擎边界」）。空间事实与 `unit["cover"]` 声明档
+    二选一，不叠加（02C:172：context 是空间权威事实）。
+    """
+    if tactical_context is None:
+        return None, None
+    mapping = map_context_for_d20(tactical_context)
+    if not mapping["ok"]:
+        raise ValueError(
+            "TacticalContext 拒绝使用（stale / invalid 不降级猜测）：%r"
+            % (mapping["reasons"],))
+    for item in mapping["unsupported"]:
+        if item["fact"] == "cover_grade":
+            raise ValueError("TacticalContext 掩体档无法映射（不静默忽略）：%r"
+                             % (item,))
+    return int(mapping["inputs"]["guard_bonus"]), "掩体修正（TacticalContext）"
+
+
+# ════════════════════════════════════════════════════════════════════════
 # 七、派生值与明细
 # ════════════════════════════════════════════════════════════════════════
 
@@ -2547,11 +2886,15 @@ def _condition_guard_bonus(unit: dict) -> int:
     return total
 
 
-def guard_breakdown(unit: dict | None, session: RuleSession | None = None) -> dict:
+def guard_breakdown(unit: dict | None, session: RuleSession | None = None,
+                    *, tactical_context=None) -> dict:
     """把防护拆成可展示的几段：基础 + 装备 + 态势 + 掩体 + 状态。
 
     展示与结算必须同源：compute_guard 直接调本函数。只返回一个数字的话，
     界面要另算一份——那必然漂移，玩家会看到角色卡与结算对不上。
+    掩体段（M13-B8）：传了 `tactical_context` 时以 context 的
+    `cover_grade` 空间事实为准（02C:172——空间权威事实，不与声明档
+    叠加），否则读 `unit["cover"]` 声明档（旧路径不变）。
     """
     parts = [{"label": "基础防护", "value": GUARD_BASE}]
     items = equipped_items(unit)
@@ -2561,8 +2904,12 @@ def guard_breakdown(unit: dict | None, session: RuleSession | None = None) -> di
         if value and isinstance(item, dict):
             parts.append({"label": str(item.get("name") or slot_zh),
                           "value": value})
+    cover_bonus, cover_label = _tactical_cover_bonus(tactical_context)
+    if cover_bonus is None:
+        cover_bonus = _cover_guard_bonus(unit or {})
+        cover_label = "掩体修正"
     for label, value in (("态势修正", _stance_guard_bonus(unit or {})),
-                         ("掩体修正", _cover_guard_bonus(unit or {})),
+                         (cover_label, cover_bonus),
                          ("状态修正", _condition_guard_bonus(unit or {}))):
         if value:
             parts.append({"label": label, "value": int(value)})
@@ -2570,9 +2917,16 @@ def guard_breakdown(unit: dict | None, session: RuleSession | None = None) -> di
     return {"total": total, "base": GUARD_BASE, "parts": parts}
 
 
-def compute_guard(unit: dict | None, session: RuleSession | None = None) -> int:
-    """结算用的防护值（= breakdown 的 total）。"""
-    return guard_breakdown(unit, session)["total"]
+def compute_guard(unit: dict | None, session: RuleSession | None = None,
+                  *, tactical_context=None) -> int:
+    """结算用的防护值（= breakdown 的 total）。
+
+    `tactical_context` 语义同 guard_breakdown：传了就以 context 的
+    `cover_grade` 事实取掩体加值；context 无效 / 过期 / 含无法映射的
+    掩体档（「完全」）一律 ValueError，不静默降级为声明档或 0。
+    """
+    return guard_breakdown(unit, session,
+                           tactical_context=tactical_context)["total"]
 
 
 def recompute_unit(unit: dict | None, session: RuleSession | None = None) -> None:
@@ -4212,6 +4566,10 @@ __all__ = [
     "TACTICAL_CELL_METERS", "attach_tactical_map", "detach_tactical_map",
     "tactical_map", "tactical_range_band", "tactical_high_ground",
     "tactical_move_zones",
+    # 六·附二 TacticalContext 输入契约（M13-B8，Issue #423）
+    "CONTEXT_RULE_REFS", "CONTEXT_D20_COVER_GRADES",
+    "validate_tactical_context", "map_context_for_d20",
+    "map_context_for_build",
     # 七、派生值与明细
     "vitality_cap", "move_speed", "carry_capacity", "focus_cap",
     "tempo_cap",
